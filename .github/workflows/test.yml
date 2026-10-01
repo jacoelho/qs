@@ -1,0 +1,89 @@
+name: test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    env:
+      GOMAXPROCS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - run: go test -race -shuffle=on -count=1 -p=1 -parallel=8 ./...
+      - run: go vet -p=2 ./...
+      - run: go test -p=2 -parallel=8 -coverprofile=coverage.out ./...
+      - run: python3 scripts/generate.py && git diff --exit-code
+      - run: go test -run='^$' -fuzz='^FuzzIdentifier$' -fuzztime=15s -parallel=2 .
+      - run: go test -run='^$' -fuzz='^FuzzValueIsolation$' -fuzztime=15s -parallel=2 .
+      - run: go test -run='^$' -fuzz='^FuzzNestedNumbering$' -fuzztime=15s -parallel=2 .
+      - run: go test -run='^$' -bench=. -benchmem -count=3 .
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: qx
+          POSTGRES_PASSWORD: qx
+          POSTGRES_DB: qx
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U qx -d qx"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      QX_TEST_DSN: 'postgres://qx:qx@localhost:5432/qx?sslmode=disable'
+      GOMAXPROCS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - run: go test -tags postgres -race -count=1 -p=2 -parallel=8 -timeout=5m -v ./integration
+  postgres-corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GOMAXPROCS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r scripts/requirements-postgres.txt
+      - run: python -m unittest discover -s scripts -p 'test_postgres_corpus.py'
+      - name: Download the pinned PostgreSQL regression corpus
+        env:
+          POSTGRES_COMMIT: 630e607397424196a0a3ebb14a5658c2473ddadf
+        run: |
+          curl --fail --location --retry 3 --max-time 180 "https://codeload.github.com/postgres/postgres/tar.gz/$POSTGRES_COMMIT" --output "$RUNNER_TEMP/postgres.tar.gz"
+          mkdir "$RUNNER_TEMP/postgres-source"
+          tar -xzf "$RUNNER_TEMP/postgres.tar.gz" -C "$RUNNER_TEMP/postgres-source" --strip-components=1
+      - name: Require 98 percent native construction support
+        run: >-
+          python scripts/postgres_corpus.py "$RUNNER_TEMP/postgres-source"
+          --commit 630e607397424196a0a3ebb14a5658c2473ddadf
+          --expected-sql-sha256 ddec651ca5f78d1ae9b721476efe586daf9220d80d5284f6fccd8329ed66218d
+          --report "$RUNNER_TEMP/postgres-coverage.json"
+          --minimum-support 98 --minimum-planner-support 98 --minimum-shape-support 98 --minimum-planner-shape-support 98
+          --export-go internal/postgrescorpus
+      - name: Require reproducible frozen Go fixtures
+        run: git diff --exit-code -- internal/postgrescorpus
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: postgres-coverage
+          path: ${{ runner.temp }}/postgres-coverage.json
+          if-no-files-found: ignore

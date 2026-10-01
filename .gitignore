@@ -1,0 +1,5 @@
+*.out
+*.test
+coverage.html
+.DS_Store
+__pycache__/

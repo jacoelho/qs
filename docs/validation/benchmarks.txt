@@ -1,0 +1,24 @@
+goos: linux
+goarch: amd64
+pkg: github.com/jacoelho/qx
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkBuild-5               	  132214	      2237 ns/op	     528 B/op	       3 allocs/op
+BenchmarkBuild-5               	  148676	      1357 ns/op	     528 B/op	       3 allocs/op
+BenchmarkBuild-5               	  151908	      1335 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm-5       	  229702	       871.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendSQLWarm-5       	  221896	       987.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendSQLWarm-5       	  162249	       978.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstruct-5           	  138831	      3056 ns/op	    1488 B/op	      10 allocs/op
+BenchmarkConstruct-5           	  130216	      1756 ns/op	    1488 B/op	      10 allocs/op
+BenchmarkConstruct-5           	   44769	      3418 ns/op	    1488 B/op	      10 allocs/op
+BenchmarkConstructAndBuild-5   	   66346	      2917 ns/op	    2016 B/op	      13 allocs/op
+BenchmarkConstructAndBuild-5   	   78484	      3353 ns/op	    2016 B/op	      13 allocs/op
+BenchmarkConstructAndBuild-5   	   81264	      3230 ns/op	    2016 B/op	      13 allocs/op
+BenchmarkClone-5               	  118218	      2571 ns/op	    1296 B/op	       8 allocs/op
+BenchmarkClone-5               	  116538	      1898 ns/op	    1296 B/op	       8 allocs/op
+BenchmarkClone-5               	  121716	      2336 ns/op	    1296 B/op	       8 allocs/op
+BenchmarkAppendCTEWarm-5       	  190532	      1383 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendCTEWarm-5       	  183048	      1871 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendCTEWarm-5       	  189182	      1267 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/jacoelho/qx	5.340s
