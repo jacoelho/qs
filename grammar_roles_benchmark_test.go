@@ -30,10 +30,10 @@ func BenchmarkGrammarRoles(b *testing.B) {
 			return InsertInto("t").Columns("v").Values(7).OnConflict(ConflictColumns("v").TargetWhere(Eq("live", true)).DoUpdate(Set("v", 9)).Where(Eq("state", "open")))
 		}, `INSERT INTO "t" ("v") VALUES ($1) ON CONFLICT ("v") WHERE ("live" = $2) DO UPDATE SET "v" = $3 WHERE ("state" = $4)`, []any{7, true, 9, "open"}},
 		{"JSONValue", func() Statement {
-			return Select(JSONValue(Col("doc"), Param("$.v")).Passing("p", Param(7)).Returning(Int4).OnEmpty(JSONDefault(Param(9))).OnError(JSONNull()).Expr())
+			return Select(JSONValue(Col("doc"), Param("$.v")).Passing("p", Param(7)).Returning(TypeInt4).OnEmpty(JSONDefault(Param(9))).OnError(JSONNull()).Expr())
 		}, `SELECT JSON_VALUE("doc", $1 PASSING $2 AS "p" RETURNING integer DEFAULT $3 ON EMPTY NULL ON ERROR)`, []any{"$.v", 7, 9}},
 		{"JSONQuery", func() Statement {
-			return Select(JSONQuery(Col("doc"), Param("$.v")).Passing("p", Param(7)).Returning(JSONB).WithConditionalWrapper().KeepQuotes().OnEmpty(JSONEmptyArray()).OnError(JSONEmptyObject()).Expr())
+			return Select(JSONQuery(Col("doc"), Param("$.v")).Passing("p", Param(7)).Returning(TypeJSONB).WithConditionalWrapper().KeepQuotes().OnEmpty(JSONEmptyArray()).OnError(JSONEmptyObject()).Expr())
 		}, `SELECT JSON_QUERY("doc", $1 PASSING $2 AS "p" RETURNING jsonb WITH CONDITIONAL ARRAY WRAPPER KEEP QUOTES EMPTY ARRAY ON EMPTY EMPTY OBJECT ON ERROR)`, []any{"$.v", 7}},
 		{"JSONExists", func() Statement {
 			return Select(JSONExists(Col("doc"), Param("$.v")).Passing("p", Param(7)).OnError(JSONFalse()).Expr())

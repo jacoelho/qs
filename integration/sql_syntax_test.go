@@ -13,7 +13,7 @@ import (
 
 func syntaxText(t *testing.T, ctx context.Context, conn *pgx.Conn, expr qs.Expr) string {
 	t.Helper()
-	query, args, err := qs.Select(expr.Cast(qs.Text)).ToSQL()
+	query, args, err := qs.Select(expr.Cast(qs.TypeText)).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,10 +55,10 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 	}
 
 	if got := syntaxText(t, ctx, conn, qs.Overlaps(
-		qs.LiteralString("2026-01-01").Cast(qs.Date),
-		qs.LiteralString("2026-01-03").Cast(qs.Date),
-		qs.LiteralString("2026-01-02").Cast(qs.Date),
-		qs.LiteralString("2026-01-04").Cast(qs.Date),
+		qs.LiteralString("2026-01-01").Cast(qs.TypeDate),
+		qs.LiteralString("2026-01-03").Cast(qs.TypeDate),
+		qs.LiteralString("2026-01-02").Cast(qs.TypeDate),
+		qs.LiteralString("2026-01-04").Cast(qs.TypeDate),
 	).Expr()); got != "true" {
 		t.Fatalf("overlaps got %q; want true", got)
 	}
@@ -69,11 +69,11 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 		t.Fatalf("is not normalized got %q; want true", got)
 	}
 
-	local := qs.AtLocal(qs.LiteralString("2026-01-02 03:04:05+02").Cast(qs.TimestampTZ))
+	local := qs.AtLocal(qs.LiteralString("2026-01-02 03:04:05+02").Cast(qs.TypeTimestampTZ))
 	if got := syntaxText(t, ctx, conn, local); got != "2026-01-02 01:04:05" {
 		t.Fatalf("AT LOCAL got %q; want 2026-01-02 01:04:05", got)
 	}
-	zone := qs.LiteralString("2026-01-02 03:04:05").Cast(qs.Timestamp).AtTimeZone(qs.LiteralString("UTC"))
+	zone := qs.LiteralString("2026-01-02 03:04:05").Cast(qs.TypeTimestamp).AtTimeZone(qs.LiteralString("UTC"))
 	if got := syntaxText(t, ctx, conn, zone); !strings.HasPrefix(got, "2026-01-02 03:04:05") {
 		t.Fatalf("AT TIME ZONE got %q", got)
 	}
@@ -100,7 +100,7 @@ func TestSQLValueFunctionPrecision(t *testing.T) {
 		{"localtimestamp", qs.LocalTimestamp(3)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qs.Select(qs.Extract(qs.PartMicroseconds, tc.expr).Cast(qs.Int8)).ToSQL()
+			sql, args, err := qs.Select(qs.Extract(qs.PartMicroseconds, tc.expr).Cast(qs.TypeInt8)).ToSQL()
 			if err != nil {
 				t.Fatal(err)
 			}

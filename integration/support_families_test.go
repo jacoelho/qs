@@ -62,8 +62,8 @@ func TestUnboundedVarcharAgainstPostgres(t *testing.T) {
 	ctx, conn := connect(t)
 	const input = "abcdef'; ? $1"
 	sql, args, err := qs.Select(
-		qs.Param(input).Cast(qs.NamedType("pg_catalog", "varchar")),
-		qs.Param(input).Cast(qs.Varchar(3)),
+		qs.Param(input).Cast(qs.TypeNamed("pg_catalog", "varchar")),
+		qs.Param(input).Cast(qs.TypeVarchar(3)),
 	).ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +81,7 @@ func TestJSONTableExistsAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	table := qs.JSONTable(qs.JSONBParam(`[{"a":null},{}]`).Expr(), "$[*]",
-		qs.JSONOrdinality("n"), qs.JSONExistsColumn("has_a", qs.Bool).Path("$.a"),
+		qs.JSONOrdinality("n"), qs.JSONExistsColumn("has_a", qs.TypeBool).Path("$.a"),
 	).As("j")
 	sql, args, err := qs.SelectCols("has_a").FromExpr(table).OrderBy(qs.Asc("n")).ToSQL()
 	if err != nil {

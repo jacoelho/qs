@@ -26,7 +26,7 @@ func TestRecipes(t *testing.T) {
 		OrderBy(Asc("id")).Limit(10).Lock(ForUpdate().SkipLocked()))
 	ranked := Select(Col("book.author_id"), Col("book.title"), RowNumber().Over(Window().
 		PartitionBy(Col("book.author_id")).OrderBy(Asc("book.title"))).As("rn")).From("book")
-	nestedBooks := Select(Coalesce(JSONBAgg(JSONBBuildObject(LiteralString("id"), Col("book.id"), LiteralString("title"), Col("book.title"))).OrderBy(Asc("book.id")), LiteralString("[]").Cast(JSONB))).
+	nestedBooks := Select(Coalesce(JSONBAgg(JSONBBuildObject(LiteralString("id"), Col("book.id"), LiteralString("title"), Col("book.title"))).OrderBy(Asc("book.id")), LiteralString("[]").Cast(TypeJSONB))).
 		From("book").Where(EqColumns("book.author_id", "author.id"))
 	runCases(t, []renderCase{
 		{"bounded_update", Update("jobs").With(picked).Set(Set("status", "claimed")).From("picked").Where(EqColumns("jobs.id", "picked.id")).ReturningCols("jobs.id"),

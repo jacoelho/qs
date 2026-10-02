@@ -112,7 +112,7 @@ func TestTypedJSONDocuments(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query, args, err := qs.Select(tc.expr.Cast(qs.Text)).ToSQL()
+			query, args, err := qs.Select(tc.expr.Cast(qs.TypeText)).ToSQL()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -180,10 +180,10 @@ func TestExactLiteralSemantics(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	query := qs.Select(
-		qs.LiteralNumeric("123456789012345678901234567890.123456789").Cast(qs.Text),
-		qs.LiteralBit("00101").Cast(qs.Text),
-		qs.LiteralHex("Ab09").Cast(qs.Text),
-		qs.PrefixOperator("|/", qs.LiteralInt(9)).Cast(qs.Text),
+		qs.LiteralNumeric("123456789012345678901234567890.123456789").Cast(qs.TypeText),
+		qs.LiteralBit("00101").Cast(qs.TypeText),
+		qs.LiteralHex("Ab09").Cast(qs.TypeText),
+		qs.PrefixOperator("|/", qs.LiteralInt(9)).Cast(qs.TypeText),
 	)
 	sql, args, err := query.ToSQL()
 	if err != nil {
@@ -273,11 +273,11 @@ func TestNullsAndArrayEncoding(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	q := qs.Select(
-		qs.ParamNull(qs.NullOf[string]()).Cast(qs.Text),
-		qs.ParamNull(qs.NonNull("value")).Cast(qs.Text),
-		qs.Param(1).Cast(qs.Int4).EqExpr(qs.NullLiteral()).Expr(),
-		qs.Param(1).Cast(qs.Int4).InExpr(qs.Param(2), qs.NullLiteral()).Expr(),
-		qs.EqAny(qs.Param(int64(2)), qs.ArrayParam([]int64{1, 2}, qs.Int8)).Expr(),
+		qs.ParamNull(qs.NullOf[string]()).Cast(qs.TypeText),
+		qs.ParamNull(qs.NonNull("value")).Cast(qs.TypeText),
+		qs.Param(1).Cast(qs.TypeInt4).EqExpr(qs.NullLiteral()).Expr(),
+		qs.Param(1).Cast(qs.TypeInt4).InExpr(qs.Param(2), qs.NullLiteral()).Expr(),
+		qs.EqAny(qs.Param(int64(2)), qs.ArrayParam([]int64{1, 2}, qs.TypeInt8)).Expr(),
 	)
 	sql, args, err := q.ToSQL()
 	if err != nil {
@@ -340,15 +340,15 @@ func TestRecursiveCTEAndSQLJSON(t *testing.T) {
 	seed := qs.Select(qs.LiteralInt(1))
 	step := qs.Select(qs.Col("n").Add(qs.LiteralInt(1))).From("numbers").Where(qs.Lt("n", 3))
 	numbers := qs.CTE("numbers", qs.UnionAll(seed, step)).Columns("n")
-	q := qs.Select(qs.Col("n").Cast(qs.Text)).WithRecursive(numbers).From("numbers").OrderBy(qs.Asc("n"))
+	q := qs.Select(qs.Col("n").Cast(qs.TypeText)).WithRecursive(numbers).From("numbers").OrderBy(qs.Asc("n"))
 	if got := queryStrings(t, ctx, conn, q); !reflect.DeepEqual(got, []string{"1", "2", "3"}) {
 		t.Fatal(got)
 	}
-	json := qs.JSONValue(qs.Param(`{"name":"Ana"}`).Cast(qs.JSONB), qs.LiteralString("$.name")).Returning(qs.Text).Expr()
+	json := qs.JSONValue(qs.Param(`{"name":"Ana"}`).Cast(qs.TypeJSONB), qs.LiteralString("$.name")).Returning(qs.TypeText).Expr()
 	if got := queryStrings(t, ctx, conn, qs.Select(json)); !reflect.DeepEqual(got, []string{"Ana"}) {
 		t.Fatal(got)
 	}
-	table := qs.JSONTable(qs.Param(`[{"name":"Ana"},{"name":"João"}]`).Cast(qs.JSONB), "$[*]", qs.JSONOrdinality("position"), qs.JSONColumn("name", qs.Text).Path("$.name")).As("j")
+	table := qs.JSONTable(qs.Param(`[{"name":"Ana"},{"name":"João"}]`).Cast(qs.TypeJSONB), "$[*]", qs.JSONOrdinality("position"), qs.JSONColumn("name", qs.TypeText).Path("$.name")).As("j")
 	if got := queryStrings(t, ctx, conn, qs.SelectCols("j.name").FromExpr(table).OrderBy(qs.Asc("j.position"))); !reflect.DeepEqual(got, []string{"Ana", "João"}) {
 		t.Fatal(got)
 	}

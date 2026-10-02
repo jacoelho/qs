@@ -103,7 +103,7 @@ func TestNamedTypeCastChangesResult(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	numeric := func(scale int) qs.Expr {
-		return qs.Param("12.345").Cast(qs.NamedType("pg_catalog", "numeric").Modifiers(5, scale)).Cast(qs.Text)
+		return qs.Param("12.345").Cast(qs.TypeNamed("pg_catalog", "numeric").Modifiers(5, scale)).Cast(qs.TypeText)
 	}
 	query := qs.Select(numeric(2), numeric(1))
 	sql, args, err := query.ToSQL()

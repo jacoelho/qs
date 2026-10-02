@@ -70,7 +70,7 @@ func ExampleSelectSQL() {
 	// Existing source-code SQL can be retained without parsing it. This is
 	// equivalent to Select(UnsafeSQL("id, created_at")).
 	query, args, err := qs.SelectSQL("id, created_at").
-		Columns(qs.Col("team_id").Cast(qs.Text)).
+		Columns(qs.Col("team_id").Cast(qs.TypeText)).
 		From("users").Where(qs.Eq("active", true)).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)

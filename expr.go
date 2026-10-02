@@ -114,7 +114,7 @@ func ParamNull[T any](value Null[T]) Expr {
 // ArrayParam binds one driver-encoded array, with an explicit PostgreSQL cast.
 // The driver must support encoding []T; qs does not convert or copy the slice.
 func ArrayParam[T any](values []T, element DataType) Expr {
-	return Param(values).Cast(ArrayType(element))
+	return Param(values).Cast(TypeArray(element))
 }
 
 // NullExpr is a literal, explicitly typed SQL NULL and has no parameter.

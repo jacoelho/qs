@@ -18,7 +18,7 @@ func TestJSONConstructorSQL(t *testing.T) {
 			statement: Select(JSONObject(
 				JSONPair(Param("id"), Param(7)),
 				JSONPair(Param("raw"), JSONInputExpr(Param(`{"a":1}`)).FormatJSON()),
-			).AbsentOnNull().WithUniqueKeys().Returning(JSONB).Expr()),
+			).AbsentOnNull().WithUniqueKeys().Returning(TypeJSONB).Expr()),
 			sql:  `SELECT JSON_OBJECT($1 : $2, $3 : $4 FORMAT JSON ABSENT ON NULL WITH UNIQUE KEYS RETURNING jsonb)`,
 			args: []any{"id", 7, "raw", `{"a":1}`},
 		},
@@ -27,42 +27,42 @@ func TestJSONConstructorSQL(t *testing.T) {
 			statement: Select(JSONArray(
 				Param(1),
 				JSONInputExpr(Param(`{"a":1}`)).FormatJSON(),
-			).NullOnNull().Returning(Text).Expr()),
+			).NullOnNull().Returning(TypeText).Expr()),
 			sql:  `SELECT JSON_ARRAY($1, $2 FORMAT JSON NULL ON NULL RETURNING text)`,
 			args: []any{1, `{"a":1}`},
 		},
 		{
 			name:      "empty_object",
-			statement: Select(JSONObject().Returning(JSON).Expr()),
+			statement: Select(JSONObject().Returning(TypeJSON).Expr()),
 			sql:       `SELECT JSON_OBJECT(RETURNING json)`,
 		},
 		{
 			name:      "empty_array",
-			statement: Select(JSONArray().Returning(JSONB).Expr()),
+			statement: Select(JSONArray().Returning(TypeJSONB).Expr()),
 			sql:       `SELECT JSON_ARRAY(RETURNING jsonb)`,
 		},
 		{
 			name:      "output_encoding",
-			statement: Select(JSONObject().Returning(Bytea).Encoding(JSONEncodingUTF16).Expr()),
+			statement: Select(JSONObject().Returning(TypeBytea).Encoding(JSONEncodingUTF16).Expr()),
 			sql:       `SELECT JSON_OBJECT(RETURNING bytea FORMAT JSON ENCODING UTF16)`,
 		},
 		{
 			name: "object_aggregate",
-			statement: Select(JSONObjectAggregate(Col("k"), Col("v")).AbsentOnNull().WithUniqueKeys().Returning(JSONB).
+			statement: Select(JSONObjectAggregate(Col("k"), Col("v")).AbsentOnNull().WithUniqueKeys().Returning(TypeJSONB).
 				Filter(Gt("v", 1)).OverNamed("w").Expr()),
 			sql:  `SELECT JSON_OBJECTAGG("k" : "v" ABSENT ON NULL WITH UNIQUE KEYS RETURNING jsonb) FILTER (WHERE ("v" > $1)) OVER "w"`,
 			args: []any{1},
 		},
 		{
 			name: "array_aggregate",
-			statement: Select(JSONArrayAggregate(Col("v")).OrderBy(Desc("v")).NullOnNull().Returning(Text).
+			statement: Select(JSONArrayAggregate(Col("v")).OrderBy(Desc("v")).NullOnNull().Returning(TypeText).
 				Filter(Gt("v", 1)).Over(Window().PartitionBy(Col("g"))).Expr()),
 			sql:  `SELECT JSON_ARRAYAGG("v" ORDER BY "v" DESC NULL ON NULL RETURNING text) FILTER (WHERE ("v" > $1)) OVER (PARTITION BY "g")`,
 			args: []any{1},
 		},
 		{
 			name:      "array_query",
-			statement: Select(JSONArrayQuery(Select(Col("v")).From("items")).InputFormatJSON().Returning(JSONB).Expr()),
+			statement: Select(JSONArrayQuery(Select(Col("v")).From("items")).InputFormatJSON().Returning(TypeJSONB).Expr()),
 			sql:       `SELECT JSON_ARRAY(SELECT "v" FROM "items" FORMAT JSON RETURNING jsonb)`,
 		},
 		{
@@ -85,7 +85,7 @@ func TestJSONConstructorSQL(t *testing.T) {
 		},
 		{
 			name:      "serialize",
-			statement: Select(JSONSerialize(JSONInputExpr(Param(`{"a":1}`)).FormatJSON()).Returning(Bytea).FormatJSON().EncodingUTF8().Expr()),
+			statement: Select(JSONSerialize(JSONInputExpr(Param(`{"a":1}`)).FormatJSON()).Returning(TypeBytea).FormatJSON().EncodingUTF8().Expr()),
 			sql:       `SELECT JSON_SERIALIZE($1 FORMAT JSON RETURNING bytea FORMAT JSON ENCODING UTF8)`,
 			args:      []any{`{"a":1}`},
 		},
@@ -118,11 +118,11 @@ func TestJSONConstructorErrorsAndVersions(t *testing.T) {
 		{"object_format_without_returning", Select(JSONObject().FormatJSON().Expr())},
 		{"array_format_without_returning", Select(JSONArray(Param(1)).FormatJSON().Expr())},
 		{"array_nil_input", Select(JSONArray(nil).Expr())},
-		{"object_bad_encoding", Select(JSONObject().Returning(Bytea).Encoding(JSONEncoding(99)).Expr())},
+		{"object_bad_encoding", Select(JSONObject().Returning(TypeBytea).Encoding(JSONEncoding(99)).Expr())},
 		{"query_width", Select(JSONArrayQuery(Select(Param(1), Param(2))).Expr())},
 		{"aggregate_empty_window_name", Select(JSONArrayAggregate(Param(1)).OverNamed("").Expr())},
 		{"bad_null_policy", Select(JSONArray(Param(1)).OnNull(JSONNullPolicy(99)).Expr())},
-		{"bad_unique_policy", Select(JSONObject(JSONPair(Param("a"), Param(1))).Returning(JSON).Expr()).Where(IsJSON(Param("x")).WithUniqueKeys().Type(JSONPredicateItem(99)).Condition())},
+		{"bad_unique_policy", Select(JSONObject(JSONPair(Param("a"), Param(1))).Returning(TypeJSON).Expr()).Where(IsJSON(Param("x")).WithUniqueKeys().Type(JSONPredicateItem(99)).Condition())},
 	}
 	for _, tc := range bad {
 		t.Run(tc.name, func(t *testing.T) {
@@ -318,7 +318,7 @@ func TestJSONConstructorInputRoleRollback(t *testing.T) {
 
 func TestJSONConstructorAppendAllocations(t *testing.T) {
 	query := Select(
-		JSONObject(JSONPair(Param("k"), Param(1))).Returning(JSONB).Expr(),
+		JSONObject(JSONPair(Param("k"), Param(1))).Returning(TypeJSONB).Expr(),
 		JSONArrayAggregate(Col("value")).OrderBy(Asc("id")).Filter(Gt("value", 0)).Over(Window().PartitionBy(Col("group_id"))).Expr(),
 	)
 	buf, args, err := AppendSQL(make([]byte, 0, 512), make([]any, 0, 8), query)

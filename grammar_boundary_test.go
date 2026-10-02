@@ -45,9 +45,9 @@ func TestParenthesizedProjectionAndClone(t *testing.T) {
 func TestFunctionRelationCastGrammar(t *testing.T) {
 	t.Parallel()
 
-	query := Select(Param("projection"), Param(4).Cast(Int4)).FromExpr(
-		TableFunc(Param(5).Cast(Int4)).As("direct", "v"),
-		RowsFrom(Function(Param(6).Cast(Int8)), Function(Call("generate_series", Param(7), Param(8)))).As("rows", "v", "n"),
+	query := Select(Param("projection"), Param(4).Cast(TypeInt4)).FromExpr(
+		TableFunc(Param(5).Cast(TypeInt4)).As("direct", "v"),
+		RowsFrom(Function(Param(6).Cast(TypeInt8)), Function(Call("generate_series", Param(7), Param(8)))).As("rows", "v", "n"),
 	)
 	for _, tc := range []struct {
 		style PlaceholderStyle
@@ -61,7 +61,7 @@ func TestFunctionRelationCastGrammar(t *testing.T) {
 			t.Fatalf("FROM cast: %q %#v %v", sql, args, err)
 		}
 	}
-	checkSQL(t, Select(Star()).FromExpr(TableFunc(Param(1).Cast(Int4).Cast(Int8))), `SELECT * FROM CAST(($1)::integer AS bigint)`, 1)
+	checkSQL(t, Select(Star()).FromExpr(TableFunc(Param(1).Cast(TypeInt4).Cast(TypeInt8))), `SELECT * FROM CAST(($1)::integer AS bigint)`, 1)
 }
 
 func TestGrammarBoundaryDepth(t *testing.T) {
@@ -73,7 +73,7 @@ func TestGrammarBoundaryDepth(t *testing.T) {
 	}
 	checkErrorWithOptions(t, Select(grouped), Options{MaxDepth: 5}, ErrDepth)
 	checkSQL(t, Select(grouped), `SELECT (((($1))))`, 1)
-	cast := Select(Star()).FromExpr(TableFunc(Param(1).Cast(Int4)))
+	cast := Select(Star()).FromExpr(TableFunc(Param(1).Cast(TypeInt4)))
 	checkErrorWithOptions(t, cast, Options{MaxDepth: 3}, ErrDepth)
 	if sql, args, err := cast.ToSQLWith(Options{MaxDepth: 4}); err != nil || sql != `SELECT * FROM CAST($1 AS integer)` || !reflect.DeepEqual(args, []any{1}) {
 		t.Fatalf("FROM cast at depth boundary: %q %#v %v", sql, args, err)

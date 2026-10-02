@@ -32,10 +32,10 @@ func JSONExpr(expr Expr) JSONDocument { return JSONDocument{expr: expr} }
 func JSONBExpr(expr Expr) JSONBDocument { return JSONBDocument{expr: expr} }
 
 // JSONParam binds an encoded JSON value and casts the parameter to json.
-func JSONParam[T JSONInput](value T) JSONDocument { return JSONExpr(Param(value).Cast(JSON)) }
+func JSONParam[T JSONInput](value T) JSONDocument { return JSONExpr(Param(value).Cast(TypeJSON)) }
 
 // JSONBParam binds an encoded JSON value and casts the parameter to jsonb.
-func JSONBParam[T JSONInput](value T) JSONBDocument { return JSONBExpr(Param(value).Cast(JSONB)) }
+func JSONBParam[T JSONInput](value T) JSONBDocument { return JSONBExpr(Param(value).Cast(TypeJSONB)) }
 
 // Expr returns the underlying expression without adding a cast.
 func (d JSONDocument) Expr() Expr { return d.expr }
@@ -188,13 +188,13 @@ func (d JSONBDocument) Concat(other JSONBDocument) JSONBDocument {
 // PathExists returns a condition testing whether a JSONPath matches this
 // document.
 func (d JSONBDocument) PathExists(path string) Condition {
-	return JSONPathExists(d.expr, Param(path).Cast(JSONPath))
+	return JSONPathExists(d.expr, Param(path).Cast(TypeJSONPath))
 }
 
 // PathMatches returns a condition testing whether a JSONPath predicate matches
 // this document.
 func (d JSONBDocument) PathMatches(path string) Condition {
-	return JSONPathMatches(d.expr, Param(path).Cast(JSONPath))
+	return JSONPathMatches(d.expr, Param(path).Cast(TypeJSONPath))
 }
 
 func jsonIndex(index int) Expr {
@@ -203,7 +203,7 @@ func jsonIndex(index int) Expr {
 	}
 	// The cast selects the array-index overload even when the driver sends an
 	// unknown parameter type; an untyped bind can resolve to the text-key one.
-	return Param(int32(index)).Cast(Int4)
+	return Param(int32(index)).Cast(TypeInt4)
 }
 
 func jsonTextArray(parts []string) Expr {
@@ -213,5 +213,5 @@ func jsonTextArray(parts []string) Expr {
 	}
 	// Individual binds avoid requiring a driver's array codec. The cast also
 	// gives ARRAY[] a type; an empty extraction path is valid PostgreSQL syntax.
-	return (Expr{kind: exprList, text: sqlArray, value: expressions}).Cast(ArrayType(Text))
+	return (Expr{kind: exprList, text: sqlArray, value: expressions}).Cast(TypeArray(TypeText))
 }

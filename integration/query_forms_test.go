@@ -64,7 +64,7 @@ func TestPostgreSQLNumericRadixValues(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query := qs.Select(qs.LiteralNumeric(tc.token).Cast(qs.Text))
+			query := qs.Select(qs.LiteralNumeric(tc.token).Cast(qs.TypeText))
 			sql, args, err := query.ToSQL()
 			if err != nil {
 				t.Fatal(err)
@@ -87,7 +87,7 @@ func TestPostgreSQLUnaliasedLateralCorrelation(t *testing.T) {
 	lateral := qs.Lateral(qs.Derived(
 		qs.Select(qs.LiteralInt(1)).Where(qs.Col("o.n").EqExpr(qs.LiteralInt(1))),
 	))
-	query := qs.Select(qs.Col("o.n").Cast(qs.Text)).
+	query := qs.Select(qs.Col("o.n").Cast(qs.TypeText)).
 		FromExpr(outer).
 		CrossJoinExpr(lateral).
 		OrderBy(qs.Asc("o.n"))

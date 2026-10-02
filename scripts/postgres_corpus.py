@@ -1553,38 +1553,38 @@ class GoEmitter:
             raise self.unsupported("setof/%TYPE cast")
         lower = names[-1].lower()
         aliases = {
-            "bool": "Bool",
-            "boolean": "Bool",
-            "int2": "Int2",
-            "smallint": "Int2",
-            "int4": "Int4",
-            "integer": "Int4",
-            "int": "Int4",
-            "int8": "Int8",
-            "bigint": "Int8",
-            "float4": "Float4",
-            "real": "Float4",
-            "float8": "Float8",
-            "double": "Float8",
-            "text": "Text",
-            "bytea": "Bytea",
-            "uuid": "UUID",
-            "json": "JSON",
-            "jsonb": "JSONB",
-            "jsonpath": "JSONPath",
-            "date": "Date",
-            "time": "Time",
-            "timetz": "TimeTZ",
-            "timestamp": "Timestamp",
-            "timestamptz": "TimestampTZ",
-            "interval": "Interval",
-            "numeric": "Numeric",
-            "decimal": "Numeric",
-            "tsvector": "TSVector",
-            "tsquery": "TSQuery",
-            "inet": "Inet",
-            "cidr": "CIDR",
-            "xml": "XML",
+            "bool": "TypeBool",
+            "boolean": "TypeBool",
+            "int2": "TypeInt2",
+            "smallint": "TypeInt2",
+            "int4": "TypeInt4",
+            "integer": "TypeInt4",
+            "int": "TypeInt4",
+            "int8": "TypeInt8",
+            "bigint": "TypeInt8",
+            "float4": "TypeFloat4",
+            "real": "TypeFloat4",
+            "float8": "TypeFloat8",
+            "double": "TypeFloat8",
+            "text": "TypeText",
+            "bytea": "TypeBytea",
+            "uuid": "TypeUUID",
+            "json": "TypeJSON",
+            "jsonb": "TypeJSONB",
+            "jsonpath": "TypeJSONPath",
+            "date": "TypeDate",
+            "time": "TypeTime",
+            "timetz": "TypeTimeTZ",
+            "timestamp": "TypeTimestamp",
+            "timestamptz": "TypeTimestampTZ",
+            "interval": "TypeInterval",
+            "numeric": "TypeNumeric",
+            "decimal": "TypeNumeric",
+            "tsvector": "TypeTSVector",
+            "tsquery": "TypeTSQuery",
+            "inet": "TypeInet",
+            "cidr": "TypeCIDR",
+            "xml": "TypeXML",
         }
         qualified = len(names) > 1
         builtin = qualified and names[0].lower() == "pg_catalog" and (
@@ -1594,30 +1594,30 @@ class GoEmitter:
             typmods = list(node.typmods or ())
             if not typmods:
                 # An unconstrained pg_catalog.varchar is distinct from a
-                # validated Varchar(length). Preserve the parsed type name
+                # validated TypeVarchar(length). Preserve the parsed type name
                 # instead of inventing a length or emitting an invalid zero.
-                result = f"qs.NamedType({_join(_go_quote(value) for value in names)})"
+                result = f"qs.TypeNamed({_join(_go_quote(value) for value in names)})"
             elif len(typmods) != 1 or _node_name(typmods[0]) != "A_Const" or _node_name(typmods[0].val) != "Integer":
                 raise self.unsupported("varchar cast without an integer typmod")
             else:
-                result = f"qs.Varchar({int(typmods[0].val.ival)})"
+                result = f"qs.TypeVarchar({int(typmods[0].val.ival)})"
         elif builtin and lower in {"numeric", "decimal"} and node.typmods:
             mods = list(node.typmods)
             if len(mods) != 2 or any(_node_name(mod) != "A_Const" or _node_name(mod.val) != "Integer" for mod in mods):
                 raise self.unsupported("numeric cast with non-integer typmod")
-            result = f"qs.Decimal({int(mods[0].val.ival)}, {int(mods[1].val.ival)})"
+            result = f"qs.TypeDecimal({int(mods[0].val.ival)}, {int(mods[1].val.ival)})"
         elif builtin and not node.typmods:
             result = f"qs.{aliases[lower]}"
         elif len(names) == 1 and not node.typmods:
             # A one-part type may be a quoted identifier or a PostgreSQL
             # alias which the parser leaves unqualified.  Preserve its exact
             # spelling rather than resolving it through search_path.
-            result = f"qs.NamedType({_go_quote(names[0])})"
+            result = f"qs.TypeNamed({_go_quote(names[0])})"
         elif len(names) <= 3:
-            result = f"qs.NamedType({_join(_go_quote(value) for value in names)})"
+            result = f"qs.TypeNamed({_join(_go_quote(value) for value in names)})"
         else:
             raise self.unsupported("type name has too many qualification parts")
-        if node.typmods and result.startswith("qs.NamedType("):
+        if node.typmods and result.startswith("qs.TypeNamed("):
             modifiers: list[str] = []
             for modifier in node.typmods:
                 if _node_name(modifier) != "A_Const" or _node_name(modifier.val) != "Integer":
@@ -1625,7 +1625,7 @@ class GoEmitter:
                 modifiers.append(str(int(modifier.val.ival)))
             result += f".Modifiers({_join(modifiers)})"
         for _ in node.arrayBounds or ():
-            result = f"qs.ArrayType({result})"
+            result = f"qs.TypeArray({result})"
         return result
 
     def order(self, node: Any) -> str:

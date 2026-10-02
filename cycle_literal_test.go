@@ -66,7 +66,7 @@ func TestCycleRejectsNonConstants(t *testing.T) {
 		{"parameter", Param(1)},
 		{"column", Col("id")},
 		{"function", Call("f")},
-		{"cast", LiteralString("1").Cast(Int4)},
+		{"cast", LiteralString("1").Cast(TypeInt4)},
 		{"group", LiteralInt(1).Parenthesized()},
 		{"negative_integer", LiteralInt(-1)},
 		{"negative_float", LiteralFloat(-0.5)},

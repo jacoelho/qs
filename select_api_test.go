@@ -39,7 +39,7 @@ func TestSelectIdentifierExpressionAndValueAreDistinct(t *testing.T) {
 	t.Parallel()
 
 	runCases(t, []renderCase{
-		{"cast_is_an_expression", Select(Col("id").Cast(Text)), `SELECT ("id")::text`, nil},
+		{"cast_is_an_expression", Select(Col("id").Cast(TypeText)), `SELECT ("id")::text`, nil},
 		{"cast_text_is_not_an_identifier", Select(Col("id::text")), `SELECT "id::text"`, nil},
 		{"raw_sql_is_explicit", Select(UnsafeSQL("id::text")), `SELECT id::text`, nil},
 		{"value_is_bound", Select(Param("id::text")), `SELECT $1`, []any{"id::text"}},

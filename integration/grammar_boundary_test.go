@@ -71,14 +71,14 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 func TestFunctionRelationCastsAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	sum := qs.LiteralInt(1).Add(qs.LiteralInt(2)).Cast(qs.Int4)
+	sum := qs.LiteralInt(1).Add(qs.LiteralInt(2)).Cast(qs.TypeInt4)
 	for _, tc := range []struct {
 		name     string
 		relation qs.Relation
 	}{
 		{"direct", qs.TableFunc(sum).As("c", "v")},
 		{"rows_from", qs.RowsFrom(qs.Function(sum)).As("c", "v")},
-		{"nested_parameter_cast", qs.TableFunc(qs.Param(3).Cast(qs.Int4).Cast(qs.Int8)).As("c", "v")},
+		{"nested_parameter_cast", qs.TableFunc(qs.Param(3).Cast(qs.TypeInt4).Cast(qs.TypeInt8)).As("c", "v")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sql, args, err := qs.Select(qs.Col("v")).FromExpr(tc.relation).ToSQL()

@@ -6,10 +6,10 @@ import (
 )
 
 func nativeCompositionQuery() *SelectBuilder {
-	child := Select(Param("seed").Cast(Text))
-	items := XMLTable(Param("/root/item"), Param("<root/>").Cast(XML),
-		XMLColumn("value", Text).Path(Param("value")).Default(Scalar(child)),
-	).Namespaces(XMLNamespace(Param("urn:qs").Cast(Text), "n")).As("x")
+	child := Select(Param("seed").Cast(TypeText))
+	items := XMLTable(Param("/root/item"), Param("<root/>").Cast(TypeXML),
+		XMLColumn("value", TypeText).Path(Param("value")).Default(Scalar(child)),
+	).Namespaces(XMLNamespace(Param("urn:qs").Cast(TypeText), "n")).As("x")
 	return Select(
 		JSONArrayAggregate(Ident("x", "value")).OrderBy(Param(7).Asc()).
 			Filter(Ident("x", "value").Ne("excluded")).
