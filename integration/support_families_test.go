@@ -7,26 +7,26 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	a := qx.ValuesExpr(qx.LiteralInt(1)).RowExpr(qx.LiteralInt(2)).As("a", "id")
-	b := qx.ValuesExpr(qx.LiteralInt(1)).RowExpr(qx.LiteralInt(2)).RowExpr(qx.LiteralInt(3)).As("b", "id")
+	a := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("a", "id")
+	b := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3)).As("b", "id")
 	for _, tc := range []struct {
 		name string
-		join qx.Relation
+		join qs.Relation
 		want [][2]int
 	}{
-		{"cross", qx.CrossJoin(a, b), [][2]int{{1, 1}, {1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}}},
-		{"on", qx.InnerJoin(a, b).On(qx.Col("a.id").EqExpr(qx.Col("b.id"))), [][2]int{{1, 1}, {2, 2}}},
-		{"using", qx.InnerJoin(a, b).Using("id"), [][2]int{{1, 1}, {2, 2}}},
-		{"natural", qx.NaturalJoin(a, b), [][2]int{{1, 1}, {2, 2}}},
+		{"cross", qs.CrossJoin(a, b), [][2]int{{1, 1}, {1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}}},
+		{"on", qs.InnerJoin(a, b).On(qs.Col("a.id").EqExpr(qs.Col("b.id"))), [][2]int{{1, 1}, {2, 2}}},
+		{"using", qs.InnerJoin(a, b).Using("id"), [][2]int{{1, 1}, {2, 2}}},
+		{"natural", qs.NaturalJoin(a, b), [][2]int{{1, 1}, {2, 2}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qx.SelectCols("a.id", "b.id").FromExpr(tc.join).OrderBy(qx.Asc("a.id"), qx.Asc("b.id")).ToSQL()
+			sql, args, err := qs.SelectCols("a.id", "b.id").FromExpr(tc.join).OrderBy(qs.Asc("a.id"), qs.Asc("b.id")).ToSQL()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -60,9 +60,9 @@ func TestUnboundedVarcharAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	const input = "abcdef'; ? $1"
-	sql, args, err := qx.Select(
-		qx.Param(input).Cast(qx.NamedType("pg_catalog", "varchar")),
-		qx.Param(input).Cast(qx.Varchar(3)),
+	sql, args, err := qs.Select(
+		qs.Param(input).Cast(qs.NamedType("pg_catalog", "varchar")),
+		qs.Param(input).Cast(qs.Varchar(3)),
 	).ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -79,10 +79,10 @@ func TestUnboundedVarcharAgainstPostgres(t *testing.T) {
 func TestJSONTableExistsAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	table := qx.JSONTable(qx.JSONBParam(`[{"a":null},{}]`).Expr(), "$[*]",
-		qx.JSONOrdinality("n"), qx.JSONExistsColumn("has_a", qx.Bool).Path("$.a"),
+	table := qs.JSONTable(qs.JSONBParam(`[{"a":null},{}]`).Expr(), "$[*]",
+		qs.JSONOrdinality("n"), qs.JSONExistsColumn("has_a", qs.Bool).Path("$.a"),
 	).As("j")
-	sql, args, err := qx.SelectCols("has_a").FromExpr(table).OrderBy(qx.Asc("n")).ToSQL()
+	sql, args, err := qs.SelectCols("has_a").FromExpr(table).OrderBy(qs.Asc("n")).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,15 +113,15 @@ func TestJSONTableExistsAgainstPostgres(t *testing.T) {
 func TestRowMembershipAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	source := qx.ValuesExpr(qx.LiteralInt(1), qx.LiteralInt(2)).RowExpr(qx.LiteralInt(3), qx.LiteralInt(4))
-	empty := qx.Select(qx.LiteralInt(1), qx.LiteralInt(2)).Where(qx.False())
-	match := qx.Tuple(qx.LiteralInt(1), qx.LiteralInt(2))
-	swapped := qx.Tuple(qx.LiteralInt(2), qx.LiteralInt(1))
-	missing := qx.Tuple(qx.LiteralInt(5), qx.LiteralInt(6))
-	withNull := qx.Tuple(qx.LiteralInt(1), qx.NullLiteral())
+	source := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3), qs.LiteralInt(4))
+	empty := qs.Select(qs.LiteralInt(1), qs.LiteralInt(2)).Where(qs.False())
+	match := qs.Tuple(qs.LiteralInt(1), qs.LiteralInt(2))
+	swapped := qs.Tuple(qs.LiteralInt(2), qs.LiteralInt(1))
+	missing := qs.Tuple(qs.LiteralInt(5), qs.LiteralInt(6))
+	withNull := qs.Tuple(qs.LiteralInt(1), qs.NullLiteral())
 	for _, tc := range []struct {
 		name      string
-		condition qx.Condition
+		condition qs.Condition
 		want      pgtype.Bool
 	}{
 		{"match", match.InQuery(source), pgtype.Bool{Bool: true, Valid: true}},
@@ -134,7 +134,7 @@ func TestRowMembershipAgainstPostgres(t *testing.T) {
 		{"null_not_in_empty", withNull.NotInQuery(empty), pgtype.Bool{Bool: true, Valid: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qx.Select(tc.condition.Expr()).ToSQL()
+			sql, args, err := qs.Select(tc.condition.Expr()).ToSQL()
 			if err != nil {
 				t.Fatal(err)
 			}

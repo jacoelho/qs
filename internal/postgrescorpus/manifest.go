@@ -86,7 +86,7 @@ func validHex(value string, length int) bool {
 }
 
 func (m Manifest) validate() error {
-	if m.Schema != "qx-postgres-corpus-v2" {
+	if m.Schema != "qs-postgres-corpus-v2" {
 		return fmt.Errorf("unsupported corpus schema %q", m.Schema)
 	}
 	if !validHex(m.Revision, 40) || !validHex(m.SQLSHA256, 64) || m.Parser.Package != "pglast" || m.Parser.Version == "" || m.Parser.PostgreSQL == "" {

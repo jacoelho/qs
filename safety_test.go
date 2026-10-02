@@ -1,4 +1,4 @@
-package qx
+package qs
 
 import (
 	"go/ast"
@@ -46,13 +46,13 @@ func TestCoreHasNoReflectionUnsafeOrExternalImports(t *testing.T) {
 }
 
 type localImporter struct {
-	qx       *types.Package
+	library  *types.Package
 	standard types.Importer
 }
 
 func (i localImporter) Import(path string) (*types.Package, error) {
-	if path == "github.com/jacoelho/qx" {
-		return i.qx, nil
+	if path == "github.com/jacoelho/qs" {
+		return i.library, nil
 	}
 	return i.standard.Import(path)
 }
@@ -80,7 +80,7 @@ func TestGenericTypeChecks(t *testing.T) {
 	}
 	standard := importer.Default()
 	cfg := types.Config{Importer: standard}
-	pkg, err := cfg.Check("github.com/jacoelho/qx", fset, files, nil)
+	pkg, err := cfg.Check("github.com/jacoelho/qs", fset, files, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,55 +88,55 @@ func TestGenericTypeChecks(t *testing.T) {
 		name, body string
 		valid      bool
 	}{
-		{"field_value", `_ = qx.Typed[int64]("id").Eq(42)`, true},
-		{"field_wrong_value", `_ = qx.Typed[int64]("id").Eq("42")`, false},
-		{"field_expression", `_=qx.Typed[int64]("id").EqField(qx.Typed[int64]("other_id"))`, true},
-		{"statement_valid", `_,_,_=qx.ToSQL(qx.Select(qx.Param(1)))`, true},
-		{"statement_options", `_,_,_=qx.Select(qx.Param(1)).ToSQLWith(qx.Options{PlaceholderStyle:qx.Question})`, true},
-		{"statement_append_options", `_,_,_=qx.Select(qx.Param(1)).AppendWith(nil,nil,qx.Options{PlaceholderStyle:qx.Question})`, true},
-		{"statement_methods", `type output interface { ToSQL() (string, []any, error); ToSQLWith(qx.Options) (string, []any, error); AppendSQL([]byte, []any) ([]byte, []any, error); AppendWith([]byte, []any, qx.Options) ([]byte, []any, error) }; var _ output = (*qx.SelectBuilder)(nil); var _ output = (*qx.InsertBuilder)(nil); var _ output = (*qx.UpdateBuilder)(nil); var _ output = (*qx.DeleteBuilder)(nil); var _ output = (*qx.MergeBuilder)(nil); var _ output = (*qx.SetBuilder)(nil); var _ output = (*qx.ValuesBuilder)(nil); var _ output = (*qx.TableBuilder)(nil); var _ output = (*qx.ExplainBuilder)(nil); var _ output = (*qx.TruncateBuilder)(nil); var _ output = (*qx.ExecuteBuilder)(nil); var _ output = (*qx.CreateTableAsBuilder)(nil); var _ output = (*qx.MaterializedViewBuilder)(nil); var _ output = (*qx.DeclareCursorBuilder)(nil); var _ output = (*qx.SelectIntoBuilder)(nil); var _ output = (*qx.SQLStatement)(nil)`, true},
-		{"version_named", `var version qx.PostgreSQLVersion = qx.PostgreSQL17; _ = qx.Options{PostgreSQL:version}`, true},
-		{"version_dynamic_int", `var version int = 17; _ = qx.Options{PostgreSQL:version}`, false},
-		{"version_wrong_string", `_ = qx.Options{PostgreSQL:"17"}`, false},
-		{"version_wrong_enum", `_ = qx.Options{PostgreSQL:qx.Question}`, false},
-		{"placeholder_wrong_type", `_ = qx.Options{PlaceholderStyle:"?"}`, false},
-		{"old_build_function", `_,_,_=qx.Build(qx.Select(qx.Param(1)))`, false},
-		{"old_build_method", `_,_,_=qx.Select(qx.Param(1)).Build()`, false},
-		{"old_build_with", `_,_,_=qx.BuildWith(qx.Select(qx.Param(1)),qx.Options{})`, false},
-		{"old_build_expr", `_,_,_=qx.BuildExpr(qx.Param(1))`, false},
-		{"old_must_build", `_,_=qx.MustBuild(qx.Select(qx.Param(1)))`, false},
-		{"old_build_error", `var _ *qx.BuildError`, false},
-		{"field_wrong_expression", `_ = qx.Typed[int64]("id").EqField(qx.Typed[string]("name"))`, false},
-		{"nullable_assignment", `_ = qx.Typed[string]("email").SetNullable(qx.NullOf[string]())`, true},
-		{"typed_insert", `_ = qx.InsertInto("users").Set(qx.Typed[int]("id").Set(42), qx.Typed[string]("name").Set("Ana"))`, true},
-		{"typed_insert_wrong_value", `_ = qx.InsertInto("users").Set(qx.Typed[int]("id").Set("42"))`, false},
-		{"typed_insert_missing_value", `_ = qx.InsertInto("users").Set(qx.Typed[int]("id").Set())`, false},
-		{"typed_insert_extra_value", `_ = qx.InsertInto("users").Set(qx.Typed[int]("id").Set(42, 43))`, false},
-		{"nullable_wrong_assignment", `_ = qx.Typed[int64]("id").SetNullable(qx.NullOf[string]())`, false},
-		{"nullable_wrong_constructor", `_ = qx.Null[int]{Value: "bad", Valid:true}`, false},
-		{"nullable_optional", `_ = qx.Some(qx.NullOf[string]())`, true},
-		{"tuple", `_ = qx.Tuple2(qx.Typed[int]("id"),qx.Typed[string]("name")).LtValues(1,"A")`, true},
-		{"tuple_wrong_type", `_ = qx.Tuple2(qx.Typed[int]("id"),qx.Typed[string]("name")).LtValues("1","A")`, false},
-		{"tuple_wrong_degree", `_ = qx.Tuple2(qx.Typed[int]("id"),qx.Typed[string]("name")).LtValues(1)`, false},
-		{"mixed_membership", `_ = qx.In("id",1,"A")`, false},
-		{"same_type_membership", `_ = qx.In("id",1,2)`, true},
-		{"expression_is_not_statement", `_, _, _ = qx.ToSQL(qx.Col("id"))`, false},
-		{"dml_is_not_rowset", `_ = qx.Scalar(qx.DeleteFrom("users").ReturningCols("id"))`, false},
-		{"json_text", `_ = qx.JSONBCol("doc").Key("items").Index(-1).TextKey("name").Eq("Ada")`, true},
-		{"json_text_wrong_value", `_ = qx.JSONBCol("doc").TextKey("name").Eq(42)`, false},
-		{"json_key_wrong_type", `_ = qx.JSONBCol("doc").Key(0)`, false},
-		{"json_index_wrong_type", `_ = qx.JSONBCol("doc").Index("0")`, false},
-		{"jsonb_containment", `_ = qx.JSONBCol("doc").Contains(qx.JSONBParam(` + "`" + `{"a":1}` + "`" + `))`, true},
-		{"json_containment_unavailable", `_ = qx.JSONCol("doc").Contains(qx.JSONParam("{}"))`, false},
-		{"jsonb_containment_wrong_document", `_ = qx.JSONBCol("doc").Contains(qx.JSONCol("doc"))`, false},
-		{"json_delete_unavailable", `_ = qx.JSONCol("doc").DeleteKey("a")`, false},
-		{"json_param_wrong_value", `_ = qx.JSONBParam(42)`, false},
-		{"json_assignment", `_ = qx.JSONBCol("doc").Set(qx.JSONBParam("{}"))`, true},
-		{"json_assignment_wrong_document", `_ = qx.JSONBCol("doc").Set(qx.JSONCol("doc"))`, false},
+		{"field_value", `_ = qs.Typed[int64]("id").Eq(42)`, true},
+		{"field_wrong_value", `_ = qs.Typed[int64]("id").Eq("42")`, false},
+		{"field_expression", `_=qs.Typed[int64]("id").EqField(qs.Typed[int64]("other_id"))`, true},
+		{"statement_valid", `_,_,_=qs.ToSQL(qs.Select(qs.Param(1)))`, true},
+		{"statement_options", `_,_,_=qs.Select(qs.Param(1)).ToSQLWith(qs.Options{PlaceholderStyle:qs.Question})`, true},
+		{"statement_append_options", `_,_,_=qs.Select(qs.Param(1)).AppendWith(nil,nil,qs.Options{PlaceholderStyle:qs.Question})`, true},
+		{"statement_methods", `type output interface { ToSQL() (string, []any, error); ToSQLWith(qs.Options) (string, []any, error); AppendSQL([]byte, []any) ([]byte, []any, error); AppendWith([]byte, []any, qs.Options) ([]byte, []any, error) }; var _ output = (*qs.SelectBuilder)(nil); var _ output = (*qs.InsertBuilder)(nil); var _ output = (*qs.UpdateBuilder)(nil); var _ output = (*qs.DeleteBuilder)(nil); var _ output = (*qs.MergeBuilder)(nil); var _ output = (*qs.SetBuilder)(nil); var _ output = (*qs.ValuesBuilder)(nil); var _ output = (*qs.TableBuilder)(nil); var _ output = (*qs.ExplainBuilder)(nil); var _ output = (*qs.TruncateBuilder)(nil); var _ output = (*qs.ExecuteBuilder)(nil); var _ output = (*qs.CreateTableAsBuilder)(nil); var _ output = (*qs.MaterializedViewBuilder)(nil); var _ output = (*qs.DeclareCursorBuilder)(nil); var _ output = (*qs.SelectIntoBuilder)(nil); var _ output = (*qs.SQLStatement)(nil)`, true},
+		{"version_named", `var version qs.PostgreSQLVersion = qs.PostgreSQL17; _ = qs.Options{PostgreSQL:version}`, true},
+		{"version_dynamic_int", `var version int = 17; _ = qs.Options{PostgreSQL:version}`, false},
+		{"version_wrong_string", `_ = qs.Options{PostgreSQL:"17"}`, false},
+		{"version_wrong_enum", `_ = qs.Options{PostgreSQL:qs.Question}`, false},
+		{"placeholder_wrong_type", `_ = qs.Options{PlaceholderStyle:"?"}`, false},
+		{"old_build_function", `_,_,_=qs.Build(qs.Select(qs.Param(1)))`, false},
+		{"old_build_method", `_,_,_=qs.Select(qs.Param(1)).Build()`, false},
+		{"old_build_with", `_,_,_=qs.BuildWith(qs.Select(qs.Param(1)),qs.Options{})`, false},
+		{"old_build_expr", `_,_,_=qs.BuildExpr(qs.Param(1))`, false},
+		{"old_must_build", `_,_=qs.MustBuild(qs.Select(qs.Param(1)))`, false},
+		{"old_build_error", `var _ *qs.BuildError`, false},
+		{"field_wrong_expression", `_ = qs.Typed[int64]("id").EqField(qs.Typed[string]("name"))`, false},
+		{"nullable_assignment", `_ = qs.Typed[string]("email").SetNullable(qs.NullOf[string]())`, true},
+		{"typed_insert", `_ = qs.InsertInto("users").Set(qs.Typed[int]("id").Set(42), qs.Typed[string]("name").Set("Ana"))`, true},
+		{"typed_insert_wrong_value", `_ = qs.InsertInto("users").Set(qs.Typed[int]("id").Set("42"))`, false},
+		{"typed_insert_missing_value", `_ = qs.InsertInto("users").Set(qs.Typed[int]("id").Set())`, false},
+		{"typed_insert_extra_value", `_ = qs.InsertInto("users").Set(qs.Typed[int]("id").Set(42, 43))`, false},
+		{"nullable_wrong_assignment", `_ = qs.Typed[int64]("id").SetNullable(qs.NullOf[string]())`, false},
+		{"nullable_wrong_constructor", `_ = qs.Null[int]{Value: "bad", Valid:true}`, false},
+		{"nullable_optional", `_ = qs.Some(qs.NullOf[string]())`, true},
+		{"tuple", `_ = qs.Tuple2(qs.Typed[int]("id"),qs.Typed[string]("name")).LtValues(1,"A")`, true},
+		{"tuple_wrong_type", `_ = qs.Tuple2(qs.Typed[int]("id"),qs.Typed[string]("name")).LtValues("1","A")`, false},
+		{"tuple_wrong_degree", `_ = qs.Tuple2(qs.Typed[int]("id"),qs.Typed[string]("name")).LtValues(1)`, false},
+		{"mixed_membership", `_ = qs.In("id",1,"A")`, false},
+		{"same_type_membership", `_ = qs.In("id",1,2)`, true},
+		{"expression_is_not_statement", `_, _, _ = qs.ToSQL(qs.Col("id"))`, false},
+		{"dml_is_not_rowset", `_ = qs.Scalar(qs.DeleteFrom("users").ReturningCols("id"))`, false},
+		{"json_text", `_ = qs.JSONBCol("doc").Key("items").Index(-1).TextKey("name").Eq("Ada")`, true},
+		{"json_text_wrong_value", `_ = qs.JSONBCol("doc").TextKey("name").Eq(42)`, false},
+		{"json_key_wrong_type", `_ = qs.JSONBCol("doc").Key(0)`, false},
+		{"json_index_wrong_type", `_ = qs.JSONBCol("doc").Index("0")`, false},
+		{"jsonb_containment", `_ = qs.JSONBCol("doc").Contains(qs.JSONBParam(` + "`" + `{"a":1}` + "`" + `))`, true},
+		{"json_containment_unavailable", `_ = qs.JSONCol("doc").Contains(qs.JSONParam("{}"))`, false},
+		{"jsonb_containment_wrong_document", `_ = qs.JSONBCol("doc").Contains(qs.JSONCol("doc"))`, false},
+		{"json_delete_unavailable", `_ = qs.JSONCol("doc").DeleteKey("a")`, false},
+		{"json_param_wrong_value", `_ = qs.JSONBParam(42)`, false},
+		{"json_assignment", `_ = qs.JSONBCol("doc").Set(qs.JSONBParam("{}"))`, true},
+		{"json_assignment_wrong_document", `_ = qs.JSONBCol("doc").Set(qs.JSONCol("doc"))`, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			src := `package client; import "github.com/jacoelho/qx"; func run(){` + tc.body + `}`
+			src := `package client; import "github.com/jacoelho/qs"; func run(){` + tc.body + `}`
 			f, err := parser.ParseFile(fset, "client.go", src, 0)
 			if err != nil {
 				t.Fatal(err)

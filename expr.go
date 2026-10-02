@@ -1,4 +1,4 @@
-package qx
+package qs
 
 import (
 	"math"
@@ -87,7 +87,7 @@ func invalidExpr(clause, detail string) Expr {
 }
 
 // Param binds exactly one value. It does not inspect pointers, expand slices,
-// invoke driver.Valuer or call a codec. Use ParamNull for qx.Null values and In
+// invoke driver.Valuer or call a codec. Use ParamNull for qs.Null values and In
 // for expanded lists. The value must not be mutated before execution completes.
 func Param[T any](value T) Expr { return parameter(value) }
 
@@ -98,7 +98,7 @@ func parameter(value any) Expr {
 	case interface{ optionalValue() }:
 		return invalidExpr("parameter", "test Optional.Present before binding its Value")
 	case interface{ qxNull() }:
-		return invalidExpr("parameter", "use ParamNull to bind qx.Null")
+		return invalidExpr("parameter", "use ParamNull to bind qs.Null")
 	}
 	return Expr{kind: exprParameter, value: value}
 }
@@ -111,7 +111,7 @@ func ParamNull[T any](value Null[T]) Expr {
 }
 
 // ArrayParam binds one driver-encoded array, with an explicit PostgreSQL cast.
-// The driver must support encoding []T; qx does not convert or copy the slice.
+// The driver must support encoding []T; qs does not convert or copy the slice.
 func ArrayParam[T any](values []T, element DataType) Expr {
 	return Param(values).Cast(ArrayType(element))
 }

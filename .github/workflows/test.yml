@@ -29,17 +29,17 @@ jobs:
       postgres:
         image: postgres:18
         env:
-          POSTGRES_USER: qx
-          POSTGRES_PASSWORD: qx
-          POSTGRES_DB: qx
+          POSTGRES_USER: qs
+          POSTGRES_PASSWORD: qs
+          POSTGRES_DB: qs
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U qx -d qx"
+          --health-cmd "pg_isready -U qs -d qs"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
     env:
-      QX_TEST_DSN: 'postgres://qx:qx@localhost:5432/qx?sslmode=disable'
+      QS_TEST_DSN: 'postgres://qs:qs@localhost:5432/qs?sslmode=disable'
       GOMAXPROCS: '2'
     steps:
       - uses: actions/checkout@v4

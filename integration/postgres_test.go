@@ -14,16 +14,16 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 var connectionSequence atomic.Uint64
 
 func connect(t *testing.T) (context.Context, *pgx.Conn) {
 	t.Helper()
-	dsn := os.Getenv("QX_TEST_DSN")
+	dsn := os.Getenv("QS_TEST_DSN")
 	if dsn == "" {
-		t.Fatal("QX_TEST_DSN is required for PostgreSQL integration tests")
+		t.Fatal("QS_TEST_DSN is required for PostgreSQL integration tests")
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 	t.Cleanup(cancel)
@@ -32,7 +32,7 @@ func connect(t *testing.T) (context.Context, *pgx.Conn) {
 		t.Fatal(err)
 	}
 	sequence := connectionSequence.Add(1)
-	schema := "qx_test_" + strconv.FormatInt(time.Now().UnixNano(), 36) + "_" + strconv.FormatUint(sequence, 36)
+	schema := "qs_test_" + strconv.FormatInt(time.Now().UnixNano(), 36) + "_" + strconv.FormatUint(sequence, 36)
 	schemaIdentifier := (pgx.Identifier{schema}).Sanitize()
 	t.Cleanup(func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -63,11 +63,11 @@ func connect(t *testing.T) (context.Context, *pgx.Conn) {
 func TestTypedJSONDocuments(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	object := qx.JSONBParam(`{"0":42,"a":null,"items":[{"name":"Ada"}]}`)
-	array := qx.JSONBParam(`[{"name":"Ada"},{"name":"Grace"},"0"]`)
+	object := qs.JSONBParam(`{"0":42,"a":null,"items":[{"name":"Ada"}]}`)
+	array := qs.JSONBParam(`[{"name":"Ada"},{"name":"Grace"},"0"]`)
 	cases := []struct {
 		name string
-		expr qx.Expr
+		expr qs.Expr
 		want string
 		null bool
 		json bool
@@ -83,35 +83,35 @@ func TestTypedJSONDocuments(t *testing.T) {
 		{"text_null", object.TextKey("a").Expr(), "", true, false},
 		{"mixed_path", object.PathText("items", "0", "name").Expr(), "Ada", false, false},
 		{"empty_path", object.Path().Expr(), `{"0":42,"a":null,"items":[{"name":"Ada"}]}`, false, true},
-		{"json_index", qx.JSONParam(`[1,2]`).Index(-1).Expr(), `2`, false, true},
-		{"json_text_index", qx.JSONParam(`[1,2]`).TextIndex(0).Expr(), `1`, false, false},
-		{"json_path", qx.JSONParam(`{"a":[1]}`).Path("a", "0").Expr(), `1`, false, true},
-		{"json_path_text", qx.JSONParam(`{"a":[1]}`).PathText("a", "0").Expr(), `1`, false, false},
-		{"byte_document", qx.JSONBParam([]byte(`{"a":1}`)).TextKey("a").Expr(), `1`, false, false},
-		{"contains", object.Contains(qx.JSONBParam(`{"0":42}`)).Expr(), "true", false, false},
-		{"contained_by", qx.JSONBParam(`{"0":42}`).ContainedBy(object).Expr(), "true", false, false},
-		{"does_not_contain", object.Contains(qx.JSONBParam(`{"0":43}`)).Expr(), "false", false, false},
+		{"json_index", qs.JSONParam(`[1,2]`).Index(-1).Expr(), `2`, false, true},
+		{"json_text_index", qs.JSONParam(`[1,2]`).TextIndex(0).Expr(), `1`, false, false},
+		{"json_path", qs.JSONParam(`{"a":[1]}`).Path("a", "0").Expr(), `1`, false, true},
+		{"json_path_text", qs.JSONParam(`{"a":[1]}`).PathText("a", "0").Expr(), `1`, false, false},
+		{"byte_document", qs.JSONBParam([]byte(`{"a":1}`)).TextKey("a").Expr(), `1`, false, false},
+		{"contains", object.Contains(qs.JSONBParam(`{"0":42}`)).Expr(), "true", false, false},
+		{"contained_by", qs.JSONBParam(`{"0":42}`).ContainedBy(object).Expr(), "true", false, false},
+		{"does_not_contain", object.Contains(qs.JSONBParam(`{"0":43}`)).Expr(), "false", false, false},
 		{"has_key", object.HasKey("0").Expr(), "true", false, false},
 		{"absent_key", object.HasKey("missing").Expr(), "false", false, false},
 		{"has_any", object.HasAnyKeys("0", "missing").Expr(), "true", false, false},
 		{"has_all", object.HasAllKeys("0", "missing").Expr(), "false", false, false},
 		{"empty_any", object.HasAnyKeys().Expr(), "false", false, false},
 		{"empty_all", object.HasAllKeys().Expr(), "true", false, false},
-		{"delete_key", qx.JSONBParam(`{"0":42,"a":1}`).DeleteKey("0").Expr(), `{"a":1}`, false, true},
+		{"delete_key", qs.JSONBParam(`{"0":42,"a":1}`).DeleteKey("0").Expr(), `{"a":1}`, false, true},
 		{"delete_string_from_array", array.DeleteKey("0").Expr(), `[{"name":"Ada"},{"name":"Grace"}]`, false, true},
 		{"delete_index", array.DeleteIndex(0).Expr(), `[{"name":"Grace"},"0"]`, false, true},
 		{"delete_negative_index", array.DeleteIndex(-1).Expr(), `[{"name":"Ada"},{"name":"Grace"}]`, false, true},
 		{"delete_keys", object.DeleteKeys("0", "a").Expr(), `{"items":[{"name":"Ada"}]}`, false, true},
 		{"delete_path", object.DeletePath("items", "0", "name").Expr(), `{"0":42,"a":null,"items":[{}]}`, false, true},
-		{"concat", qx.JSONBParam(`{"a":1,"b":2}`).Concat(qx.JSONBParam(`{"a":3}`)).Expr(), `{"a":3,"b":2}`, false, true},
-		{"path_exists", qx.JSONBParam(`{"a":1}`).PathExists("$.a").Expr(), "true", false, false},
-		{"selection_is_not_predicate", qx.JSONBParam(`{"a":1}`).PathMatches("$.a").Expr(), "", true, false},
-		{"predicate_false", qx.JSONBParam(`{"a":1}`).PathMatches("$.a > 2").Expr(), "false", false, false},
-		{"predicate_has_item", qx.JSONBParam(`{"a":1}`).PathExists("$.a > 2").Expr(), "true", false, false},
+		{"concat", qs.JSONBParam(`{"a":1,"b":2}`).Concat(qs.JSONBParam(`{"a":3}`)).Expr(), `{"a":3,"b":2}`, false, true},
+		{"path_exists", qs.JSONBParam(`{"a":1}`).PathExists("$.a").Expr(), "true", false, false},
+		{"selection_is_not_predicate", qs.JSONBParam(`{"a":1}`).PathMatches("$.a").Expr(), "", true, false},
+		{"predicate_false", qs.JSONBParam(`{"a":1}`).PathMatches("$.a > 2").Expr(), "false", false, false},
+		{"predicate_has_item", qs.JSONBParam(`{"a":1}`).PathExists("$.a > 2").Expr(), "true", false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query, args, err := qx.Select(tc.expr.Cast(qx.Text)).ToSQL()
+			query, args, err := qs.Select(tc.expr.Cast(qs.Text)).ToSQL()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,13 +146,13 @@ func TestTypedJSONDocuments(t *testing.T) {
 func TestTypedJSONFilterAndUpdate(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	if _, err := conn.Exec(ctx, `CREATE TEMP TABLE qx_json_events(id int, payload jsonb);
-		INSERT INTO qx_json_events VALUES (1,'{"items":[{"name":"Ada"}]}'), (2,'{"items":[{"name":"Grace"}]}')`); err != nil {
+	if _, err := conn.Exec(ctx, `CREATE TEMP TABLE qs_json_events(id int, payload jsonb);
+		INSERT INTO qs_json_events VALUES (1,'{"items":[{"name":"Ada"}]}'), (2,'{"items":[{"name":"Grace"}]}')`); err != nil {
 		t.Fatal(err)
 	}
-	doc := qx.JSONBCol("payload")
-	query := qx.Update("qx_json_events").
-		Set(doc.Set(doc.Concat(qx.JSONBParam(`{"active":true}`)))).
+	doc := qs.JSONBCol("payload")
+	query := qs.Update("qs_json_events").
+		Set(doc.Set(doc.Concat(qs.JSONBParam(`{"active":true}`)))).
 		Where(doc.Key("items").Index(0).TextKey("name").Eq("Ada")).
 		Returning(doc.PathText("items", "0", "name").Expr(), doc.TextKey("active").Expr())
 	sql, args, err := query.ToSQL()
@@ -167,7 +167,7 @@ func TestTypedJSONFilterAndUpdate(t *testing.T) {
 		t.Fatalf("updated name=%q active=%q", name, active)
 	}
 	var unchanged bool
-	if err := conn.QueryRow(ctx, `SELECT NOT (payload ? 'active') FROM qx_json_events WHERE id=2`).Scan(&unchanged); err != nil {
+	if err := conn.QueryRow(ctx, `SELECT NOT (payload ? 'active') FROM qs_json_events WHERE id=2`).Scan(&unchanged); err != nil {
 		t.Fatal(err)
 	}
 	if !unchanged {
@@ -178,11 +178,11 @@ func TestTypedJSONFilterAndUpdate(t *testing.T) {
 func TestExactLiteralSemantics(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	query := qx.Select(
-		qx.LiteralNumeric("123456789012345678901234567890.123456789").Cast(qx.Text),
-		qx.LiteralBit("00101").Cast(qx.Text),
-		qx.LiteralHex("Ab09").Cast(qx.Text),
-		qx.PrefixOperator("|/", qx.LiteralInt(9)).Cast(qx.Text),
+	query := qs.Select(
+		qs.LiteralNumeric("123456789012345678901234567890.123456789").Cast(qs.Text),
+		qs.LiteralBit("00101").Cast(qs.Text),
+		qs.LiteralHex("Ab09").Cast(qs.Text),
+		qs.PrefixOperator("|/", qs.LiteralInt(9)).Cast(qs.Text),
 	)
 	sql, args, err := query.ToSQL()
 	if err != nil {
@@ -201,16 +201,16 @@ func TestExplainSerialization(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	for _, tc := range []struct {
-		mode   qx.ExplainSerialization
+		mode   qs.ExplainSerialization
 		format string
 	}{
-		{qx.SerializeText, "text"},
-		{qx.SerializeBinary, "binary"},
-		{qx.SerializeNone, ""},
+		{qs.SerializeText, "text"},
+		{qs.SerializeBinary, "binary"},
+		{qs.SerializeNone, ""},
 	} {
 		t.Run(tc.format+"_serialization", func(t *testing.T) {
-			query := qx.Explain(qx.Select(qx.LiteralInt(1))).Analyze(true).
-				Serialize(tc.mode).Timing(false).Format(qx.ExplainJSON)
+			query := qs.Explain(qs.Select(qs.LiteralInt(1))).Analyze(true).
+				Serialize(tc.mode).Timing(false).Format(qs.ExplainJSON)
 			sql, args, err := query.ToSQL()
 			if err != nil {
 				t.Fatal(err)
@@ -229,7 +229,7 @@ func TestExplainSerialization(t *testing.T) {
 				t.Fatalf("expected one explained statement: %s", result)
 			}
 			serialization := plans[0].Serialization
-			if tc.mode == qx.SerializeNone {
+			if tc.mode == qs.SerializeNone {
 				if serialization != nil {
 					t.Fatalf("serialization disabled: %s", result)
 				}
@@ -240,7 +240,7 @@ func TestExplainSerialization(t *testing.T) {
 	}
 }
 
-func queryStrings(t *testing.T, ctx context.Context, conn *pgx.Conn, s qx.Statement) []string {
+func queryStrings(t *testing.T, ctx context.Context, conn *pgx.Conn, s qs.Statement) []string {
 	t.Helper()
 	sql, args, err := s.ToSQL()
 	if err != nil {
@@ -268,12 +268,12 @@ func queryStrings(t *testing.T, ctx context.Context, conn *pgx.Conn, s qx.Statem
 func TestNullsAndArrayEncoding(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	q := qx.Select(
-		qx.ParamNull(qx.NullOf[string]()).Cast(qx.Text),
-		qx.ParamNull(qx.NonNull("value")).Cast(qx.Text),
-		qx.Param(1).Cast(qx.Int4).EqExpr(qx.NullLiteral()).Expr(),
-		qx.Param(1).Cast(qx.Int4).InExpr(qx.Param(2), qx.NullLiteral()).Expr(),
-		qx.EqAny(qx.Param(int64(2)), qx.ArrayParam([]int64{1, 2}, qx.Int8)).Expr(),
+	q := qs.Select(
+		qs.ParamNull(qs.NullOf[string]()).Cast(qs.Text),
+		qs.ParamNull(qs.NonNull("value")).Cast(qs.Text),
+		qs.Param(1).Cast(qs.Int4).EqExpr(qs.NullLiteral()).Expr(),
+		qs.Param(1).Cast(qs.Int4).InExpr(qs.Param(2), qs.NullLiteral()).Expr(),
+		qs.EqAny(qs.Param(int64(2)), qs.ArrayParam([]int64{1, 2}, qs.Int8)).Expr(),
 	)
 	sql, args, err := q.ToSQL()
 	if err != nil {
@@ -299,15 +299,15 @@ func TestPostgreSQL18Mutations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	upsert := qx.InsertInto("target").Columns("id", "name").Values(int64(1), "updated").
-		OnConflict(qx.ConflictColumns("id").DoUpdate(qx.SetExpr("name", qx.Excluded("name")))).ReturningCols("name")
+	upsert := qs.InsertInto("target").Columns("id", "name").Values(int64(1), "updated").
+		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.SetExpr("name", qs.Excluded("name")))).ReturningCols("name")
 	if got := queryStrings(t, ctx, conn, upsert); !reflect.DeepEqual(got, []string{"updated"}) {
 		t.Fatal(got)
 	}
-	q := qx.MergeInto("target").Using(qx.Table("source")).On(qx.EqColumns("target.id", "source.id")).
-		When(qx.Matched().ThenUpdate(qx.SetExpr("name", qx.Col("source.name"))),
-			qx.NotMatchedByTarget().ThenInsert(qx.SetExpr("id", qx.Col("source.id")), qx.SetExpr("name", qx.Col("source.name")))).
-		Returning(qx.MergeAction())
+	q := qs.MergeInto("target").Using(qs.Table("source")).On(qs.EqColumns("target.id", "source.id")).
+		When(qs.Matched().ThenUpdate(qs.SetExpr("name", qs.Col("source.name"))),
+			qs.NotMatchedByTarget().ThenInsert(qs.SetExpr("id", qs.Col("source.id")), qs.SetExpr("name", qs.Col("source.name")))).
+		Returning(qs.MergeAction())
 	got := queryStrings(t, ctx, conn, q)
 	actions := map[string]int{}
 	for _, a := range got {
@@ -316,7 +316,7 @@ func TestPostgreSQL18Mutations(t *testing.T) {
 	if actions["INSERT"] != 1 || actions["UPDATE"] != 1 || len(got) != 2 {
 		t.Fatal(got)
 	}
-	oldNew := qx.Update("target").Set(qx.Set("name", "latest")).Where(qx.Eq("id", int64(1))).Returning(qx.Old("name"), qx.New("name"))
+	oldNew := qs.Update("target").Set(qs.Set("name", "latest")).Where(qs.Eq("id", int64(1))).Returning(qs.Old("name"), qs.New("name"))
 	sql, args, err := oldNew.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -333,19 +333,19 @@ func TestPostgreSQL18Mutations(t *testing.T) {
 func TestRecursiveCTEAndSQLJSON(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	seed := qx.Select(qx.LiteralInt(1))
-	step := qx.Select(qx.Col("n").Add(qx.LiteralInt(1))).From("numbers").Where(qx.Lt("n", 3))
-	numbers := qx.CTE("numbers", qx.UnionAll(seed, step)).Columns("n")
-	q := qx.Select(qx.Col("n").Cast(qx.Text)).WithRecursive(numbers).From("numbers").OrderBy(qx.Asc("n"))
+	seed := qs.Select(qs.LiteralInt(1))
+	step := qs.Select(qs.Col("n").Add(qs.LiteralInt(1))).From("numbers").Where(qs.Lt("n", 3))
+	numbers := qs.CTE("numbers", qs.UnionAll(seed, step)).Columns("n")
+	q := qs.Select(qs.Col("n").Cast(qs.Text)).WithRecursive(numbers).From("numbers").OrderBy(qs.Asc("n"))
 	if got := queryStrings(t, ctx, conn, q); !reflect.DeepEqual(got, []string{"1", "2", "3"}) {
 		t.Fatal(got)
 	}
-	json := qx.JSONValue(qx.Param(`{"name":"Ana"}`).Cast(qx.JSONB), qx.LiteralString("$.name")).Returning(qx.Text).Expr()
-	if got := queryStrings(t, ctx, conn, qx.Select(json)); !reflect.DeepEqual(got, []string{"Ana"}) {
+	json := qs.JSONValue(qs.Param(`{"name":"Ana"}`).Cast(qs.JSONB), qs.LiteralString("$.name")).Returning(qs.Text).Expr()
+	if got := queryStrings(t, ctx, conn, qs.Select(json)); !reflect.DeepEqual(got, []string{"Ana"}) {
 		t.Fatal(got)
 	}
-	table := qx.JSONTable(qx.Param(`[{"name":"Ana"},{"name":"João"}]`).Cast(qx.JSONB), "$[*]", qx.JSONOrdinality("position"), qx.JSONColumn("name", qx.Text).Path("$.name")).As("j")
-	if got := queryStrings(t, ctx, conn, qx.SelectCols("j.name").FromExpr(table).OrderBy(qx.Asc("j.position"))); !reflect.DeepEqual(got, []string{"Ana", "João"}) {
+	table := qs.JSONTable(qs.Param(`[{"name":"Ana"},{"name":"João"}]`).Cast(qs.JSONB), "$[*]", qs.JSONOrdinality("position"), qs.JSONColumn("name", qs.Text).Path("$.name")).As("j")
+	if got := queryStrings(t, ctx, conn, qs.SelectCols("j.name").FromExpr(table).OrderBy(qs.Asc("j.position"))); !reflect.DeepEqual(got, []string{"Ana", "João"}) {
 		t.Fatal(got)
 	}
 }

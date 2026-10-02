@@ -1,7 +1,7 @@
-package qx
+package qs
 
 // JSONInput is an encoded JSON document. Encoding and validation remain the
-// caller's and PostgreSQL's responsibility; qx does not marshal Go values.
+// caller's and PostgreSQL's responsibility; qs does not marshal Go values.
 type JSONInput interface {
 	~string | ~[]byte
 }

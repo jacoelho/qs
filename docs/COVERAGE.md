@@ -36,7 +36,7 @@ plans. Trusted raw SQL is not counted as native feature support.
 The eight packages under `internal/postgrescorpus/` preserve all 28,197 source
 occurrences, including 28,097 verified construction cases and 100 gaps. Their
 SQL and argument expectations are frozen; ordinary tests run offline.
-Integration files require the `postgres` build tag and `QX_TEST_DSN`.
+Integration files require the `postgres` build tag and `QS_TEST_DSN`.
 
 ## Boundaries
 

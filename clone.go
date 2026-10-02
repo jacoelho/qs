@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // Clone copies the complete builder graph, preserving shared subqueries and
 // cycles. Bound application values are intentionally not deep-copied. The

@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // ExplainFormat controls the server's plan representation.
 type ExplainFormat uint8

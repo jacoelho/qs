@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Measure PostgreSQL regression query construction with qx.
+"""Measure PostgreSQL regression query construction with qs.
 
 This is a development-time tool.  It deliberately keeps PostgreSQL and
-``pglast`` out of the qx runtime and uses a short-lived Go probe for the
-queries that can be expressed with public qx constructors.  A query is
+``pglast`` out of the qs runtime and uses a short-lived Go probe for the
+queries that can be expressed with public qs constructors.  A query is
 counted as supported only after the probe builds it, the rendered SQL parses
 again with the pinned PostgreSQL parser, and the reparsed tree matches the
 source tree after the small normalisations documented in ``canonical_ast``.
@@ -13,7 +13,7 @@ regression files contain psql commands, COPY stdin data, nested comments,
 dollar quoted bodies and intentionally malformed statements; those must be
 reported rather than silently discarded.
 
-Typical invocation (from the qx repository):
+Typical invocation (from the qs repository):
 
     python scripts/postgres_corpus.py \
       /path/to/postgres-<commit> \
@@ -113,7 +113,7 @@ _VARIABLE_RE = re.compile(r"(?<!:):(?:[A-Za-z_][A-Za-z_0-9]*|['\"][^'\"]+['\"])"
 _COPY_STDIN_RE = re.compile(r"\bCOPY\b[\s\S]*\bFROM\s+STDIN\s*$", re.I)
 _PINNED_PGLAST_VERSION = "v8.4"
 _PINNED_POSTGRES_VERSION = (18, 4)
-_CORPUS_SCHEMA = "qx-postgres-corpus-v2"
+_CORPUS_SCHEMA = "qs-postgres-corpus-v2"
 _CORPUS_SHARDS = 8
 _CORPUS_GROUP_SIZE = 256
 
@@ -161,7 +161,7 @@ class QueryOccurrence:
 
 
 class Unsupported(Exception):
-    """The corpus adapter cannot translate this AST through the public qx API."""
+    """The corpus adapter cannot translate this AST through the public qs API."""
 
     def __init__(self, reason: str):
         self.reason = reason
@@ -721,8 +721,8 @@ def _parameter_sentinel(occurrence_id: int | None, number: int) -> str:
     """
 
     if occurrence_id is None:
-        return f"qx-postgres-param-{number}"
-    return f"qx-postgres-corpus-{occurrence_id}-param-{number}"
+        return f"qs-postgres-param-{number}"
+    return f"qs-postgres-corpus-{occurrence_id}-param-{number}"
 
 
 def _source_param_numbers(node: Any) -> tuple[int, ...]:
@@ -753,7 +753,7 @@ def _enum_name(value: Any) -> str:
 
 
 class GoEmitter:
-    """Translate the structural PostgreSQL AST subset into qx calls."""
+    """Translate the structural PostgreSQL AST subset into qs calls."""
 
     def __init__(self, occurrence_id: int | None = None) -> None:
         self.occurrence_id = occurrence_id
@@ -775,32 +775,32 @@ class GoEmitter:
             values = [_str_value(f) if _node_name(f) != "A_Star" else "*" for f in fields]
             if values[-1] == "*":
                 if len(values) == 1:
-                    return "qx.Star()"
-                return f"qx.Star({_go_quote('.'.join(values[:-1]))})"
-            return f"qx.Ident({_join(_go_quote(value) for value in values)})"
+                    return "qs.Star()"
+                return f"qs.Star({_go_quote('.'.join(values[:-1]))})"
+            return f"qs.Ident({_join(_go_quote(value) for value in values)})"
         if name == "A_Const":
             if getattr(node, "isnull", False):
-                return "qx.NullLiteral()"
+                return "qs.NullLiteral()"
             return self.expr(getattr(node, "val", None))
         if name == "Integer":
-            return f"qx.LiteralInt({int(node.ival)})"
+            return f"qs.LiteralInt({int(node.ival)})"
         if name == "Float":
             value = str(node.fval)
             # Keep PostgreSQL's token spelling: converting through float64
             # changes large decimal/exponent literals and can alter the AST.
             if value.lower() in {"nan", "infinity", "-infinity"}:
                 raise self.unsupported("non-finite float literal")
-            return f"qx.LiteralNumeric({_go_quote(value)})"
+            return f"qs.LiteralNumeric({_go_quote(value)})"
         if name == "String":
-            return f"qx.LiteralString({_go_quote(node.sval)})"
+            return f"qs.LiteralString({_go_quote(node.sval)})"
         if name == "Boolean":
-            return f"qx.LiteralBool({str(bool(node.boolval)).lower()})"
+            return f"qs.LiteralBool({str(bool(node.boolval)).lower()})"
         if name == "BitString":
             value = str(node.bsval)
             if not value or value[0].lower() not in {"b", "x"}:
                 raise self.unsupported("unknown bit string literal prefix")
             constructor = "LiteralBit" if value[0].lower() == "b" else "LiteralHex"
-            return f"qx.{constructor}({_go_quote(value[1:])})"
+            return f"qs.{constructor}({_go_quote(value[1:])})"
         if name == "ParamRef":
             number = int(node.number)
             prior = self.param_numbers.get(number)
@@ -811,23 +811,23 @@ class GoEmitter:
             self.param_numbers[number] = self.next_param
             self.next_param += 1
             sentinel = _parameter_sentinel(self.occurrence_id, number)
-            return f"qx.Param[any]({_go_quote(sentinel)})"
+            return f"qs.Param[any]({_go_quote(sentinel)})"
         if name == "SetToDefault":
-            return "qx.Default()"
+            return "qs.Default()"
         if name == "TypeCast":
             typ = self.data_type(node.typeName)
             return f"({self.expr(node.arg)}).Cast({typ})"
         if name == "A_Expr":
             return self.a_expr(node)
         if name == "BoolExpr":
-            args = [f"qx.AsCondition({self.expr(arg)})" for arg in node.args]
+            args = [f"qs.AsCondition({self.expr(arg)})" for arg in node.args]
             op = _enum_name(node.boolop)
             if op == "AND_EXPR":
-                return f"qx.And({_join(args)}).Expr()"
+                return f"qs.And({_join(args)}).Expr()"
             if op == "OR_EXPR":
-                return f"qx.Or({_join(args)}).Expr()"
+                return f"qs.Or({_join(args)}).Expr()"
             if op == "NOT_EXPR" and len(args) == 1:
-                return f"qx.Not({args[0]}).Expr()"
+                return f"qs.Not({args[0]}).Expr()"
             raise self.unsupported(f"unsupported BoolExpr shape {op}")
         if name == "NullTest":
             value = self.expr(node.arg)
@@ -856,25 +856,25 @@ class GoEmitter:
             query = self.rowset(node.subselect)
             kind = _enum_name(node.subLinkType)
             if kind == "EXISTS_SUBLINK":
-                return f"qx.Exists({query}).Expr()"
+                return f"qs.Exists({query}).Expr()"
             if kind == "EXPR_SUBLINK":
-                return f"qx.Scalar({query})"
+                return f"qs.Scalar({query})"
             if kind in {"ANY_SUBLINK", "ALL_SUBLINK"}:
                 ops = list(node.operName or ())
-                quant = "qx.AnyQuery" if kind == "ANY_SUBLINK" else "qx.AllQuery"
+                quant = "qs.AnyQuery" if kind == "ANY_SUBLINK" else "qs.AllQuery"
                 if not ops:
                     if kind == "ANY_SUBLINK":
                         if _node_name(node.testexpr) == "RowExpr":
                             # Row IN sublinks carry their projection width in
-                            # qx.RowExpr.  Calling Expr() first would erase
+                            # qs.RowExpr.  Calling Expr() first would erase
                             # that invariant and make every tuple scalar.
                             args = list(node.testexpr.args or ())
                             if not args:
                                 raise self.unsupported("empty row IN operand")
                             constructor = (
-                                "qx.Tuple"
+                                "qs.Tuple"
                                 if _enum_name(node.testexpr.row_format) == "COERCE_IMPLICIT_CAST"
-                                else "qx.Row"
+                                else "qs.Row"
                             )
                             return f"{constructor}({_join(self.expr(arg) for arg in args)}).InQuery({query}).Expr()"
                         left = self.expr(node.testexpr)
@@ -883,30 +883,30 @@ class GoEmitter:
                 left = self.expr(node.testexpr)
                 if len(ops) == 1:
                     op = _str_value(ops[0])
-                    return f"qx.Operator({left}, {_go_quote(op)}, {quant}({query}))"
+                    return f"qs.Operator({left}, {_go_quote(op)}, {quant}({query}))"
                 if len(ops) == 2:
                     schema, op = (_str_value(value) for value in ops)
-                    return f"qx.QualifiedOperator({left}, {_go_quote(schema)}, {_go_quote(op)}, {quant}({query}))"
+                    return f"qs.QualifiedOperator({left}, {_go_quote(schema)}, {_go_quote(op)}, {quant}({query}))"
                 raise self.unsupported("quantified subquery has an unusual operator")
             if kind == "ARRAY_SUBLINK":
-                return f"qx.ArrayFrom({query})"
+                return f"qs.ArrayFrom({query})"
             raise self.unsupported(f"unsupported sublink {kind}")
         if name == "RowExpr":
             if not node.args:
                 raise self.unsupported("empty ROW expression is not representable")
-            constructor = "qx.Tuple" if _enum_name(getattr(node, "row_format", None)) == "COERCE_IMPLICIT_CAST" else "qx.Row"
+            constructor = "qs.Tuple" if _enum_name(getattr(node, "row_format", None)) == "COERCE_IMPLICIT_CAST" else "qs.Row"
             return f"{constructor}({_join(self.expr(arg) for arg in node.args)}).Expr()"
         if name == "A_ArrayExpr":
-            return f"qx.Array({_join(self.expr(arg) for arg in (node.elements or ()))})"
+            return f"qs.Array({_join(self.expr(arg) for arg in (node.elements or ()))})"
         if name == "CaseExpr":
             return self.case(node)
         if name == "CoalesceExpr":
-            return f"qx.Coalesce({_join(self.expr(arg) for arg in node.args)})"
+            return f"qs.Coalesce({_join(self.expr(arg) for arg in node.args)})"
         if name == "MinMaxExpr":
-            fn = "qx.Greatest" if _enum_name(node.op) == "IS_GREATEST" else "qx.Least"
+            fn = "qs.Greatest" if _enum_name(node.op) == "IS_GREATEST" else "qs.Least"
             return f"{fn}({_join(self.expr(arg) for arg in node.args)})"
         if name == "GroupingFunc":
-            return f"qx.Grouping({_join(self.expr(arg) for arg in (node.args or ()))})"
+            return f"qs.Grouping({_join(self.expr(arg) for arg in (node.args or ()))})"
         if name == "CollateClause":
             value = self.expr(node.arg)
             coll = ".".join(_str_value(v) for v in node.collname)
@@ -932,12 +932,12 @@ class GoEmitter:
                 raise self.unsupported(f"SQL value function {_enum_name(node.op)}")
             method, precision = method_info
             if precision:
-                return f"qx.{method}({int(node.typmod)})"
-            return f"qx.{method}()"
+                return f"qs.{method}({int(node.typmod)})"
+            return f"qs.{method}()"
         if name == "MergeSupportFunc":
-            return "qx.MergeAction()"
+            return "qs.MergeAction()"
         if name == "A_Star":
-            return "qx.Star()"
+            return "qs.Star()"
         if name == "ArrayRef":
             value = self.expr(node.refexpr)
             if node.reflowerindexpr and node.refupperindexpr:
@@ -1030,7 +1030,7 @@ class GoEmitter:
             "JS_ENC_UTF16": "JSONEncodingUTF16",
             "JS_ENC_UTF32": "JSONEncodingUTF32",
         }[encoding]
-        return f".Encoding(qx.{enum_name})"
+        return f".Encoding(qs.{enum_name})"
 
     def _json_format(self, node: Any, *, input_value: bool = True) -> str:
         format_node = getattr(node, "format", None)
@@ -1066,7 +1066,7 @@ class GoEmitter:
         format_suffix = self._json_format(node)
         if not format_suffix:
             return value
-        return f"qx.JSONInputExpr({value}){format_suffix}"
+        return f"qs.JSONInputExpr({value}){format_suffix}"
 
     def json_output(self, builder: str, output: Any) -> str:
         if output is None:
@@ -1091,7 +1091,7 @@ class GoEmitter:
 
     def json_aggregate_tail(self, builder: str, constructor: Any) -> str:
         if getattr(constructor, "agg_filter", None) is not None:
-            builder += f".Filter(qx.AsCondition({self.expr(constructor.agg_filter)}))"
+            builder += f".Filter(qs.AsCondition({self.expr(constructor.agg_filter)}))"
         over = getattr(constructor, "over", None)
         if over is not None:
             if over.name:
@@ -1105,8 +1105,8 @@ class GoEmitter:
         if name == "JsonObjectConstructor":
             members: list[str] = []
             for member in node.exprs or ():
-                members.append(f"qx.JSONPair({self.expr(member.key)}, {self.json_input(member.value)})")
-            builder = f"qx.JSONObject({_join(members)})"
+                members.append(f"qs.JSONPair({self.expr(member.key)}, {self.json_input(member.value)})")
+            builder = f"qs.JSONObject({_join(members)})"
             builder = self.json_null_policy(builder, bool(node.absent_on_null), array=False)
             if node.unique:
                 builder += ".WithUniqueKeys()"
@@ -1114,12 +1114,12 @@ class GoEmitter:
             return f"{builder}.Expr()"
         if name == "JsonArrayConstructor":
             values = _join(self.json_input(value) for value in (node.exprs or ()))
-            builder = f"qx.JSONArray({values})"
+            builder = f"qs.JSONArray({values})"
             builder = self.json_null_policy(builder, bool(node.absent_on_null), array=True)
             builder = self.json_output(builder, node.output)
             return f"{builder}.Expr()"
         if name == "JsonArrayQueryConstructor":
-            builder = f"qx.JSONArrayQuery({self.rowset(node.query)})"
+            builder = f"qs.JSONArrayQuery({self.rowset(node.query)})"
             format_node = getattr(node, "format", None)
             format_name = _enum_name(getattr(format_node, "format_type", None))
             encoding = _enum_name(getattr(format_node, "encoding", None))
@@ -1129,9 +1129,9 @@ class GoEmitter:
                 builder += ".InputFormatJSON()"
                 if encoding not in {"", "JS_ENC_DEFAULT"}:
                     suffix = self._json_encoding(encoding, input_value=True)
-                    suffix = suffix.replace(".EncodingUTF8()", ".InputEncoding(qx.JSONEncodingUTF8)")
-                    suffix = suffix.replace(".Encoding(qx.JSONEncodingUTF16)", ".InputEncoding(qx.JSONEncodingUTF16)")
-                    suffix = suffix.replace(".Encoding(qx.JSONEncodingUTF32)", ".InputEncoding(qx.JSONEncodingUTF32)")
+                    suffix = suffix.replace(".EncodingUTF8()", ".InputEncoding(qs.JSONEncodingUTF8)")
+                    suffix = suffix.replace(".Encoding(qs.JSONEncodingUTF16)", ".InputEncoding(qs.JSONEncodingUTF16)")
+                    suffix = suffix.replace(".Encoding(qs.JSONEncodingUTF32)", ".InputEncoding(qs.JSONEncodingUTF32)")
                     builder += suffix
             elif encoding not in {"", "JS_ENC_DEFAULT"}:
                 raise self.unsupported("JSON_ARRAY query encoding without FORMAT JSON")
@@ -1143,7 +1143,7 @@ class GoEmitter:
                 raise self.unsupported("JSON_OBJECTAGG has no constructor metadata")
             if constructor.agg_order:
                 raise self.unsupported("JSON_OBJECTAGG ORDER BY")
-            builder = f"qx.JSONObjectAggregate({self.expr(node.arg.key)}, {self.json_input(node.arg.value)})"
+            builder = f"qs.JSONObjectAggregate({self.expr(node.arg.key)}, {self.json_input(node.arg.value)})"
             builder = self.json_null_policy(builder, bool(node.absent_on_null), array=False)
             if node.unique:
                 builder += ".WithUniqueKeys()"
@@ -1154,7 +1154,7 @@ class GoEmitter:
             constructor = node.constructor
             if constructor is None:
                 raise self.unsupported("JSON_ARRAYAGG has no constructor metadata")
-            builder = f"qx.JSONArrayAggregate({self.json_input(node.arg)})"
+            builder = f"qs.JSONArrayAggregate({self.json_input(node.arg)})"
             if constructor.agg_order:
                 builder += f".OrderBy({_join(self.order(value) for value in constructor.agg_order)})"
             builder = self.json_null_policy(builder, bool(node.absent_on_null), array=True)
@@ -1164,16 +1164,16 @@ class GoEmitter:
         if name == "JsonParseExpr":
             if node.output is not None:
                 raise self.unsupported("JSON parse RETURNING output")
-            builder = f"qx.JSONParse({self.json_input(node.expr)})"
+            builder = f"qs.JSONParse({self.json_input(node.expr)})"
             if node.unique_keys:
                 builder += ".WithUniqueKeys()"
             return f"{builder}.Expr()"
         if name == "JsonScalarExpr":
             if node.output is not None:
                 raise self.unsupported("JSON_SCALAR RETURNING output")
-            return f"qx.JSONScalar({self.expr(node.expr)})"
+            return f"qs.JSONScalar({self.expr(node.expr)})"
         if name == "JsonSerializeExpr":
-            builder = f"qx.JSONSerialize({self.json_input(node.expr)})"
+            builder = f"qs.JSONSerialize({self.json_input(node.expr)})"
             builder = self.json_output(builder, node.output)
             return f"{builder}.Expr()"
         if name == "JsonIsPredicate":
@@ -1181,7 +1181,7 @@ class GoEmitter:
             encoding = _enum_name(getattr(node.format, "encoding", None))
             if format_name not in {"", "JS_FORMAT_DEFAULT"} or encoding not in {"", "JS_ENC_DEFAULT"}:
                 raise self.unsupported("IS JSON FORMAT clause")
-            builder = f"qx.IsJSON({self.expr(node.expr)})"
+            builder = f"qs.IsJSON({self.expr(node.expr)})"
             item_method = {
                 "JS_TYPE_ANY": "Any",
                 "JS_TYPE_OBJECT": "Object",
@@ -1200,26 +1200,26 @@ class GoEmitter:
     def xml_mode(self, node: Any) -> str:
         mode = _enum_name(getattr(node, "xmloption", None))
         if mode == "XMLOPTION_DOCUMENT":
-            return "qx.XMLDocument"
+            return "qs.XMLDocument"
         if mode == "XMLOPTION_CONTENT":
-            return "qx.XMLContent"
+            return "qs.XMLContent"
         raise self.unsupported(f"XML mode {mode}")
 
     def xml_items(self, items: Sequence[Any]) -> str:
         values: list[str] = []
         for item in items:
             if item.name is None:
-                values.append(f"qx.XMLValue({self.expr(item.val)})")
+                values.append(f"qs.XMLValue({self.expr(item.val)})")
             else:
-                values.append(f"qx.XMLAttr({_go_quote(_str_value(item.name))}, {self.expr(item.val)})")
+                values.append(f"qs.XMLAttr({_go_quote(_str_value(item.name))}, {self.expr(item.val)})")
         return _join(values)
 
     def xml_expr(self, node: Any) -> str:
         op = _enum_name(node.op)
         if op == "IS_XMLCONCAT":
-            return f"qx.XMLConcat({_join(self.expr(value) for value in (node.args or ()))})"
+            return f"qs.XMLConcat({_join(self.expr(value) for value in (node.args or ()))})"
         if op == "IS_XMLELEMENT":
-            builder = f"qx.XMLElement({_go_quote(_str_value(node.name))})"
+            builder = f"qs.XMLElement({_go_quote(_str_value(node.name))})"
             if node.named_args:
                 builder += f".Attributes({self.xml_items(node.named_args)})"
             if node.args:
@@ -1228,12 +1228,12 @@ class GoEmitter:
         if op == "IS_XMLFOREST":
             if not node.named_args:
                 raise self.unsupported("XMLFOREST has no values")
-            return f"qx.XMLForest({self.xml_items(node.named_args)}).Expr()"
+            return f"qs.XMLForest({self.xml_items(node.named_args)}).Expr()"
         if op == "IS_XMLPARSE":
             args = list(node.args or ())
             if len(args) not in {1, 2}:
                 raise self.unsupported("XMLPARSE argument count")
-            builder = f"qx.XMLParse({self.xml_mode(node)}, {self.expr(args[0])})"
+            builder = f"qs.XMLParse({self.xml_mode(node)}, {self.expr(args[0])})"
             if len(args) == 2:
                 value = args[1]
                 if _node_name(value) != "A_Const" or _node_name(value.val) != "Boolean":
@@ -1245,7 +1245,7 @@ class GoEmitter:
             args = list(node.args or ())
             if len(args) > 1:
                 raise self.unsupported("XMLPI argument count")
-            builder = f"qx.XMLPI({_go_quote(_str_value(node.name))}"
+            builder = f"qs.XMLPI({_go_quote(_str_value(node.name))}"
             if args:
                 builder += f", {self.expr(args[0])}"
             return f"{builder}).Expr()"
@@ -1253,7 +1253,7 @@ class GoEmitter:
             args = list(node.args or ())
             if len(args) != 3:
                 raise self.unsupported("XMLROOT argument count")
-            builder = f"qx.XMLRoot({self.expr(args[0])}"
+            builder = f"qs.XMLRoot({self.expr(args[0])}"
             version = args[1]
             if _node_name(version) == "A_Const" and version.isnull:
                 builder += ").VersionNoValue()"
@@ -1269,17 +1269,17 @@ class GoEmitter:
             if int(standalone.val.ival) not in {0, 1, 2, 3}:
                 raise self.unsupported("XMLROOT standalone mode")
             if mode:
-                builder += f".Standalone(qx.{mode})"
+                builder += f".Standalone(qs.{mode})"
             return f"{builder}.Expr()"
         if op == "IS_DOCUMENT":
             args = list(node.args or ())
             if len(args) != 1:
                 raise self.unsupported("IS DOCUMENT argument count")
-            return f"qx.XMLIsDocument({self.expr(args[0])}).Expr()"
+            return f"qs.XMLIsDocument({self.expr(args[0])}).Expr()"
         raise self.unsupported(f"unsupported XML expression {op}")
 
     def xml_serialize(self, node: Any) -> str:
-        builder = f"qx.XMLSerialize({self.xml_mode(node)}, {self.expr(node.expr)}, {self.data_type(node.typeName)})"
+        builder = f"qs.XMLSerialize({self.xml_mode(node)}, {self.expr(node.expr)}, {self.data_type(node.typeName)})"
         if node.indent:
             builder += ".Indent()"
         return f"{builder}.Expr()"
@@ -1310,7 +1310,7 @@ class GoEmitter:
             }[kind]
             return f"({left}).{method}({rights[0]}, {rights[1]}).Expr()"
         if kind == "AEXPR_NULLIF":
-            return f"qx.NullIf({left}, {rights[0]})"
+            return f"qs.NullIf({left}, {rights[0]})"
         if kind == "AEXPR_DISTINCT":
             return f"({left}).IsDistinctFromExpr({rights[0]}).Expr()"
         if kind == "AEXPR_NOT_DISTINCT":
@@ -1318,8 +1318,8 @@ class GoEmitter:
         if kind in {"AEXPR_OP_ANY", "AEXPR_OP_ALL"}:
             if len(rights) != 1:
                 raise self.unsupported("quantified operator has no single right operand")
-            quantifier = "qx.AnyArray" if kind == "AEXPR_OP_ANY" else "qx.AllArray"
-            return f"qx.Operator({left}, {_go_quote(op)}, {quantifier}({rights[0]}))"
+            quantifier = "qs.AnyArray" if kind == "AEXPR_OP_ANY" else "qs.AllArray"
+            return f"qs.Operator({left}, {_go_quote(op)}, {quantifier}({rights[0]}))"
         if kind in {"AEXPR_LIKE", "AEXPR_ILIKE", "AEXPR_SIMILAR"}:
             methods = {
                 "AEXPR_LIKE": {"~~": "LikeExpr", "!~~": "NotLikeExpr"},
@@ -1355,14 +1355,14 @@ class GoEmitter:
                 raise self.unsupported(f"prefix operator {op!r} has {len(rights)} operands")
             if not re.fullmatch(r"[+*/%<>=~!@#^&|?-]+", op):
                 raise self.unsupported(f"non-symbolic prefix operator {op!r}")
-            return f"qx.PrefixOperator({_go_quote(op)}, {rights[0]})"
+            return f"qs.PrefixOperator({_go_quote(op)}, {rights[0]})"
         if len(rights) != 1:
             raise self.unsupported(f"operator {op!r} has {len(rights)} right operands")
         if op == "AT TIME ZONE":
             return f"({left}).AtTimeZone({rights[0]})"
         if not re.fullmatch(r"[+*/%<>=~!@#^&|?-]+", op):
             raise self.unsupported(f"non-symbolic operator {op!r}")
-        return f"qx.Operator({left}, {_go_quote(op)}, {rights[0]})"
+        return f"qs.Operator({left}, {_go_quote(op)}, {rights[0]})"
 
     def function(self, node: Any) -> str:
         names = [_str_value(value) for value in (node.funcname or ())]
@@ -1403,7 +1403,7 @@ class GoEmitter:
                 part = parts.get(str(args[0].val.sval).lower())
                 if part is None:
                     raise self.unsupported(f"EXTRACT date-part {args[0].val.sval}")
-                return f"qx.Extract(qx.{part}, {self.expr(args[1])})"
+                return f"qs.Extract(qs.{part}, {self.expr(args[1])})"
             if names[-1].lower() == "timezone" and len(node.args or ()) == 2:
                 return f"({self.expr(node.args[1])}).AtTimeZone({self.expr(node.args[0])})"
             if names[-1].lower() == "timezone" and len(node.args or ()) == 1:
@@ -1416,20 +1416,20 @@ class GoEmitter:
                 # PostgreSQL stores FROM, FOR, and SIMILAR forms in the same
                 # FuncCall shape. SubstringFrom reparses to that canonical AST
                 # for all of them, including the FOR-only start=1 cast.
-                return f"qx.SubstringFrom({self.expr(args[0])}, {self.expr(args[1])}{length})"
+                return f"qs.SubstringFrom({self.expr(args[0])}, {self.expr(args[1])}{length})"
             if names[-1].lower() == "position":
                 args = list(node.args or ())
                 if len(args) != 2:
                     raise self.unsupported("POSITION argument count")
                 # The parser stores POSITION(value, substring), while the
                 # public constructor follows SQL's substring IN value order.
-                return f"qx.Position({self.expr(args[1])}, {self.expr(args[0])})"
+                return f"qs.Position({self.expr(args[1])}, {self.expr(args[0])})"
             if names[-1].lower() == "normalize":
                 args = list(node.args or ())
                 if len(args) not in {1, 2}:
                     raise self.unsupported("NORMALIZE argument count")
                 if len(args) == 1:
-                    return f"qx.Normalize({self.expr(args[0])})"
+                    return f"qs.Normalize({self.expr(args[0])})"
                 form = args[1]
                 if _node_name(form) != "A_Const" or _node_name(form.val) != "String":
                     raise self.unsupported("NORMALIZE form")
@@ -1437,18 +1437,18 @@ class GoEmitter:
                 value = forms.get(str(form.val.sval).upper())
                 if value is None:
                     raise self.unsupported("NORMALIZE form")
-                return f"qx.Normalize({self.expr(args[0])}, qx.{value})"
+                return f"qs.Normalize({self.expr(args[0])}, qs.{value})"
             if names[-1].lower() == "overlay":
                 args = list(node.args or ())
                 if len(args) not in {3, 4}:
                     raise self.unsupported("OVERLAY argument count")
                 length = f", {self.expr(args[3])}" if len(args) == 4 else ""
-                return f"qx.Overlay({self.expr(args[0])}, {self.expr(args[1])}, {self.expr(args[2])}{length})"
+                return f"qs.Overlay({self.expr(args[0])}, {self.expr(args[1])}, {self.expr(args[2])}{length})"
             if names[-1].lower() == "overlaps":
                 args = list(node.args or ())
                 if len(args) != 4:
                     raise self.unsupported("OVERLAPS argument count")
-                return f"qx.Overlaps({_join(self.expr(value) for value in args)}).Expr()"
+                return f"qs.Overlaps({_join(self.expr(value) for value in args)}).Expr()"
             if names[-1].lower() in {"btrim", "ltrim", "rtrim"}:
                 args = list(node.args or ())
                 if len(args) not in {1, 2}:
@@ -1459,18 +1459,18 @@ class GoEmitter:
                     "rtrim": "TrimTrailingDirection",
                 }[names[-1].lower()]
                 characters = f", {self.expr(args[1])}" if len(args) == 2 else ""
-                return f"qx.TrimSyntax({self.expr(args[0])}, qx.{direction}{characters})"
+                return f"qs.TrimSyntax({self.expr(args[0])}, qs.{direction}{characters})"
             if names[-1].lower() == "pg_collation_for":
                 args = list(node.args or ())
                 if len(args) != 1:
                     raise self.unsupported("COLLATION FOR argument count")
-                return f"qx.CollationFor({self.expr(args[0])})"
+                return f"qs.CollationFor({self.expr(args[0])})"
             if names[-1].lower() == "is_normalized":
                 args = list(node.args or ())
                 if len(args) not in {1, 2}:
                     raise self.unsupported("IS NORMALIZED argument count")
                 if len(args) == 1:
-                    return f"qx.IsNormalized({self.expr(args[0])}).Expr()"
+                    return f"qs.IsNormalized({self.expr(args[0])}).Expr()"
                 form = args[1]
                 if _node_name(form) != "A_Const" or _node_name(form.val) != "String":
                     raise self.unsupported("IS NORMALIZED form")
@@ -1478,26 +1478,26 @@ class GoEmitter:
                 value = forms.get(str(form.val.sval).upper())
                 if value is None:
                     raise self.unsupported("IS NORMALIZED form")
-                return f"qx.IsNormalized({self.expr(args[0])}, qx.{value}).Expr()"
+                return f"qs.IsNormalized({self.expr(args[0])}, qs.{value}).Expr()"
             if names[-1].lower() == "xmlexists":
                 args = list(node.args or ())
                 if len(args) != 2:
                     raise self.unsupported("XMLEXISTS argument count")
-                return f"qx.XMLExists({self.expr(args[0])}, {self.expr(args[1])}).Expr()"
+                return f"qs.XMLExists({self.expr(args[0])}, {self.expr(args[1])}).Expr()"
             raise self.unsupported(f"SQL-syntax function {'.'.join(names)}")
         special = names[-1].lower()
         args: list[str] = []
         for arg in node.args or ():
             if _node_name(arg) == "NamedArgExpr":
-                args.append(f"qx.NamedArg({_go_quote(str(arg.name))}, {self.expr(arg.arg)})")
+                args.append(f"qs.NamedArg({_go_quote(str(arg.name))}, {self.expr(arg.arg)})")
             else:
                 args.append(self.expr(arg))
         if node.func_variadic:
             if not args:
                 raise self.unsupported("VARIADIC function requires one argument")
-            args[-1] = f"qx.Variadic({args[-1]})"
+            args[-1] = f"qs.Variadic({args[-1]})"
         if node.agg_star:
-            args = ["qx.Star()"]
+            args = ["qs.Star()"]
         if special in {"coalesce", "nullif", "greatest", "least", "concat"}:
             fn = {
                 "coalesce": "Coalesce",
@@ -1508,14 +1508,14 @@ class GoEmitter:
             }[special]
             if special == "nullif" and len(args) != 2:
                 raise self.unsupported("NULLIF arity")
-            expression = f"qx.{fn}({_join(args)})"
+            expression = f"qs.{fn}({_join(args)})"
         elif special == "substring":
             # A regular function call named substring is distinct from the
             # SQL SUBSTRING grammar node handled above.  Preserve it as a
             # symbolic call so its ordinary FuncCall AST reparses unchanged.
-            expression = f"qx.Call({_go_quote('.'.join(names))}{', ' if args else ''}{_join(args)})"
+            expression = f"qs.Call({_go_quote('.'.join(names))}{', ' if args else ''}{_join(args)})"
         else:
-            expression = f"qx.Call({_go_quote('.'.join(names))}{', ' if args else ''}{_join(args)})"
+            expression = f"qs.Call({_go_quote('.'.join(names))}{', ' if args else ''}{_join(args)})"
         if node.agg_distinct:
             expression = f"({expression}).Distinct()"
         if node.agg_order and not node.agg_within_group:
@@ -1523,7 +1523,7 @@ class GoEmitter:
         if node.agg_within_group:
             expression = f"({expression}).WithinGroup({_join(self.order(value) for value in node.agg_order)})"
         if node.agg_filter is not None:
-            expression = f"({expression}).Filter(qx.AsCondition({self.expr(node.agg_filter)}))"
+            expression = f"({expression}).Filter(qs.AsCondition({self.expr(node.agg_filter)}))"
         if node.over is not None:
             # PostgreSQL distinguishes OVER name from OVER (name): the
             # former references a named window, while the latter is a window
@@ -1535,12 +1535,12 @@ class GoEmitter:
         return expression
 
     def case(self, node: Any) -> str:
-        builder = f"qx.CaseOf({self.expr(node.arg)})" if node.arg is not None else "qx.Case()"
+        builder = f"qs.CaseOf({self.expr(node.arg)})" if node.arg is not None else "qs.Case()"
         for branch in node.args or ():
             if node.arg is not None:
                 builder += f".WhenValue({self.expr(branch.expr)}, {self.expr(branch.result)})"
             else:
-                builder += f".When(qx.AsCondition({self.expr(branch.expr)}), {self.expr(branch.result)})"
+                builder += f".When(qs.AsCondition({self.expr(branch.expr)}), {self.expr(branch.result)})"
         if node.defresult is not None:
             builder += f".Else({self.expr(node.defresult)})"
         return f"({builder}).End()"
@@ -1596,28 +1596,28 @@ class GoEmitter:
                 # An unconstrained pg_catalog.varchar is distinct from a
                 # validated Varchar(length). Preserve the parsed type name
                 # instead of inventing a length or emitting an invalid zero.
-                result = f"qx.NamedType({_join(_go_quote(value) for value in names)})"
+                result = f"qs.NamedType({_join(_go_quote(value) for value in names)})"
             elif len(typmods) != 1 or _node_name(typmods[0]) != "A_Const" or _node_name(typmods[0].val) != "Integer":
                 raise self.unsupported("varchar cast without an integer typmod")
             else:
-                result = f"qx.Varchar({int(typmods[0].val.ival)})"
+                result = f"qs.Varchar({int(typmods[0].val.ival)})"
         elif builtin and lower in {"numeric", "decimal"} and node.typmods:
             mods = list(node.typmods)
             if len(mods) != 2 or any(_node_name(mod) != "A_Const" or _node_name(mod.val) != "Integer" for mod in mods):
                 raise self.unsupported("numeric cast with non-integer typmod")
-            result = f"qx.Decimal({int(mods[0].val.ival)}, {int(mods[1].val.ival)})"
+            result = f"qs.Decimal({int(mods[0].val.ival)}, {int(mods[1].val.ival)})"
         elif builtin and not node.typmods:
-            result = f"qx.{aliases[lower]}"
+            result = f"qs.{aliases[lower]}"
         elif len(names) == 1 and not node.typmods:
             # A one-part type may be a quoted identifier or a PostgreSQL
             # alias which the parser leaves unqualified.  Preserve its exact
             # spelling rather than resolving it through search_path.
-            result = f"qx.NamedType({_go_quote(names[0])})"
+            result = f"qs.NamedType({_go_quote(names[0])})"
         elif len(names) <= 3:
-            result = f"qx.NamedType({_join(_go_quote(value) for value in names)})"
+            result = f"qs.NamedType({_join(_go_quote(value) for value in names)})"
         else:
             raise self.unsupported("type name has too many qualification parts")
-        if node.typmods and result.startswith("qx.NamedType("):
+        if node.typmods and result.startswith("qs.NamedType("):
             modifiers: list[str] = []
             for modifier in node.typmods:
                 if _node_name(modifier) != "A_Const" or _node_name(modifier.val) != "Integer":
@@ -1625,7 +1625,7 @@ class GoEmitter:
                 modifiers.append(str(int(modifier.val.ival)))
             result += f".Modifiers({_join(modifiers)})"
         for _ in node.arrayBounds or ():
-            result = f"qx.ArrayType({result})"
+            result = f"qs.ArrayType({result})"
         return result
 
     def order(self, node: Any) -> str:
@@ -1655,22 +1655,22 @@ class GoEmitter:
         kind = _enum_name(node.kind)
         values = [self.expr(value) for value in (node.content or ())]
         if kind == "GROUPING_SET_EMPTY":
-            return "qx.GroupingSet()"
+            return "qs.GroupingSet()"
         if kind == "GROUPING_SET_SIMPLE":
-            return f"qx.GroupingSet({_join(values)})"
+            return f"qs.GroupingSet({_join(values)})"
         if kind == "GROUPING_SET_ROLLUP":
-            return f"qx.Rollup({_join(values)})"
+            return f"qs.Rollup({_join(values)})"
         if kind == "GROUPING_SET_CUBE":
-            return f"qx.Cube({_join(values)})"
+            return f"qs.Cube({_join(values)})"
         if kind == "GROUPING_SET_SETS":
-            return f"qx.GroupingSets({_join(self.group_expr(value) for value in (node.content or ()))})"
+            return f"qs.GroupingSets({_join(self.group_expr(value) for value in (node.content or ()))})"
         raise self.unsupported(f"unknown grouping set kind {kind}")
 
     def relation(self, node: Any) -> str:
         name = _node_name(node)
         if name == "RangeVar":
             parts = [value for value in (node.catalogname, node.schemaname, node.relname) if value]
-            relation = f"qx.Table({_go_quote('.'.join(parts))})"
+            relation = f"qs.Table({_go_quote('.'.join(parts))})"
             if not node.inh:
                 relation += ".Only()"
             if node.alias is not None:
@@ -1684,15 +1684,15 @@ class GoEmitter:
             if getattr(node.subquery, "intoClause", None) is not None:
                 raise self.unsupported("SELECT INTO cannot be used as a subquery")
             if node.alias is None:
-                relation = f"qx.Derived({self.rowset(node.subquery)})"
+                relation = f"qs.Derived({self.rowset(node.subquery)})"
             else:
-                relation = f"qx.Subquery({self.rowset(node.subquery)}, {_go_quote(node.alias.aliasname)}"
+                relation = f"qs.Subquery({self.rowset(node.subquery)}, {_go_quote(node.alias.aliasname)}"
                 cols = list(node.alias.colnames or ())
                 if cols:
                     relation += ", " + _join(_go_quote(_str_value(c)) for c in cols)
                 relation += ")"
             if node.lateral:
-                relation = f"qx.Lateral({relation})"
+                relation = f"qs.Lateral({relation})"
             return relation
         if name == "RangeFunction":
             functions = list(node.functions or ())
@@ -1704,7 +1704,7 @@ class GoEmitter:
                 for column in columns:
                     if column.colname is None or column.typeName is None:
                         raise self.unsupported("table function column definition is incomplete")
-                    values.append(f"qx.Def({_go_quote(column.colname)}, {self.data_type(column.typeName)})")
+                    values.append(f"qs.Def({_go_quote(column.colname)}, {self.data_type(column.typeName)})")
                 return _join(values)
 
             records: list[str] = []
@@ -1712,40 +1712,40 @@ class GoEmitter:
             for function, columns in functions:
                 function_expr = self.expr(function)
                 expressions.append(function_expr)
-                record = f"qx.Function({function_expr})"
+                record = f"qs.Function({function_expr})"
                 if columns:
                     record += f".DefineColumns({definitions(columns)})"
                 records.append(record)
             # A RangeFunction-level coldeflist belongs to the relation, not to
             # the function's ROWS FROM item.  PostgreSQL's regression corpus
-            # uses this with one function; qx's typed TableFunc relation is the
+            # uses this with one function; qs's typed TableFunc relation is the
             # corresponding structural form and emits ``AS alias (defs)``.
             coldeflist = list(node.coldeflist or ())
             if coldeflist:
                 if len(records) != 1 or node.is_rowsfrom or functions[0][1]:
                     raise self.unsupported("table function relation column definitions have unsupported shape")
-                relation = f"qx.TableFunc({expressions[0]}).DefineColumns({definitions(coldeflist)})"
+                relation = f"qs.TableFunc({expressions[0]}).DefineColumns({definitions(coldeflist)})"
             elif len(records) == 1 and not node.is_rowsfrom:
-                relation = f"qx.TableFunc({expressions[0]})"
+                relation = f"qs.TableFunc({expressions[0]})"
                 if functions[0][1]:
                     relation += f".DefineColumns({definitions(functions[0][1])})"
             else:
                 if not node.is_rowsfrom:
                     raise self.unsupported("multiple table functions without ROWS FROM")
-                relation = f"qx.RowsFrom({_join(records)})"
+                relation = f"qs.RowsFrom({_join(records)})"
             if node.ordinality:
                 relation += ".WithOrdinality()"
             if node.alias is not None:
                 relation += f".As({_go_quote(node.alias.aliasname)}"
                 # A relation coldeflist already carries typed names.  Do not
-                # add a second alias column list; qx rejects that combination
+                # add a second alias column list; qs rejects that combination
                 # to keep its relation invariants explicit.
                 cols = [] if coldeflist else list(node.alias.colnames or ())
                 if cols:
                     relation += ", " + _join(_go_quote(_str_value(c)) for c in cols)
                 relation += ")"
             if node.lateral:
-                relation = f"qx.Lateral({relation})"
+                relation = f"qs.Lateral({relation})"
             return relation
         if name == "RangeTableSample":
             relation = self.relation(node.relation)
@@ -1768,11 +1768,11 @@ class GoEmitter:
                 if column.for_ordinality:
                     if column.typeName is not None or column.colexpr is not None or column.coldefexpr is not None:
                         raise self.unsupported("XMLTABLE ordinality column options")
-                    columns.append(f"qx.XMLOrdinality({_go_quote(column.colname)})")
+                    columns.append(f"qs.XMLOrdinality({_go_quote(column.colname)})")
                     continue
                 if column.typeName is None:
                     raise self.unsupported("XMLTABLE column has no type")
-                value = f"qx.XMLColumn({_go_quote(column.colname)}, {self.data_type(column.typeName)})"
+                value = f"qs.XMLColumn({_go_quote(column.colname)}, {self.data_type(column.typeName)})"
                 if column.colexpr is not None:
                     value += f".Path({self.expr(column.colexpr)})"
                 if column.coldefexpr is not None:
@@ -1782,15 +1782,15 @@ class GoEmitter:
                 columns.append(value)
             if not columns:
                 raise self.unsupported("XMLTABLE has no columns")
-            relation = f"qx.XMLTable({self.expr(node.rowexpr)}, {self.expr(node.docexpr)}, {_join(columns)})"
+            relation = f"qs.XMLTable({self.expr(node.rowexpr)}, {self.expr(node.docexpr)}, {_join(columns)})"
             if node.namespaces:
                 namespaces: list[str] = []
                 for namespace in node.namespaces:
                     if namespace.name is None:
-                        namespaces.append(f"qx.XMLDefaultNamespace({self.expr(namespace.val)})")
+                        namespaces.append(f"qs.XMLDefaultNamespace({self.expr(namespace.val)})")
                     else:
                         namespaces.append(
-                            f"qx.XMLNamespace({self.expr(namespace.val)}, {_go_quote(_str_value(namespace.name))})"
+                            f"qs.XMLNamespace({self.expr(namespace.val)}, {_go_quote(_str_value(namespace.name))})"
                         )
                 relation += f".Namespaces({_join(namespaces)})"
             if node.alias is not None:
@@ -1802,7 +1802,7 @@ class GoEmitter:
             else:
                 relation += ".Ref()"
             if node.lateral:
-                relation = f"qx.Lateral({relation})"
+                relation = f"qs.Lateral({relation})"
             return relation
         if name == "JsonTable":
             relation = self.json_table(node)
@@ -1818,12 +1818,12 @@ class GoEmitter:
             else:
                 relation += ".Ref()"
             if node.lateral:
-                relation = f"qx.Lateral({relation})"
+                relation = f"qs.Lateral({relation})"
             return relation
         if name == "JoinExpr":
             kind = _enum_name(node.jointype)
             if kind == "JOIN_INNER" and not node.isNatural and not node.usingClause and node.quals is None:
-                relation = f"qx.CrossJoin({self.relation(node.larg)}, {self.relation(node.rarg)})"
+                relation = f"qs.CrossJoin({self.relation(node.larg)}, {self.relation(node.rarg)})"
                 if node.alias is not None:
                     columns = list(node.alias.colnames or ())
                     relation += f".As({_go_quote(node.alias.aliasname)}"
@@ -1841,7 +1841,7 @@ class GoEmitter:
             }.get(kind)
             if ctor is None or kind in {"JOIN_SEMI", "JOIN_ANTI"}:
                 raise self.unsupported(f"join type {kind}")
-            relation = f"qx.{ctor}({self.relation(node.larg)}, {self.relation(node.rarg)})"
+            relation = f"qs.{ctor}({self.relation(node.larg)}, {self.relation(node.rarg)})"
             if node.isNatural:
                 natural = {
                     "JOIN_INNER": "NaturalJoin",
@@ -1849,11 +1849,11 @@ class GoEmitter:
                     "JOIN_RIGHT": "NaturalRightJoin",
                     "JOIN_FULL": "NaturalFullJoin",
                 }[kind]
-                relation = f"qx.{natural}({self.relation(node.larg)}, {self.relation(node.rarg)})"
+                relation = f"qs.{natural}({self.relation(node.larg)}, {self.relation(node.rarg)})"
             if node.usingClause:
                 relation += f".Using({_join(_go_quote(_str_value(value)) for value in node.usingClause)})"
             elif node.quals is not None:
-                relation += f".On(qx.AsCondition({self.expr(node.quals)}))"
+                relation += f".On(qs.AsCondition({self.expr(node.quals)}))"
             if node.join_using_alias is not None:
                 relation += f".UsingAs({_go_quote(node.join_using_alias.aliasname)})"
             if node.alias is not None:
@@ -1889,11 +1889,11 @@ class GoEmitter:
         if kind == "JSON_BEHAVIOR_DEFAULT":
             if node.expr is None:
                 raise self.unsupported("JSON DEFAULT behavior has no expression")
-            return f"qx.JSONDefault({self.expr(node.expr)})"
+            return f"qs.JSONDefault({self.expr(node.expr)})"
         constructor = constructors.get(kind)
         if constructor is None:
             raise self.unsupported(f"JSON behavior {kind}")
-        return f"qx.{constructor}"
+        return f"qs.{constructor}"
 
     def json_function(self, node: Any) -> str:
         if node.column_name is not None:
@@ -1907,7 +1907,7 @@ class GoEmitter:
         constructor = constructors.get(operation)
         if constructor is None:
             raise self.unsupported(f"SQL/JSON operation {operation}")
-        builder = f"qx.{constructor}({self.json_value(node.context_item)}, {self.expr(node.pathspec)})"
+        builder = f"qs.{constructor}({self.json_value(node.context_item)}, {self.expr(node.pathspec)})"
         for argument in node.passing or ():
             builder += f".Passing({_go_quote(argument.name)}, {self.json_value(argument.val)})"
         if node.output is not None:
@@ -1951,7 +1951,7 @@ class GoEmitter:
             columns = _join(self.json_column(value) for value in (node.columns or ()))
             if not columns:
                 raise self.unsupported("JSON_TABLE nested column group is empty")
-            nested = f"qx.JSONNested({_go_quote(path)}, {columns})"
+            nested = f"qs.JSONNested({_go_quote(path)}, {columns})"
             if path_name:
                 nested += f".PathName({_go_quote(path_name)})"
             column = nested
@@ -1960,10 +1960,10 @@ class GoEmitter:
                 raise self.unsupported("JSON_TABLE column has no name")
             typ = self.data_type(node.typeName) if kind != "JTC_FOR_ORDINALITY" else ""
             constructor = {
-                "JTC_FOR_ORDINALITY": f"qx.JSONOrdinality({_go_quote(node.name)})",
-                "JTC_EXISTS": f"qx.JSONExistsColumn({_go_quote(node.name)}, {typ})",
-                "JTC_FORMATTED": f"qx.JSONColumn({_go_quote(node.name)}, {typ})",
-                "JTC_REGULAR": f"qx.JSONColumn({_go_quote(node.name)}, {typ})",
+                "JTC_FOR_ORDINALITY": f"qs.JSONOrdinality({_go_quote(node.name)})",
+                "JTC_EXISTS": f"qs.JSONExistsColumn({_go_quote(node.name)}, {typ})",
+                "JTC_FORMATTED": f"qs.JSONColumn({_go_quote(node.name)}, {typ})",
+                "JTC_REGULAR": f"qs.JSONColumn({_go_quote(node.name)}, {typ})",
             }.get(kind)
             if constructor is None:
                 raise self.unsupported(f"JSON_TABLE column kind {kind}")
@@ -2008,7 +2008,7 @@ class GoEmitter:
 
     def json_table(self, node: Any) -> str:
         path, path_name = self.json_path(node.pathspec)
-        builder = f"qx.JSONTable({self.json_value(node.context_item)}, {_go_quote(path)}"
+        builder = f"qs.JSONTable({self.json_value(node.context_item)}, {_go_quote(path)}"
         if node.passing:
             # Passing belongs on the immutable table descriptor after its
             # columns; keep the argument order explicit in generated code.
@@ -2055,8 +2055,8 @@ class GoEmitter:
             raise self.unsupported("EXECUTE has no prepared statement name")
         arguments = _join(self.expr(value) for value in (node.params or ()))
         if arguments:
-            return f"qx.Execute({_go_quote(str(node.name))}, {arguments})"
-        return f"qx.Execute({_go_quote(str(node.name))})"
+            return f"qs.Execute({_go_quote(str(node.name))}, {arguments})"
+        return f"qs.Execute({_go_quote(str(node.name))})"
 
     def destination_name(self, relation: Any, clause: str) -> str:
         if _node_name(relation) != "RangeVar" or not relation.relname:
@@ -2106,7 +2106,7 @@ class GoEmitter:
             }.get(commit)
             if action is None:
                 raise self.unsupported(f"{clause} ON COMMIT {commit}")
-            builder += f".OnCommit(qx.{action})"
+            builder += f".OnCommit(qs.{action})"
         if getattr(into, "skipData", False):
             builder += ".WithNoData()"
         return builder
@@ -2123,13 +2123,13 @@ class GoEmitter:
         if _node_name(query) == "ExecuteStmt":
             if materialized:
                 raise self.unsupported("materialized view EXECUTE source")
-            builder = f"qx.CreateTableAsExecute({_go_quote(name)}, {self.execute(query)})"
+            builder = f"qs.CreateTableAsExecute({_go_quote(name)}, {self.execute(query)})"
         else:
             if getattr(query, "intoClause", None) is not None:
                 raise self.unsupported("SELECT INTO cannot be a CREATE TABLE AS source")
             source = self.rowset(query)
             constructor = "MaterializedViewAs" if materialized else "CreateTableAs"
-            builder = f"qx.{constructor}({_go_quote(name)}, {source})"
+            builder = f"qs.{constructor}({_go_quote(name)}, {source})"
         if getattr(node, "if_not_exists", False):
             builder += ".IfNotExists()"
         return self.utility_destination(builder, into, "CREATE MATERIALIZED VIEW" if materialized else "CREATE TABLE AS", materialized=materialized)
@@ -2137,7 +2137,7 @@ class GoEmitter:
     def declare_cursor(self, node: Any) -> str:
         options = int(getattr(node, "options", 0) or 0)
         # CURSOR_OPT_FAST_PLAN is parser bookkeeping present on every cursor;
-        # ASENSITIVE and planner-selection bits have no public qx spelling.
+        # ASENSITIVE and planner-selection bits have no public qs spelling.
         known = 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0020 | 0x0100
         if options & ~known:
             raise self.unsupported(f"DECLARE CURSOR options {options:#x}")
@@ -2145,15 +2145,15 @@ class GoEmitter:
             raise self.unsupported("DECLARE CURSOR ASENSITIVE")
         if getattr(node.query, "intoClause", None) is not None:
             raise self.unsupported("SELECT INTO cannot be a cursor source")
-        builder = f"qx.DeclareCursor({_go_quote(str(node.portalname))}, {self.rowset(node.query)})"
+        builder = f"qs.DeclareCursor({_go_quote(str(node.portalname))}, {self.rowset(node.query)})"
         if options & 0x0001:
             builder += ".Binary()"
         if options & 0x0008:
             builder += ".Insensitive()"
         if options & 0x0002:
-            builder += ".Scroll(qx.CursorScroll)"
+            builder += ".Scroll(qs.CursorScroll)"
         elif options & 0x0004:
-            builder += ".Scroll(qx.CursorNoScroll)"
+            builder += ".Scroll(qs.CursorNoScroll)"
         if options & 0x0020:
             builder += ".WithHold()"
         return builder
@@ -2164,7 +2164,7 @@ class GoEmitter:
         ctes: list[str] = []
         for cte in clause.ctes or ():
             body = self.rowset(cte.ctequery)
-            value = f"qx.CTE({_go_quote(cte.ctename)}, {body})"
+            value = f"qs.CTE({_go_quote(cte.ctename)}, {body})"
             if cte.aliascolnames:
                 value += f".Columns({_join(_go_quote(_str_value(c)) for c in cte.aliascolnames)})"
             materialized = _enum_name(cte.ctematerialized)
@@ -2175,11 +2175,11 @@ class GoEmitter:
             if cte.search_clause is not None:
                 search = cte.search_clause
                 constructor = "SearchBreadthFirst" if search.search_breadth_first else "SearchDepthFirst"
-                spec = f"qx.{constructor}({_join(_go_quote(_str_value(c)) for c in search.search_col_list)})"
+                spec = f"qs.{constructor}({_join(_go_quote(_str_value(c)) for c in search.search_col_list)})"
                 value += f".Search({spec}.Set({_go_quote(search.search_seq_column)}))"
             if cte.cycle_clause is not None:
                 cycle = cte.cycle_clause
-                spec = f"qx.Cycle({_join(_go_quote(_str_value(c)) for c in cycle.cycle_col_list)})"
+                spec = f"qs.Cycle({_join(_go_quote(_str_value(c)) for c in cycle.cycle_col_list)})"
                 spec += f".Set({_go_quote(cycle.cycle_mark_column)}).Using({_go_quote(cycle.cycle_path_column)})"
                 if cycle.cycle_mark_value is not None or cycle.cycle_mark_default is not None:
                     spec += f".Values({self.expr(cycle.cycle_mark_value)}, {self.expr(cycle.cycle_mark_default)})"
@@ -2206,7 +2206,7 @@ class GoEmitter:
             elif _enum_name(node.limitOption) == "LIMIT_OPTION_WITH_TIES":
                 if not allow_fetch:
                     raise self.unsupported("FETCH WITH TIES on this rowset")
-                builder += f".FetchExpr({self.expr(node.limitCount)}, qx.WithTies)"
+                builder += f".FetchExpr({self.expr(node.limitCount)}, qs.WithTies)"
             else:
                 builder += f".LimitExpr({self.expr(node.limitCount)})"
         if node.lockingClause:
@@ -2221,7 +2221,7 @@ class GoEmitter:
                 }.get(_enum_name(lock.strength))
                 if strength is None:
                     raise self.unsupported(f"locking strength {_enum_name(lock.strength)}")
-                value = f"qx.{strength}()"
+                value = f"qs.{strength}()"
                 if lock.lockedRels:
                     value += ".Of(" + _join(_go_quote(rel.relname) for rel in lock.lockedRels) + ")"
                 policy = _enum_name(lock.waitPolicy)
@@ -2241,20 +2241,20 @@ class GoEmitter:
             }.get(_enum_name(node.op))
             if ctor is None:
                 raise self.unsupported(f"set operation {_enum_name(node.op)}")
-            builder = f"qx.{ctor}({self.rowset(node.larg)}, {self.rowset(node.rarg)})"
+            builder = f"qs.{ctor}({self.rowset(node.larg)}, {self.rowset(node.rarg)})"
             builder = self._with(builder, node.withClause)
             return self.select_into(self._tail(builder, node, allow_locks=False), node.intoClause)
         if node.valuesLists is not None:
             rows = list(node.valuesLists)
             if not rows:
                 raise self.unsupported("empty VALUES")
-            builder = f"qx.ValuesExpr({_join(self.expr(value) for value in rows[0])})"
+            builder = f"qs.ValuesExpr({_join(self.expr(value) for value in rows[0])})"
             for row in rows[1:]:
                 builder += f".RowExpr({_join(self.expr(value) for value in row)})"
             builder = self._with(builder, node.withClause)
             return self.select_into(self._tail(builder, node, allow_locks=False), node.intoClause)
         if not node.targetList:
-            builder = "qx.SelectNoColumns()"
+            builder = "qs.SelectNoColumns()"
         else:
             expressions: list[str] = []
             for target in node.targetList:
@@ -2264,7 +2264,7 @@ class GoEmitter:
                 if target.name:
                     value += f".As({_go_quote(target.name)})"
                 expressions.append(value)
-            builder = f"qx.Select({_join(expressions)})"
+            builder = f"qs.Select({_join(expressions)})"
         distinct = list(node.distinctClause or ())
         if distinct:
             if distinct == [None]:
@@ -2279,13 +2279,13 @@ class GoEmitter:
                 raise self.unsupported("CURRENT OF has no cursor name")
             builder += f".WhereCurrentOf({_go_quote(str(cursor))})"
         elif node.whereClause is not None:
-            builder += f".Where(qx.AsCondition({self.expr(node.whereClause)}))"
+            builder += f".Where(qs.AsCondition({self.expr(node.whereClause)}))"
         if node.groupClause:
             builder += f".GroupByExpr({_join(self.group_expr(value) for value in node.groupClause)})"
         if node.groupDistinct:
             builder += ".GroupByDistinct()"
         if node.havingClause is not None:
-            builder += f".Having(qx.AsCondition({self.expr(node.havingClause)}))"
+            builder += f".Having(qs.AsCondition({self.expr(node.havingClause)}))"
         if node.windowClause:
             for window in node.windowClause:
                 window_name = window.name or window.refname
@@ -2320,7 +2320,7 @@ class GoEmitter:
         return builder
 
     def window(self, node: Any) -> str:
-        builder = "qx.Window()"
+        builder = "qs.Window()"
         # ``name`` names a WINDOW definition when this node comes from a
         # SELECT's windowClause.  Only refname is an inherited window inside
         # a parenthesised specification.
@@ -2335,7 +2335,7 @@ class GoEmitter:
         if options:
             # FrameOptions is a stable PostgreSQL bit mask.  Keep the decoder
             # local so the generated expression remains structural and can
-            # use qx's validation for invalid boundary combinations.
+            # use qs's validation for invalid boundary combinations.
             frame_rows = 0x004
             frame_range = 0x002
             frame_groups = 0x008
@@ -2367,37 +2367,37 @@ class GoEmitter:
             def bound(start: bool) -> str:
                 if start:
                     if options & start_unbounded_preceding:
-                        return "qx.UnboundedPreceding()"
+                        return "qs.UnboundedPreceding()"
                     if options & start_unbounded_following:
-                        return "qx.UnboundedFollowing()"
+                        return "qs.UnboundedFollowing()"
                     if options & start_current:
-                        return "qx.CurrentRow()"
+                        return "qs.CurrentRow()"
                     if options & start_offset_preceding:
                         if node.startOffset is None:
                             raise self.unsupported("window start offset is missing")
-                        return f"qx.PrecedingExpr({self.expr(node.startOffset)})"
+                        return f"qs.PrecedingExpr({self.expr(node.startOffset)})"
                     if options & start_offset_following:
                         if node.startOffset is None:
                             raise self.unsupported("window start offset is missing")
-                        return f"qx.FollowingExpr({self.expr(node.startOffset)})"
+                        return f"qs.FollowingExpr({self.expr(node.startOffset)})"
                     # PostgreSQL's default frame starts at UNBOUNDED
                     # PRECEDING, including OVER () and RANGE ... CURRENT ROW.
-                    return "qx.UnboundedPreceding()"
+                    return "qs.UnboundedPreceding()"
                 if options & end_unbounded_preceding:
-                    return "qx.UnboundedPreceding()"
+                    return "qs.UnboundedPreceding()"
                 if options & end_unbounded_following:
-                    return "qx.UnboundedFollowing()"
+                    return "qs.UnboundedFollowing()"
                 if options & end_current:
-                    return "qx.CurrentRow()"
+                    return "qs.CurrentRow()"
                 if options & end_offset_preceding:
                     if node.endOffset is None:
                         raise self.unsupported("window end offset is missing")
-                    return f"qx.PrecedingExpr({self.expr(node.endOffset)})"
+                    return f"qs.PrecedingExpr({self.expr(node.endOffset)})"
                 if options & end_offset_following:
                     if node.endOffset is None:
                         raise self.unsupported("window end offset is missing")
-                    return f"qx.FollowingExpr({self.expr(node.endOffset)})"
-                return "qx.CurrentRow()"
+                    return f"qs.FollowingExpr({self.expr(node.endOffset)})"
+                return "qs.CurrentRow()"
 
             frame_args = f"{bound(True)}, {bound(False)}" if options & frame_between else bound(True)
             builder += f".{method}({frame_args})"
@@ -2411,7 +2411,7 @@ class GoEmitter:
             if len(selected) > 1:
                 raise self.unsupported("multiple window frame exclusions")
             if selected:
-                builder += f".Exclude(qx.{selected[0]})"
+                builder += f".Exclude(qs.{selected[0]})"
         return builder
 
     def returning(self, node: Any) -> tuple[list[str], str | None]:
@@ -2441,7 +2441,7 @@ class GoEmitter:
         alias_builder: str | None = None
         if aliases:
             fields = _join(f"{key}: {_go_quote(value)}" for key, value in aliases.items())
-            alias_builder = f"qx.ReturningAliases{{{fields}}}"
+            alias_builder = f"qs.ReturningAliases{{{fields}}}"
         expressions: list[str] = []
         for target in node.exprs or ():
             if target.indirection:
@@ -2471,18 +2471,18 @@ class GoEmitter:
                 ):
                     raise self.unsupported("complex row assignment target")
                 columns = "[]string{" + _join(_go_quote(item.name) for item in group) + "}"
-                target_exprs = "[]qx.Expr{" + _join(self.expr_from_target(item) for item in group) + "}"
+                target_exprs = "[]qs.Expr{" + _join(self.expr_from_target(item) for item in group) + "}"
                 source = reference.source
                 if _node_name(source) == "SubLink" and _enum_name(source.subLinkType) == "EXPR_SUBLINK":
-                    values.append(f"qx.AssignRowFrom({target_exprs}, {self.rowset(source.subselect)})")
+                    values.append(f"qs.AssignRowFrom({target_exprs}, {self.rowset(source.subselect)})")
                 elif _node_name(source) == "RowExpr":
                     row_format = _enum_name(getattr(source, "row_format", None))
                     if row_format == "COERCE_EXPLICIT_CALL" and not any(item.indirection for item in group):
-                        values.append(f"qx.SetRow({columns}, {_join(self.expr(arg) for arg in source.args)})")
+                        values.append(f"qs.SetRow({columns}, {_join(self.expr(arg) for arg in source.args)})")
                     else:
-                        constructor = "qx.Tuple" if row_format == "COERCE_IMPLICIT_CAST" else "qx.Row"
+                        constructor = "qs.Tuple" if row_format == "COERCE_IMPLICIT_CAST" else "qs.Row"
                         values.append(
-                            f"qx.AssignRow({target_exprs}, {constructor}({_join(self.expr(arg) for arg in source.args)}))"
+                            f"qs.AssignRow({target_exprs}, {constructor}({_join(self.expr(arg) for arg in source.args)}))"
                         )
                 else:
                     raise self.unsupported(f"row assignment source {_node_name(source)}")
@@ -2491,12 +2491,12 @@ class GoEmitter:
             value = self.expr(target.val)
             if target.indirection:
                 target_expr = self.expr_from_target(target)
-                values.append(f"qx.Assign({target_expr}, {value})")
+                values.append(f"qs.Assign({target_expr}, {value})")
             elif target.name:
                 if _node_name(target.val) == "SetToDefault":
-                    values.append(f"qx.SetDefault({_go_quote(target.name)})")
+                    values.append(f"qs.SetDefault({_go_quote(target.name)})")
                 else:
-                    values.append(f"qx.SetExpr({_go_quote(target.name)}, {value})")
+                    values.append(f"qs.SetExpr({_go_quote(target.name)}, {value})")
             else:
                 raise self.unsupported("assignment target has no name")
             index += 1
@@ -2530,13 +2530,13 @@ class GoEmitter:
         assignments: list[str] = []
         for target, value in zip(target_list, rendered_values):
             target_expr = self.expr_from_target(target)
-            assignments.append(f"qx.Assign({target_expr}, {value})")
+            assignments.append(f"qs.Assign({target_expr}, {value})")
         return f".ThenInsert({_join(assignments)})"
 
     def expr_from_target(self, target: Any) -> str:
         if not target.name:
             raise self.unsupported("assignment target has no name")
-        value = f"qx.Ident({_go_quote(target.name)})"
+        value = f"qs.Ident({_go_quote(target.name)})"
         for item in target.indirection or ():
             if _node_name(item) == "String":
                 value = f"({value}).Field({_go_quote(str(item.sval))})"
@@ -2562,7 +2562,7 @@ class GoEmitter:
 
     def insert(self, node: Any) -> str:
         relation = self.relation(node.relation)
-        builder = f"qx.InsertIntoTable({relation})"
+        builder = f"qs.InsertIntoTable({relation})"
         target_indirections = bool(node.cols and any(col.indirection for col in node.cols))
         if node.cols:
             if target_indirections:
@@ -2610,9 +2610,9 @@ class GoEmitter:
         if infer is None:
             if _enum_name(node.action) != "ONCONFLICT_NOTHING":
                 raise self.unsupported("ON CONFLICT DO UPDATE has no target")
-            value = "qx.AnyConflict()"
+            value = "qs.AnyConflict()"
         elif infer.conname:
-            value = f"qx.ConflictConstraint({_go_quote(infer.conname)})"
+            value = f"qs.ConflictConstraint({_go_quote(infer.conname)})"
         else:
             elems = list(infer.indexElems or ())
             if not elems:
@@ -2620,9 +2620,9 @@ class GoEmitter:
             elements: list[str] = []
             for elem in elems:
                 if elem.name:
-                    element = f"qx.IndexColumn({_go_quote(elem.name)})"
+                    element = f"qs.IndexColumn({_go_quote(elem.name)})"
                 elif elem.expr is not None:
-                    element = f"qx.IndexExpr({self.expr(elem.expr)})"
+                    element = f"qs.IndexExpr({self.expr(elem.expr)})"
                 else:
                     raise self.unsupported("conflict index element has no expression")
                 if elem.collation:
@@ -2639,11 +2639,11 @@ class GoEmitter:
                 for elem in elems
             )
             if plain_columns:
-                value = f"qx.ConflictColumns({_join(_go_quote(elem.name) for elem in elems if elem.name)})"
+                value = f"qs.ConflictColumns({_join(_go_quote(elem.name) for elem in elems if elem.name)})"
             else:
-                value = f"qx.ConflictIndex({_join(elements)})"
+                value = f"qs.ConflictIndex({_join(elements)})"
             if infer.whereClause is not None:
-                value += f".TargetWhere(qx.AsCondition({self.expr(infer.whereClause)}))"
+                value += f".TargetWhere(qs.AsCondition({self.expr(infer.whereClause)}))"
         if _enum_name(node.action) == "ONCONFLICT_NOTHING":
             return f"({value}).DoNothing()"
         updates = self.assignments(node.targetList or ())
@@ -2651,11 +2651,11 @@ class GoEmitter:
             raise self.unsupported("ON CONFLICT DO UPDATE has no assignments")
         value += f".DoUpdate({_join(updates)})"
         if node.whereClause is not None:
-            value += f".Where(qx.AsCondition({self.expr(node.whereClause)}))"
+            value += f".Where(qs.AsCondition({self.expr(node.whereClause)}))"
         return value
 
     def update(self, node: Any) -> str:
-        builder = f"qx.UpdateTable({self.relation(node.relation)})"
+        builder = f"qs.UpdateTable({self.relation(node.relation)})"
         assigns = self.assignments(node.targetList or ())
         if not assigns:
             raise self.unsupported("UPDATE has no assignments")
@@ -2668,7 +2668,7 @@ class GoEmitter:
                 raise self.unsupported("CURRENT OF has no cursor name")
             builder += f".WhereCurrentOf({_go_quote(str(cursor))})"
         elif node.whereClause is not None:
-            builder += f".Where(qx.AsCondition({self.expr(node.whereClause)}))"
+            builder += f".Where(qs.AsCondition({self.expr(node.whereClause)}))"
         returning, aliases = self.returning(node.returningClause)
         if aliases:
             builder += f".ReturningRows({aliases})"
@@ -2677,7 +2677,7 @@ class GoEmitter:
         return self._with(builder, node.withClause)
 
     def delete(self, node: Any) -> str:
-        builder = f"qx.DeleteFromTable({self.relation(node.relation)})"
+        builder = f"qs.DeleteFromTable({self.relation(node.relation)})"
         if node.usingClause:
             builder += f".UsingExpr({_join(self.relation(value) for value in node.usingClause)})"
         if _node_name(node.whereClause) == "CurrentOfExpr":
@@ -2686,7 +2686,7 @@ class GoEmitter:
                 raise self.unsupported("CURRENT OF has no cursor name")
             builder += f".WhereCurrentOf({_go_quote(str(cursor))})"
         elif node.whereClause is not None:
-            builder += f".Where(qx.AsCondition({self.expr(node.whereClause)}))"
+            builder += f".Where(qs.AsCondition({self.expr(node.whereClause)}))"
         returning, aliases = self.returning(node.returningClause)
         if aliases:
             builder += f".ReturningRows({aliases})"
@@ -2695,10 +2695,10 @@ class GoEmitter:
         return self._with(builder, node.withClause)
 
     def merge(self, node: Any) -> str:
-        builder = f"qx.MergeIntoTable({self.relation(node.relation)}).Using({self.relation(node.sourceRelation)})"
+        builder = f"qs.MergeIntoTable({self.relation(node.relation)}).Using({self.relation(node.sourceRelation)})"
         if node.joinCondition is None:
             raise self.unsupported("MERGE has no join condition")
-        builder += f".On(qx.AsCondition({self.expr(node.joinCondition)}))"
+        builder += f".On(qs.AsCondition({self.expr(node.joinCondition)}))"
         branches: list[str] = []
         for branch in node.mergeWhenClauses or ():
             kind = {
@@ -2708,9 +2708,9 @@ class GoEmitter:
             }.get(_enum_name(branch.matchKind))
             if kind is None:
                 raise self.unsupported(f"MERGE match kind {_enum_name(branch.matchKind)}")
-            value = f"qx.{kind}()"
+            value = f"qs.{kind}()"
             if branch.condition is not None:
-                value += f".And(qx.AsCondition({self.expr(branch.condition)}))"
+                value += f".And(qs.AsCondition({self.expr(branch.condition)}))"
             action = _enum_name(branch.commandType)
             if action == "CMD_UPDATE":
                 assignments = self.assignments(branch.targetList or ())
@@ -2744,7 +2744,7 @@ class GoEmitter:
     def statement(self, node: Any) -> str:
         if _node_name(node) == "ExplainStmt":
             query = self.rowset(node.query)
-            builder = f"qx.Explain({query})"
+            builder = f"qs.Explain({query})"
             for option in node.options or ():
                 name = str(option.defname).lower()
                 if name == "format":
@@ -2752,7 +2752,7 @@ class GoEmitter:
                     formats = {"text": "ExplainText", "json": "ExplainJSON", "xml": "ExplainXML", "yaml": "ExplainYAML"}
                     if fmt not in formats:
                         raise self.unsupported(f"EXPLAIN format {fmt}")
-                    builder += f".Format(qx.{formats[fmt]})"
+                    builder += f".Format(qs.{formats[fmt]})"
                     continue
                 methods = {
                     "analyze": "Analyze",
@@ -2769,7 +2769,7 @@ class GoEmitter:
                 if name == "serialize":
                     # Preserve bare SERIALIZE separately from explicit TEXT;
                     # both mean text to PostgreSQL, but the parser AST keeps
-                    # the spelling and qx exposes both forms.
+                    # the spelling and qs exposes both forms.
                     if option.arg is None:
                         builder += ".Serialize()"
                         continue
@@ -2777,7 +2777,7 @@ class GoEmitter:
                     modes = {"none": "SerializeNone", "text": "SerializeText", "binary": "SerializeBinary"}
                     if mode not in modes:
                         raise self.unsupported(f"EXPLAIN serialization mode {mode}")
-                    builder += f".Serialize(qx.{modes[mode]})"
+                    builder += f".Serialize(qs.{modes[mode]})"
                     continue
                 method = methods.get(name)
                 if method is None:
@@ -2860,7 +2860,7 @@ def canonical_ast(node: Any, *, parent: str = "", field: str = "") -> Any:
                 option_name = str(getattr(node, "defname", "")).lower()
                 if option_name in _EXPLAIN_BOOLEAN_OPTIONS:
                     # PostgreSQL accepts bare flags, ON/OFF, and TRUE/FALSE;
-                    # qx's typed option methods render TRUE/FALSE.  Keep the
+                    # qs's typed option methods render TRUE/FALSE.  Keep the
                     # option itself, order, and semantic value while removing
                     # only this spelling difference.
                     if value is None:
@@ -3094,7 +3094,7 @@ def _go_probe(repo: Path, occurrences: Sequence[QueryOccurrence], probe_dir: Pat
         entries: list[str] = []
         for occurrence in chunk:
             entries.append(
-                "{id: %d, build: func() qx.Statement { return %s }}"
+                "{id: %d, build: func() qs.Statement { return %s }}"
                 % (occurrence.id, occurrence.builder)
             )
         source = """package main
@@ -3103,12 +3103,12 @@ import (
     "encoding/json"
     "fmt"
     "os"
-    qx "github.com/jacoelho/qx"
+    qs "github.com/jacoelho/qs"
 )
 
 type probeCase struct {
     id int
-    build func() qx.Statement
+    build func() qs.Statement
 }
 type probeResult struct {
     ID int `json:"id"`
@@ -3271,7 +3271,7 @@ def make_report(
     files = sorted({item.file for item in units})
     planner_files = sorted({unit.file for unit in units if _planner_file(unit.file)})
     report = {
-        "schema": "qx.postgres-coverage.v1",
+        "schema": "qs.postgres-coverage.v1",
         "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
         "repository": REPOSITORY,
         "revision": commit,
@@ -3287,7 +3287,7 @@ def make_report(
             "included": "parsable SELECT/VALUES/TABLE, INSERT, UPDATE, DELETE, MERGE and EXPLAIN query occurrences, including PREPARE/view/CTAS/cursor bodies and rule actions",
             "harnesses": sorted(LITERAL_QUERY_HARNESSES),
             "excluded": "DDL, session/control, COPY payloads, psql commands and parser-invalid input; each is counted separately",
-            "comparison": "rendered qx SQL is reparsed and compared with source AST; locations, built-in aliases, explicit/default ASC, EXPLAIN boolean spellings, and the documented narrow equivalences are removed",
+            "comparison": "rendered qs SQL is reparsed and compared with source AST; locations, built-in aliases, explicit/default ASC, EXPLAIN boolean spellings, and the documented narrow equivalences are removed",
             "expected_error_classification": "comment-derived hint only; expected output files are linked per source file but do not prove a particular occurrence failed",
             "planner_file_tokens": list(PLANNER_FILE_TOKENS),
             "planner_files": planner_files,
@@ -3428,7 +3428,7 @@ def _validate_export_state(
     raw = [
         item.id
         for item in occurrences
-        if item.builder and re.search(r"\bqx\.(?:UnsafeSQL|Fragment|StatementSQL)\s*\(", item.builder)
+        if item.builder and re.search(r"\bqs\.(?:UnsafeSQL|Fragment|StatementSQL)\s*\(", item.builder)
     ]
     if raw:
         raise SystemExit(f"--export-go found forbidden raw constructors at ids {raw[:8]!r}")
@@ -3498,7 +3498,7 @@ def _render_shard_test(index: int, items: Sequence[QueryOccurrence]) -> str:
     lines = [
         "// Code generated by scripts/postgres_corpus.py; DO NOT EDIT.\n",
         "//\n",
-        "// This file owns only the typed qx builders for its stride-8 shard.\n",
+        "// This file owns only the typed qs builders for its stride-8 shard.\n",
         "\n",
         f"package {package}\n",
         "\n",
@@ -3507,10 +3507,10 @@ def _render_shard_test(index: int, items: Sequence[QueryOccurrence]) -> str:
         '\t"testing"\n',
     ]
     if any(item.builder for item in items):
-        lines.append('\tqx "github.com/jacoelho/qx"\n')
+        lines.append('\tqs "github.com/jacoelho/qs"\n')
     lines.extend(
         [
-            '\t"github.com/jacoelho/qx/internal/postgrescorpus"\n',
+            '\t"github.com/jacoelho/qs/internal/postgrescorpus"\n',
             ")\n",
             "\n",
             "// corpusData is the immutable SQL/provenance side of this shard.\n",
@@ -3522,7 +3522,7 @@ def _render_shard_test(index: int, items: Sequence[QueryOccurrence]) -> str:
     for occurrence in items:
         if occurrence.builder:
             lines.append(
-                f"func build{occurrence.id:05d}() qx.Statement {{ return {occurrence.builder} }}\n"
+                f"func build{occurrence.id:05d}() qs.Statement {{ return {occurrence.builder} }}\n"
             )
     lines.extend(("\n", "func TestPostgreSQLCorpusShard", f"{index:02d}", "(t *testing.T) {\n"))
     lines.extend(("\tt.Parallel()\n", "\tpostgrescorpus.Run(t, ", str(index), ", corpusData, []postgrescorpus.Factory{\n"))
@@ -3680,7 +3680,7 @@ def run(args: argparse.Namespace) -> int:
             occurrence.builder = emitter.statement(occurrence.node)
             # Check constructor calls rather than substrings: a legitimate
             # string literal may contain words such as ``FragmentDelimiter``.
-            if re.search(r"\bqx\.(?:UnsafeSQL|Fragment|StatementSQL)\s*\(", occurrence.builder):
+            if re.search(r"\bqs\.(?:UnsafeSQL|Fragment|StatementSQL)\s*\(", occurrence.builder):
                 raise Unsupported("generated builder contains a forbidden raw constructor")
             occurrence.normalization = tuple(sorted(emitter.normalizations))
             occurrence.status = "probe_pending"
@@ -3702,7 +3702,7 @@ def run(args: argparse.Namespace) -> int:
             if probe_path.exists() and not probe_path.is_dir():
                 raise SystemExit(f"--probe-dir is not a directory: {probe_path}")
         else:
-            probe_path = Path(tempfile.mkdtemp(prefix="qx-postgres-probe-"))
+            probe_path = Path(tempfile.mkdtemp(prefix="qs-postgres-probe-"))
         probe_results = _go_probe(repo, probe_occurrences, probe_path)
         for occurrence in probe_occurrences:
             value = probe_results.get(occurrence.id, {})
@@ -3841,7 +3841,7 @@ def _threshold_fraction(value: float | None) -> float | None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("postgres_root", type=Path, help="pinned PostgreSQL source archive or checkout")
-    parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent, help="qx repository used to compile the probe")
+    parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent, help="qs repository used to compile the probe")
     parser.add_argument("--report", type=Path, default=Path("docs/postgres-coverage.json"), help="coverage report path")
     parser.add_argument("--commit", help="40-character PostgreSQL commit SHA when the source is not a git checkout")
     parser.add_argument("--expected-sql-sha256", help="fail if the regression SQL tree hash differs from this digest")

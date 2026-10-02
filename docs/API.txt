@@ -1,6 +1,6 @@
-package qx // import "github.com/jacoelho/qx"
+package qs // import "github.com/jacoelho/qs"
 
-Package qx builds PostgreSQL queries without reflection, execution, or scanning.
+Package qs builds PostgreSQL queries without reflection, execution, or scanning.
 
 Ordinary values become bind parameters. Identifiers are quoted. SQL-suffixed
 methods and UnsafeSQL accept trusted application-authored SQL, never request
@@ -21,10 +21,10 @@ responsibility.
 VARIABLES
 
 var (
-	ErrInvalid        = errors.New("qx: invalid query")
-	ErrUnsupported    = errors.New("qx: unsupported PostgreSQL feature")
-	ErrParameterLimit = errors.New("qx: parameter limit exceeded")
-	ErrDepth          = errors.New("qx: cyclic query or nesting limit exceeded")
+	ErrInvalid        = errors.New("qs: invalid query")
+	ErrUnsupported    = errors.New("qs: unsupported PostgreSQL feature")
+	ErrParameterLimit = errors.New("qs: parameter limit exceeded")
+	ErrDepth          = errors.New("qs: cyclic query or nesting limit exceeded")
 )
     Sentinel errors can be matched with errors.Is.
 
@@ -159,7 +159,7 @@ type Condition struct {
 	// Has unexported fields.
 }
     Condition is a SQL boolean expression. Unknown (SQL NULL) retains PostgreSQL
-    three-valued semantics; qx never rewrites equality according to a bound
+    three-valued semantics; qs never rewrites equality according to a bound
     value.
 
 func And(conditions ...Condition) Condition
@@ -283,7 +283,7 @@ func True() Condition
 
 func XMLIsDocument(value Expr) Condition
     XMLIsDocument tests whether an XML value has document shape. PostgreSQL
-    evaluates XML validity and document shape; qx only owns the SQL syntax.
+    evaluates XML validity and document shape; qs only owns the SQL syntax.
 
 func XMLIsNotDocument(value Expr) Condition
 
@@ -544,6 +544,7 @@ type ExplainBuilder struct {
 func Explain(query Statement) *ExplainBuilder
 
 func (b *ExplainBuilder) Analyze(value bool) *ExplainBuilder
+    Analyze requests execution as well as planning, including wrapped mutations.
 
 func (b *ExplainBuilder) AppendSQL(sql []byte, args []any) ([]byte, []any, error)
 
@@ -551,34 +552,45 @@ func (b *ExplainBuilder) AppendWith(sql []byte, args []any, options Options) ([]
     AppendWith renders with options into caller-owned SQL and argument storage.
 
 func (b *ExplainBuilder) Buffers(value bool) *ExplainBuilder
+    Buffers requests buffer usage statistics; PostgreSQL controls their
+    applicability.
 
 func (b *ExplainBuilder) Clone() *ExplainBuilder
 
 func (b *ExplainBuilder) Costs(value bool) *ExplainBuilder
+    Costs includes planner cost and cardinality estimates.
 
 func (b *ExplainBuilder) Format(format ExplainFormat) *ExplainBuilder
 
 func (b *ExplainBuilder) GenericPlan(value bool) *ExplainBuilder
+    GenericPlan requests a parameter-independent plan; it cannot combine with
+    ANALYZE.
 
 func (b *ExplainBuilder) Memory(value bool) *ExplainBuilder
+    Memory requests planner memory usage statistics (PostgreSQL 17+).
 
 func (b *ExplainBuilder) Serialize(modes ...ExplainSerialization) *ExplainBuilder
     Serialize requires PostgreSQL 17+. With no mode it emits bare SERIALIZE,
     which defaults to TEXT. All modes except NONE require Analyze(true).
 
 func (b *ExplainBuilder) Settings(value bool) *ExplainBuilder
+    Settings includes planner settings that differ from built-in defaults.
 
 func (b *ExplainBuilder) Summary(value bool) *ExplainBuilder
+    Summary controls planning and execution summary statistics.
 
 func (b *ExplainBuilder) Timing(value bool) *ExplainBuilder
+    Timing controls per-node execution timing during ANALYZE.
 
 func (b *ExplainBuilder) ToSQL() (string, []any, error)
 
 func (b *ExplainBuilder) ToSQLWith(options Options) (string, []any, error)
 
 func (b *ExplainBuilder) Verbose(value bool) *ExplainBuilder
+    Verbose includes output expressions and qualified object names in the plan.
 
 func (b *ExplainBuilder) WAL(value bool) *ExplainBuilder
+    WAL requests write-ahead log statistics (PostgreSQL 13+).
 
 type ExplainFormat uint8
     ExplainFormat controls the server's plan representation.
@@ -636,7 +648,7 @@ func ArrayLower(array, dimension Expr) Expr
 
 func ArrayParam[T any](values []T, element DataType) Expr
     ArrayParam binds one driver-encoded array, with an explicit PostgreSQL cast.
-    The driver must support encoding []T; qx does not convert or copy the slice.
+    The driver must support encoding []T; qs does not convert or copy the slice.
 
 func ArrayPosition(array, value Expr) Expr
 
@@ -712,6 +724,8 @@ func CurrentUser() Expr
 func DateBin(stride, source, origin Expr) Expr
 
 func DateRange(arguments ...Expr) Expr
+    DateRange uses PostgreSQL constructor overloads for date bounds and
+    inclusivity.
 
 func DateTrunc(precision, value Expr, zone ...Expr) Expr
 
@@ -759,8 +773,12 @@ func Ident(parts ...string) Expr
     quoted.
 
 func Int4Range(arguments ...Expr) Expr
+    Int4Range uses PostgreSQL constructor overloads for int4 bounds and
+    inclusivity.
 
 func Int8Range(arguments ...Expr) Expr
+    Int8Range uses PostgreSQL constructor overloads for int8 bounds and
+    inclusivity.
 
 func JSONAgg(expr Expr) Expr
 
@@ -868,6 +886,8 @@ func Lower(expr Expr) Expr
 func Max(expr Expr) Expr
 
 func MergeAction() Expr
+    MergeAction reports the action taken for a MERGE RETURNING row (PostgreSQL
+    17+).
 
 func Min(expr Expr) Expr
 
@@ -877,6 +897,7 @@ func NamedArg(name string, expr Expr) Expr
     NamedArg and Variadic provide PostgreSQL function argument syntax.
 
 func New(column string) Expr
+    New references a post-mutation RETURNING column (PostgreSQL 18+).
 
 func Normalize(value Expr, form ...UnicodeNormalForm) Expr
     Normalize emits NORMALIZE(value) or NORMALIZE(value, form).
@@ -895,8 +916,11 @@ func NullIf(value, other Expr) Expr
 func NullLiteral() Expr
 
 func NumRange(arguments ...Expr) Expr
+    NumRange uses PostgreSQL constructor overloads for numeric bounds and
+    inclusivity.
 
 func Old(column string) Expr
+    Old references a pre-mutation RETURNING column (PostgreSQL 18+).
 
 func Operator(left Expr, operator string, right Expr) Expr
     Operator uses a custom symbolic PostgreSQL operator. It validates the
@@ -912,7 +936,7 @@ func Overlay(value, replacement, start Expr, length ...Expr) Expr
 
 func Param[T any](value T) Expr
     Param binds exactly one value. It does not inspect pointers, expand slices,
-    invoke driver.Valuer or call a codec. Use ParamNull for qx.Null values
+    invoke driver.Valuer or call a codec. Use ParamNull for qs.Null values
     and In for expanded lists. The value must not be mutated before execution
     completes.
 
@@ -943,10 +967,12 @@ func QualifiedOperator(left Expr, schema, operator string, right Expr) Expr
     QualifiedOperator supports extension operators selected by schema.
 
 func RangeAgg(value Expr) Expr
+    RangeAgg aggregates ranges into a multirange (PostgreSQL 14+).
 
 func RangeDifference(left, right Expr) Expr
 
 func RangeIntersectAgg(value Expr) Expr
+    RangeIntersectAgg intersects range inputs as an aggregate (PostgreSQL 14+).
 
 func RangeIntersection(left, right Expr) Expr
 
@@ -1016,12 +1042,16 @@ func TSOr(left, right Expr) Expr
 func TSPhrase(left, right Expr) Expr
 
 func TSRange(arguments ...Expr) Expr
+    TSRange uses PostgreSQL constructor overloads for timestamp bounds and
+    inclusivity.
 
 func TSRank(arguments ...Expr) Expr
 
 func TSRankCD(arguments ...Expr) Expr
 
 func TSTZRange(arguments ...Expr) Expr
+    TSTZRange uses PostgreSQL constructor overloads for timestamptz bounds and
+    inclusivity.
 
 func ToJSON(value Expr) Expr
 
@@ -1673,7 +1703,7 @@ type JSONInput interface {
 	~string | ~[]byte
 }
     JSONInput is an encoded JSON document. Encoding and validation remain the
-    caller's and PostgreSQL's responsibility; qx does not marshal Go values.
+    caller's and PostgreSQL's responsibility; qs does not marshal Go values.
 
 type JSONInputValue interface {
 	// Has unexported methods.
@@ -2152,7 +2182,7 @@ func Some[T any](value T) Optional[T]
 
 type Options struct {
 	PlaceholderStyle PlaceholderStyle
-	PostgreSQL       int
+	PostgreSQL       PostgreSQLVersion
 	MaxParameters    int
 	MaxDepth         int
 }
@@ -2183,6 +2213,21 @@ const (
 	Dollar   PlaceholderStyle = iota // $1, $2, ...; the PostgreSQL default.
 	Question                         // ?, ?, ...; requires a consumer supporting this format.
 )
+type PostgreSQLVersion int
+    PostgreSQLVersion selects the major release used for feature validation.
+    Zero selects PostgreSQL18; other values must be one of the named releases.
+
+const (
+	PostgreSQL12 PostgreSQLVersion = 12 + iota
+	PostgreSQL13
+	PostgreSQL14
+	PostgreSQL15
+	PostgreSQL16
+	PostgreSQL17
+	PostgreSQL18
+)
+    Supported PostgreSQL major releases for feature validation.
+
 type RecordColumn struct {
 	Name string
 	Type DataType
@@ -2395,7 +2440,7 @@ func SelectNoColumns() *SelectBuilder
 func SelectSQL(projections ...string) *SelectBuilder
     SelectSQL is a convenience wrapper for Select with each argument wrapped
     in UnsafeSQL. It accepts trusted projection lists, not identifiers or user
-    data. Column counts for these fragments are unknown; qx does not pretend
+    data. Column counts for these fragments are unknown; qs does not pretend
     that counting commas parses SQL. Prefer Select with expressions for new
     queries.
 

@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // sqlSyntaxKind identifies one of PostgreSQL's grammar productions that looks
 // like a function call but is not an ordinary function invocation.  The

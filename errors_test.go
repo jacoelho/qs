@@ -1,4 +1,4 @@
-package qx
+package qs
 
 import (
 	"errors"
@@ -16,9 +16,9 @@ func TestRenderErrorMethods(t *testing.T) {
 		cause error
 	}{
 		{"nil", nil, "<nil>", nil},
-		{"zero", &RenderError{}, "qx: render error", nil},
-		{"context_without_cause", &RenderError{Clause: "SELECT", Detail: "requires a projection"}, "qx: render error (SELECT): requires a projection", nil},
-		{"validation", &RenderError{Cause: ErrInvalid, Clause: "SELECT", Detail: "requires a projection"}, "qx: invalid query (SELECT): requires a projection", ErrInvalid},
+		{"zero", &RenderError{}, "qs: render error", nil},
+		{"context_without_cause", &RenderError{Clause: "SELECT", Detail: "requires a projection"}, "qs: render error (SELECT): requires a projection", nil},
+		{"validation", &RenderError{Cause: ErrInvalid, Clause: "SELECT", Detail: "requires a projection"}, "qs: invalid query (SELECT): requires a projection", ErrInvalid},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

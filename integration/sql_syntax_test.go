@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
-func syntaxText(t *testing.T, ctx context.Context, conn *pgx.Conn, expr qx.Expr) string {
+func syntaxText(t *testing.T, ctx context.Context, conn *pgx.Conn, expr qs.Expr) string {
 	t.Helper()
-	query, args, err := qx.Select(expr.Cast(qx.Text)).ToSQL()
+	query, args, err := qs.Select(expr.Cast(qs.Text)).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,15 +35,15 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 	// both exercised by PostgreSQL rather than only by the renderer golden.
 	cases := []struct {
 		name string
-		expr qx.Expr
+		expr qs.Expr
 		want string
 	}{
-		{"substring", qx.SubstringFrom(qx.LiteralString("abcdef"), qx.LiteralInt(2), qx.LiteralInt(2)), "bc"},
-		{"position", qx.Position(qx.LiteralString("bc"), qx.LiteralString("abc")), "2"},
-		{"normalize_nfc", qx.Normalize(qx.LiteralString("e\u0301"), qx.NFC), "é"},
-		{"overlay", qx.Overlay(qx.LiteralString("abcdef"), qx.LiteralString("XY"), qx.LiteralInt(2), qx.LiteralInt(2)), "aXYdef"},
-		{"trim_leading", qx.TrimSyntax(qx.LiteralString("xxvalue"), qx.TrimLeadingDirection, qx.LiteralString("x")), "value"},
-		{"trim_trailing", qx.TrimSyntax(qx.LiteralString("valuexx"), qx.TrimTrailingDirection, qx.LiteralString("x")), "value"},
+		{"substring", qs.SubstringFrom(qs.LiteralString("abcdef"), qs.LiteralInt(2), qs.LiteralInt(2)), "bc"},
+		{"position", qs.Position(qs.LiteralString("bc"), qs.LiteralString("abc")), "2"},
+		{"normalize_nfc", qs.Normalize(qs.LiteralString("e\u0301"), qs.NFC), "é"},
+		{"overlay", qs.Overlay(qs.LiteralString("abcdef"), qs.LiteralString("XY"), qs.LiteralInt(2), qs.LiteralInt(2)), "aXYdef"},
+		{"trim_leading", qs.TrimSyntax(qs.LiteralString("xxvalue"), qs.TrimLeadingDirection, qs.LiteralString("x")), "value"},
+		{"trim_trailing", qs.TrimSyntax(qs.LiteralString("valuexx"), qs.TrimTrailingDirection, qs.LiteralString("x")), "value"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -53,31 +53,31 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 		})
 	}
 
-	if got := syntaxText(t, ctx, conn, qx.Overlaps(
-		qx.LiteralString("2026-01-01").Cast(qx.Date),
-		qx.LiteralString("2026-01-03").Cast(qx.Date),
-		qx.LiteralString("2026-01-02").Cast(qx.Date),
-		qx.LiteralString("2026-01-04").Cast(qx.Date),
+	if got := syntaxText(t, ctx, conn, qs.Overlaps(
+		qs.LiteralString("2026-01-01").Cast(qs.Date),
+		qs.LiteralString("2026-01-03").Cast(qs.Date),
+		qs.LiteralString("2026-01-02").Cast(qs.Date),
+		qs.LiteralString("2026-01-04").Cast(qs.Date),
 	).Expr()); got != "true" {
 		t.Fatalf("overlaps got %q; want true", got)
 	}
-	if got := syntaxText(t, ctx, conn, qx.IsNormalized(qx.LiteralString("e\u0301"), qx.NFC).Expr()); got != "false" {
+	if got := syntaxText(t, ctx, conn, qs.IsNormalized(qs.LiteralString("e\u0301"), qs.NFC).Expr()); got != "false" {
 		t.Fatalf("is normalized got %q; want false", got)
 	}
-	if got := syntaxText(t, ctx, conn, qx.IsNotNormalized(qx.LiteralString("e\u0301"), qx.NFC).Expr()); got != "true" {
+	if got := syntaxText(t, ctx, conn, qs.IsNotNormalized(qs.LiteralString("e\u0301"), qs.NFC).Expr()); got != "true" {
 		t.Fatalf("is not normalized got %q; want true", got)
 	}
 
-	local := qx.AtLocal(qx.LiteralString("2026-01-02 03:04:05+02").Cast(qx.TimestampTZ))
+	local := qs.AtLocal(qs.LiteralString("2026-01-02 03:04:05+02").Cast(qs.TimestampTZ))
 	if got := syntaxText(t, ctx, conn, local); got != "2026-01-02 01:04:05" {
 		t.Fatalf("AT LOCAL got %q; want 2026-01-02 01:04:05", got)
 	}
-	zone := qx.LiteralString("2026-01-02 03:04:05").Cast(qx.Timestamp).AtTimeZone(qx.LiteralString("UTC"))
+	zone := qs.LiteralString("2026-01-02 03:04:05").Cast(qs.Timestamp).AtTimeZone(qs.LiteralString("UTC"))
 	if got := syntaxText(t, ctx, conn, zone); !strings.HasPrefix(got, "2026-01-02 03:04:05") {
 		t.Fatalf("AT TIME ZONE got %q", got)
 	}
 
-	if got := syntaxText(t, ctx, conn, qx.CollationFor(qx.LiteralString("value").Collate("C"))); got == "" {
+	if got := syntaxText(t, ctx, conn, qs.CollationFor(qs.LiteralString("value").Collate("C"))); got == "" {
 		t.Fatal("COLLATION FOR returned an empty collation")
 	}
 }
@@ -90,15 +90,15 @@ func TestSQLValueFunctionPrecision(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name string
-		expr qx.Expr
+		expr qs.Expr
 	}{
-		{"current_time", qx.CurrentTime(3)},
-		{"current_timestamp", qx.CurrentTimestamp(3)},
-		{"localtime", qx.LocalTime(3)},
-		{"localtimestamp", qx.LocalTimestamp(3)},
+		{"current_time", qs.CurrentTime(3)},
+		{"current_timestamp", qs.CurrentTimestamp(3)},
+		{"localtime", qs.LocalTime(3)},
+		{"localtimestamp", qs.LocalTimestamp(3)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qx.Select(qx.Extract(qx.PartMicroseconds, tc.expr).Cast(qx.Int8)).ToSQL()
+			sql, args, err := qs.Select(qs.Extract(qs.PartMicroseconds, tc.expr).Cast(qs.Int8)).ToSQL()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,11 +114,11 @@ func TestSQLValueFunctionPrecision(t *testing.T) {
 
 	for _, tc := range []struct {
 		name string
-		expr qx.Expr
+		expr qs.Expr
 	}{
-		{"session_user", qx.SessionUser()},
-		{"current_schema", qx.CurrentSchema()},
-		{"current_catalog", qx.CurrentCatalog()},
+		{"session_user", qs.SessionUser()},
+		{"current_schema", qs.CurrentSchema()},
+		{"current_catalog", qs.CurrentCatalog()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := syntaxText(t, ctx, conn, tc.expr); got == "" {

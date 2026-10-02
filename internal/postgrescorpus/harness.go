@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	qx "github.com/jacoelho/qx"
+	qs "github.com/jacoelho/qs"
 )
 
 // Corpus statuses retain both verified queries and explicit coverage gaps.
@@ -46,7 +46,7 @@ type Case struct {
 // Factory explicitly associates a generated public-constructor builder with
 // an occurrence and its frozen coverage status.
 type Factory struct {
-	Build  func() qx.Statement
+	Build  func() qs.Statement
 	Status string
 	ID     int
 }

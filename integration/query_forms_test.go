@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func TestPostgreSQLZeroColumnSelect(t *testing.T) {
@@ -14,12 +14,12 @@ func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 	ctx, conn := connect(t)
 	cases := []struct {
 		name  string
-		query qx.Statement
+		query qs.Statement
 		rows  int
 	}{
-		{"bare", qx.SelectNoColumns(), 1},
-		{"where_false", qx.SelectNoColumns().Where(qx.False()), 0},
-		{"two_row_from", qx.SelectNoColumns().FromExpr(qx.ValuesExpr(qx.LiteralInt(1)).RowExpr(qx.LiteralInt(2)).As("v", "value")), 2},
+		{"bare", qs.SelectNoColumns(), 1},
+		{"where_false", qs.SelectNoColumns().Where(qs.False()), 0},
+		{"two_row_from", qs.SelectNoColumns().FromExpr(qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("v", "value")), 2},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestPostgreSQLNumericRadixValues(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query := qx.Select(qx.LiteralNumeric(tc.token).Cast(qx.Text))
+			query := qs.Select(qs.LiteralNumeric(tc.token).Cast(qs.Text))
 			sql, args, err := query.ToSQL()
 			if err != nil {
 				t.Fatal(err)
@@ -81,14 +81,14 @@ func TestPostgreSQLNumericRadixValues(t *testing.T) {
 func TestPostgreSQLUnaliasedLateralCorrelation(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	outer := qx.ValuesExpr(qx.LiteralInt(1)).RowExpr(qx.LiteralInt(2)).As("o", "n")
-	lateral := qx.Lateral(qx.Derived(
-		qx.Select(qx.LiteralInt(1)).Where(qx.Col("o.n").EqExpr(qx.LiteralInt(1))),
+	outer := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("o", "n")
+	lateral := qs.Lateral(qs.Derived(
+		qs.Select(qs.LiteralInt(1)).Where(qs.Col("o.n").EqExpr(qs.LiteralInt(1))),
 	))
-	query := qx.Select(qx.Col("o.n").Cast(qx.Text)).
+	query := qs.Select(qs.Col("o.n").Cast(qs.Text)).
 		FromExpr(outer).
 		CrossJoinExpr(lateral).
-		OrderBy(qx.Asc("o.n"))
+		OrderBy(qs.Asc("o.n"))
 	got := queryStrings(t, ctx, conn, query)
 	want := []string{"1"}
 	if !reflect.DeepEqual(got, want) {

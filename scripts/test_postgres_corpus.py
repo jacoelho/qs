@@ -191,7 +191,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
                 self.assertFalse(self._same(left, right))
 
     def test_adapter_families_roundtrip_through_compiled_probe(self) -> None:
-        # These are handwritten boundary cases for adapters whose qx
+        # These are handwritten boundary cases for adapters whose qs
         # constructors enforce structural invariants. The probe compiles and
         # renders every builder; assertions compare only the reparsed AST.
         sql_cases = (
@@ -261,7 +261,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             occurrence.builder = postgres_corpus.GoEmitter().statement(statement)
             occurrences.append(occurrence)
 
-        with tempfile.TemporaryDirectory(prefix="qx-postgres-adapter-probe-") as directory:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-adapter-probe-") as directory:
             results = postgres_corpus._go_probe(
                 Path(__file__).resolve().parents[1], occurrences, Path(directory)
             )
@@ -319,11 +319,11 @@ class PostgreSQLCorpusTests(unittest.TestCase):
         self.assertEqual(
             expected,
             [
-                "qx-postgres-corpus-37-param-1",
-                "qx-postgres-corpus-37-param-2",
+                "qs-postgres-corpus-37-param-1",
+                "qs-postgres-corpus-37-param-2",
             ],
         )
-        with tempfile.TemporaryDirectory(prefix="qx-postgres-arguments-") as directory:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-arguments-") as directory:
             results = postgres_corpus._go_probe(
                 Path(__file__).resolve().parents[1], [occurrence], Path(directory)
             )
@@ -352,7 +352,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             expected_hint="",
             planner=False,
             families=("select",),
-            builder="qx.Select(qx.LiteralInt(1))",
+            builder="qs.Select(qs.LiteralInt(1))",
         )
         duplicate = json.dumps(
             [
@@ -362,7 +362,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
         )
         extra = json.dumps([{"id": 12, "sql": sql, "args": []}])
         for response, message in ((duplicate, "duplicate occurrence id"), (extra, "id set mismatch")):
-            with self.subTest(message=message), tempfile.TemporaryDirectory(prefix="qx-postgres-probe-ids-") as directory:
+            with self.subTest(message=message), tempfile.TemporaryDirectory(prefix="qs-postgres-probe-ids-") as directory:
                 completed = mock.Mock(returncode=0, stdout=response, stderr="")
                 with mock.patch.object(postgres_corpus.subprocess, "run", return_value=completed):
                     with self.assertRaisesRegex(RuntimeError, message):
@@ -397,7 +397,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
                 families=("select",),
                 status=status,
                 generated_sql=sql if status == "verified" else "",
-                builder="qx.Select(qx.LiteralInt(1))" if status == "verified" else "",
+                builder="qs.Select(qs.LiteralInt(1))" if status == "verified" else "",
             )
             return value
 
@@ -415,7 +415,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             )
 
         raw = occurrence()
-        raw.builder = 'qx.UnsafeSQL("SELECT 1")'
+        raw.builder = 'qs.UnsafeSQL("SELECT 1")'
         with self.assertRaisesRegex(SystemExit, "forbidden raw constructors"):
             postgres_corpus._validate_export_state([raw], 1, {0: {"sql": sql}}, **kwargs)
 
@@ -443,10 +443,10 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             planner=False,
             families=("select",),
             status="verified",
-            builder='qx.Select(qx.Param[any]("qx-postgres-corpus-0-param-1"))',
+            builder='qs.Select(qs.Param[any]("qs-postgres-corpus-0-param-1"))',
             generated_sql="SELECT $1",
         )
-        with tempfile.TemporaryDirectory(prefix="qx-postgres-export-") as directory:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-export-") as directory:
             output = Path(directory) / "generated"
             postgres_corpus._export_go(
                 output,
@@ -468,14 +468,14 @@ class PostgreSQLCorpusTests(unittest.TestCase):
         self.assertEqual(record["line"], 9)
         self.assertEqual(record["original_sql"], "SELECT $1")
         self.assertEqual(record["want_sql"], "SELECT $1")
-        self.assertEqual(record["want_args"], ["qx-postgres-corpus-0-param-1"])
-        self.assertEqual(manifest["schema"], "qx-postgres-corpus-v2")
+        self.assertEqual(record["want_args"], ["qs-postgres-corpus-0-param-1"])
+        self.assertEqual(manifest["schema"], "qs-postgres-corpus-v2")
         self.assertEqual(manifest["counts"]["total"], 1)
         self.assertEqual(manifest["shards"][0]["first_id"], 0)
         self.assertEqual(manifest["shards"][0]["last_id"], 0)
 
     def test_export_rejects_argument_mismatch_from_compiled_run(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="qx-postgres-export-args-") as directory:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-export-args-") as directory:
             root = Path(directory)
             sql_path = root / "src" / "test" / "regress" / "sql" / "params.sql"
             sql_path.parent.mkdir(parents=True)
@@ -523,7 +523,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
                 reason="unsupported in the mini fixture" if status == "unsupported" else "",
                 generated_sql=sql if status == "verified" else "",
                 builder=(
-                    "qx.Select(qx.Param[any](\"qx-postgres-corpus-%d-param-1\"))" % identifier
+                    "qs.Select(qs.Param[any](\"qs-postgres-corpus-%d-param-1\"))" % identifier
                     if status != "unsupported"
                     else ""
                 ),
@@ -540,7 +540,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             make_case(7, "SELECT 5", "verified"),
             make_case(8, "SELECT $1", "verified"),
         ]
-        with tempfile.TemporaryDirectory(prefix="qx-postgres-export-shards-") as directory:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-export-shards-") as directory:
             output = Path(directory) / "generated"
             postgres_corpus._export_go(
                 output,
@@ -564,8 +564,8 @@ class PostgreSQLCorpusTests(unittest.TestCase):
 
         self.assertEqual([item["id"] for item in shard0], [0, 8])
         self.assertEqual([item["id"] for item in shard1], [1])
-        self.assertEqual(shard0[0]["want_args"], ["qx-postgres-corpus-0-param-1"])
-        self.assertEqual(shard0[1]["want_args"], ["qx-postgres-corpus-8-param-1"])
+        self.assertEqual(shard0[0]["want_args"], ["qs-postgres-corpus-0-param-1"])
+        self.assertEqual(shard0[1]["want_args"], ["qs-postgres-corpus-8-param-1"])
         self.assertEqual(shard1[0]["status"], "unsupported")
         self.assertEqual(manifest["counts"]["total"], 9)
         self.assertEqual(manifest["counts"]["verified"], 7)
@@ -611,7 +611,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             postgres_corpus.GoEmitter().statement(statement)
 
     def test_thresholds_use_real_census_and_reject_partial_or_unprobed_runs(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="qx-postgres-corpus-test-") as directory:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-corpus-test-") as directory:
             root = self._mini_root(Path(directory))
 
             def probe(_, occurrences, __):
@@ -709,7 +709,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             self.assertFalse((Path(directory) / "generated").exists())
 
     def test_source_hash_rejects_before_probe(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="qx-postgres-corpus-hash-") as directory:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-corpus-hash-") as directory:
             root = self._mini_root(Path(directory))
             args = self._args(root, Path(directory) / "mismatch.json", minimum_support=None)
             args.expected_sql_sha256 = "0" * 64

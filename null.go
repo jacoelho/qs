@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // Null represents a nullable SQL input. The zero value is SQL NULL. It has no
 // database/sql or pgx dependency and does not implement scanning or Valuer.

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func dropUtilityRelation(ctx context.Context, conn *pgx.Conn, name string) error {
@@ -27,19 +27,19 @@ func TestQueryUtilitiesAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	const (
-		ctasTable    = "qx_utility_ctas"
-		noDataTable  = "qx_utility_nodata"
-		intoTable    = "qx_utility_into"
-		materialized = "qx_utility_mv"
-		cursor       = "qx_utility_cursor"
-		executeName  = "qx_utility_execute"
+		ctasTable    = "qs_utility_ctas"
+		noDataTable  = "qs_utility_nodata"
+		intoTable    = "qs_utility_into"
+		materialized = "qs_utility_mv"
+		cursor       = "qs_utility_cursor"
+		executeName  = "qs_utility_execute"
 	)
 	for _, name := range []string{ctasTable, noDataTable, intoTable, materialized} {
 		if err := dropUtilityRelation(ctx, conn, name); err != nil {
 			t.Fatal(err)
 		}
 	}
-	ctas := qx.CreateTableAs(ctasTable, qx.Select(qx.LiteralInt(7).As("value")))
+	ctas := qs.CreateTableAs(ctasTable, qs.Select(qs.LiteralInt(7).As("value")))
 	if sql, args, err := ctas.ToSQL(); err != nil {
 		t.Fatal(err)
 	} else if _, err := conn.Exec(ctx, sql, args...); err != nil {
@@ -53,7 +53,7 @@ func TestQueryUtilitiesAgainstPostgres(t *testing.T) {
 		t.Fatalf("CTAS value=%d; want 7", value)
 	}
 
-	noData := qx.CreateTableAs(noDataTable, qx.Select(qx.LiteralInt(8).As("value"))).Columns("value").WithNoData()
+	noData := qs.CreateTableAs(noDataTable, qs.Select(qs.LiteralInt(8).As("value"))).Columns("value").WithNoData()
 	if sql, args, err := noData.ToSQL(); err != nil {
 		t.Fatal(err)
 	} else if _, err := conn.Exec(ctx, sql, args...); err != nil {
@@ -67,7 +67,7 @@ func TestQueryUtilitiesAgainstPostgres(t *testing.T) {
 		t.Fatalf("WITH NO DATA count=%d; want 0", count)
 	}
 
-	into := qx.Select(qx.LiteralInt(9).As("value")).Into(intoTable)
+	into := qs.Select(qs.LiteralInt(9).As("value")).Into(intoTable)
 	if sql, args, err := into.ToSQL(); err != nil {
 		t.Fatal(err)
 	} else if _, err := conn.Exec(ctx, sql, args...); err != nil {
@@ -80,7 +80,7 @@ func TestQueryUtilitiesAgainstPostgres(t *testing.T) {
 		t.Fatalf("SELECT INTO value=%d; want 9", value)
 	}
 
-	mview := qx.MaterializedViewAs(materialized, qx.Select(qx.LiteralInt(10).As("value")))
+	mview := qs.MaterializedViewAs(materialized, qs.Select(qs.LiteralInt(10).As("value")))
 	if sql, args, err := mview.ToSQL(); err != nil {
 		t.Fatal(err)
 	} else if _, err := conn.Exec(ctx, sql, args...); err != nil {
@@ -97,7 +97,7 @@ func TestQueryUtilitiesAgainstPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	var executed int
-	literal := qx.Execute(executeName, qx.LiteralInt(4))
+	literal := qs.Execute(executeName, qs.LiteralInt(4))
 	if sql, args, err := literal.ToSQL(); err != nil {
 		t.Fatal(err)
 	} else if err := conn.QueryRow(ctx, sql, args...).Scan(&executed); err != nil {
@@ -115,7 +115,7 @@ func TestQueryUtilitiesAgainstPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	cursorQuery := qx.DeclareCursor(cursor, qx.Select(qx.Col("value")).From(ctasTable)).WithHold()
+	cursorQuery := qs.DeclareCursor(cursor, qs.Select(qs.Col("value")).From(ctasTable)).WithHold()
 	sql, args, err := cursorQuery.ToSQL()
 	if err != nil {
 		t.Fatal(err)

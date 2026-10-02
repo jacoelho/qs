@@ -6,27 +6,27 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func TestWindowShorthandLiveSemantics(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	if _, err := conn.Exec(ctx, `
-		CREATE TEMP TABLE qx_window_fidelity(id integer PRIMARY KEY, v integer);
-		INSERT INTO qx_window_fidelity VALUES (1, 1), (2, 1), (3, 3);`); err != nil {
+		CREATE TEMP TABLE qs_window_fidelity(id integer PRIMARY KEY, v integer);
+		INSERT INTO qs_window_fidelity VALUES (1, 1), (2, 1), (3, 3);`); err != nil {
 		t.Fatal(err)
 	}
 
-	rowsFrame := qx.Window().OrderBy(qx.Asc("v"), qx.Asc("id")).Rows(qx.Preceding(1))
-	rangeFrame := qx.Window().OrderBy(qx.Asc("v")).Range(qx.Preceding(1))
-	groupsFrame := qx.Window().OrderBy(qx.Asc("v")).Groups(qx.Preceding(1))
-	query := qx.Select(
-		qx.Col("id"),
-		qx.Sum(qx.Col("v")).Over(rowsFrame),
-		qx.Sum(qx.Col("v")).Over(rangeFrame),
-		qx.Sum(qx.Col("v")).Over(groupsFrame),
-	).From("qx_window_fidelity").OrderBy(qx.Asc("id"))
+	rowsFrame := qs.Window().OrderBy(qs.Asc("v"), qs.Asc("id")).Rows(qs.Preceding(1))
+	rangeFrame := qs.Window().OrderBy(qs.Asc("v")).Range(qs.Preceding(1))
+	groupsFrame := qs.Window().OrderBy(qs.Asc("v")).Groups(qs.Preceding(1))
+	query := qs.Select(
+		qs.Col("id"),
+		qs.Sum(qs.Col("v")).Over(rowsFrame),
+		qs.Sum(qs.Col("v")).Over(rangeFrame),
+		qs.Sum(qs.Col("v")).Over(groupsFrame),
+	).From("qs_window_fidelity").OrderBy(qs.Asc("id"))
 	sql, args, err := query.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func TestWindowShorthandLiveSemantics(t *testing.T) {
 func TestExplainBareSerializationLive(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	query := qx.Explain(qx.Select(qx.Param("payload"))).Analyze(true).Serialize().Format(qx.ExplainJSON)
+	query := qs.Explain(qs.Select(qs.Param("payload"))).Analyze(true).Serialize().Format(qs.ExplainJSON)
 	sql, args, err := query.ToSQL()
 	if err != nil {
 		t.Fatal(err)

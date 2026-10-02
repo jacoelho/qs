@@ -1,4 +1,4 @@
-package qx
+package qs
 
 type overridingMode uint8
 

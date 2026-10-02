@@ -18,7 +18,7 @@ audit. Serial parent groups retain at most 256 records per shard while individua
 cases run in parallel. The audit verifies every strided ID, actual package/file
 inventory, hashes, status totals and global shape coverage across shard boundaries.
 The full default suite passed with an empty module cache, `GOPROXY=off`,
-`GOSUMDB=off` and a deliberately invalid `QX_TEST_DSN`. Its dependency graph
+`GOSUMDB=off` and a deliberately invalid `QS_TEST_DSN`. Its dependency graph
 contains no external packages or live integration package. Native fixtures need
 no Python, parser or database during tests.
 
@@ -55,7 +55,7 @@ The existing variadic INSERT width mismatch remains a rendering error.
 
 Live tests use `-tags postgres` in the root module. The latest tagged suite passed
 two race/shuffle repetitions with eight parallel tests. Each test owns a schema
-and connection; fresh bounded cleanup removed every `qx_test_` schema. The local
+and connection; fresh bounded cleanup removed every `qs_test_` schema. The local
 server was stopped after verification. Missing DSN in an opted-in run fails
 explicitly. CI uses the same tag and bounded parallelism.
 
@@ -165,3 +165,33 @@ GOMAXPROCS=2 go vet -p=2 ./...
 GOMAXPROCS=2 go test -tags postgres -run='^$' -p=2 ./integration
 GOMAXPROCS=2 go vet -tags postgres -p=2 ./integration
 ```
+
+## Module and package rename — 2 October 2026
+
+The module is `github.com/jacoelho/qs`, package `qs`; the full project name is
+Querysmith. Public documentation, external-client checks, generator templates,
+CI, lint allowlists, error labels and integration fixtures use the new name.
+Tagged live tests require `QS_TEST_DSN` and own `qs_test_` schemas.
+
+The corpus migration changes only branding: manifest/report schema labels,
+renderer error prefixes and opaque parameter sentinel strings. Ninety-five of
+28,197 JSONL records changed. All source/expected SQL, shapes, IDs, statuses,
+normalizations, provenance and counts match the preceding snapshot. Shard
+hashes were recomputed and audited. Historical raw benchmark/fuzz logs and
+stored local source/probe paths retain their original labels.
+
+Fresh verification passed:
+
+- Full default and race/shuffle suites with an empty module cache, networking
+  disabled and an invalid live-test DSN; all verified corpus cases ran.
+- All 15 corpus-tool tests, including compiled probes and both export/census
+  rejection of raw constructors.
+- Vet across default packages and tagged integration; diff-scoped lint of the
+  core, harness and tagged integration packages reported zero issues.
+- The full tagged integration suite with race/shuffle on PostgreSQL 18.6;
+  every test schema was removed and the isolated server was stopped.
+- Forwarding-method regeneration, regenerated public API documentation,
+  local documentation links and active-reference scans.
+
+The language-server session retained stale pre-rename file snapshots and corpus
+symbols. Compiler tests, vet and lint provide the current semantic checks.

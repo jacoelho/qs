@@ -7,17 +7,17 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func TestXMLConstructionEscapingAndNesting(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	nested := qx.XMLElement("inner", qx.Param(`<&`).Cast(qx.Text)).Expr()
-	outer := qx.XMLElement("outer", nested, qx.Param(`<&`).Cast(qx.Text)).Attributes(
-		qx.XMLAttr("a", qx.Param(`<>&"`).Cast(qx.Text)),
+	nested := qs.XMLElement("inner", qs.Param(`<&`).Cast(qs.Text)).Expr()
+	outer := qs.XMLElement("outer", nested, qs.Param(`<&`).Cast(qs.Text)).Attributes(
+		qs.XMLAttr("a", qs.Param(`<>&"`).Cast(qs.Text)),
 	).Expr()
-	query := qx.Select(outer)
+	query := qs.Select(outer)
 	sql, args, err := query.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -35,11 +35,11 @@ func TestXMLConstructionEscapingAndNesting(t *testing.T) {
 func TestXMLDocumentAndContentSerialization(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	document := qx.XMLParse(qx.XMLDocument, qx.Param(`<root/>`).Cast(qx.Text)).Expr()
-	fragment := qx.XMLParse(qx.XMLContent, qx.Param(`<one/><two/>`).Cast(qx.Text)).Expr()
-	query := qx.Select(
-		qx.XMLSerialize(qx.XMLDocument, document, qx.Text).Expr(),
-		qx.XMLSerialize(qx.XMLContent, fragment, qx.Text).Expr(),
+	document := qs.XMLParse(qs.XMLDocument, qs.Param(`<root/>`).Cast(qs.Text)).Expr()
+	fragment := qs.XMLParse(qs.XMLContent, qs.Param(`<one/><two/>`).Cast(qs.Text)).Expr()
+	query := qs.Select(
+		qs.XMLSerialize(qs.XMLDocument, document, qs.Text).Expr(),
+		qs.XMLSerialize(qs.XMLContent, fragment, qs.Text).Expr(),
 	)
 	sql, args, err := query.ToSQL()
 	if err != nil {
@@ -57,9 +57,9 @@ func TestXMLDocumentAndContentSerialization(t *testing.T) {
 func TestXMLDocumentPredicate(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	document := qx.XMLParse(qx.XMLDocument, qx.Param(`<root/>`).Cast(qx.Text)).Expr()
-	content := qx.XMLParse(qx.XMLContent, qx.Param(`<one/><two/>`).Cast(qx.Text)).Expr()
-	query := qx.Select(qx.XMLIsDocument(document).Expr(), qx.XMLIsNotDocument(content).Expr())
+	document := qs.XMLParse(qs.XMLDocument, qs.Param(`<root/>`).Cast(qs.Text)).Expr()
+	content := qs.XMLParse(qs.XMLContent, qs.Param(`<one/><two/>`).Cast(qs.Text)).Expr()
+	query := qs.Select(qs.XMLIsDocument(document).Expr(), qs.XMLIsNotDocument(content).Expr())
 	sql, args, err := query.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -76,10 +76,10 @@ func TestXMLDocumentPredicate(t *testing.T) {
 func TestXMLExists(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	document := qx.Param(`<root><item/></root>`).Cast(qx.XML)
-	query := qx.Select(
-		qx.XMLExists(qx.LiteralString(`/root/item`), document).Expr(),
-		qx.XMLExists(qx.LiteralString(`/root/missing`), document).ByRef().Expr(),
+	document := qs.Param(`<root><item/></root>`).Cast(qs.XML)
+	query := qs.Select(
+		qs.XMLExists(qs.LiteralString(`/root/item`), document).Expr(),
+		qs.XMLExists(qs.LiteralString(`/root/missing`), document).ByRef().Expr(),
 	)
 	sql, args, err := query.ToSQL()
 	if err != nil {
@@ -97,13 +97,13 @@ func TestXMLExists(t *testing.T) {
 func TestXMLTableMissingPathDefault(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	document := qx.Param(`<root><item><name>Ada</name></item><item/></root>`).Cast(qx.XML)
-	table := qx.XMLTable(
-		qx.LiteralString(`/root/item`),
+	document := qs.Param(`<root><item><name>Ada</name></item><item/></root>`).Cast(qs.XML)
+	table := qs.XMLTable(
+		qs.LiteralString(`/root/item`),
 		document,
-		qx.XMLColumn("name", qx.Text).Path(qx.LiteralString(`name`)).Default(qx.Param("missing").Cast(qx.Text)),
+		qs.XMLColumn("name", qs.Text).Path(qs.LiteralString(`name`)).Default(qs.Param("missing").Cast(qs.Text)),
 	).As("items")
-	got := queryStrings(t, ctx, conn, qx.Select(qx.Col("items.name")).FromExpr(table))
+	got := queryStrings(t, ctx, conn, qs.Select(qs.Col("items.name")).FromExpr(table))
 	sort.Strings(got)
 	want := []string{"Ada", "missing"}
 	if !reflect.DeepEqual(got, want) {
@@ -114,13 +114,13 @@ func TestXMLTableMissingPathDefault(t *testing.T) {
 func TestXMLTableNamespaceSelection(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	document := qx.Param(`<root xmlns="urn:book"><item>Ada</item></root>`).Cast(qx.XML)
-	table := qx.XMLTable(
-		qx.LiteralString(`/b:root/b:item`),
+	document := qs.Param(`<root xmlns="urn:book"><item>Ada</item></root>`).Cast(qs.XML)
+	table := qs.XMLTable(
+		qs.LiteralString(`/b:root/b:item`),
 		document,
-		qx.XMLColumn("name", qx.Text).Path(qx.LiteralString(`string(.)`)),
-	).Namespaces(qx.XMLNamespace(qx.Param("urn:book").Cast(qx.Text), "b")).As("items")
-	got := queryStrings(t, ctx, conn, qx.Select(qx.Col("items.name")).FromExpr(table))
+		qs.XMLColumn("name", qs.Text).Path(qs.LiteralString(`string(.)`)),
+	).Namespaces(qs.XMLNamespace(qs.Param("urn:book").Cast(qs.Text), "b")).As("items")
+	got := queryStrings(t, ctx, conn, qs.Select(qs.Col("items.name")).FromExpr(table))
 	if !reflect.DeepEqual(got, []string{"Ada"}) {
 		t.Fatalf("got %#v", got)
 	}
@@ -129,15 +129,15 @@ func TestXMLTableNamespaceSelection(t *testing.T) {
 func TestXMLTableOrdinality(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	document := qx.Param(`<root><item>Ada</item><item>Grace</item></root>`).Cast(qx.XML)
-	table := qx.XMLTable(
-		qx.LiteralString(`/root/item`),
+	document := qs.Param(`<root><item>Ada</item><item>Grace</item></root>`).Cast(qs.XML)
+	table := qs.XMLTable(
+		qs.LiteralString(`/root/item`),
 		document,
-		qx.XMLOrdinality("position"),
-		qx.XMLColumn("name", qx.Text).Path(qx.LiteralString(`string(.)`)),
+		qs.XMLOrdinality("position"),
+		qs.XMLColumn("name", qs.Text).Path(qs.LiteralString(`string(.)`)),
 	).As("items")
-	positionAndName := qx.Col("items.position").Cast(qx.Text).Concat(qx.LiteralString(":")).Concat(qx.Col("items.name"))
-	query := qx.Select(positionAndName).FromExpr(table).OrderBy(qx.Asc("items.position"))
+	positionAndName := qs.Col("items.position").Cast(qs.Text).Concat(qs.LiteralString(":")).Concat(qs.Col("items.name"))
+	query := qs.Select(positionAndName).FromExpr(table).OrderBy(qs.Asc("items.position"))
 	got := queryStrings(t, ctx, conn, query)
 	want := []string{"1:Ada", "2:Grace"}
 	if !reflect.DeepEqual(got, want) {

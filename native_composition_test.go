@@ -1,4 +1,4 @@
-package qx
+package qs
 
 import (
 	"reflect"
@@ -9,7 +9,7 @@ func nativeCompositionQuery() *SelectBuilder {
 	child := Select(Param("seed").Cast(Text))
 	items := XMLTable(Param("/root/item"), Param("<root/>").Cast(XML),
 		XMLColumn("value", Text).Path(Param("value")).Default(Scalar(child)),
-	).Namespaces(XMLNamespace(Param("urn:qx").Cast(Text), "n")).As("x")
+	).Namespaces(XMLNamespace(Param("urn:qs").Cast(Text), "n")).As("x")
 	return Select(
 		JSONArrayAggregate(Ident("x", "value")).OrderBy(Param(7).Asc()).
 			Filter(Ident("x", "value").Ne("excluded")).
@@ -22,7 +22,7 @@ func nativeCompositionQuery() *SelectBuilder {
 
 func TestAppendWithNativeComposition(t *testing.T) {
 	query := nativeCompositionQuery()
-	wantArgs := []any{7, "excluded", "p", "abcd", 2, 1, "seed", "urn:qx", "/root/item", "<root/>", "value", "seed", "keep"}
+	wantArgs := []any{7, "excluded", "p", "abcd", 2, 1, "seed", "urn:qs", "/root/item", "<root/>", "value", "seed", "keep"}
 	cases := []struct {
 		name  string
 		style PlaceholderStyle

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	qx "github.com/jacoelho/qx"
+	qs "github.com/jacoelho/qs"
 )
 
 func encodeCases(t *testing.T, cases []Case) string {
@@ -33,8 +33,8 @@ func sampleCases() []Case {
 
 func sampleFactories() []Factory {
 	return []Factory{
-		{ID: 0, Status: StatusVerified, Build: func() qx.Statement { return qx.Select(qx.Param("first")) }},
-		{ID: 8, Status: StatusConstructionErr, Build: func() qx.Statement { return qx.Select(qx.Param("second"), qx.Param("third")) }},
+		{ID: 0, Status: StatusVerified, Build: func() qs.Statement { return qs.Select(qs.Param("first")) }},
+		{ID: 8, Status: StatusConstructionErr, Build: func() qs.Statement { return qs.Select(qs.Param("second"), qs.Param("third")) }},
 		{ID: 16, Status: StatusUnsupported},
 	}
 }
@@ -121,10 +121,10 @@ func TestVerifyCaseUsesFrozenOracle(t *testing.T) {
 	}{
 		{name: "sql", item: Case{ID: 0, Status: StatusVerified, WantSQL: "SELECT $2", WantArgs: []string{"first"}}, factory: factory, want: "SQL mismatch"},
 		{name: "args", item: Case{ID: 0, Status: StatusVerified, WantSQL: "SELECT $1", WantArgs: []string{"other"}}, factory: factory, want: "argument 0"},
-		{name: "order", item: Case{ID: 0, Status: StatusVerified, WantSQL: "SELECT $1, $2", WantArgs: []string{"second", "first"}}, factory: Factory{ID: 0, Status: StatusVerified, Build: func() qx.Statement { return qx.Select(qx.Param("first"), qx.Param("second")) }}, want: "argument 0"},
-		{name: "type", item: item, factory: Factory{ID: 0, Status: StatusVerified, Build: func() qx.Statement { return qx.Select(qx.Param(1)) }}, want: "argument 0"},
+		{name: "order", item: Case{ID: 0, Status: StatusVerified, WantSQL: "SELECT $1, $2", WantArgs: []string{"second", "first"}}, factory: Factory{ID: 0, Status: StatusVerified, Build: func() qs.Statement { return qs.Select(qs.Param("first"), qs.Param("second")) }}, want: "argument 0"},
+		{name: "type", item: item, factory: Factory{ID: 0, Status: StatusVerified, Build: func() qs.Statement { return qs.Select(qs.Param(1)) }}, want: "argument 0"},
 		{name: "count", item: Case{ID: 0, Status: StatusVerified, WantSQL: "SELECT $1"}, factory: factory, want: "argument count"},
-		{name: "nil", item: item, factory: Factory{ID: 0, Status: StatusVerified, Build: func() qx.Statement { return nil }}, want: "nil statement"},
+		{name: "nil", item: item, factory: Factory{ID: 0, Status: StatusVerified, Build: func() qs.Statement { return nil }}, want: "nil statement"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -160,7 +160,7 @@ func tinyFixture(t *testing.T) (Manifest, fstest.MapFS) {
 		}
 	}
 	manifest := Manifest{
-		Schema: "qx-postgres-corpus-v2", Revision: strings.Repeat("a", 40), SQLSHA256: strings.Repeat("b", 64),
+		Schema: "qs-postgres-corpus-v2", Revision: strings.Repeat("a", 40), SQLSHA256: strings.Repeat("b", 64),
 		Parser: ParserManifest{Package: "pglast", Version: "v8.4", PostgreSQL: "18.4"},
 		Counts: CountsManifest{Total: 10, Verified: 8, ConstructionError: 1, Unsupported: 1, PlannerTotal: 3, PlannerVerified: 3, DistinctShapes: 9, DistinctVerifiedShapes: 7, PlannerDistinctShapes: 3, PlannerDistinctVerifiedShapes: 2},
 	}

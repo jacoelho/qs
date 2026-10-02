@@ -5,36 +5,36 @@ package integration_test
 import (
 	"testing"
 
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func TestCompositeFieldsAndUpdates(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	if _, err := conn.Exec(ctx, `
-		DROP TABLE IF EXISTS qx_composite_people;
-		DROP TYPE IF EXISTS qx_composite_person CASCADE;
-		CREATE TYPE qx_composite_person AS (
+		DROP TABLE IF EXISTS qs_composite_people;
+		DROP TYPE IF EXISTS qs_composite_person CASCADE;
+		CREATE TYPE qs_composite_person AS (
 			first_name text,
 			last_name text,
 			age integer
 		);
-		CREATE TEMP TABLE qx_composite_people (
+		CREATE TEMP TABLE qs_composite_people (
 			id integer PRIMARY KEY,
-			person qx_composite_person NOT NULL DEFAULT ROW('', '', 0)::qx_composite_person,
+			person qs_composite_person NOT NULL DEFAULT ROW('', '', 0)::qs_composite_person,
 			note text
 		);
-		INSERT INTO qx_composite_people VALUES
-			(1, ROW('Ada', 'Lovelace', 36)::qx_composite_person, 'keep');`); err != nil {
+		INSERT INTO qs_composite_people VALUES
+			(1, ROW('Ada', 'Lovelace', 36)::qs_composite_person, 'keep');`); err != nil {
 		t.Fatal(err)
 	}
-	person := qx.Col("person")
-	read := qx.Select(
+	person := qs.Col("person")
+	read := qs.Select(
 		person.Field("first_name"),
 		person.Field("last_name"),
 		person.Field("age"),
-		qx.Col("note"),
-	).From("qx_composite_people").Where(qx.Eq("id", 1))
+		qs.Col("note"),
+	).From("qs_composite_people").Where(qs.Eq("id", 1))
 	sql, args, err := read.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		t.Fatalf("read first=%q last=%q age=%d note=%q", first, last, age, note)
 	}
 
-	expanded := qx.Select(person.Fields()).From("qx_composite_people").Where(qx.Eq("id", 1))
+	expanded := qs.Select(person.Fields()).From("qs_composite_people").Where(qs.Eq("id", 1))
 	sql, args, err = expanded.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -60,10 +60,10 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		t.Fatalf("expanded first=%q last=%q age=%d", first, last, age)
 	}
 
-	update := qx.Update("qx_composite_people").Set(
-		qx.Assign(person.Field("first_name"), qx.Param("Grace")),
-		qx.Assign(person.Field("age"), qx.Param(37)),
-	).Where(qx.Eq("id", 1))
+	update := qs.Update("qs_composite_people").Set(
+		qs.Assign(person.Field("first_name"), qs.Param("Grace")),
+		qs.Assign(person.Field("age"), qs.Param(37)),
+	).Where(qs.Eq("id", 1))
 	sql, args, err = update.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -71,15 +71,15 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 	if _, err := conn.Exec(ctx, sql, args...); err != nil {
 		t.Fatalf("%s: %v", sql, err)
 	}
-	if err := conn.QueryRow(ctx, `SELECT (person).first_name, (person).last_name, (person).age, note FROM qx_composite_people WHERE id = 1`).Scan(&first, &last, &age, &note); err != nil {
+	if err := conn.QueryRow(ctx, `SELECT (person).first_name, (person).last_name, (person).age, note FROM qs_composite_people WHERE id = 1`).Scan(&first, &last, &age, &note); err != nil {
 		t.Fatal(err)
 	}
 	if first != "Grace" || last != "Lovelace" || age != 37 || note != "keep" {
 		t.Fatalf("updated first=%q last=%q age=%d note=%q", first, last, age, note)
 	}
 
-	insert := qx.InsertInto("qx_composite_people").Targets(
-		qx.Col("id"),
+	insert := qs.InsertInto("qs_composite_people").Targets(
+		qs.Col("id"),
 		person.Field("first_name"),
 		person.Field("age"),
 	).Values(2, "Alan", 41)
@@ -91,7 +91,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		t.Fatalf("%s: %v", sql, err)
 	}
 	var insertedLast *string
-	if err := conn.QueryRow(ctx, `SELECT (person).first_name, (person).last_name, (person).age FROM qx_composite_people WHERE id = 2`).Scan(&first, &insertedLast, &age); err != nil {
+	if err := conn.QueryRow(ctx, `SELECT (person).first_name, (person).last_name, (person).age FROM qs_composite_people WHERE id = 2`).Scan(&first, &insertedLast, &age); err != nil {
 		t.Fatal(err)
 	}
 	if first != "Alan" || insertedLast != nil || age != 41 {
@@ -102,10 +102,10 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 func TestNamedTypeCastChangesResult(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	numeric := func(scale int) qx.Expr {
-		return qx.Param("12.345").Cast(qx.NamedType("pg_catalog", "numeric").Modifiers(5, scale)).Cast(qx.Text)
+	numeric := func(scale int) qs.Expr {
+		return qs.Param("12.345").Cast(qs.NamedType("pg_catalog", "numeric").Modifiers(5, scale)).Cast(qs.Text)
 	}
-	query := qx.Select(numeric(2), numeric(1))
+	query := qs.Select(numeric(2), numeric(1))
 	sql, args, err := query.ToSQL()
 	if err != nil {
 		t.Fatal(err)

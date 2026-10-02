@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // ExecuteBuilder constructs PostgreSQL's EXECUTE command. The prepared
 // statement name is one identifier component and is quoted automatically.

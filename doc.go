@@ -1,4 +1,4 @@
-// Package qx builds PostgreSQL queries without reflection, execution, or scanning.
+// Package qs builds PostgreSQL queries without reflection, execution, or scanning.
 //
 // Ordinary values become bind parameters. Identifiers are quoted. SQL-suffixed
 // methods and UnsafeSQL accept trusted application-authored SQL, never request
@@ -15,4 +15,4 @@
 // PostgreSQL operators and quoted text are never rewritten.
 // Driver codecs, transactions, tenant context, RLS, and result mapping remain
 // the caller's responsibility.
-package qx
+package qs

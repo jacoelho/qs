@@ -19,8 +19,8 @@ API, model registry, dialect registry or runtime schema inspection.
 The core package is independent of pgx. Live tests in `integration/` consume
 its output with pgx directly and are excluded unless the `postgres` build tag
 is enabled. One root module owns dependency versions; pgx is a test dependency.
-Opted-in live tests require `QX_TEST_DSN` and own separate connections and schemas.
-Schema cleanup uses a fresh bounded context before closing each connection. No reflection in qx is not a promise about reflection
+Opted-in live tests require `QS_TEST_DSN` and own separate connections and schemas.
+Schema cleanup uses a fresh bounded context before closing each connection. No reflection in qs is not a promise about reflection
 inside a driver's codecs or a consumer's row-mapping helpers.
 
 Regular Go tests own fixed SQL/argument expectations. The full pinned native
@@ -222,7 +222,7 @@ fragments, not a quoted user-function identifier.
 A query builder is not an authorisation mechanism. Execute tenant queries through
 the correct transaction and role. Do not infer safety from a WHERE clause or
 `RequireWhere`; `WHERE TRUE` is still unrestricted. `TRUNCATE` is not filtered by
-RLS. Keep DDL, tenant role changes, GUC setup and transaction lifecycle outside qx.
+RLS. Keep DDL, tenant role changes, GUC setup and transaction lifecycle outside qs.
 
 ## Source map
 

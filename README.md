@@ -1,15 +1,15 @@
-# qx
+# Querysmith (qs)
 
-PostgreSQL query construction for Go. Module `github.com/jacoelho/qx`, package
-`qx`; applications can import it as `q` when that reads better. The module
+PostgreSQL query construction for Go. Module `github.com/jacoelho/qs`, package
+`qs`; applications can import it as `q` when that reads better. The module
 targets Go 1.27. No runtime dependencies, reflection, `unsafe`, connection pool,
 execution layer, scanning layer or schema introspection.
 
 ```go
-query, args, err := qx.SelectCols("id", "name").
+query, args, err := qs.SelectCols("id", "name").
     From("users").
-    Where(qx.Eq("active", true), qx.IsNull("deleted_at")).
-    OrderBy(qx.Desc("created_at"), qx.Desc("id")).
+    Where(qs.Eq("active", true), qs.IsNull("deleted_at")).
+    OrderBy(qs.Desc("created_at"), qs.Desc("id")).
     Limit(20).
     ToSQL()
 ```
@@ -56,7 +56,7 @@ and records remaining gaps.
 ## Selection choices
 
 `Select` accepts expressions. `SelectCols("id", "name")` is shorthand for
-`Select(Col("id"), Col("name"))`. Use `[]qx.Expr` for reusable projections.
+`Select(Col("id"), Col("name"))`. Use `[]qs.Expr` for reusable projections.
 
 `SelectSQL`/`ColumnsSQL` join trusted raw projection fragments with commas; the
 builder does not parse them or infer their column counts. `Col("id::text")`
@@ -67,13 +67,13 @@ Projection order follows insertion order. See [selection choices](docs/API.md#se
 
 ```go
 type Patch struct {
-    Email qx.Optional[qx.Null[string]]
+    Email qs.Optional[qs.Null[string]]
 }
 
-qx.None[qx.Null[string]]()          // Absent: do not change the email.
-qx.Some(qx.NullOf[string]())       // Present SQL NULL.
-qx.Some(qx.NonNull(""))           // Present empty string, not NULL.
-qx.Some(qx.NonNull("a@example.com"))
+qs.None[qs.Null[string]]()          // Absent: do not change the email.
+qs.Some(qs.NullOf[string]())       // Present SQL NULL.
+qs.Some(qs.NonNull(""))           // Present empty string, not NULL.
+qs.Some(qs.NonNull("a@example.com"))
 ```
 
 Use `ParamNull`, `SetNullable`, `IsDistinctFrom` or `IsNotDistinctFrom` to
@@ -81,16 +81,16 @@ explicitly unwrap `Null[T]`. Binding the wrapper with plain `Param` is a build
 error. An absent optional value must be checked before binding.
 
 ```go
-q := qx.Update("users").Where(qx.Eq("id", id))
+q := qs.Update("users").Where(qs.Eq("id", id))
 if patch.Email.Present {
-    q.Set(qx.SetNullable("email", patch.Email.Value))
+    q.Set(qs.SetNullable("email", patch.Email.Value))
 }
 ```
 
 An entirely absent patch should be an application no-op; an UPDATE without any
 assignment is a build error. Equality is never silently rewritten based on a
 value: use `IsNull("email")`, or use `IsNotDistinctFrom` for NULL-safe equality.
-`qx.Eq[any]("email", nil)` deliberately emits ordinary `= $n` with a nil argument.
+`qs.Eq[any]("email", nil)` deliberately emits ordinary `= $n` with a nil argument.
 
 Empty membership and conjunction contracts:
 
@@ -110,10 +110,10 @@ operations, not interchangeable conveniences.
 ## Optional stronger typing
 
 ```go
-id := qx.Typed[int64]("u.id")
-name := qx.Typed[string]("u.name")
+id := qs.Typed[int64]("u.id")
+name := qs.Typed[string]("u.name")
 
-q := qx.Select(id.Expr(), name.Expr()).FromExpr(qx.Table("users").As("u"))
+q := qs.Select(id.Expr(), name.Expr()).FromExpr(qs.Table("users").As("u"))
 q.Where(id.Eq(42))
 // id.Eq("42") does not compile.
 ```
@@ -127,11 +127,11 @@ directions and nullable cursor keys require explicit handling by the caller.
 ## Typed JSON and JSONB
 
 ```go
-doc := qx.JSONBCol("payload")
-q := qx.Select(doc.PathText("items", "0", "name").As("name")).
+doc := qs.JSONBCol("payload")
+q := qs.Select(doc.PathText("items", "0", "name").As("name")).
     From("events").
     Where(doc.Key("items").Index(-1).TextKey("name").Eq("Ada"),
-        doc.Contains(qx.JSONBParam(`{"active":true}`)))
+        doc.Contains(qs.JSONBParam(`{"active":true}`)))
 
 // TextKey returns Field[string]; .Eq(42) does not compile.
 // JSONCol supports extraction; JSONBCol also supports JSONB operators.
@@ -150,8 +150,8 @@ JSONB methods include `Contains`, `ContainedBy`, `HasKey`, `HasAnyKeys`,
 items; `PathMatches` (`@@`) evaluates a JSONPath predicate and can return SQL NULL.
 
 ```go
-q := qx.Update("events").
-    Set(doc.Set(doc.Concat(qx.JSONBParam(`{"active":true}`)))).
+q := qs.Update("events").
+    Set(doc.Set(doc.Concat(qs.JSONBParam(`{"active":true}`)))).
     Where(doc.PathText("items", "0", "name").Eq("Ada"))
 ```
 
@@ -165,13 +165,13 @@ payload type, not SQL non-nullability.
 ## CTEs and global parameter numbering
 
 ```go
-recent := qx.CTE("recent", qx.SelectCols("user_id").
-    From("orders").Where(qx.Gt("total", 100)))
+recent := qs.CTE("recent", qs.SelectCols("user_id").
+    From("orders").Where(qs.Gt("total", 100)))
 
-q := qx.SelectCols("u.id").
+q := qs.SelectCols("u.id").
     With(recent).
-    FromExpr(qx.InnerJoin(qx.Table("users").As("u"), recent.Ref()).
-        On(qx.EqColumns("u.id", "recent.user_id")))
+    FromExpr(qs.InnerJoin(qs.Table("users").As("u"), recent.Ref()).
+        On(qs.EqColumns("u.id", "recent.user_id")))
 ```
 
 A single renderer traverses CTEs, projections, joins, subqueries, conditions and
@@ -184,7 +184,7 @@ table reference, not a pointer cycle. CTEs support materialisation controls,
 ### Types at query boundaries
 
 Use an explicit cast when PostgreSQL has no typed column or operator context:
-`qx.Param(1).Cast(qx.Int4)`.
+`qs.Param(1).Cast(qs.Int4)`.
 For example, an otherwise-unconstrained parameter projected by a CTE can resolve
 to SQL text before an outer numeric operation is analysed. Go generics do not
 transmit PostgreSQL parameter type OIDs. The builder deliberately does not guess
@@ -195,8 +195,8 @@ a database type from an arbitrary Go value.
 For a type-safe single row, pair each column with its value:
 
 ```go
-id, name := qx.Typed[int]("id"), qx.Typed[string]("name")
-q := qx.InsertInto("users").Set(id.Set(42), name.Set("Ana"))
+id, name := qs.Typed[int]("id"), qs.Typed[string]("name")
+q := qs.InsertInto("users").Set(id.Set(42), name.Set("Ana"))
 // INSERT INTO "users" ("id", "name") VALUES ($1, $2)
 ```
 
@@ -207,10 +207,10 @@ Go cannot check their lengths at compile time. Known width mismatches fail when
 rendering with `ErrInvalid`.
 
 ```go
-q := qx.InsertInto("users").
+q := qs.InsertInto("users").
     Columns("id", "name").Values(42, "Ana").
-    OnConflict(qx.ConflictColumns("id").
-        DoUpdate(qx.SetExpr("name", qx.Excluded("name")))).
+    OnConflict(qs.ConflictColumns("id").
+        DoUpdate(qs.SetExpr("name", qs.Excluded("name")))).
     ReturningCols("id")
 ```
 
@@ -234,10 +234,10 @@ Construction stores query structure and values; rendering produces SQL and
 arguments. Choose the placeholder style for each render:
 
 ```go
-q := qx.SelectCols("id").From("users").Where(qx.Eq("name", "O'Reilly; ? $1"))
+q := qs.SelectCols("id").From("users").Where(qs.Eq("name", "O'Reilly; ? $1"))
 
 query, args, err := q.ToSQL() // $1, $2, ... by default.
-query, args, err = q.ToSQLWith(qx.Options{PlaceholderStyle: qx.Question})
+query, args, err = q.ToSQLWith(qs.Options{PlaceholderStyle: qs.Question})
 // SELECT "id" FROM "users" WHERE ("name" = ?)
 // args: []any{"O'Reilly; ? $1"}
 ```
@@ -245,12 +245,12 @@ query, args, err = q.ToSQLWith(qx.Options{PlaceholderStyle: qx.Question})
 Both styles retain the same argument order through nested queries and CTEs.
 Rendering options do not change the builder. Quotes, semicolons, literals and
 JSONB operators (`?`, `?|`, `?&`, `@?`) remain intact because only parameter
-nodes emit placeholders. Use the default `qx.Dollar` with PostgreSQL/pgx;
-`qx.Question` requires a consumer that understands question-mark parameters
+nodes emit placeholders. Use the default `qs.Dollar` with PostgreSQL/pgx;
+`qs.Question` requires a consumer that understands question-mark parameters
 and PostgreSQL operators. The SQL dialect remains PostgreSQL.
 
 For caller-owned storage, use `q.AppendWith(buf, args, options)` or the free
-`qx.AppendWith(buf, args, q, options)` function.
+`qs.AppendWith(buf, args, q, options)` function.
 The [API migration table](docs/API.md#rendering-api-migration) lists the removed
 `Build` names and their replacements.
 
@@ -262,8 +262,8 @@ are trusted syntax and must not contain hand-numbered binds or interpolated
 request values. The renderer does **not** rewrite question marks:
 
 ```go
-condition := qx.AsCondition(qx.Fragment(
-    qx.Col("metadata"), qx.UnsafeSQL(" ? "), qx.Param("reference"),
+condition := qs.AsCondition(qs.Fragment(
+    qs.Col("metadata"), qs.UnsafeSQL(" ? "), qs.Param("reference"),
 ))
 ```
 
@@ -312,12 +312,12 @@ python3 scripts/generate.py
 go test -run='^$' -bench=. -benchmem -count=3 .
 
 # Optional live tests; requires a reachable PostgreSQL 18 instance.
-export QX_TEST_DSN='postgres://user:password@localhost/database?sslmode=disable'
+export QS_TEST_DSN='postgres://user:password@localhost/database?sslmode=disable'
 GOMAXPROCS=2 go test -tags postgres -race -p=2 -parallel=8 -timeout=5m -v ./integration
 ```
 
 Regular tests run offline and do not compile pgx. Live test files use the
-`postgres` build tag; opted-in runs require `QX_TEST_DSN`. The root module pins
+`postgres` build tag; opted-in runs require `QS_TEST_DSN`. The root module pins
 pgx for those tests, while the library imports only the standard library.
 `go mod tidy` maintains dependencies across build tags.
 

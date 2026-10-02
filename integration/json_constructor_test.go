@@ -8,22 +8,22 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func TestSQLJSONNullAndAbsentPolicies(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 
-	query := qx.Select(
-		qx.JSONObject(qx.JSONPair(qx.Param("key").Cast(qx.Text), qx.NullExpr(qx.Int4))).Expr().Cast(qx.Text),
-		qx.JSONObject(qx.JSONPair(qx.Param("key").Cast(qx.Text), qx.NullExpr(qx.Int4))).AbsentOnNull().Expr().Cast(qx.Text),
-		qx.JSONArray(qx.NullExpr(qx.Int4)).Expr().Cast(qx.Text),
-		qx.JSONArray(qx.NullExpr(qx.Int4)).NullOnNull().Expr().Cast(qx.Text),
-		qx.JSONArrayAggregate(qx.NullExpr(qx.Int4)).Expr().Cast(qx.Text),
-		qx.JSONArrayAggregate(qx.NullExpr(qx.Int4)).NullOnNull().Expr().Cast(qx.Text),
-		qx.JSONObjectAggregate(qx.Param("key").Cast(qx.Text), qx.NullExpr(qx.Int4)).Expr().Cast(qx.Text),
-		qx.JSONObjectAggregate(qx.Param("key").Cast(qx.Text), qx.NullExpr(qx.Int4)).AbsentOnNull().Expr().Cast(qx.Text),
+	query := qs.Select(
+		qs.JSONObject(qs.JSONPair(qs.Param("key").Cast(qs.Text), qs.NullExpr(qs.Int4))).Expr().Cast(qs.Text),
+		qs.JSONObject(qs.JSONPair(qs.Param("key").Cast(qs.Text), qs.NullExpr(qs.Int4))).AbsentOnNull().Expr().Cast(qs.Text),
+		qs.JSONArray(qs.NullExpr(qs.Int4)).Expr().Cast(qs.Text),
+		qs.JSONArray(qs.NullExpr(qs.Int4)).NullOnNull().Expr().Cast(qs.Text),
+		qs.JSONArrayAggregate(qs.NullExpr(qs.Int4)).Expr().Cast(qs.Text),
+		qs.JSONArrayAggregate(qs.NullExpr(qs.Int4)).NullOnNull().Expr().Cast(qs.Text),
+		qs.JSONObjectAggregate(qs.Param("key").Cast(qs.Text), qs.NullExpr(qs.Int4)).Expr().Cast(qs.Text),
+		qs.JSONObjectAggregate(qs.Param("key").Cast(qs.Text), qs.NullExpr(qs.Int4)).AbsentOnNull().Expr().Cast(qs.Text),
 	)
 	sql, args, err := query.ToSQL()
 	if err != nil {
@@ -53,11 +53,11 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 	// JSON retains duplicate object members when uniqueness is omitted. Compare
 	// the encoded text here because duplicate members are intentionally lost by
 	// json.Unmarshal and jsonb canonicalization.
-	duplicate := qx.Select(
-		qx.JSONObject(
-			qx.JSONPair(qx.Param("a").Cast(qx.Text), qx.Param(1).Cast(qx.Int4)),
-			qx.JSONPair(qx.Param("a").Cast(qx.Text), qx.Param(2).Cast(qx.Int4)),
-		).Expr().Cast(qx.Text),
+	duplicate := qs.Select(
+		qs.JSONObject(
+			qs.JSONPair(qs.Param("a").Cast(qs.Text), qs.Param(1).Cast(qs.Int4)),
+			qs.JSONPair(qs.Param("a").Cast(qs.Text), qs.Param(2).Cast(qs.Int4)),
+		).Expr().Cast(qs.Text),
 	)
 	sql, args, err := duplicate.ToSQL()
 	if err != nil {
@@ -71,9 +71,9 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 		t.Fatalf("duplicate JSON object = %q; want duplicate members preserved", text)
 	}
 
-	unique := qx.Select(qx.JSONObject(
-		qx.JSONPair(qx.Param("a").Cast(qx.Text), qx.Param(1).Cast(qx.Int4)),
-		qx.JSONPair(qx.Param("a").Cast(qx.Text), qx.Param(2).Cast(qx.Int4)),
+	unique := qs.Select(qs.JSONObject(
+		qs.JSONPair(qs.Param("a").Cast(qs.Text), qs.Param(1).Cast(qs.Int4)),
+		qs.JSONPair(qs.Param("a").Cast(qs.Text), qs.Param(2).Cast(qs.Int4)),
 	).WithUniqueKeys().Expr())
 	sql, args, err = unique.ToSQL()
 	if err != nil {
@@ -83,8 +83,8 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 		t.Fatal("WITH UNIQUE KEYS accepted duplicate dynamic keys")
 	}
 
-	parsedUnique := qx.Select(qx.JSONParse(
-		qx.JSONInputExpr(qx.Param(`{"a":1,"a":2}`)).FormatJSON(),
+	parsedUnique := qs.Select(qs.JSONParse(
+		qs.JSONInputExpr(qs.Param(`{"a":1,"a":2}`)).FormatJSON(),
 	).WithUniqueKeys().Expr())
 	sql, args, err = parsedUnique.ToSQL()
 	if err != nil {
@@ -97,9 +97,9 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 
 	// IS JSON reports duplicate-key validity without throwing; this is a
 	// separate predicate contract from constructor/parser uniqueness errors.
-	predicate := qx.Select(
-		qx.IsJSON(qx.Param(`{"a":1,"a":2}`).Cast(qx.Text)).Expr(),
-		qx.IsJSON(qx.Param(`{"a":1,"a":2}`).Cast(qx.Text)).WithUniqueKeys().Expr(),
+	predicate := qs.Select(
+		qs.IsJSON(qs.Param(`{"a":1,"a":2}`).Cast(qs.Text)).Expr(),
+		qs.IsJSON(qs.Param(`{"a":1,"a":2}`).Cast(qs.Text)).WithUniqueKeys().Expr(),
 	)
 	sql, args, err = predicate.ToSQL()
 	if err != nil {
@@ -117,23 +117,23 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 func TestSQLJSONArrayAggregateOrderingAndFilter(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	if _, err := conn.Exec(ctx, `CREATE TEMP TABLE qx_json_constructor_values(v int, keep boolean);
-		INSERT INTO qx_json_constructor_values VALUES (3, true), (1, false), (5, true), (2, false)`); err != nil {
+	if _, err := conn.Exec(ctx, `CREATE TEMP TABLE qs_json_constructor_values(v int, keep boolean);
+		INSERT INTO qs_json_constructor_values VALUES (3, true), (1, false), (5, true), (2, false)`); err != nil {
 		t.Fatal(err)
 	}
 
-	array := qx.JSONArrayAggregate(qx.Col("v")).
-		OrderBy(qx.Desc("v")).
-		Filter(qx.Eq("keep", true)).
-		Expr().Cast(qx.Text)
-	if got := queryStrings(t, ctx, conn, qx.Select(array).From("qx_json_constructor_values")); !reflect.DeepEqual(got, []string{`[5, 3]`}) {
+	array := qs.JSONArrayAggregate(qs.Col("v")).
+		OrderBy(qs.Desc("v")).
+		Filter(qs.Eq("keep", true)).
+		Expr().Cast(qs.Text)
+	if got := queryStrings(t, ctx, conn, qs.Select(array).From("qs_json_constructor_values")); !reflect.DeepEqual(got, []string{`[5, 3]`}) {
 		t.Fatalf("ordered filtered array aggregate = %#v; want [5, 3]", got)
 	}
 
-	object := qx.JSONObjectAggregate(qx.Col("v"), qx.Col("v")).
-		Filter(qx.Eq("keep", true)).
-		Expr().Cast(qx.Text)
-	got := queryStrings(t, ctx, conn, qx.Select(object).From("qx_json_constructor_values"))
+	object := qs.JSONObjectAggregate(qs.Col("v"), qs.Col("v")).
+		Filter(qs.Eq("keep", true)).
+		Expr().Cast(qs.Text)
+	got := queryStrings(t, ctx, conn, qs.Select(object).From("qs_json_constructor_values"))
 	if len(got) != 1 {
 		t.Fatalf("object aggregate rows = %#v; want one row", got)
 	}
@@ -153,10 +153,10 @@ func TestSQLJSONParseScalarAndSerialize(t *testing.T) {
 	// JSON() parses a formatted value structurally, while JSON_SCALAR() treats
 	// ordinary text as one JSON string. JSON_SERIALIZE(FORMAT JSON) preserves
 	// the source's meaningful serialized bytes.
-	query := qx.Select(
-		qx.JSONParse(qx.JSONInputExpr(qx.Param(` [2,1] `).Cast(qx.Text)).FormatJSON()).Expr().Cast(qx.Text),
-		qx.JSONScalar(qx.Param(` [2,1] `).Cast(qx.Text)).Cast(qx.Text),
-		qx.JSONSerialize(qx.JSONInputExpr(qx.Param(` { "a" : 1 } `).Cast(qx.Text)).FormatJSON()).Returning(qx.Text).Expr(),
+	query := qs.Select(
+		qs.JSONParse(qs.JSONInputExpr(qs.Param(` [2,1] `).Cast(qs.Text)).FormatJSON()).Expr().Cast(qs.Text),
+		qs.JSONScalar(qs.Param(` [2,1] `).Cast(qs.Text)).Cast(qs.Text),
+		qs.JSONSerialize(qs.JSONInputExpr(qs.Param(` { "a" : 1 } `).Cast(qs.Text)).FormatJSON()).Returning(qs.Text).Expr(),
 	)
 	sql, args, err := query.ToSQL()
 	if err != nil {

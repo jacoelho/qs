@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // Array constructs a SQL array from expressions. Cast empty arrays explicitly.
 func Array(values ...Expr) Expr                     { return listExpr("ARRAY", values) }

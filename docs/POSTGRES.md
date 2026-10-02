@@ -46,14 +46,14 @@ The scanner recognises SQL strings, dollar quotes, nested comments, psql query
 terminators and COPY data. DDL, session/control commands, COPY payloads, psql
 commands/substitution and parser-invalid inputs are separately recorded. The
 corpus intentionally contains errors: a parsable negative test still counts as
-a query, and qx's structural rejection remains a failure. Comment-derived error
+a query, and qs's structural rejection remains a failure. Comment-derived error
 hints and linked expected-output files do not establish individual outcomes.
 Likewise, `construction_error` means the generated builder failed validation,
 not that PostgreSQL rejects the source query. Translation defects can cause
 these failures even when the library already supports the syntax.
 
-For each eligible query, the development tool emits calls to public qx
-constructors, compiles and runs the resulting Go program, parses qx's output,
+For each eligible query, the development tool emits calls to public qs
+constructors, compiles and runs the resulting Go program, parses qs's output,
 and compares its syntax tree with the original. Direct use of `UnsafeSQL`,
 `Fragment` or `StatementSQL` is forbidden in generated builders. Ordinary
 validated function/operator constructors are permitted.
@@ -101,11 +101,11 @@ Make targets and CI use `GOMAXPROCS=2`; `TEST_PROCS` overrides the Make default.
 Live execution is optional:
 
 ```sh
-QX_TEST_DSN='postgres://user:password@localhost/database?sslmode=disable' \
+QS_TEST_DSN='postgres://user:password@localhost/database?sslmode=disable' \
   GOMAXPROCS=2 go test -tags postgres -race -p=2 -parallel=8 -timeout=5m ./integration
 ```
 
-Every live file has the `postgres` build tag. Missing `QX_TEST_DSN` fails when
+Every live file has the `postgres` build tag. Missing `QS_TEST_DSN` fails when
 these tests are explicitly enabled. pgx remains a root-module test dependency;
 regular tests exclude it from their compiled dependency graph.
 
@@ -142,7 +142,7 @@ allocate; see [performance](PERFORMANCE.md).
 ## Remaining gaps
 
 The report is a conservative lower bound: an unsupported translation may expose
-a missing adapter even when existing qx constructors can express the query.
+a missing adapter even when existing qs constructors can express the query.
 The remaining 100 failures comprise 46 untranslated queries and 54 generated
 builders rejected by validation. Every successfully rendered query parses and
 matches its source tree. Missing translations include CURRENT_ROLE, USER,
@@ -172,22 +172,22 @@ an unrelated USER value-function translation gap.
 With Go 1.27 and Python 3.12 or newer:
 
 ```sh
-python3 -m venv /tmp/qx-corpus-venv
-/tmp/qx-corpus-venv/bin/python -m pip install -r scripts/requirements-postgres.txt
+python3 -m venv /tmp/qs-corpus-venv
+/tmp/qs-corpus-venv/bin/python -m pip install -r scripts/requirements-postgres.txt
 curl --fail --location --retry 3 --max-time 180 \
   https://codeload.github.com/postgres/postgres/tar.gz/630e607397424196a0a3ebb14a5658c2473ddadf \
-  --output /tmp/qx-postgres.tar.gz
-mkdir -p /tmp/qx-postgres-source
-tar -xzf /tmp/qx-postgres.tar.gz -C /tmp/qx-postgres-source --strip-components=1
-make postgres-corpus POSTGRES_ROOT=/tmp/qx-postgres-source \
-  CORPUS_PYTHON=/tmp/qx-corpus-venv/bin/python
+  --output /tmp/qs-postgres.tar.gz
+mkdir -p /tmp/qs-postgres-source
+tar -xzf /tmp/qs-postgres.tar.gz -C /tmp/qs-postgres-source --strip-components=1
+make postgres-corpus POSTGRES_ROOT=/tmp/qs-postgres-source \
+  CORPUS_PYTHON=/tmp/qs-corpus-venv/bin/python
 ```
 
 To update the checked-in Go fixtures explicitly, use the same pinned checkout:
 
 ```sh
-make postgres-corpus-update POSTGRES_ROOT=/tmp/qx-postgres-source \
-  CORPUS_PYTHON=/tmp/qx-corpus-venv/bin/python
+make postgres-corpus-update POSTGRES_ROOT=/tmp/qs-postgres-source \
+  CORPUS_PYTHON=/tmp/qs-corpus-venv/bin/python
 ```
 
 The underlying `--export-go internal/postgrescorpus` option refuses partial,

@@ -32,23 +32,23 @@ operands have the same Go payload type.
 Ordinary joins accept structured ON conditions:
 
 ```go
-qx.SelectCols("users.id", "orders.id").
+qs.SelectCols("users.id", "orders.id").
     From("users").
-    Join("orders", qx.EqColumns("users.id", "orders.user_id"))
+    Join("orders", qs.EqColumns("users.id", "orders.user_id"))
 ```
 
 For aliases, build the relation explicitly:
 
 ```go
-users := qx.Table("users").As("u")
-orders := qx.Table("orders").As("o")
-qx.SelectCols("u.id", "o.id").FromExpr(
-    qx.InnerJoin(users, orders).On(qx.EqColumns("u.id", "o.user_id")),
+users := qs.Table("users").As("u")
+orders := qs.Table("orders").As("o")
+qs.SelectCols("u.id", "o.id").FromExpr(
+    qs.InnerJoin(users, orders).On(qs.EqColumns("u.id", "o.user_id")),
 )
 ```
 
 Relations also accept `.Using("id")` when both tables share that join column.
-`qx.LeftJoin`, `qx.RightJoin` and `qx.FullJoin` use the same ON/USING methods.
+`qs.LeftJoin`, `qs.RightJoin` and `qs.FullJoin` use the same ON/USING methods.
 `CrossJoin` needs no condition; natural joins derive their condition from shared
 column names. An ordinary join missing ON or USING is a rendering error.
 
@@ -59,24 +59,24 @@ return the same `*SelectBuilder`; they are convenience wrappers, not different
 statement types or execution paths.
 
 ```go
-qx.Select(qx.Col("id"), qx.Col("name"))
-qx.SelectCols("id", "name") // Same structured projection.
+qs.Select(qs.Col("id"), qs.Col("name"))
+qs.SelectCols("id", "name") // Same structured projection.
 
-qx.Select(qx.UnsafeSQL("id, name"))
-qx.SelectSQL("id, name") // Same explicitly trusted SQL projection.
+qs.Select(qs.UnsafeSQL("id, name"))
+qs.SelectSQL("id, name") // Same explicitly trusted SQL projection.
 ```
 
 A plain string cannot say whether it is an identifier, SQL syntax or a value.
 The expression constructors make that decision explicit:
 
 ```go
-qx.Col("id").Cast(qx.Text) // SQL expression: ("id")::text
-qx.Col("id::text")         // One identifier: "id::text"
-qx.UnsafeSQL("id::text")   // Trusted syntax, rendered verbatim.
-qx.Param("id::text")       // A bound value: $n, not SQL syntax.
+qs.Col("id").Cast(qs.Text) // SQL expression: ("id")::text
+qs.Col("id::text")         // One identifier: "id::text"
+qs.UnsafeSQL("id::text")   // Trusted syntax, rendered verbatim.
+qs.Param("id::text")       // A bound value: $n, not SQL syntax.
 ```
 
-For a reusable projection, prefer `[]qx.Expr` and `Select(projections...).Columns(...)`.
+For a reusable projection, prefer `[]qs.Expr` and `Select(projections...).Columns(...)`.
 Retain `UnsafeSQL(projectionSQL)` only when migrating an existing trusted string.
 Neither SelectSQL nor UnsafeSQL parses that string or knows how many columns
 it contains. Both intentionally bypass structural guarantees for the raw part.
@@ -133,8 +133,8 @@ sealed `Statement` interface. Rendering traverses the stored query graph lazily;
 it does not execute SQL or cache output.
 
 ```go
-q := qx.SelectCols("id").From("users").Where(qx.Eq("name", "O'Reilly; ? $1"))
-query, args, err := q.ToSQLWith(qx.Options{PlaceholderStyle: qx.Question})
+q := qs.SelectCols("id").From("users").Where(qs.Eq("name", "O'Reilly; ? $1"))
+query, args, err := q.ToSQLWith(qs.Options{PlaceholderStyle: qs.Question})
 // query: SELECT "id" FROM "users" WHERE ("name" = ?)
 // args: []any{"O'Reilly; ? $1"}
 ```
@@ -145,7 +145,7 @@ emits `?` for each parameter. Zero options select `Dollar`, PostgreSQL 18,
 wrapped in `RenderError` before rendering. `Options.PostgreSQL` uses the typed
 `PostgreSQLVersion` enum with `PostgreSQL12` through `PostgreSQL18`; zero selects
 PostgreSQL18 and unknown versions return `ErrInvalid`. Convert a dynamic integer
-explicitly with `qx.PostgreSQLVersion(value)`. Other options select parameter and
+explicitly with `qs.PostgreSQLVersion(value)`. Other options select parameter and
 nesting limits.
 
 Options belong to each rendering call. The same query and its clone can render
@@ -153,12 +153,12 @@ with either style without changing defaults or argument order. Nested statements
 share the outer render's options. `q.AppendWith(buf, args, options)` uses the
 same policy with caller-owned storage; dollar numbering starts at `len(args)+1`
 and both styles count prefix arguments toward the limit. The free form is
-`qx.AppendWith(buf, args, q, options)`.
+`qs.AppendWith(buf, args, q, options)`.
 
 ```go
 buf := make([]byte, 0, 1024)
 args := make([]any, 0, 16)
-buf, args, err := q.AppendWith(buf, args, qx.Options{PlaceholderStyle: qx.Question})
+buf, args, err := q.AppendWith(buf, args, qs.Options{PlaceholderStyle: qs.Question})
 ```
 
 Values containing quotes, semicolons, `?` or `$1` remain argument data.
@@ -238,11 +238,11 @@ Parentheses preserve composite expansion's unknown width. Apply aggregate
 modifiers before grouping and aliases afterward.
 
 ```go
-city := qx.TypedExpr[string](qx.Ident("u", "address").Field("city"))
-qx.Update("users").Set(city.Set("Porto"))
+city := qs.TypedExpr[string](qs.Ident("u", "address").Field("city"))
+qs.Update("users").Set(city.Set("Porto"))
 // UPDATE "users" SET "address"."city" = $1
 
-qx.InsertInto("users").Targets(qx.Col("address").Field("city")).Values("Porto")
+qs.InsertInto("users").Targets(qs.Col("address").Field("city")).Values("Porto")
 ```
 
 `Row` emits explicit `ROW(...)`; `Tuple` emits a parenthesized row and requires
@@ -256,8 +256,8 @@ subquery on PostgreSQL 16+; `.As(...)` names it for qualification.
 For a single INSERT row, typed assignments prevent separate column/value counts:
 
 ```go
-id, name := qx.Typed[int]("id"), qx.Typed[string]("name")
-qx.InsertInto("users").Set(id.Set(42), name.Set("Ana"))
+id, name := qs.Typed[int]("id"), qs.Typed[string]("name")
+qs.InsertInto("users").Set(id.Set(42), name.Set("Ana"))
 ```
 
 Each `Field[T].Set(T)` accepts exactly one correctly typed value at compile time;
@@ -320,10 +320,10 @@ are accepted directly as values. `JSONInputExpr(expr).FormatJSON()` marks an
 already formatted input, separately from output `Returning`/format options.
 
 ```go
-qx.JSONObject(qx.JSONPair(
-    qx.Param("name").Cast(qx.Text),
-    qx.Param("Ada").Cast(qx.Text),
-)).AbsentOnNull().Returning(qx.JSONB).Expr()
+qs.JSONObject(qs.JSONPair(
+    qs.Param("name").Cast(qs.Text),
+    qs.Param("Ada").Cast(qs.Text),
+)).AbsentOnNull().Returning(qs.JSONB).Expr()
 ```
 
 Object and array builders expose their applicable null/uniqueness policies.
@@ -340,13 +340,13 @@ attribute names are quoted identifiers. `XMLIsDocument` tests the document role.
 Modes and passing policies are typed enums; text content stays bound data.
 
 ```go
-items := qx.XMLTable(
-    qx.LiteralString("/root/item"),
-    qx.Param(document).Cast(qx.XML),
-    qx.XMLColumn("name", qx.Text).Path(qx.LiteralString("name")),
-    qx.XMLOrdinality("position"),
+items := qs.XMLTable(
+    qs.LiteralString("/root/item"),
+    qs.Param(document).Cast(qs.XML),
+    qs.XMLColumn("name", qs.Text).Path(qs.LiteralString("name")),
+    qs.XMLOrdinality("position"),
 ).As("items")
-q := qx.Select(items.Col("name")).FromExpr(items)
+q := qs.Select(items.Col("name")).FromExpr(items)
 ```
 
 Namespaces, paths and defaults accept expressions. XMLTABLE descriptors own

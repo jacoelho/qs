@@ -1,4 +1,4 @@
-package qx
+package qs
 
 import "slices"
 
@@ -364,7 +364,7 @@ func (b XMLExistsBuilder) Condition() Condition { return AsCondition(b.Expr()) }
 func (b XMLExistsBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLIsDocument tests whether an XML value has document shape. PostgreSQL
-// evaluates XML validity and document shape; qx only owns the SQL syntax.
+// evaluates XML validity and document shape; qs only owns the SQL syntax.
 func XMLIsDocument(value Expr) Condition {
 	return AsCondition(xmlExpr(xmlExpression{kind: xmlIsDocument, value: value}))
 }

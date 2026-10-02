@@ -1,4 +1,4 @@
-package qx
+package qs
 
 import "slices"
 
@@ -42,7 +42,7 @@ func SelectCols(columns ...string) *SelectBuilder { return Select().ColumnNames(
 
 // SelectSQL is a convenience wrapper for Select with each argument wrapped in
 // UnsafeSQL. It accepts trusted projection lists, not identifiers or user data.
-// Column counts for these fragments are unknown; qx does not pretend that
+// Column counts for these fragments are unknown; qs does not pretend that
 // counting commas parses SQL. Prefer Select with expressions for new queries.
 func SelectSQL(projections ...string) *SelectBuilder { return Select().ColumnsSQL(projections...) }
 

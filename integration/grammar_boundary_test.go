@@ -7,22 +7,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jacoelho/qx"
+	"github.com/jacoelho/qs"
 )
 
 func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
 	if _, err := conn.Exec(ctx, `BEGIN;
-		CREATE TEMP TABLE qx_grouping_setup (dummy integer);
-		CREATE DOMAIN pg_temp.qx_inner_array AS integer[];
-		CREATE TYPE pg_temp.qx_grouped_pair AS (a integer, b integer);
-		CREATE TEMP TABLE qx_grouped_indirection (
-			nested pg_temp.qx_inner_array[], bounds box, pairs pg_temp.qx_grouped_pair[]);
-		INSERT INTO qx_grouped_indirection VALUES (
-			ARRAY[ARRAY[42,99]::pg_temp.qx_inner_array],
+		CREATE TEMP TABLE qs_grouping_setup (dummy integer);
+		CREATE DOMAIN pg_temp.qs_inner_array AS integer[];
+		CREATE TYPE pg_temp.qs_grouped_pair AS (a integer, b integer);
+		CREATE TEMP TABLE qs_grouped_indirection (
+			nested pg_temp.qs_inner_array[], bounds box, pairs pg_temp.qs_grouped_pair[]);
+		INSERT INTO qs_grouped_indirection VALUES (
+			ARRAY[ARRAY[42,99]::pg_temp.qs_inner_array],
 			'((2,3),(0,1))'::box,
-			ARRAY[ROW(7,8)::pg_temp.qx_grouped_pair]);`); err != nil {
+			ARRAY[ROW(7,8)::pg_temp.qs_grouped_pair]);`); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -30,15 +30,15 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 		defer cancel()
 		_, _ = conn.Exec(cleanupCtx, "ROLLBACK")
 	})
-	one, two, zero := qx.LiteralInt(1), qx.LiteralInt(2), qx.LiteralInt(0)
-	nested, bounds, pairs := qx.Col("nested"), qx.Col("bounds"), qx.Col("pairs")
-	query := qx.Select(
+	one, two, zero := qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(0)
+	nested, bounds, pairs := qs.Col("nested"), qs.Col("bounds"), qs.Col("pairs")
+	query := qs.Select(
 		nested.Index(one).Parenthesized().Index(two),
 		nested.Index(one).Index(two).IsNull().Expr(),
 		bounds.Index(zero).Parenthesized().Index(one),
 		bounds.Index(zero).Index(one).IsNull().Expr(),
 		pairs.Index(one).Parenthesized().Field("b"),
-	).From("qx_grouped_indirection")
+	).From("qs_grouped_indirection")
 	sql, args, err := query.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 		t.Fatalf("element=%d flatArrayNull=%v y=%v flatBoxNull=%v field=%d", element, flatArrayNull, y, flatBoxNull, field)
 	}
 
-	expanded := qx.Select(pairs.Index(one).Parenthesized().Fields().Parenthesized()).From("qx_grouped_indirection")
+	expanded := qs.Select(pairs.Index(one).Parenthesized().Fields().Parenthesized()).From("qs_grouped_indirection")
 	sql, args, err = expanded.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -70,17 +70,17 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 func TestFunctionRelationCastsAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
-	sum := qx.LiteralInt(1).Add(qx.LiteralInt(2)).Cast(qx.Int4)
+	sum := qs.LiteralInt(1).Add(qs.LiteralInt(2)).Cast(qs.Int4)
 	for _, tc := range []struct {
 		name     string
-		relation qx.Relation
+		relation qs.Relation
 	}{
-		{"direct", qx.TableFunc(sum).As("c", "v")},
-		{"rows_from", qx.RowsFrom(qx.Function(sum)).As("c", "v")},
-		{"nested_parameter_cast", qx.TableFunc(qx.Param(3).Cast(qx.Int4).Cast(qx.Int8)).As("c", "v")},
+		{"direct", qs.TableFunc(sum).As("c", "v")},
+		{"rows_from", qs.RowsFrom(qs.Function(sum)).As("c", "v")},
+		{"nested_parameter_cast", qs.TableFunc(qs.Param(3).Cast(qs.Int4).Cast(qs.Int8)).As("c", "v")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qx.Select(qx.Col("v")).FromExpr(tc.relation).ToSQL()
+			sql, args, err := qs.Select(qs.Col("v")).FromExpr(tc.relation).ToSQL()
 			if err != nil {
 				t.Fatal(err)
 			}

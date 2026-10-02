@@ -1,4 +1,4 @@
-package qx
+package qs
 
 import "strings"
 

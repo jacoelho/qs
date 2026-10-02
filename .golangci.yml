@@ -106,8 +106,8 @@ linters:
             - "!**/integration/**"
           allow:
             - $gostd
-            - github.com/jacoelho/qx$
-            - github.com/jacoelho/qx/internal/postgrescorpus$
+            - github.com/jacoelho/qs$
+            - github.com/jacoelho/qs/internal/postgrescorpus$
 
         integration:
           list-mode: strict
@@ -115,7 +115,7 @@ linters:
             - "**/integration/**"
           allow:
             - $gostd
-            - github.com/jacoelho/qx$
+            - github.com/jacoelho/qs$
             - github.com/jackc/pgx/v5$
             - github.com/jackc/pgx/v5/
 
@@ -174,7 +174,7 @@ linters:
         - empty
         - stdlib
         - generic
-        - ^github\.com/jacoelho/qx\.(Statement|Rowset)$
+        - ^github\.com/jacoelho/qs\.(Statement|Rowset)$
 
     dupl:
       threshold: 120

@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // RowExpr is a heterogeneous SQL row. Tuple2 / Tuple3 add compile-time value
 // typing without imposing a fixed arity on the main query builder.

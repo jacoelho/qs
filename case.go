@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // CaseBuilder constructs a searched CASE (Case) or simple CASE (CaseOf).
 // End snapshots the branches so later builder changes cannot affect an Expr.

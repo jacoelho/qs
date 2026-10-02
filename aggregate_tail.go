@@ -1,4 +1,4 @@
-package qx
+package qs
 
 // Aggregate families own their argument grammar; FILTER and OVER share traversal.
 type aggregateTail struct {

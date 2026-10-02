@@ -1,7 +1,7 @@
-package qx
+package qs
 
 // Condition is a SQL boolean expression. Unknown (SQL NULL) retains PostgreSQL
-// three-valued semantics; qx never rewrites equality according to a bound value.
+// three-valued semantics; qs never rewrites equality according to a bound value.
 type Condition struct{ expr Expr }
 
 func (c Condition) Expr() Expr        { return c.expr }
