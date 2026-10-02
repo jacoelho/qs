@@ -17,7 +17,7 @@ Typical invocation (from the qs repository):
 
     python scripts/postgres_corpus.py \
       /path/to/postgres-<commit> \
-      --repo . --report docs/postgres-coverage.json
+      --repo . --report postgres-coverage.json
 
 The Go probe is transient unless ``--probe-dir`` is supplied.  ``--export-go``
 writes eight fixed JSONL shards and test-only typed builders after complete
@@ -3844,7 +3844,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("postgres_root", type=Path, help="pinned PostgreSQL source archive or checkout")
     parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent, help="qs repository used to compile the probe")
-    parser.add_argument("--report", type=Path, default=Path("docs/postgres-coverage.json"), help="coverage report path")
+    parser.add_argument("--report", type=Path, default=Path("postgres-coverage.json"), help="coverage report path")
     parser.add_argument("--commit", help="40-character PostgreSQL commit SHA when the source is not a git checkout")
     parser.add_argument("--expected-sql-sha256", help="fail if the regression SQL tree hash differs from this digest")
     parser.add_argument("--probe-dir", type=Path, help="retain generated Go probes in this directory")
