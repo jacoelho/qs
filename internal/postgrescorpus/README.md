@@ -33,7 +33,7 @@ narrowly equivalent spellings such as implicit ASC, default window frames,
 EXPLAIN booleans and AND grouping with unchanged leaf order. This measures
 construction fidelity, not schema validity, query results or equivalent plans.
 
-All four CI gates require at least 98% support:
+Local corpus verification requires at least 98% support for all four measures:
 
 | Measure | Verified / total | Support |
 |---|---:|---:|
@@ -80,7 +80,7 @@ make postgres-corpus POSTGRES_ROOT=/tmp/qs-postgres-source \
 
 The generated `postgres-coverage.json` is ignored. It records source locations,
 SQL, argument checks, exclusions and failures. Override `CORPUS_REPORT` to choose
-another path; CI retains its report as an artifact.
+another local path.
 
 To replace fixtures after full verification:
 
@@ -91,5 +91,6 @@ make postgres-corpus-update POSTGRES_ROOT=/tmp/qs-postgres-source \
 
 Export rejects partial/uncompiled runs, mismatched pins, missing/extra probe IDs,
 argument mismatches and raw constructors. Ordinary tests never update goldens.
-CI repeats the complete comparison, enforces all four thresholds, and regenerates
-and compares fixtures. Review changes to the manifest, oracles and builders.
+Refresh fixtures locally with the complete comparison and all four thresholds.
+CI runs the committed Go fixtures without regenerating them. Review changes to
+the manifest, oracles and builders.

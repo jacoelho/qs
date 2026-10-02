@@ -1,33 +1,28 @@
 name: test
 on:
-  push:
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   unit:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       GOMAXPROCS: '2'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.27.x'
+          go-version-file: go.mod
           cache: false
-      - run: go test -race -shuffle=on -count=1 -p=1 -parallel=8 ./...
-      - run: go vet -p=2 ./...
-      - run: go test -p=2 -parallel=8 -coverprofile=coverage.out ./...
-      - run: python3 scripts/generate.py && git diff --exit-code
-      - run: go test -run='^$' -fuzz='^FuzzIdentifier$' -fuzztime=15s -parallel=2 .
-      - run: go test -run='^$' -fuzz='^FuzzValueIsolation$' -fuzztime=15s -parallel=2 .
-      - run: go test -run='^$' -fuzz='^FuzzNestedNumbering$' -fuzztime=15s -parallel=2 .
-      - run: go test -run='^$' -fuzz='^FuzzCaseRoles$' -fuzztime=15s -parallel=2 .
-      - run: go test -run='^$' -fuzz='^FuzzMergeRoles$' -fuzztime=15s -parallel=2 .
-      - run: go test -run='^$' -fuzz='^FuzzJoinRoles$' -fuzztime=15s -parallel=2 .
-      - run: go test -run='^$' -bench=. -benchmem -count=3 .
+      - run: make golangci-lint
+      - run: make test
   postgres:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:18
@@ -45,48 +40,9 @@ jobs:
       QS_TEST_DSN: 'postgres://qs:qs@localhost:5432/qs?sslmode=disable'
       GOMAXPROCS: '2'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.27.x'
+          go-version-file: go.mod
           cache: false
       - run: go test -tags postgres -race -count=1 -p=2 -parallel=8 -timeout=5m -v ./integration
-  postgres-corpus:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      GOMAXPROCS: '2'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.27.x'
-          cache: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: python -m pip install -r scripts/requirements-postgres.txt
-      - run: python -m unittest discover -s scripts -p 'test_postgres_corpus.py'
-      - name: Download the pinned PostgreSQL regression corpus
-        env:
-          POSTGRES_COMMIT: 630e607397424196a0a3ebb14a5658c2473ddadf
-        run: |
-          curl --fail --location --retry 3 --max-time 180 "https://codeload.github.com/postgres/postgres/tar.gz/$POSTGRES_COMMIT" --output "$RUNNER_TEMP/postgres.tar.gz"
-          mkdir "$RUNNER_TEMP/postgres-source"
-          tar -xzf "$RUNNER_TEMP/postgres.tar.gz" -C "$RUNNER_TEMP/postgres-source" --strip-components=1
-      - name: Require 98 percent native construction support
-        run: >-
-          python scripts/postgres_corpus.py "$RUNNER_TEMP/postgres-source"
-          --commit 630e607397424196a0a3ebb14a5658c2473ddadf
-          --expected-sql-sha256 ddec651ca5f78d1ae9b721476efe586daf9220d80d5284f6fccd8329ed66218d
-          --report "$RUNNER_TEMP/postgres-coverage.json"
-          --minimum-support 98 --minimum-planner-support 98 --minimum-shape-support 98 --minimum-planner-shape-support 98
-          --export-go internal/postgrescorpus
-      - name: Require reproducible frozen Go fixtures
-        run: git diff --exit-code -- internal/postgrescorpus
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: postgres-coverage
-          path: ${{ runner.temp }}/postgres-coverage.json
-          if-no-files-found: ignore

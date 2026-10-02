@@ -1,4 +1,6 @@
-.PHONY: test race vet generate coverage benchmark integration postgres-corpus postgres-corpus-update
+.DEFAULT_GOAL := test
+
+.PHONY: golangci-lint test race vet generate coverage benchmark integration postgres-corpus postgres-corpus-update
 
 POSTGRES_ROOT ?=
 POSTGRES_COMMIT := 630e607397424196a0a3ebb14a5658c2473ddadf
@@ -7,6 +9,18 @@ CORPUS_PYTHON ?= python3
 CORPUS_REPORT ?= postgres-coverage.json
 CORPUS_EXPORT ?=
 TEST_PROCS ?= 2
+GOLANGCI_LINT_VERSION := v2.14.0
+GOLANGCI_LINT := .bin/golangci-lint/$(GOLANGCI_LINT_VERSION)/golangci-lint
+GOLANGCI_LINT_INSTALLER_REF := 114493f9b3e7257d29e4130f2b4a4aadefbb6845
+
+golangci-lint: $(GOLANGCI_LINT)
+	GOMAXPROCS=$(TEST_PROCS) "$(GOLANGCI_LINT)" run --build-tags postgres ./...
+
+$(GOLANGCI_LINT):
+	mkdir -p "$(dir $(GOLANGCI_LINT))"
+	curl --fail --silent --show-error --location --retry 3 --max-time 60 "https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_INSTALLER_REF)/install.sh" --output "$(dir $(GOLANGCI_LINT))install.sh"
+	sh "$(dir $(GOLANGCI_LINT))install.sh" -b "$(dir $(GOLANGCI_LINT))" $(GOLANGCI_LINT_VERSION)
+	rm "$(dir $(GOLANGCI_LINT))install.sh"
 
 test:
 	GOMAXPROCS=$(TEST_PROCS) go test -p=2 -parallel=8 ./...
