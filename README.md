@@ -389,7 +389,7 @@ local qs checkout. Installing qs does not install pgx; choose and install your
 database driver in your application.
 
 Regular tests run offline. The [PostgreSQL corpus](internal/postgrescorpus/README.md)
-verifies 28,097 query occurrences, measuring 99.65% construction support against
+verifies 28,111 query occurrences, measuring 99.70% construction support against
 the pinned PostgreSQL regression queries. This measures SQL construction, not
 schema validity or query plans. Make and CI bound test parallelism;
 `TEST_PROCS` overrides the Make default.

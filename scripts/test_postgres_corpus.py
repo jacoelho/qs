@@ -193,7 +193,8 @@ class PostgreSQLCorpusTests(unittest.TestCase):
     def test_adapter_families_roundtrip_through_compiled_probe(self) -> None:
         # These are handwritten boundary cases for adapters whose qs
         # constructors enforce structural invariants. The probe compiles and
-        # renders every builder; assertions compare only the reparsed AST.
+        # renders every builder; source ASTs and parameters provide the oracle.
+        assignment_sql = 'UPDATE t SET "a.b"=$1, "c.d"=DEFAULT, "q""r"=$2'
         sql_cases = (
             # Join forms and aliases.
             "SELECT * FROM t1 CROSS JOIN t2",
@@ -229,6 +230,18 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             "SELECT * FROM t WHERE ROW(a) IN (SELECT x FROM u)",
             "SELECT * FROM t WHERE ROW(a,b) IN (SELECT x,y FROM u)",
             "SELECT * FROM t WHERE a IN (SELECT x FROM u)",
+            # Assignment names are literal components, including dots and quotes.
+            assignment_sql,
+            'UPDATE t SET ("a.b","q""r")=ROW($1,$2)',
+            'UPDATE t SET ("a.b","q""r")=($1,$2)',
+            'UPDATE t SET ("a.b","q""r")=(SELECT $1,$2) WHERE c=$3',
+            'UPDATE t SET "a.b"[1]=$1, rec."x.y"=$2',
+            'MERGE INTO t USING s ON t.id=s.id WHEN MATCHED THEN UPDATE SET "a.b"=$1, "c.d"=DEFAULT',
+            # Preserve EXTRACT aliases and every projection and parameter.
+            "SELECT EXTRACT(MICROSECOND FROM $1), EXTRACT(MICROSEC FROM $2), "
+            "EXTRACT(MILLISECOND FROM $3), EXTRACT(SECONDS FROM $4), "
+            "EXTRACT(TIMEZONE_H FROM $5), EXTRACT(TIMEZONE_M FROM $6), "
+            "EXTRACT(JULIAN FROM $7), EXTRACT(DAY FROM $8)",
         )
         error_cases = (
             "SELECT * FROM t WHERE (a,b) IN (SELECT x FROM u)",
@@ -258,7 +271,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
                 planner=False,
                 families=(),
             )
-            occurrence.builder = postgres_corpus.GoEmitter().statement(statement)
+            occurrence.builder = postgres_corpus.GoEmitter(occurrence.id).statement(statement)
             occurrences.append(occurrence)
 
         with tempfile.TemporaryDirectory(prefix="qs-postgres-adapter-probe-") as directory:
@@ -274,11 +287,40 @@ class PostgreSQLCorpusTests(unittest.TestCase):
                     self.assertIn("subquery projection width differs from the left operand", (value or {}).get("error", ""))
                     continue
                 self.assertNotIn("error", value or {})
+                self.assertEqual(
+                    (value or {}).get("args"),
+                    list(postgres_corpus._expected_arguments(occurrence.source_ast, occurrence.id)),
+                )
                 rendered = str((value or {}).get("sql", ""))
                 equal, _ = postgres_corpus.compare_trees(
                     occurrence.source_ast, postgres_corpus._target_ast(rendered)
                 )
                 self.assertTrue(equal, rendered)
+
+        assignment = next(item for item in occurrences if item.source_sql == assignment_sql)
+        self.assertEqual(
+            results[assignment.id]["args"],
+            [
+                f"qs-postgres-corpus-{assignment.id}-param-1",
+                f"qs-postgres-corpus-{assignment.id}-param-2",
+            ],
+        )
+        for sql, numbers in (
+            ('UPDATE t SET ("a.b","q""r")=ROW($1,$2)', (1, 2)),
+            ('UPDATE t SET ("a.b","q""r")=($1,$2)', (1, 2)),
+            ('UPDATE t SET ("a.b","q""r")=(SELECT $1,$2) WHERE c=$3', (1, 2, 3)),
+            ('UPDATE t SET (a,b)=ROW($1,$2), (c,d)=ROW($3,$4) WHERE e=$5', (1, 2, 3, 4, 5)),
+            ('SELECT $1,$1', (1, 1)),
+        ):
+            with self.subTest(sql=sql):
+                self.assertEqual(
+                    postgres_corpus._source_param_numbers(postgres_corpus.parse_sql(sql)[0].stmt),
+                    numbers,
+                )
+        with self.assertRaisesRegex(postgres_corpus.Unsupported, "EXTRACT date-part fortnight"):
+            postgres_corpus.GoEmitter().statement(
+                postgres_corpus.parse_sql("SELECT EXTRACT(FORTNIGHT FROM $1)")[0].stmt
+            )
 
         for left, right in (
             ("SELECT * FROM t1 CROSS JOIN t2", "SELECT * FROM t1 INNER JOIN t2 ON TRUE"),

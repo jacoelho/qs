@@ -22,9 +22,9 @@ func TestPinnedCorpusManifest(t *testing.T) {
 		t.Fatalf("unexpected pinned source/parser provenance: %+v", manifest)
 	}
 	want := CountsManifest{
-		Total: 28197, Verified: 28097, ConstructionError: 54, Unsupported: 46,
+		Total: 28197, Verified: 28111, ConstructionError: 53, Unsupported: 33,
 		PlannerTotal: 5150, PlannerVerified: 5124,
-		DistinctShapes: 13722, DistinctVerifiedShapes: 13639,
+		DistinctShapes: 13722, DistinctVerifiedShapes: 13645,
 		PlannerDistinctShapes: 3893, PlannerDistinctVerifiedShapes: 3867,
 	}
 	if manifest.Counts != want {

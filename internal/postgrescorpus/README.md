@@ -37,17 +37,18 @@ Local corpus verification requires at least 98% support for all four measures:
 
 | Measure | Verified / total | Support |
 |---|---:|---:|
-| Query occurrences | 28,097 / 28,197 | 99.65% |
+| Query occurrences | 28,111 / 28,197 | 99.70% |
 | Planner occurrences | 5,124 / 5,150 | 99.50% |
-| Distinct query shapes | 13,639 / 13,722 | 99.40% |
+| Distinct query shapes | 13,645 / 13,722 | 99.44% |
 | Distinct planner shapes | 3,867 / 3,893 | 99.33% |
 
 Repeated queries count as separate occurrences; a distinct shape passes only
 when every occurrence passes. The planner subset includes EXPLAIN and named
-planner files selected by the tool. All 100 gaps remain: 46 untranslated queries
-and 54 generated-builder rejections. Missing translations include CURRENT_ROLE,
-USER, some EXTRACT spellings, empty ROW and non-sequential parameters. The report
-is a conservative lower bound because adapter gaps can hide supported syntax.
+planner files selected by the tool. The 86 remaining gaps comprise 33 untranslated
+queries and 53 generated-builder rejections. Missing translations include
+CURRENT_ROLE, USER, empty ROW and non-sequential parameters. EXTRACT(FORTNIGHT)
+remains rejected. The report is a conservative lower bound because adapter gaps
+can hide supported syntax.
 
 ## Inventory and bounds
 

@@ -728,11 +728,25 @@ def _parameter_sentinel(occurrence_id: int | None, number: int) -> str:
 def _source_param_numbers(node: Any) -> tuple[int, ...]:
     """Collect source parameter numbers independently of the Go emitter."""
 
-    return tuple(
-        int(value.number)
-        for value in _walk_nodes(node)
-        if _node_name(value) == "ParamRef"
-    )
+    numbers: list[int] = []
+
+    def visit(value: Any) -> None:
+        if isinstance(value, (tuple, list)):
+            for item in value:
+                visit(item)
+        elif isinstance(value, pgast.Node):
+            if _node_name(value) == "ParamRef":
+                numbers.append(int(value.number))
+                return
+            # Each row-assignment target repeats the same source subtree;
+            # the SQL contains that source, and its parameters, only once.
+            if _node_name(value) == "MultiAssignRef" and value.colno != 1:
+                return
+            for slot in getattr(value, "__slots__", {}):
+                visit(getattr(value, slot, None))
+
+    visit(node)
+    return tuple(numbers)
 
 
 def _expected_arguments(node: Any, occurrence_id: int | None) -> tuple[str, ...]:
@@ -1400,10 +1414,16 @@ class GoEmitter:
                     "century": "PartCentury",
                     "millennium": "PartMillennium",
                 }
-                part = parts.get(str(args[0].val.sval).lower())
-                if part is None:
-                    raise self.unsupported(f"EXTRACT date-part {args[0].val.sval}")
-                return f"qs.Extract(qs.{part}, {self.expr(args[1])})"
+                part_name = str(args[0].val.sval).lower()
+                part = parts.get(part_name)
+                if part is not None:
+                    return f"qs.Extract(qs.{part}, {self.expr(args[1])})"
+                if part_name in {
+                    "microsecond", "microsec", "millisecond", "seconds",
+                    "timezone_h", "timezone_m", "julian",
+                }:
+                    return f"qs.ExtractNamed({_go_quote(part_name)}, {self.expr(args[1])})"
+                raise self.unsupported(f"EXTRACT date-part {args[0].val.sval}")
             if names[-1].lower() == "timezone" and len(node.args or ()) == 2:
                 return f"({self.expr(node.args[1])}).AtTimeZone({self.expr(node.args[0])})"
             if names[-1].lower() == "timezone" and len(node.args or ()) == 1:
@@ -2472,35 +2492,22 @@ class GoEmitter:
                     for column, item in enumerate(group)
                 ):
                     raise self.unsupported("complex row assignment target")
-                columns = "[]string{" + _join(_go_quote(item.name) for item in group) + "}"
                 target_exprs = "[]qs.Expr{" + _join(self.expr_from_target(item) for item in group) + "}"
                 source = reference.source
                 if _node_name(source) == "SubLink" and _enum_name(source.subLinkType) == "EXPR_SUBLINK":
                     values.append(f"qs.AssignRowFrom({target_exprs}, {self.rowset(source.subselect)})")
                 elif _node_name(source) == "RowExpr":
                     row_format = _enum_name(getattr(source, "row_format", None))
-                    if row_format == "COERCE_EXPLICIT_CALL" and not any(item.indirection for item in group):
-                        values.append(f"qs.SetRow({columns}, {_join(self.expr(arg) for arg in source.args)})")
-                    else:
-                        constructor = "qs.Tuple" if row_format == "COERCE_IMPLICIT_CAST" else "qs.Row"
-                        values.append(
-                            f"qs.AssignRow({target_exprs}, {constructor}({_join(self.expr(arg) for arg in source.args)}))"
-                        )
+                    constructor = "qs.Tuple" if row_format == "COERCE_IMPLICIT_CAST" else "qs.Row"
+                    values.append(
+                        f"qs.AssignRow({target_exprs}, {constructor}({_join(self.expr(arg) for arg in source.args)}))"
+                    )
                 else:
                     raise self.unsupported(f"row assignment source {_node_name(source)}")
                 index += count
                 continue
             value = self.expr(target.val)
-            if target.indirection:
-                target_expr = self.expr_from_target(target)
-                values.append(f"qs.Assign({target_expr}, {value})")
-            elif target.name:
-                if _node_name(target.val) == "SetToDefault":
-                    values.append(f"qs.SetDefault({_go_quote(target.name)})")
-                else:
-                    values.append(f"qs.SetExpr({_go_quote(target.name)}, {value})")
-            else:
-                raise self.unsupported("assignment target has no name")
+            values.append(f"qs.Assign({self.expr_from_target(target)}, {value})")
             index += 1
         return values
 
