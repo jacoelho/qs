@@ -1,14 +1,35 @@
 # Querysmith (qs)
 
-PostgreSQL query construction for Go 1.27. Module `github.com/jacoelho/qs`, package
-`qs`. The core uses only the standard library and has no execution, scanning,
-connection pool, reflection, unsafe code or schema-discovery layer.
+qs builds PostgreSQL queries from composable Go expressions. Start with a query,
+add filters, joins or pagination as needed, then render SQL and arguments for
+pgx or `database/sql`. Your application owns execution and result scanning.
 
-## Usage
+- No reflection or unsafe code. The query builder uses only the standard
+  library.
+- Bound values and quoted identifiers. Parameters are numbered across nested
+  queries in SQL order.
+- Low allocation. Prebuilt queries can render into reusable buffers with
+  zero allocations in the measured warm append fixtures. Construction and owned
+  `ToSQL` output have separate costs.
+- PostgreSQL syntax. SELECT, INSERT, UPDATE, DELETE, MERGE, CTEs, set operations,
+  window functions, JSON/JSONB and XML. Per-render feature checks target
+  PostgreSQL 12–18; PostgreSQL 18 is the default.
+
+## Install
+
+Requires Go 1.27.
+
+```sh
+go get github.com/jacoelho/qs
+```
 
 ```go
-import qs "github.com/jacoelho/qs"
+import "github.com/jacoelho/qs"
+```
 
+## Build your first query
+
+```go
 query, args, err := qs.SelectCols("id", "name").
     From("users").
     Where(qs.Eq("active", true), qs.IsNull("deleted_at")).
@@ -23,97 +44,351 @@ WHERE ("active" = $1) AND ("deleted_at" IS NULL)
 ORDER BY "created_at" DESC, "id" DESC LIMIT $2
 ```
 
-Arguments: `[]any{true, 20}`. Check the error, then execute with pgx or a
-`database/sql` driver. The caller owns codecs, transactions, result scanning,
-roles, RLS and tenant context. `RequireWhere` is a structural guard, not
-authorization; WHERE TRUE passes it, and TRUNCATE is not filtered by RLS.
+Arguments: `[true 20]`. Check `err` before passing `query` and `args...` to your
+driver, such as `db.QueryContext(ctx, query, args...)` or
+`conn.Query(ctx, query, args...)` with pgx.
 
-Use `go doc .` for the exported API and [examples](example_test.go) for executable
-usage. [Architecture](internal/ARCHITECTURE.md) owns internal invariants and design
-decisions; the [corpus guide](internal/postgrescorpus/README.md) owns support
-measurement, provenance and fixture regeneration.
+Use `SelectCols` for column names and `Select` for expressions:
 
-## Construction contracts
+```go
+q := qs.Select(
+    qs.Col("id"),
+    qs.Col("name"),
+    qs.Col("created_at").Cast(qs.TypeText).As("created"),
+).From("users")
+```
 
-- `Select` accepts expressions; `SelectCols` accepts column names. `SelectSQL`
-  accepts trusted projection syntax without parsing it or inferring width.
-- `Col("a.b")` splits a qualified path; `Ident("a.b")` quotes one identifier.
-  `Col("id::text")` is a name; use `Col("id").Cast(Text)` for a cast.
-- Values bind. Expression-valued methods such as `EqExpr` and `ValuesExpr` accept
-  expressions; passing an expression to a value-binding method fails rendering.
-  UnsafeSQL and raw fragments accept trusted code, never interpolated input.
-- `Field[T]` constrains Go operands and assignments; it does not prove schema,
-  SQL type, codec support or nullability. JSON/JSONB helpers preserve distinct
-  document/operator roles. Encoded JSON parameters add casts, not marshaling.
-- `Null[T]` distinguishes SQL NULL from zero; `Optional[T]` distinguishes absence
-  from presence. Check optional presence and use explicit nullable bind helpers.
-  Plain equality never becomes IS NULL automatically.
-- Empty IN is FALSE, NOT IN is TRUE, And is TRUE and Or is FALSE. A zero Condition
-  is invalid. Nonempty NULL-containing membership retains PostgreSQL semantics.
+## Add optional filters
 
-`InnerJoin`, `LeftJoin`, `RightJoin` and `FullJoin` return PendingJoin. Complete it
-with On, Using or UsingAs before aliasing, nesting or passing it to FromExpr.
-ON requires a first condition; USING requires a first column. Check empty dynamic
-lists before indexing the first element. CROSS and natural joins are complete.
+Compose a query with ordinary Go control flow. Each `Where` call appends
+conditions with AND; use `Or` to group alternatives.
 
-Case accepts condition branches through When; CaseOf accepts operand comparisons
-through WhenValue. End snapshots branches and the fallback. MERGE match selectors
-expose category-appropriate actions; choose conditions and identity overriding
-before completion. Completed MergeWhen values have no action/modifier methods.
-Zero descriptors, known width errors and unreachable branches fail rendering.
+```go
+func filteredUsers(tenantID int, prefix string, roles []string) *qs.SelectBuilder {
+    q := qs.SelectCols("id", "email").From("users").
+        Where(qs.Eq("tenant_id", tenantID), qs.IsNull("deleted_at"))
 
-## Rendering and ownership
+    if prefix != "" {
+        q.Where(qs.Or(
+            qs.ILike("name", prefix+"%"),
+            qs.ILike("email", prefix+"%"),
+        ))
+    }
+    if len(roles) > 0 {
+        q.Where(qs.In("role", roles...))
+    }
+    return q
+}
+```
 
-ToSQL owns its SQL string and argument slice. ToSQLWith selects options per call.
-AppendSQL and AppendWith use caller-owned storage, numbering parameters after the
-existing arguments. One renderer traverses nested statements in emitted SQL order.
-Reusing a subquery binds each occurrence independently.
+```go
+query, args, err := filteredUsers(42, "jo", []string{"admin", "editor"}).ToSQL()
+```
 
-Zero options select Dollar placeholders, PostgreSQL 18, 65,535 parameters and 256
-nesting levels. Question placeholders preserve argument order and PostgreSQL
-syntax; the consumer must distinguish binds from PostgreSQL question-mark
-operators. Raw fragments do not bind handwritten placeholders. Version checks
-cover selected features, not complete server/schema/type validation.
+```sql
+SELECT "id", "email" FROM "users"
+WHERE ("tenant_id" = $1)
+  AND ("deleted_at" IS NULL)
+  AND (("name" ILIKE $2) OR ("email" ILIKE $3))
+  AND ("role" IN ($4, $5))
+```
 
-Errors wrap sentinels in RenderError. Failed owned rendering returns empty SQL
-and nil arguments. Failed appends preserve original lengths and visible prefixes,
-clear appended argument references, and may change unused backing-array capacity.
+Arguments: `[42 jo% jo% admin editor]`. An empty prefix or role list omits that
+filter. `ILike` binds a SQL pattern; `%` and `_` retain their wildcard meaning.
+An empty `In` list produces FALSE, so guard the list when empty means “no filter”.
+Use `IsNull` for SQL NULL tests; `Eq` binds its value and does not infer IS NULL.
 
-Builders mutate. List methods generally append; From/FromExpr replace FROM items.
-Nested builders stay live. Clone copies the reachable statement structure,
-including shared subqueries, but bound application objects remain shallow.
-Read-only renders may run concurrently once the graph and bound values are
-stable; mutation and Reset are unsynchronized. Keep bound slices/pointers stable
-through execution, and do not reuse buffers while a driver or goroutine needs
-them. Clear argument references before shortening or reusing slices.
+## Compose queries with limits and offsets
 
-Prebuilt queries with stable interface values and sufficient storage report zero
-allocations for successful warm append rendering in measured fixtures.
-Construction, cloning, owned output and errors have separate costs.
+Builders mutate. Use `Clone` when branching from a reusable base query, then add
+the ordering and pagination for each branch.
 
-## Development
+```go
+base := qs.SelectCols("id").From("users").Where(qs.Eq("active", true))
+
+first := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(0)
+next := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(10)
+
+query, args, err := next.ToSQL()
+```
+
+```sql
+SELECT "id" FROM "users" WHERE ("active" = $1)
+ORDER BY "id" ASC LIMIT $2 OFFSET $3
+```
+
+The first page binds `[true 10 0]`; the next binds `[true 10 10]`. The base still
+renders `SELECT "id" FROM "users" WHERE ("active" = $1)` with `[true]`.
+Limit and offset values are bound parameters. Calls replace their previous
+values; `RemoveLimit` and `RemoveOffset` clear them.
+
+Choose an ordering with a unique tie-breaker for predictable page boundaries.
+Offset pagination can still shift as rows change between requests. For a feed
+ordered by ID, use the last returned ID as a cursor:
+
+```go
+page := base.Clone().
+    Where(qs.Gt("id", lastSeenID)).
+    OrderBy(qs.Asc("id")).
+    Limit(10)
+```
+
+## Build a report with a CTE
+
+Aggregate paid orders in a CTE, join the result to users, classify spending with
+CASE, and paginate the report:
+
+```go
+total := qs.Sum(qs.Col("o.total"))
+paidOrders := qs.CTE("paid_orders",
+    qs.Select(qs.Col("o.user_id"), total.As("total_spend")).
+        FromExpr(qs.Table("orders").As("o")).
+        Where(qs.Eq("o.status", "paid")).
+        GroupBy("o.user_id").
+        Having(total.Gte(100)),
+)
+
+tier := qs.Case().
+    When(qs.Gte("p.total_spend", 1000), qs.Param("vip")).
+    Else(qs.Param("standard")).
+    End().As("tier")
+
+q := qs.Select(qs.Col("u.id"), qs.Col("u.email"), qs.Col("p.total_spend"), tier).
+    With(paidOrders).
+    FromExpr(qs.InnerJoin(qs.Table("users").As("u"), paidOrders.Ref().As("p")).
+        On(qs.EqColumns("u.id", "p.user_id"))).
+    Where(qs.Eq("u.active", true)).
+    OrderBy(qs.Desc("p.total_spend"), qs.Asc("u.id")).
+    Limit(20).Offset(40)
+
+query, args, err := q.ToSQL()
+```
+
+```sql
+WITH "paid_orders" AS (
+    SELECT "o"."user_id", sum("o"."total") AS "total_spend"
+    FROM "orders" AS "o"
+    WHERE ("o"."status" = $1)
+    GROUP BY "o"."user_id"
+    HAVING (sum("o"."total") >= $2)
+)
+SELECT "u"."id", "u"."email", "p"."total_spend",
+       CASE WHEN ("p"."total_spend" >= $3) THEN $4 ELSE $5 END AS "tier"
+FROM ("users" AS "u" JOIN "paid_orders" AS "p" ON ("u"."id" = "p"."user_id"))
+WHERE ("u"."active" = $6)
+ORDER BY "p"."total_spend" DESC, "u"."id" ASC
+LIMIT $7 OFFSET $8
+```
+
+Arguments: `[paid 100 1000 vip standard true 20 40]`. One renderer numbers binds
+through the CTE and outer query. `Having` uses the aggregate expression;
+`paidOrders.Ref()` gives the CTE a composable table reference.
+
+`InnerJoin`, `LeftJoin`, `RightJoin` and `FullJoin` require completion with `On`,
+`Using` or `UsingAs`. CROSS and natural joins are already complete relations.
+Use `Case` for condition branches and `CaseOf` for comparisons to one operand.
+
+## Insert and update on conflict
+
+```go
+query, args, err := qs.InsertInto("users").
+    Columns("id", "name").Values(42, "Ana").
+    OnConflict(qs.ConflictColumns("id").
+        DoUpdate(qs.SetExpr("name", qs.Excluded("name")))).
+    ReturningCols("id").
+    ToSQL()
+```
+
+```sql
+INSERT INTO "users" ("id", "name") VALUES ($1, $2)
+ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name"
+RETURNING "id"
+```
+
+Arguments: `[42 Ana]`. `Set` binds a Go value; `SetExpr` assigns an SQL expression.
+`ReturningCols` requests columns for your driver to scan.
+
+## Cast a value to UUID
+
+Use `Cast(qs.TypeUUID)` when SQL needs an explicit UUID type:
+
+```go
+id := "550e8400-e29b-41d4-a716-446655440000"
+query, args, err := qs.Select(qs.Param(id).Cast(qs.TypeUUID)).ToSQL()
+```
+
+```sql
+SELECT ($1)::uuid
+```
+
+Arguments: `[550e8400-e29b-41d4-a716-446655440000]`. To compare a UUID column
+with this expression, use `qs.Col("id").EqExpr(qs.Param(id).Cast(qs.TypeUUID))`.
+The cast is SQL syntax; qs leaves the Go value unchanged for the driver to encode.
+
+Dedicated descriptors cover common PostgreSQL types, rather than the full native
+catalog. Use `TypeNamed` for other built-in types, domains or extension types,
+for example `qs.TypeNamed("pg_catalog", "int4range")`. `TypeArray` constructs
+arrays from any descriptor.
+
+## Use pgx types
+
+Pass pgx values directly to `Param`, `Eq` or `Values`. For example, with
+`github.com/jackc/pgx/v5/pgtype` imported and an open `conn` and `ctx`:
+
+```go
+var id pgtype.UUID
+if err := id.Scan("550e8400-e29b-41d4-a716-446655440000"); err != nil {
+    return err
+}
+query, args, err := qs.Select(qs.Param(id).Cast(qs.TypeUUID)).ToSQL()
+if err != nil {
+    return err
+}
+var result pgtype.UUID
+if err := conn.QueryRow(ctx, query, args...).Scan(&result); err != nil {
+    return err
+}
+```
+
+pgx provides UUID encoding and scanning. A `pgtype.UUID` with `Valid: false`
+encodes as SQL NULL. Built-in types need no custom registration; see
+[pgx type support](https://pkg.go.dev/github.com/jackc/pgx/v5/pgtype).
+
+### Custom composites with nested arrays
+
+Register the nested composite, its array type, then the containing composite.
+Suppose your schema contains:
+
+```sql
+CREATE TYPE pet AS (name text, age integer);
+CREATE TYPE person AS (id uuid, pets pet[]);
+```
+
+Register the types on each connection after creating them. With a pool, perform
+registration in `pgxpool.Config.AfterConnect`. Dependencies must be registered
+first so pgx can build the containing codec; see
+[new PostgreSQL type support](https://pkg.go.dev/github.com/jackc/pgx/v5/pgtype#hdr-New_PostgreSQL_Type_Support).
+Using the UUID `id` and connection from the preceding example:
+
+```go
+for _, name := range []string{"pet", "_pet", "person"} {
+    typ, err := conn.LoadType(ctx, name)
+    if err != nil {
+        return err
+    }
+    conn.TypeMap().RegisterType(typ)
+}
+
+person := pgtype.CompositeFields{
+    id,
+    pgtype.FlatArray[pgtype.CompositeFields]{
+        {"Fido", int32(3)},
+        {"Rex", int32(5)},
+    },
+}
+query, args, err = qs.Select(qs.Param(person).Cast(qs.TypeNamed("person"))).ToSQL()
+if err != nil {
+    return err
+}
+type Pet struct {
+    Name string
+    Age  int32
+}
+var personResult struct {
+    ID   pgtype.UUID
+    Pets []Pet
+}
+if err := conn.QueryRow(ctx, query, args...).Scan(&personResult); err != nil {
+    return err
+}
+```
+
+This renders `SELECT ($1)::"person"` with one composite argument. Composite fields
+and scanned public struct fields follow PostgreSQL's declared field order.
+`_pet` is the array type PostgreSQL creates for `pet`; register `_person` too if
+you bind `person[]`. Use `qs.TypeNamed("app", "person")` for a schema-qualified
+cast, and load the corresponding schema-qualified types on the connection.
+The [live type examples](integration/type_examples_test.go) verify UUIDs and the
+nested composite round trip against PostgreSQL.
+
+## Values, expressions and trusted SQL
+
+Use `Param` for values inside expressions, `Col` for qualified column paths and
+`Ident` for literal identifier parts. For example, `Col("u.id")` renders
+`"u"."id"`, while `Ident("u.id")` renders `"u.id"`.
+
+Methods ending in `Expr` accept expressions. Value-binding methods such as `Eq`
+and `Values` accept application values; use `EqExpr` and `ValuesExpr` to compose
+expressions instead. `Field[T]`, `Null[T]` and `Optional[T]` provide typed operands,
+explicit SQL NULL values and optional fields; see the [executable examples](example_test.go).
+
+`SelectSQL`, `UnsafeSQL`, `Fragment` and `StatementSQL` support trusted
+application-authored SQL. Keep request values in bind parameters. Raw fragments
+do not bind handwritten placeholders.
+
+## Reuse buffers for repeated rendering
+
+`ToSQL` returns an owned string and argument slice. `AppendSQL` appends to
+caller-owned storage and starts numbering after any existing arguments:
+
+```go
+q := qs.SelectCols("id").From("users").Where(qs.Eq("active", true))
+sqlBuffer := make([]byte, 0, 256)
+argBuffer := make([]any, 0, 8)
+
+sqlBuffer, argBuffer, err := q.AppendSQL(sqlBuffer[:0], argBuffer[:0])
+```
+
+Keep the buffers and bound values stable while a driver uses them. Clear argument
+references before reusing their storage. Successful warm appends can avoid
+allocations when the query is prebuilt and the buffers have enough capacity.
+
+Nested builders remain live. `Clone` copies the statement graph, including shared
+subqueries; application values in parameters remain shallow. Read-only rendering
+can run concurrently once the graph and values are stable. Mutation and `Reset`
+are unsynchronized.
+
+## Render options and errors
+
+`ToSQLWith` and `AppendWith` take per-call `Options`. Zero options select Dollar
+placeholders, PostgreSQL 18, 65,535 parameters and 256 nesting levels. `Question`
+placeholders preserve PostgreSQL syntax and need a consumer that supports it.
+Feature checks do not validate your schema, SQL types or privileges.
+
+Check rendering errors before execution. Errors wrap sentinels such as
+`ErrInvalid`, `ErrUnsupported` and `ErrParameterLimit` in `RenderError`; use
+`errors.Is` to inspect them. Failed `ToSQL` calls return empty SQL and nil
+arguments. Failed appends preserve their input lengths and visible prefixes.
+
+## More examples and development
+
+[example_test.go](example_test.go) contains runnable examples with checked SQL and
+arguments. Use `go doc .` for the full exported API and the
+[architecture guide](internal/ARCHITECTURE.md) for design decisions.
 
 ```sh
+make golangci-lint
 make test
 make race
 make vet
 make generate
 make benchmark
 
-# Optional live tests against PostgreSQL 18.
+# Live tests against PostgreSQL 18.
 export QS_TEST_DSN='postgres://user:password@localhost/database?sslmode=disable'
 make integration
 ```
 
-Regular tests run offline, exclude pgx from their compiled dependency graph and
-include all 28,097 verified frozen PostgreSQL corpus occurrences. Core checks
-pass on Go 1.27.0; tagged live tests have passed on PostgreSQL 18.6. The corpus
-measures 99.65% construction support with all four 98% gates passing; this does
-not prove schema validity, equivalent plans or every server-version behavior.
+`make golangci-lint` installs the pinned linter in `.bin/` when needed and checks
+all packages, including the PostgreSQL integration code. PR checks run this
+target followed by `make test`; race tests, coverage and benchmarks are available
+through their Make targets.
 
-Make and CI use GOMAXPROCS=2. Ordinary builds use `-p=2 -parallel=8`; race builds
-use `-p=1` to bound compiler memory. `TEST_PROCS` overrides the Make default.
-The root module pins pgx for tagged tests; go mod tidy considers all build tags.
+Regular tests run offline. The [PostgreSQL corpus](internal/postgrescorpus/README.md)
+verifies 28,097 query occurrences, measuring 99.65% construction support against
+the pinned PostgreSQL regression queries. This measures SQL construction, not
+schema validity or query plans. Make and CI bound test parallelism;
+`TEST_PROCS` overrides the Make default.
 
 License: MIT. PostgreSQL-derived fixtures retain their
 [upstream notice](internal/postgrescorpus/NOTICE.postgresql).

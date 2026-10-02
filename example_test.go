@@ -78,3 +78,95 @@ func ExampleSelectSQL() {
 	// SELECT id, created_at, ("team_id")::text FROM "users" WHERE ("active" = $1)
 	// [true] <nil>
 }
+
+func ExampleExpr_Cast() {
+	id := "550e8400-e29b-41d4-a716-446655440000"
+	query, args, err := qs.Select(qs.Param(id).Cast(qs.TypeUUID)).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT ($1)::uuid
+	// [550e8400-e29b-41d4-a716-446655440000] <nil>
+}
+
+func filteredUsers(tenantID int, prefix string, roles []string) *qs.SelectBuilder {
+	q := qs.SelectCols("id", "email").From("users").
+		Where(qs.Eq("tenant_id", tenantID), qs.IsNull("deleted_at"))
+	if prefix != "" {
+		q.Where(qs.Or(
+			qs.ILike("name", prefix+"%"),
+			qs.ILike("email", prefix+"%"),
+		))
+	}
+	if len(roles) > 0 {
+		q.Where(qs.In("role", roles...))
+	}
+	return q
+}
+
+func ExampleSelectBuilder_filters() {
+	query, args, err := filteredUsers(42, "jo", []string{"admin", "editor"}).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+
+	query, args, err = filteredUsers(42, "", nil).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "id", "email" FROM "users" WHERE ("tenant_id" = $1) AND ("deleted_at" IS NULL) AND (("name" ILIKE $2) OR ("email" ILIKE $3)) AND ("role" IN ($4, $5))
+	// [42 jo% jo% admin editor] <nil>
+	// SELECT "id", "email" FROM "users" WHERE ("tenant_id" = $1) AND ("deleted_at" IS NULL)
+	// [42] <nil>
+}
+
+func ExampleSelectBuilder_pagination() {
+	base := qs.SelectCols("id").From("users").Where(qs.Eq("active", true))
+	first := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(0)
+	next := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(10)
+
+	query, args, err := first.ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	query, args, err = next.ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	query, args, err = base.ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "id" FROM "users" WHERE ("active" = $1) ORDER BY "id" ASC LIMIT $2 OFFSET $3
+	// [true 10 0] <nil>
+	// SELECT "id" FROM "users" WHERE ("active" = $1) ORDER BY "id" ASC LIMIT $2 OFFSET $3
+	// [true 10 10] <nil>
+	// SELECT "id" FROM "users" WHERE ("active" = $1)
+	// [true] <nil>
+}
+
+func ExampleCTE_report() {
+	total := qs.Sum(qs.Col("o.total"))
+	paidOrders := qs.CTE("paid_orders",
+		qs.Select(qs.Col("o.user_id"), total.As("total_spend")).
+			FromExpr(qs.Table("orders").As("o")).
+			Where(qs.Eq("o.status", "paid")).
+			GroupBy("o.user_id").
+			Having(total.Gte(100)),
+	)
+	tier := qs.Case().
+		When(qs.Gte("p.total_spend", 1000), qs.Param("vip")).
+		Else(qs.Param("standard")).
+		End().As("tier")
+	q := qs.Select(qs.Col("u.id"), qs.Col("u.email"), qs.Col("p.total_spend"), tier).
+		With(paidOrders).
+		FromExpr(qs.InnerJoin(qs.Table("users").As("u"), paidOrders.Ref().As("p")).
+			On(qs.EqColumns("u.id", "p.user_id"))).
+		Where(qs.Eq("u.active", true)).
+		OrderBy(qs.Desc("p.total_spend"), qs.Asc("u.id")).
+		Limit(20).Offset(40)
+
+	query, args, err := q.ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// WITH "paid_orders" AS (SELECT "o"."user_id", sum("o"."total") AS "total_spend" FROM "orders" AS "o" WHERE ("o"."status" = $1) GROUP BY "o"."user_id" HAVING (sum("o"."total") >= $2)) SELECT "u"."id", "u"."email", "p"."total_spend", CASE WHEN ("p"."total_spend" >= $3) THEN $4 ELSE $5 END AS "tier" FROM ("users" AS "u" JOIN "paid_orders" AS "p" ON ("u"."id" = "p"."user_id")) WHERE ("u"."active" = $6) ORDER BY "p"."total_spend" DESC, "u"."id" ASC LIMIT $7 OFFSET $8
+	// [paid 100 1000 vip standard true 20 40] <nil>
+}
