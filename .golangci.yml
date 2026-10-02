@@ -4,6 +4,7 @@ run:
   timeout: 5m
   tests: true
   modules-download-mode: readonly
+  relative-path-mode: cfg
 
 linters:
   default: none
@@ -74,6 +75,10 @@ linters:
     - usetesting
 
   settings:
+    gomoddirectives:
+      # The integration module tests the local qs checkout.
+      replace-local: true
+
     govet:
       # Includes fieldalignment; test structs are excluded below.
       enable-all: true

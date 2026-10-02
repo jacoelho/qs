@@ -4,8 +4,8 @@ qs builds PostgreSQL queries from composable Go expressions. Start with a query,
 add filters, joins or pagination as needed, then render SQL and arguments for
 pgx or `database/sql`. Your application owns execution and result scanning.
 
-- No reflection or unsafe code. The query builder uses only the standard
-  library.
+- No reflection, unsafe code or third-party dependencies. The query builder uses
+  only the standard library.
 - Bound values and quoted identifiers. Parameters are numbered across nested
   queries in SQL order.
 - Low allocation. Prebuilt queries can render into reusable buffers with
@@ -383,6 +383,10 @@ make integration
 all packages, including the PostgreSQL integration code. PR checks run this
 target followed by `make test`; race tests, coverage and benchmarks are available
 through their Make targets.
+
+The `integration/` module owns the pgx dependency for database tests and uses the
+local qs checkout. Installing qs does not install pgx; choose and install your
+database driver in your application.
 
 Regular tests run offline. The [PostgreSQL corpus](internal/postgrescorpus/README.md)
 verifies 28,097 query occurrences, measuring 99.65% construction support against

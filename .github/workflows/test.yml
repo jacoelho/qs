@@ -45,4 +45,5 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - run: go test -tags postgres -race -count=1 -p=2 -parallel=8 -timeout=5m -v ./integration
+      - run: go test -tags postgres -race -count=1 -p=2 -parallel=8 -timeout=5m -v ./...
+        working-directory: integration

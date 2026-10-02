@@ -14,7 +14,8 @@ GOLANGCI_LINT := .bin/golangci-lint/$(GOLANGCI_LINT_VERSION)/golangci-lint
 GOLANGCI_LINT_INSTALLER_REF := 114493f9b3e7257d29e4130f2b4a4aadefbb6845
 
 golangci-lint: $(GOLANGCI_LINT)
-	GOMAXPROCS=$(TEST_PROCS) "$(GOLANGCI_LINT)" run --build-tags postgres ./...
+	GOMAXPROCS=$(TEST_PROCS) "$(GOLANGCI_LINT)" run ./...
+	cd integration && GOMAXPROCS=$(TEST_PROCS) "../$(GOLANGCI_LINT)" run --config ../.golangci.yml --build-tags postgres ./...
 
 $(GOLANGCI_LINT):
 	mkdir -p "$(dir $(GOLANGCI_LINT))"
@@ -36,7 +37,7 @@ coverage:
 benchmark:
 	go test -run='^$$' -bench=. -benchmem -count=3 .
 integration:
-	GOMAXPROCS=$(TEST_PROCS) go test -tags postgres -p=2 -parallel=8 -timeout 5m -v ./integration
+	cd integration && GOMAXPROCS=$(TEST_PROCS) go test -tags postgres -p=2 -parallel=8 -timeout 5m -v ./...
 postgres-corpus:
 	@test -n "$(POSTGRES_ROOT)" || (echo 'Set POSTGRES_ROOT to the pinned PostgreSQL source directory.' >&2; exit 1)
 	GOMAXPROCS=$(TEST_PROCS) $(CORPUS_PYTHON) -m unittest discover -s scripts -p 'test_postgres_corpus.py'

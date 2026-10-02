@@ -5,3 +5,4 @@ coverage.html
 __pycache__/
 /postgres-coverage.json
 /.bin/
+/.codex/

@@ -7,9 +7,11 @@ construction-support measurement and fixture maintenance.
 ## Boundaries and representation
 
 The core constructs PostgreSQL SQL and arguments. It has no execution, scanning,
-transaction, schema-discovery or dialect layer. The standard library is its only
-runtime dependency. Tagged integration tests use pgx directly; callers own
-connections, transactions, argument encoding and database authorization.
+transaction, schema-discovery or dialect layer. Its module has no third-party
+dependencies. The separate `integration/` module owns pgx and replaces its qs
+dependency with the local checkout. Tagged database tests run and lint through
+that module; root module tests need no database driver. Callers own connections,
+transactions, argument encoding and database authorization.
 
 `Statement` and `Rowset` are sealed interfaces. SELECT, VALUES, TABLE and set
 operations are rowsets; DML is Statement-only even with RETURNING. Query utility
