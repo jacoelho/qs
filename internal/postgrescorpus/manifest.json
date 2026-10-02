@@ -1,0 +1,120 @@
+{
+  "schema": "qs-postgres-corpus-v2",
+  "revision": "630e607397424196a0a3ebb14a5658c2473ddadf",
+  "sql_sha256": "ddec651ca5f78d1ae9b721476efe586daf9220d80d5284f6fccd8329ed66218d",
+  "parser": {
+    "package": "pglast",
+    "version": "v8.4",
+    "postgresql": "18.4"
+  },
+  "counts": {
+    "total": 28197,
+    "verified": 28097,
+    "construction_error": 54,
+    "unsupported": 46,
+    "planner_total": 5150,
+    "planner_verified": 5124,
+    "distinct_shapes": 13722,
+    "distinct_verified_shapes": 13639,
+    "planner_distinct_shapes": 3893,
+    "planner_distinct_verified_shapes": 3867
+  },
+  "shards": [
+    {
+      "index": 0,
+      "package": "shard00",
+      "jsonl": "shard00/corpus.jsonl",
+      "sha256": "7ba743908715331184bc20aae8b93acf4438fcc176ff3f5448070f45635aa371",
+      "count": 3525,
+      "first_id": 0,
+      "last_id": 28192,
+      "verified": 3516,
+      "construction_error": 7,
+      "unsupported": 2
+    },
+    {
+      "index": 1,
+      "package": "shard01",
+      "jsonl": "shard01/corpus.jsonl",
+      "sha256": "edefe8fb4ca1c11ef600c4d563228d86b1c8fb267cc16fec2e851575bbd4855c",
+      "count": 3525,
+      "first_id": 1,
+      "last_id": 28193,
+      "verified": 3511,
+      "construction_error": 8,
+      "unsupported": 6
+    },
+    {
+      "index": 2,
+      "package": "shard02",
+      "jsonl": "shard02/corpus.jsonl",
+      "sha256": "478b58e5bd17560ca2336f4f410ad0acaf485fa785f48b146e0c6c44e60311b2",
+      "count": 3525,
+      "first_id": 2,
+      "last_id": 28194,
+      "verified": 3515,
+      "construction_error": 4,
+      "unsupported": 6
+    },
+    {
+      "index": 3,
+      "package": "shard03",
+      "jsonl": "shard03/corpus.jsonl",
+      "sha256": "52f9db8d9451503dcf839ade3b0c9124d59b4d2dd053935ba9a686d4114be322",
+      "count": 3525,
+      "first_id": 3,
+      "last_id": 28195,
+      "verified": 3511,
+      "construction_error": 6,
+      "unsupported": 8
+    },
+    {
+      "index": 4,
+      "package": "shard04",
+      "jsonl": "shard04/corpus.jsonl",
+      "sha256": "16b59d8f6aa3f291156f962db218e9db7aa02222e38626ab3af68733f4c4835d",
+      "count": 3525,
+      "first_id": 4,
+      "last_id": 28196,
+      "verified": 3507,
+      "construction_error": 13,
+      "unsupported": 5
+    },
+    {
+      "index": 5,
+      "package": "shard05",
+      "jsonl": "shard05/corpus.jsonl",
+      "sha256": "b4ca82e71455d6ac7eba351e87720c35c8b8c44c5038e47ab3090103414eec04",
+      "count": 3524,
+      "first_id": 5,
+      "last_id": 28189,
+      "verified": 3512,
+      "construction_error": 6,
+      "unsupported": 6
+    },
+    {
+      "index": 6,
+      "package": "shard06",
+      "jsonl": "shard06/corpus.jsonl",
+      "sha256": "72969fff753a383ee617eb8e2e3171217dcd666bd2a09dc936afb2692ae84ba1",
+      "count": 3524,
+      "first_id": 6,
+      "last_id": 28190,
+      "verified": 3513,
+      "construction_error": 4,
+      "unsupported": 7
+    },
+    {
+      "index": 7,
+      "package": "shard07",
+      "jsonl": "shard07/corpus.jsonl",
+      "sha256": "66f3fd3c549692ada9ac42edbbdaaa1dbe30effe1cf08464b3a41bdf6b142440",
+      "count": 3524,
+      "first_id": 7,
+      "last_id": 28191,
+      "verified": 3512,
+      "construction_error": 6,
+      "unsupported": 6
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+*.out
+*.test
+coverage.html
+.DS_Store
+__pycache__/
+/postgres-coverage.json
+/.bin/
+/.codex/

@@ -1,0 +1,4 @@
+# Development-only dependency for scripts/postgres_corpus.py.
+# pglast 8.4 is built against PostgreSQL 18.4, matching the pinned
+# REL_18_STABLE corpus revision used by the coverage report.
+pglast==8.4

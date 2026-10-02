@@ -1,0 +1,49 @@
+name: test
+on:
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOMAXPROCS: '2'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: make golangci-lint
+      - run: make test
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: qs
+          POSTGRES_PASSWORD: qs
+          POSTGRES_DB: qs
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U qs -d qs"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      QS_TEST_DSN: 'postgres://qs:qs@localhost:5432/qs?sslmode=disable'
+      GOMAXPROCS: '2'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: go test -tags postgres -race -count=1 -p=2 -parallel=8 -timeout=5m -v ./...
+        working-directory: integration
