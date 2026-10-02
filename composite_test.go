@@ -73,7 +73,11 @@ func TestCompositeSlicesAndCloneIsolation(t *testing.T) {
 	child := Select(Col("source"))
 	withChild := InsertInto("archive").Columns("value").From(child)
 	childClone := Clone(withChild)
-	childClone.source.(*SelectBuilder).columns[0].text = "changed"
+	source, ok := childClone.source.(*SelectBuilder)
+	if !ok {
+		t.Fatalf("cloned source has type %T, want *SelectBuilder", childClone.source)
+	}
+	source.columns[0].text = "changed"
 	checkSQL(t, withChild, `INSERT INTO "archive" ("value") SELECT "source"`)
 	checkSQL(t, childClone, `INSERT INTO "archive" ("value") SELECT "changed"`)
 }

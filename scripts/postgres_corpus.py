@@ -1851,11 +1851,13 @@ class GoEmitter:
                 }[kind]
                 relation = f"qs.{natural}({self.relation(node.larg)}, {self.relation(node.rarg)})"
             if node.usingClause:
-                relation += f".Using({_join(_go_quote(_str_value(value)) for value in node.usingClause)})"
+                columns = _join(_go_quote(_str_value(value)) for value in node.usingClause)
+                if node.join_using_alias is not None:
+                    relation += f".UsingAs({_go_quote(node.join_using_alias.aliasname)}, {columns})"
+                else:
+                    relation += f".Using({columns})"
             elif node.quals is not None:
                 relation += f".On(qs.AsCondition({self.expr(node.quals)}))"
-            if node.join_using_alias is not None:
-                relation += f".UsingAs({_go_quote(node.join_using_alias.aliasname)})"
             if node.alias is not None:
                 columns = list(node.alias.colnames or ())
                 relation += f".As({_go_quote(node.alias.aliasname)}"
@@ -2720,14 +2722,14 @@ class GoEmitter:
             elif action == "CMD_NOTHING":
                 value += ".ThenDoNothing()"
             elif action == "CMD_INSERT":
+                override = _enum_name(branch.override)
+                if override == "OVERRIDING_SYSTEM_VALUE":
+                    value += ".OverridingSystemValue()"
+                elif override == "OVERRIDING_USER_VALUE":
+                    value += ".OverridingUserValue()"
                 value += self.merge_insert(branch.targetList, branch.values)
             else:
                 raise self.unsupported(f"MERGE action {action}")
-            override = _enum_name(branch.override)
-            if override == "OVERRIDING_SYSTEM_VALUE":
-                value += ".OverridingSystemValue()"
-            elif override == "OVERRIDING_USER_VALUE":
-                value += ".OverridingUserValue()"
             branches.append(value)
         if not branches:
             raise self.unsupported("MERGE has no WHEN branches")

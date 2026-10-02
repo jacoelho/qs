@@ -2,9 +2,9 @@ package qs
 
 // Aggregate families own their argument grammar; FILTER and OVER share traversal.
 type aggregateTail struct {
-	filter     []Condition
 	window     *WindowSpec
 	windowName string
+	filter     []Condition
 }
 
 func (w *renderer) aggregateTail(t aggregateTail) {

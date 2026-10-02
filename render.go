@@ -5,9 +5,13 @@ import "strconv"
 // Statement is a complete query. It is sealed to keep rendering and parameter
 // ownership in one place. Use StatementSQL for trusted extensions.
 type Statement interface {
+	// ToSQL renders owned SQL and arguments with default options.
 	ToSQL() (string, []any, error)
+	// ToSQLWith renders owned SQL and arguments with per-call options.
 	ToSQLWith(options Options) (string, []any, error)
+	// AppendSQL appends into caller storage with default options and prefix numbering.
 	AppendSQL(sql []byte, args []any) ([]byte, []any, error)
+	// AppendWith appends with per-call options, preserving visible prefixes on error.
 	AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error)
 	statement()
 }
@@ -24,8 +28,10 @@ type Rowset interface {
 type PlaceholderStyle uint8
 
 const (
-	Dollar   PlaceholderStyle = iota // $1, $2, ...; the PostgreSQL default.
-	Question                         // ?, ?, ...; requires a consumer supporting this format.
+	// Dollar emits PostgreSQL placeholders numbered from the argument position.
+	Dollar PlaceholderStyle = iota // $1, $2, ...; the PostgreSQL default.
+	// Question emits one question mark per argument without changing PostgreSQL syntax.
+	Question // ?, ?, ...; requires a consumer supporting this format.
 )
 
 // PostgreSQLVersion selects the major release used for feature validation.
@@ -34,12 +40,19 @@ type PostgreSQLVersion int
 
 // Supported PostgreSQL major releases for feature validation.
 const (
+	// PostgreSQL12 enables syntax supported by PostgreSQL 12.
 	PostgreSQL12 PostgreSQLVersion = 12 + iota
+	// PostgreSQL13 enables syntax supported by PostgreSQL 13.
 	PostgreSQL13
+	// PostgreSQL14 enables syntax supported by PostgreSQL 14.
 	PostgreSQL14
+	// PostgreSQL15 enables syntax supported by PostgreSQL 15.
 	PostgreSQL15
+	// PostgreSQL16 enables syntax supported by PostgreSQL 16.
 	PostgreSQL16
+	// PostgreSQL17 enables syntax supported by PostgreSQL 17.
 	PostgreSQL17
+	// PostgreSQL18 enables syntax supported by PostgreSQL 18 and is the zero-option default.
 	PostgreSQL18
 )
 
@@ -49,16 +62,20 @@ func (v PostgreSQLVersion) valid() bool { return v >= PostgreSQL12 && v <= Postg
 // Zero fields select Dollar, PostgreSQL 18, 65535 parameters and 256 nesting levels.
 // A supported version does not guarantee that referenced schema objects exist.
 type Options struct {
+	// PlaceholderStyle selects parameter tokens; zero selects Dollar.
 	PlaceholderStyle PlaceholderStyle
-	PostgreSQL       PostgreSQLVersion
-	MaxParameters    int
-	MaxDepth         int
+	// PostgreSQL selects known feature gates; zero selects PostgreSQL18.
+	PostgreSQL PostgreSQLVersion
+	// MaxParameters bounds total arguments including append prefixes; zero selects 65535.
+	MaxParameters int
+	// MaxDepth bounds nested traversal; zero selects 256 and valid nonzero values are 1..4096.
+	MaxDepth int
 }
 
 type renderer struct {
+	err            error
 	sql            []byte
 	args           []any
-	err            error
 	options        Options
 	depth          int
 	statementDepth int
@@ -111,13 +128,14 @@ func AppendSQL(sql []byte, args []any, s Statement) ([]byte, []any, error) {
 // AppendWith is AppendSQL with explicit parameter syntax, limits and feature validation.
 func AppendWith(sql []byte, args []any, s Statement, options Options) ([]byte, []any, error) {
 	w := renderer{sql: sql, args: args, options: normalOptions(options)}
-	if w.options.PlaceholderStyle > Question {
+	switch {
+	case w.options.PlaceholderStyle > Question:
 		w.fail(ErrInvalid, "options", "unknown placeholder style")
-	} else if !w.options.PostgreSQL.valid() || w.options.MaxParameters < 1 || w.options.MaxParameters > 65535 || w.options.MaxDepth < 1 || w.options.MaxDepth > 4096 {
+	case !w.options.PostgreSQL.valid() || w.options.MaxParameters < 1 || w.options.MaxParameters > 65535 || w.options.MaxDepth < 1 || w.options.MaxDepth > 4096:
 		w.fail(ErrInvalid, "options", "require PostgreSQL 12..18, 1..65535 parameters and 1..4096 nesting levels")
-	} else if len(args) > w.options.MaxParameters {
+	case len(args) > w.options.MaxParameters:
 		w.fail(ErrParameterLimit, "parameters", "existing argument prefix exceeds the limit")
-	} else {
+	default:
 		w.statement(s)
 	}
 	if w.err != nil {
@@ -185,6 +203,10 @@ func (w *renderer) statement(s Statement) {
 	defer func() { w.depth-- }()
 	w.statementDepth++
 	defer func() { w.statementDepth-- }()
+	w.dispatchStatement(s)
+}
+
+func (w *renderer) dispatchStatement(s Statement) {
 	switch b := s.(type) {
 	case *SelectBuilder:
 		if b == nil {
@@ -247,6 +269,23 @@ func (w *renderer) statement(s Statement) {
 		}
 		b.append(w)
 	case *ExecuteBuilder:
+		w.queryUtilityStatement(s)
+	case *CreateTableAsBuilder, *MaterializedViewBuilder, *DeclareCursorBuilder, *SelectIntoBuilder:
+		w.queryUtilityStatement(s)
+	case *SQLStatement:
+		if b == nil {
+			w.fail(ErrInvalid, "statement", "nil SQL statement")
+			return
+		}
+		w.expr(b.expr)
+	default:
+		w.fail(ErrInvalid, "statement", "nil or unknown statement")
+	}
+}
+
+func (w *renderer) queryUtilityStatement(s Statement) {
+	switch b := s.(type) {
+	case *ExecuteBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil EXECUTE")
 			return
@@ -276,14 +315,8 @@ func (w *renderer) statement(s Statement) {
 			return
 		}
 		b.append(w)
-	case *SQLStatement:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil SQL statement")
-			return
-		}
-		w.expr(b.expr)
 	default:
-		w.fail(ErrInvalid, "statement", "nil or unknown statement")
+		w.fail(ErrInvalid, "statement", "unknown query utility statement")
 	}
 }
 

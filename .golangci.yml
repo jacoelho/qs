@@ -226,6 +226,9 @@ linters:
       under: 25
 
   exclusions:
+    paths:
+      # Generated corpus builders are verified by tests and their generator.
+      - '(^|/)[^/]*_generated_test\.go$'
     rules:
       - path: _test\.go
         linters:

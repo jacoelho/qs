@@ -2681,7 +2681,7 @@ func build07522() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.NamedType("regclass")), qs.Ident("f1"), qs.Ident("f2"), qs.Ident("f3")).FromExpr(qs.Table("pitest3"))
 }
 func build07530() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("itest15").As("t")).Using(qs.Subquery(qs.Select(qs.LiteralInt(20).As("s_a"), qs.LiteralString("inserted by merge").As("s_b")), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "s_a")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{"a", "b"}, qs.Ident("s", "s_a"), qs.Ident("s", "s_b")).OverridingUserValue())
+	return qs.MergeIntoTable(qs.Table("itest15").As("t")).Using(qs.Subquery(qs.Select(qs.LiteralInt(20).As("s_a"), qs.LiteralString("inserted by merge").As("s_b")), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "s_a")))).When(qs.NotMatchedByTarget().OverridingUserValue().ThenInsertValues([]string{"a", "b"}, qs.Ident("s", "s_a"), qs.Ident("s", "s_b")))
 }
 func build07538() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.Table("tenk1")).OrderBy((qs.Ident("four")).Asc()), "t")).OrderBy((qs.Ident("four")).Asc(), (qs.Ident("ten")).Asc()).LimitExpr(qs.LiteralInt(1))).Costs(false)

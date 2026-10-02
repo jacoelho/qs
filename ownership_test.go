@@ -55,7 +55,11 @@ func TestToSQLOwnsOutput(t *testing.T) {
 	q = Select(Param(data))
 	_, args, _ = q.ToSQL()
 	data[0] = 'n'
-	if args[0].([]byte)[0] != 'n' {
+	bound, ok := args[0].([]byte)
+	if !ok {
+		t.Fatalf("bound value has type %T, want []byte", args[0])
+	}
+	if bound[0] != 'n' {
 		t.Fatal("bound application objects should not be silently copied")
 	}
 }
@@ -74,7 +78,11 @@ func TestCloneIndependentGraph(t *testing.T) {
 	}
 	// Repeated references must still point to one cloned child, not three copies.
 	clonedChild := clone.base.with[0].body
-	if clone.from[0].value != clonedChild || clone.columns[0].value.(*subqueryExpression).query != clonedChild {
+	subquery, ok := clone.columns[0].value.(*subqueryExpression)
+	if !ok {
+		t.Fatalf("cloned expression has type %T, want *subqueryExpression", clone.columns[0].value)
+	}
+	if clone.from[0].value != clonedChild || subquery.query != clonedChild {
 		t.Fatal("graph sharing not preserved")
 	}
 }
@@ -123,16 +131,16 @@ func TestParameterLimits(t *testing.T) {
 	if !errors.Is(err, ErrParameterLimit) || buf != nil || len(got) != 65535 {
 		t.Fatal("prefix limit handling")
 	}
-	max := make([]Expr, 65535)
-	for i := range max {
-		max[i] = Param(i)
+	parameters := make([]Expr, 65536)
+	for i := range parameters {
+		parameters[i] = Param(i)
 	}
 	// IN avoids the server's separate result-column limit; this is a rendering test.
-	sql, params, err := Select(LiteralInt(1)).Where(Col("id").InExpr(max...)).ToSQL()
+	sql, params, err := Select(LiteralInt(1)).Where(Col("id").InExpr(parameters[:65535]...)).ToSQL()
 	if err != nil || len(params) != 65535 || !strings.Contains(sql, "$65535)") {
 		t.Fatalf("maximum: %d %v", len(params), err)
 	}
-	q = Select(LiteralInt(1)).Where(Col("id").InExpr(append(max, Param(65535))...))
+	q = Select(LiteralInt(1)).Where(Col("id").InExpr(parameters...))
 	checkError(t, q, ErrParameterLimit)
 }
 func TestOptions(t *testing.T) {

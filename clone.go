@@ -8,7 +8,11 @@ func Clone[T Statement](statement T) T {
 		return statement
 	}
 	c := cloneContext{seen: make(map[Statement]Statement)}
-	return c.statement(statement).(T)
+	cloned, ok := c.statement(statement).(T)
+	if !ok {
+		panic("qs: Clone internal result is not the requested concrete statement type")
+	}
+	return cloned
 }
 
 type cloneContext struct{ seen map[Statement]Statement }
@@ -16,226 +20,273 @@ type cloneContext struct{ seen map[Statement]Statement }
 func (c *cloneContext) statement(s Statement) Statement {
 	// Check known pointer types before using a value as a map key. A foreign
 	// implementation embedded in a struct may otherwise be non-comparable.
-	switch b := s.(type) {
-	case *SelectBuilder:
-		if b == nil {
-			return s
-		}
-	case *InsertBuilder:
-		if b == nil {
-			return s
-		}
-	case *UpdateBuilder:
-		if b == nil {
-			return s
-		}
-	case *DeleteBuilder:
-		if b == nil {
-			return s
-		}
-	case *MergeBuilder:
-		if b == nil {
-			return s
-		}
-	case *SetBuilder:
-		if b == nil {
-			return s
-		}
-	case *ValuesBuilder:
-		if b == nil {
-			return s
-		}
-	case *TableBuilder:
-		if b == nil {
-			return s
-		}
-	case *ExplainBuilder:
-		if b == nil {
-			return s
-		}
-	case *TruncateBuilder:
-		if b == nil {
-			return s
-		}
-	case *ExecuteBuilder:
-		if b == nil {
-			return s
-		}
-	case *CreateTableAsBuilder:
-		if b == nil {
-			return s
-		}
-	case *MaterializedViewBuilder:
-		if b == nil {
-			return s
-		}
-	case *DeclareCursorBuilder:
-		if b == nil {
-			return s
-		}
-	case *SelectIntoBuilder:
-		if b == nil {
-			return s
-		}
-	case *SQLStatement:
-		if b == nil {
-			return s
-		}
-	default:
+	if !cloneableStatement(s) {
 		return s
 	}
 	if v, ok := c.seen[s]; ok {
 		return v
 	}
+	return c.cloneStatement(s)
+}
+
+func cloneableStatement(s Statement) bool {
 	switch b := s.(type) {
 	case *SelectBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.columns = c.exprs(b.columns)
-		n.from = c.relations(b.from)
-		n.where = c.conditions(b.where)
-		n.group = c.exprs(b.group)
-		n.having = c.conditions(b.having)
-		n.distinctOn = c.exprs(b.distinctOn)
-		n.tail = c.tail(b.tail)
-		n.windows = cloneSlice(b.windows)
-		for i := range n.windows {
-			n.windows[i].spec = c.window(n.windows[i].spec)
-		}
-		return &n
+		return b != nil
 	case *InsertBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.table = c.relation(b.table)
-		n.targets = c.exprs(b.targets)
-		n.rows = c.rows(b.rows)
-		n.set = c.assignments(b.set)
-		n.source = c.rowset(b.source)
-		n.returning = c.exprs(b.returning)
-		if b.conflict != nil {
-			v := c.conflict(*b.conflict)
-			n.conflict = &v
-		}
-		return &n
+		return b != nil
 	case *UpdateBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.table = c.relation(b.table)
-		n.set = c.assignments(b.set)
-		n.from = c.relations(b.from)
-		n.where = c.conditions(b.where)
-		n.returning = c.exprs(b.returning)
-		return &n
+		return b != nil
 	case *DeleteBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.table = c.relation(b.table)
-		n.using = c.relations(b.using)
-		n.where = c.conditions(b.where)
-		n.returning = c.exprs(b.returning)
-		return &n
+		return b != nil
 	case *MergeBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.target = c.relation(b.target)
-		n.source = c.relation(b.source)
-		n.on = c.conditions(b.on)
-		n.returning = c.exprs(b.returning)
-		n.branches = cloneSlice(b.branches)
-		for i := range n.branches {
-			v := &n.branches[i]
-			v.conditions = c.conditions(v.conditions)
-			v.set = c.assignments(v.set)
-			v.columns = cloneSlice(v.columns)
-			v.values = c.exprs(v.values)
-		}
-		return &n
+		return b != nil
 	case *SetBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.left = c.rowset(b.left)
-		n.right = c.rowset(b.right)
-		n.tail = c.tail(b.tail)
-		return &n
+		return b != nil
 	case *ValuesBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.rows = c.rows(b.rows)
-		n.tail = c.tail(b.tail)
-		return &n
+		return b != nil
 	case *TableBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.base = c.base(b.base)
-		n.table = c.relation(b.table)
-		n.tail = c.tail(b.tail)
-		return &n
+		return b != nil
 	case *ExplainBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.query = c.statement(b.query)
-		n.options = cloneSlice(b.options)
-		return &n
+		return b != nil
 	case *TruncateBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.tables = c.relations(b.tables)
-		return &n
+		return b != nil
 	case *ExecuteBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.args = c.exprs(b.args)
-		return &n
+		return b != nil
 	case *CreateTableAsBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.destination.columns = cloneSlice(b.destination.columns)
-		n.source = c.utilitySource(b.source)
-		return &n
+		return b != nil
 	case *MaterializedViewBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.destination.columns = cloneSlice(b.destination.columns)
-		n.query = c.rowset(b.query)
-		return &n
+		return b != nil
 	case *DeclareCursorBuilder:
-		n := *b
-		c.seen[s] = &n
-		n.query = c.rowset(b.query)
-		return &n
+		return b != nil
 	case *SelectIntoBuilder:
-		n := *b
-		c.seen[s] = &n
-		if b.source != nil {
-			n.source = c.statement(b.source).(*SelectBuilder)
-		}
-		return &n
+		return b != nil
 	case *SQLStatement:
-		n := *b
-		c.seen[s] = &n
-		n.expr = c.expr(b.expr)
-		return &n
+		return b != nil
+	default:
+		return false
 	}
-	return s
+}
+
+func (c *cloneContext) cloneStatement(s Statement) Statement {
+	switch b := s.(type) {
+	case *SelectBuilder:
+		return c.cloneSelect(b)
+	case *InsertBuilder:
+		return c.cloneInsert(b)
+	case *UpdateBuilder:
+		return c.cloneUpdate(b)
+	case *DeleteBuilder:
+		return c.cloneDelete(b)
+	case *MergeBuilder:
+		return c.cloneMerge(b)
+	case *SetBuilder:
+		return c.cloneSet(b)
+	case *ValuesBuilder:
+		return c.cloneValues(b)
+	case *TableBuilder:
+		return c.cloneTable(b)
+	case *ExplainBuilder:
+		return c.cloneExplain(b)
+	case *TruncateBuilder:
+		return c.cloneTruncate(b)
+	case *ExecuteBuilder:
+		return c.cloneExecute(b)
+	case *CreateTableAsBuilder:
+		return c.cloneCreateTableAs(b)
+	case *MaterializedViewBuilder:
+		return c.cloneMaterializedView(b)
+	case *DeclareCursorBuilder:
+		return c.cloneDeclareCursor(b)
+	case *SelectIntoBuilder:
+		return c.cloneSelectInto(b)
+	case *SQLStatement:
+		return c.cloneSQLStatement(b)
+	default:
+		return s
+	}
+}
+
+func (c *cloneContext) remember(original, cloned Statement) {
+	c.seen[original] = cloned
+}
+
+func (c *cloneContext) cloneSelect(b *SelectBuilder) *SelectBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.columns = c.exprs(b.columns)
+	n.from = c.relations(b.from)
+	n.where = c.conditions(b.where)
+	n.group = c.exprs(b.group)
+	n.having = c.conditions(b.having)
+	n.distinctOn = c.exprs(b.distinctOn)
+	n.tail = c.tail(b.tail)
+	n.windows = cloneSlice(b.windows)
+	for i := range n.windows {
+		n.windows[i].spec = c.window(n.windows[i].spec)
+	}
+	return &n
+}
+
+func (c *cloneContext) cloneInsert(b *InsertBuilder) *InsertBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.table = c.relation(b.table)
+	n.targets = c.exprs(b.targets)
+	n.rows = c.rows(b.rows)
+	n.set = c.assignments(b.set)
+	n.source = c.rowset(b.source)
+	n.returning = c.exprs(b.returning)
+	if b.conflict != nil {
+		v := c.conflict(*b.conflict)
+		n.conflict = &v
+	}
+	return &n
+}
+
+func (c *cloneContext) cloneUpdate(b *UpdateBuilder) *UpdateBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.table = c.relation(b.table)
+	n.set = c.assignments(b.set)
+	n.from = c.relations(b.from)
+	n.where = c.conditions(b.where)
+	n.returning = c.exprs(b.returning)
+	return &n
+}
+
+func (c *cloneContext) cloneDelete(b *DeleteBuilder) *DeleteBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.table = c.relation(b.table)
+	n.using = c.relations(b.using)
+	n.where = c.conditions(b.where)
+	n.returning = c.exprs(b.returning)
+	return &n
+}
+
+func (c *cloneContext) cloneMerge(b *MergeBuilder) *MergeBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.target = c.relation(b.target)
+	n.source = c.relation(b.source)
+	n.on = c.conditions(b.on)
+	n.returning = c.exprs(b.returning)
+	n.branches = cloneSlice(b.branches)
+	for i := range n.branches {
+		v := &n.branches[i]
+		v.conditions = c.conditions(v.conditions)
+		v.set = c.assignments(v.set)
+		v.columns = cloneSlice(v.columns)
+		v.values = c.exprs(v.values)
+	}
+	return &n
+}
+
+func (c *cloneContext) cloneSet(b *SetBuilder) *SetBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.left = c.rowset(b.left)
+	n.right = c.rowset(b.right)
+	n.tail = c.tail(b.tail)
+	return &n
+}
+
+func (c *cloneContext) cloneValues(b *ValuesBuilder) *ValuesBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.rows = c.rows(b.rows)
+	n.tail = c.tail(b.tail)
+	return &n
+}
+
+func (c *cloneContext) cloneTable(b *TableBuilder) *TableBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.base = c.base(b.base)
+	n.table = c.relation(b.table)
+	n.tail = c.tail(b.tail)
+	return &n
+}
+
+func (c *cloneContext) cloneExplain(b *ExplainBuilder) *ExplainBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.query = c.statement(b.query)
+	n.options = cloneSlice(b.options)
+	return &n
+}
+
+func (c *cloneContext) cloneTruncate(b *TruncateBuilder) *TruncateBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.tables = c.relations(b.tables)
+	return &n
+}
+
+func (c *cloneContext) cloneExecute(b *ExecuteBuilder) *ExecuteBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.args = c.exprs(b.args)
+	return &n
+}
+
+func (c *cloneContext) cloneCreateTableAs(b *CreateTableAsBuilder) *CreateTableAsBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.destination.columns = cloneSlice(b.destination.columns)
+	n.source = c.utilitySource(b.source)
+	return &n
+}
+
+func (c *cloneContext) cloneMaterializedView(b *MaterializedViewBuilder) *MaterializedViewBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.destination.columns = cloneSlice(b.destination.columns)
+	n.query = c.rowset(b.query)
+	return &n
+}
+
+func (c *cloneContext) cloneDeclareCursor(b *DeclareCursorBuilder) *DeclareCursorBuilder {
+	n := *b
+	c.remember(b, &n)
+	n.query = c.rowset(b.query)
+	return &n
+}
+
+func (c *cloneContext) cloneSelectInto(b *SelectIntoBuilder) *SelectIntoBuilder {
+	n := *b
+	c.remember(b, &n)
+	if b.source != nil {
+		n.source = ownedPayload[*SelectBuilder](c.statement(b.source))
+	}
+	return &n
+}
+
+func (c *cloneContext) cloneSQLStatement(b *SQLStatement) *SQLStatement {
+	n := *b
+	c.remember(b, &n)
+	n.expr = c.expr(b.expr)
+	return &n
 }
 func (c *cloneContext) rowset(s Rowset) Rowset {
 	if s == nil {
 		return nil
 	}
-	return c.statement(s).(Rowset)
+	return ownedPayload[Rowset](c.statement(s))
 }
 
 func (c *cloneContext) utilitySource(s queryUtilitySource) queryUtilitySource {
 	if s.executeSource {
 		if s.execute != nil {
-			s.execute = c.statement(s.execute).(*ExecuteBuilder)
+			s.execute = ownedPayload[*ExecuteBuilder](c.statement(s.execute))
 		}
 		return s
 	}
@@ -312,84 +363,150 @@ func (c *cloneContext) window(w WindowSpec) WindowSpec {
 	return w
 }
 func (c *cloneContext) expr(e Expr) Expr {
-	if e.node != nil {
-		n := *e.node
-		n.left = c.expr(n.left)
-		n.right = c.expr(n.right)
-		e.node = &n
+	e.node = c.expressionNode(e.node)
+	return c.expressionValue(e)
+}
+
+func (c *cloneContext) expressionNode(node *expression) *expression {
+	if node == nil {
+		return nil
 	}
+	n := *node
+	n.left = c.expr(n.left)
+	n.right = c.expr(n.right)
+	return &n
+}
+
+func (c *cloneContext) expressionValue(e Expr) Expr {
 	switch e.kind {
+	case exprInvalid, exprIdentifier, exprParameter, exprRaw, exprLiteral,
+		exprKeyword, exprStringLiteral, exprBinary, exprPrefix, exprPostfix,
+		exprAlias, exprSpecialCall, exprQuantified, exprField, exprFields,
+		exprSubscript, exprCollate:
+		// Scalar fields and the expression node were copied above. Bound values,
+		// raw text and invalid-expression details are intentionally shallow.
+		return e
 	case exprIdentifierParts:
-		e.value = identifierParts(cloneSlice(e.value.(identifierParts)))
+		e.value = identifierParts(cloneSlice(ownedPayload[identifierParts](e.value)))
 	case exprGroup, exprFragment, exprList:
-		e.value = c.exprs(e.value.([]Expr))
+		e.value = c.exprs(ownedPayload[[]Expr](e.value))
 	case exprCast:
-		n := *e.value.(*castExpression)
-		n.expr = c.expr(n.expr)
-		e.value = &n
+		e = c.cloneCast(e)
 	case exprCall:
-		n := *e.value.(*callExpression)
-		n.args = c.exprs(n.args)
-		if n.mods != nil {
-			m := *n.mods
-			m.aggregateTail = c.aggregateTail(m.aggregateTail)
-			m.order = c.orders(m.order)
-			m.within = c.orders(m.within)
-			n.mods = &m
-		}
-		e.value = &n
+		e = c.cloneCall(e)
 	case exprSubquery, exprExists:
-		n := *e.value.(*subqueryExpression)
-		n.query = c.rowset(n.query)
-		e.value = &n
+		e = c.cloneSubquery(e)
 	case exprMembership:
-		n := *e.value.(*membershipExpression)
-		n.left = c.expr(n.left)
-		n.values = c.exprs(n.values)
-		n.query = c.rowset(n.query)
-		e.value = &n
+		e = c.cloneMembership(e)
 	case exprBetween:
-		n := *e.value.(*betweenExpression)
-		n.value = c.expr(n.value)
-		n.lower = c.expr(n.lower)
-		n.upper = c.expr(n.upper)
-		e.value = &n
+		e = c.cloneBetween(e)
 	case exprCase:
-		n := *e.value.(*CaseBuilder)
-		n.operand = c.expr(n.operand)
-		n.otherwise = c.expr(n.otherwise)
-		n.branches = cloneSlice(n.branches)
-		for i := range n.branches {
-			n.branches[i].when = c.expr(n.branches[i].when)
-			n.branches[i].then = c.expr(n.branches[i].then)
-		}
-		e.value = &n
+		e = c.cloneCase(e)
 	case exprSlice:
-		n := *e.value.(*sliceExpression)
-		n.value = c.expr(n.value)
-		n.lower = c.expr(n.lower)
-		n.upper = c.expr(n.upper)
-		e.value = &n
+		e = c.cloneSliceExpression(e)
 	case exprXML:
 		e = c.xml(e)
 	case exprJSONConstructor:
 		e = c.jsonConstructor(e)
 	case exprSQLSyntax:
-		n := *e.value.(*sqlSyntaxExpression)
-		n.args = c.exprs(n.args)
-		e.value = &n
+		e = c.cloneSQLSyntax(e)
 	case exprSQLJSON:
-		n := *e.value.(*JSONQueryBuilder)
-		n.document = c.expr(n.document)
-		n.path = c.expr(n.path)
-		n.passing = c.passing(n.passing)
-		n.options = c.jsonOptions(n.options)
-		e.value = &n
+		e = c.cloneSQLJSON(e)
 	case exprVersioned:
-		n := *e.value.(*versionedExpression)
-		n.expr = c.expr(n.expr)
-		e.value = &n
+		e = c.cloneVersioned(e)
 	}
+	return e
+}
+
+func (c *cloneContext) cloneCast(e Expr) Expr {
+	n := *ownedPayload[*castExpression](e.value)
+	n.expr = c.expr(n.expr)
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneCall(e Expr) Expr {
+	n := *ownedPayload[*callExpression](e.value)
+	n.args = c.exprs(n.args)
+	if n.mods != nil {
+		m := *n.mods
+		m.aggregateTail = c.aggregateTail(m.aggregateTail)
+		m.order = c.orders(m.order)
+		m.within = c.orders(m.within)
+		n.mods = &m
+	}
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneSubquery(e Expr) Expr {
+	n := *ownedPayload[*subqueryExpression](e.value)
+	n.query = c.rowset(n.query)
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneMembership(e Expr) Expr {
+	n := *ownedPayload[*membershipExpression](e.value)
+	n.left = c.expr(n.left)
+	n.values = c.exprs(n.values)
+	n.query = c.rowset(n.query)
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneBetween(e Expr) Expr {
+	n := *ownedPayload[*betweenExpression](e.value)
+	n.value = c.expr(n.value)
+	n.lower = c.expr(n.lower)
+	n.upper = c.expr(n.upper)
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneCase(e Expr) Expr {
+	n := *ownedPayload[*caseExpression](e.value)
+	n.operand = c.expr(n.operand)
+	n.otherwise = c.expr(n.otherwise)
+	n.branches = cloneSlice(n.branches)
+	for i := range n.branches {
+		n.branches[i].when = c.expr(n.branches[i].when)
+		n.branches[i].then = c.expr(n.branches[i].then)
+	}
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneSliceExpression(e Expr) Expr {
+	n := *ownedPayload[*sliceExpression](e.value)
+	n.value = c.expr(n.value)
+	n.lower = c.expr(n.lower)
+	n.upper = c.expr(n.upper)
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneSQLSyntax(e Expr) Expr {
+	n := *ownedPayload[*sqlSyntaxExpression](e.value)
+	n.args = c.exprs(n.args)
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneSQLJSON(e Expr) Expr {
+	n := *ownedPayload[*JSONQueryBuilder](e.value)
+	n.document = c.expr(n.document)
+	n.path = c.expr(n.path)
+	n.passing = c.passing(n.passing)
+	n.options = c.jsonOptions(n.options)
+	e.value = &n
+	return e
+}
+
+func (c *cloneContext) cloneVersioned(e Expr) Expr {
+	n := *ownedPayload[*versionedExpression](e.value)
+	n.expr = c.expr(n.expr)
+	e.value = &n
 	return e
 }
 func (c *cloneContext) relations(v []Relation) []Relation {
@@ -413,38 +530,40 @@ func (c *cloneContext) relation(r Relation) Relation {
 		r.sample = &n
 	}
 	switch r.kind {
+	case relationTable:
+		// The table name and relation flags are scalar fields copied above.
 	case relationTableIdent:
-		r.value = identifierParts(cloneSlice(r.value.(identifierParts)))
+		r.value = identifierParts(cloneSlice(ownedPayload[identifierParts](r.value)))
 	case relationSubquery:
 		if r.value != nil {
-			r.value = c.rowset(r.value.(Rowset))
+			r.value = c.rowset(ownedPayload[Rowset](r.value))
 		}
 	case relationJoin:
-		n := *r.value.(*joinExpression)
+		n := *ownedPayload[*joinExpression](r.value)
 		n.left = c.relation(n.left)
 		n.right = c.relation(n.right)
 		n.on = c.conditions(n.on)
 		n.using = cloneSlice(n.using)
 		r.value = &n
 	case relationFunction:
-		r.value = c.record(r.value.(RecordFunction))
+		r.value = c.record(ownedPayload[RecordFunction](r.value))
 	case relationRowsFrom:
-		n := cloneSlice(r.value.([]RecordFunction))
+		n := cloneSlice(ownedPayload[[]RecordFunction](r.value))
 		for i := range n {
 			n[i] = c.record(n[i])
 		}
 		r.value = n
 	case relationSQL:
-		r.value = c.expr(r.value.(Expr))
+		r.value = c.expr(ownedPayload[Expr](r.value))
 	case relationJSONTable:
-		n := *r.value.(*JSONTableBuilder)
+		n := *ownedPayload[*JSONTableBuilder](r.value)
 		n.document = c.expr(n.document)
 		n.passing = c.passing(n.passing)
 		n.columns = c.jsonColumns(n.columns)
 		n.onError.value = c.expr(n.onError.value)
 		r.value = &n
 	case relationXMLTable:
-		r.value = c.xmlTable(*r.value.(*XMLTableBuilder))
+		r.value = c.xmlTable(*ownedPayload[*XMLTableBuilder](r.value))
 	}
 	return r
 }

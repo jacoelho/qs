@@ -67,6 +67,7 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestFunctionRelationCastsAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)

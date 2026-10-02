@@ -16,21 +16,130 @@ all_types = builders+[
     'SelectIntoBuilder',
     'SQLStatement',
 ]
+def doc(lines, name, text):
+    """Append a GoDoc comment for an exported declaration."""
+    lines.append(f'// {name} {text}\n')
+
+
+statement_method_docs = {
+    'Clone': (
+        'returns a copy of b with its builder graph duplicated. Shared subqueries '
+        'and cycles remain shared in the copy, while bound application values are '
+        'shallow-copied. Do not mutate b concurrently with Clone.'
+    ),
+    'ToSQL': (
+        'renders b with the default Options. It returns no SQL or arguments when '
+        'rendering fails.'
+    ),
+    'ToSQLWith': (
+        'renders b with options. It returns no SQL or arguments when rendering '
+        'fails.'
+    ),
+    'AppendSQL': (
+        'appends b to caller-owned sql and args with the default Options. Parameter '
+        'numbering starts after the existing arguments; an error leaves the input '
+        'slices unchanged.'
+    ),
+    'AppendWith': (
+        'appends b to caller-owned sql and args with options. Parameter numbering '
+        'starts after the existing arguments; an error leaves the input slices '
+        'unchanged.'
+    ),
+}
+
+
+fluent_method_docs = {
+    'With': (
+        'appends ctes to b in order, mutates b, and returns b. Duplicate CTE names '
+        'are reported when b is rendered.'
+    ),
+    'WithRecursive': (
+        'marks b as using WITH RECURSIVE, appends ctes in order, mutates b, and '
+        'returns b.'
+    ),
+    'Prefix': (
+        "appends parts before b's statement body, mutates b, and returns b."
+    ),
+    'Suffix': (
+        "appends parts after b's statement body, mutates b, and returns b."
+    ),
+    'As': (
+        'wraps b as a Relation subquery with alias and optional column aliases. '
+        'The relation retains b as its source, and the column aliases are copied.'
+    ),
+    'OrderBy': (
+        "appends terms to b's ORDER BY list, mutates b, and returns b."
+    ),
+    'RemoveOrderBy': (
+        "clears b's ORDER BY list, mutates b, and returns b."
+    ),
+    'Limit': (
+        "replaces b's LIMIT with a bound integer count, mutates b, and returns b. "
+        'A negative count causes rendering to fail. LIMIT and FETCH are mutually '
+        'exclusive.'
+    ),
+    'LimitExpr': (
+        "replaces b's LIMIT with count, mutates b, and returns b. The expression "
+        'is validated while rendering.'
+    ),
+    'RemoveLimit': (
+        "removes b's LIMIT, including LIMIT ALL, mutates b, and returns b."
+    ),
+    'Offset': (
+        "replaces b's OFFSET with a bound integer count, mutates b, and returns b. "
+        'A negative count causes rendering to fail.'
+    ),
+    'OffsetExpr': (
+        "replaces b's OFFSET with count, mutates b, and returns b. The expression "
+        'is validated while rendering.'
+    ),
+    'RemoveOffset': (
+        "removes b's OFFSET, mutates b, and returns b."
+    ),
+    'LimitAll': (
+        "replaces b's LIMIT with LIMIT ALL, mutates b, and returns b. LIMIT and "
+        'FETCH are mutually exclusive.'
+    ),
+    'Fetch': (
+        "replaces b's FETCH clause with a bound integer count and mode, mutates b, "
+        'and returns b. WithTies requires ORDER BY, PostgreSQL 13 or newer, and no '
+        'row locks. LIMIT and FETCH are mutually exclusive.'
+    ),
+    'FetchExpr': (
+        "replaces b's FETCH clause with count and mode, mutates b, and returns b. "
+        'WithTies requires ORDER BY, PostgreSQL 13 or newer, and no row locks. '
+        'LIMIT and FETCH are mutually exclusive.'
+    ),
+    'RemoveFetch': (
+        "removes b's FETCH clause, mutates b, and returns b."
+    ),
+    'Lock': (
+        'appends row-lock clauses to b, mutates b, and returns b. It is supported '
+        'by SELECT and TABLE statements; invalid combinations fail when rendered.'
+    ),
+}
+
+
 lines = [header]
 for t in all_types:
-    lines += [f'func (*{t}) statement() {{}}\n',
-              f'func (b *{t}) Clone() *{t} {{ return Clone(b) }}\n',
-              f'func (b *{t}) ToSQL() (string, []any, error) {{ return ToSQL(b) }}\n',
-              f'func (b *{t}) ToSQLWith(options Options) (string, []any, error) {{ return ToSQLWith(b,options) }}\n',
-              f'func (b *{t}) AppendSQL(sql []byte, args []any) ([]byte, []any, error) {{ return AppendSQL(sql,args,b) }}\n',
-              '// AppendWith renders with options into caller-owned SQL and argument storage.\n',
-              f'func (b *{t}) AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error) {{ return AppendWith(sql,args,b,options) }}\n']
-    if t in rowsets: lines += [f'func (*{t}) rowset() {{}}\n']
+    lines.append(f'func (*{t}) statement() {{}}\n')
+    for name, signature, body in [
+        ('Clone', f'func (b *{t}) Clone() *{t}', 'return Clone(b)'),
+        ('ToSQL', f'func (b *{t}) ToSQL() (string, []any, error)', 'return ToSQL(b)'),
+        ('ToSQLWith', f'func (b *{t}) ToSQLWith(options Options) (string, []any, error)', 'return ToSQLWith(b,options)'),
+        ('AppendSQL', f'func (b *{t}) AppendSQL(sql []byte, args []any) ([]byte, []any, error)', 'return AppendSQL(sql,args,b)'),
+        ('AppendWith', f'func (b *{t}) AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error)', 'return AppendWith(sql,args,b,options)'),
+    ]:
+        doc(lines, name, statement_method_docs[name])
+        lines.append(f'{signature} {{ {body} }}\n')
+    if t in rowsets:
+        lines.append(f'func (*{t}) rowset() {{}}\n')
     lines += ['\n']
 (root/'statement_methods.go').write_text(''.join(lines))
 lines = [header]
 for t in builders:
     def method(name, args, body, result=None):
+        doc(lines, name, fluent_method_docs[name])
         lines.append(f'func (b *{t}) {name}({args}) {result or "*"+t} {{ {body} }}\n')
     method('With','ctes ...WithQuery','b.base.with=append(b.base.with,ctes...); return b')
     if t != 'MergeBuilder': method('WithRecursive','ctes ...WithQuery','b.base.recursive=true; b.base.with=append(b.base.with,ctes...); return b')
@@ -68,11 +177,19 @@ for degree in range(2,5):
     actual = ', '.join(vars)
     exprs = ', '.join(v+'.expr' for v in vars)
     typename = f'Tuple{degree}Expr'
-    lines.append(f'// {typename} is a statically typed SQL row of degree {degree}.\n')
+    lines.append(
+        f'// {typename} is a statically typed SQL row of degree {degree}. Its type '
+        'parameters describe the Go value types accepted by its comparison methods; '
+        'they do not validate SQL types or nullability.\n'
+    )
     lines.append(f'type {typename}[{params}] struct {{ row RowExpr }}\n')
+    doc(lines, f'Tuple{degree}', f'constructs a degree-{degree} row from typed fields in argument order.')
     lines.append(f'func Tuple{degree}[{params}]({fields}) {typename}[{types}] {{ return {typename}[{types}]{{row:Row({exprs})}} }}\n')
+    doc(lines, 'Expr', 'returns the underlying row expression.')
     lines.append(f'func (r {typename}[{types}]) Expr() Expr {{ return r.row.Expr() }}\n')
+    operators = {'Eq': '=', 'Ne': '<>', 'Lt': '<', 'Lte': '<=', 'Gt': '>', 'Gte': '>='}
     for op in ('Eq','Ne','Lt','Lte','Gt','Gte'):
+        doc(lines, f'{op}Values', f'compares r with a row of bound values using SQL {operators[op]}. Values are bound in argument order.')
         lines.append(f'func (r {typename}[{types}]) {op}Values({values}) Condition {{ return r.row.{op}Values({actual}) }}\n')
 (root/'tuple.go').write_text(''.join(lines))
 subprocess.run(['gofmt','-w',str(root/'tuple.go')],check=True)

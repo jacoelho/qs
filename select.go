@@ -13,18 +13,18 @@ const (
 // SelectBuilder is a mutable SELECT. Repeated list methods append; From and
 // FromExpr replace the FROM list. Limit/Offset replace their previous values.
 type SelectBuilder struct {
-	base          statementBase
 	columns       []Expr
-	noColumns     bool
 	from          []Relation
 	where         []Condition
 	group         []Expr
-	groupDistinct bool
 	having        []Condition
 	windows       []namedWindow
-	distinct      selectQuantifier
 	distinctOn    []Expr
 	tail          queryTail
+	base          statementBase
+	noColumns     bool
+	groupDistinct bool
+	distinct      selectQuantifier
 }
 
 // Select starts a query with expressions in projection order. Use Col for
@@ -78,6 +78,8 @@ func (b *SelectBuilder) ColumnsSQL(projections ...string) *SelectBuilder {
 	}
 	return b
 }
+
+// RemoveColumns clears the SELECT projection.
 func (b *SelectBuilder) RemoveColumns() *SelectBuilder {
 	clear(b.columns)
 	b.columns = b.columns[:0]
@@ -101,16 +103,22 @@ func (b *SelectBuilder) FromExpr(relations ...Relation) *SelectBuilder {
 	b.from = append(b.from[:0], relations...)
 	return b
 }
+
+// Where appends predicates to the SELECT WHERE clause.
 func (b *SelectBuilder) Where(conditions ...Condition) *SelectBuilder {
 	b.where = append(b.where, conditions...)
 	return b
 }
+
+// WhereIf appends predicates only when include is true.
 func (b *SelectBuilder) WhereIf(include bool, conditions ...Condition) *SelectBuilder {
 	if include {
 		b.Where(conditions...)
 	}
 	return b
 }
+
+// RemoveWhere clears the SELECT WHERE clause.
 func (b *SelectBuilder) RemoveWhere() *SelectBuilder { clear(b.where); b.where = b.where[:0]; return b }
 
 // Distinct removes duplicate result rows and replaces any DISTINCT ON expressions.
@@ -126,6 +134,8 @@ func (b *SelectBuilder) All() *SelectBuilder {
 	b.distinctOn = nil
 	return b
 }
+
+// DistinctOn replaces the quantifier with DISTINCT ON and stores its expressions.
 func (b *SelectBuilder) DistinctOn(expressions ...Expr) *SelectBuilder {
 	b.distinct = selectDistinctOn
 	b.distinctOn = cloneSlice(expressions)
@@ -140,15 +150,23 @@ func (b *SelectBuilder) GroupBy(columns ...string) *SelectBuilder {
 	}
 	return b
 }
+
+// GroupByExpr appends expressions to the grouping list.
 func (b *SelectBuilder) GroupByExpr(expressions ...Expr) *SelectBuilder {
 	b.group = append(b.group, expressions...)
 	return b
 }
+
+// GroupByDistinct requests PostgreSQL's GROUP BY DISTINCT form.
 func (b *SelectBuilder) GroupByDistinct() *SelectBuilder { b.groupDistinct = true; return b }
+
+// Having appends predicates to the SELECT HAVING clause.
 func (b *SelectBuilder) Having(conditions ...Condition) *SelectBuilder {
 	b.having = append(b.having, conditions...)
 	return b
 }
+
+// Window appends a named window definition.
 func (b *SelectBuilder) Window(name string, spec WindowSpec) *SelectBuilder {
 	b.windows = append(b.windows, namedWindow{name, spec})
 	return b
@@ -157,38 +175,63 @@ func (b *SelectBuilder) Window(name string, spec WindowSpec) *SelectBuilder {
 // Join helpers attach to the last FROM item, matching PostgreSQL's binding of
 // explicit JOIN more tightly than comma-separated FROM items. For nested joins,
 // build a Relation with InnerJoin/LeftJoin/etc. and pass it to FromExpr.
-func (b *SelectBuilder) appendJoin(right Relation, kind joinKind, on []Condition) *SelectBuilder {
+func (b *SelectBuilder) appendJoin(right Relation, kind joinKind, first Condition, rest ...Condition) *SelectBuilder {
 	if len(b.from) == 0 {
 		b.from = append(b.from, RelationSQL(invalidExpr("JOIN", "requires a FROM item")))
 		return b
 	}
 	n := len(b.from) - 1
-	b.from[n] = join(b.from[n], right, kind, false).On(on...)
+	b.from[n] = pendingJoin(b.from[n], right, kind).On(first, rest...)
 	return b
 }
-func (b *SelectBuilder) Join(table string, on ...Condition) *SelectBuilder {
-	return b.appendJoin(Table(table), joinInner, on)
+func (b *SelectBuilder) appendCrossJoin(right Relation) *SelectBuilder {
+	if len(b.from) == 0 {
+		b.from = append(b.from, RelationSQL(invalidExpr("JOIN", "requires a FROM item")))
+		return b
+	}
+	n := len(b.from) - 1
+	b.from[n] = CrossJoin(b.from[n], right)
+	return b
 }
-func (b *SelectBuilder) LeftJoin(table string, on ...Condition) *SelectBuilder {
-	return b.appendJoin(Table(table), joinLeft, on)
+
+// Join attaches to the last FROM item; missing FROM remains a rendering error.
+func (b *SelectBuilder) Join(table string, first Condition, rest ...Condition) *SelectBuilder {
+	return b.appendJoin(Table(table), joinInner, first, rest...)
 }
-func (b *SelectBuilder) RightJoin(table string, on ...Condition) *SelectBuilder {
-	return b.appendJoin(Table(table), joinRight, on)
+
+// LeftJoin attaches to the last FROM item, preserving comma binding.
+func (b *SelectBuilder) LeftJoin(table string, first Condition, rest ...Condition) *SelectBuilder {
+	return b.appendJoin(Table(table), joinLeft, first, rest...)
 }
-func (b *SelectBuilder) FullJoin(table string, on ...Condition) *SelectBuilder {
-	return b.appendJoin(Table(table), joinFull, on)
+
+// RightJoin attaches to the last FROM item, preserving comma binding.
+func (b *SelectBuilder) RightJoin(table string, first Condition, rest ...Condition) *SelectBuilder {
+	return b.appendJoin(Table(table), joinRight, first, rest...)
 }
+
+// FullJoin attaches to the last FROM item, preserving comma binding.
+func (b *SelectBuilder) FullJoin(table string, first Condition, rest ...Condition) *SelectBuilder {
+	return b.appendJoin(Table(table), joinFull, first, rest...)
+}
+
+// CrossJoin attaches a named table with a CROSS JOIN to the last FROM item.
 func (b *SelectBuilder) CrossJoin(table string) *SelectBuilder {
-	return b.appendJoin(Table(table), joinCross, nil)
+	return b.appendCrossJoin(Table(table))
 }
-func (b *SelectBuilder) JoinExpr(relation Relation, on ...Condition) *SelectBuilder {
-	return b.appendJoin(relation, joinInner, on)
+
+// JoinExpr accepts a completed relation and attaches to the last FROM item.
+func (b *SelectBuilder) JoinExpr(relation Relation, first Condition, rest ...Condition) *SelectBuilder {
+	return b.appendJoin(relation, joinInner, first, rest...)
 }
-func (b *SelectBuilder) LeftJoinExpr(relation Relation, on ...Condition) *SelectBuilder {
-	return b.appendJoin(relation, joinLeft, on)
+
+// LeftJoinExpr accepts a completed relation and attaches to the last FROM item.
+func (b *SelectBuilder) LeftJoinExpr(relation Relation, first Condition, rest ...Condition) *SelectBuilder {
+	return b.appendJoin(relation, joinLeft, first, rest...)
 }
+
+// CrossJoinExpr attaches a completed relation with a CROSS JOIN.
 func (b *SelectBuilder) CrossJoinExpr(relation Relation) *SelectBuilder {
-	return b.appendJoin(relation, joinCross, nil)
+	return b.appendCrossJoin(relation)
 }
 
 func (b *SelectBuilder) append(w *renderer) {

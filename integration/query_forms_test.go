@@ -9,6 +9,7 @@ import (
 	"github.com/jacoelho/qs"
 )
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
@@ -49,6 +50,7 @@ func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestPostgreSQLNumericRadixValues(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)

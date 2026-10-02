@@ -116,8 +116,8 @@ const (
 // jsonConstructor is the single tagged expression payload for native SQL/JSON
 // constructors. Its concrete payload is one of the constructor structs below.
 type jsonConstructor struct {
-	kind    jsonConstructorKind
 	payload any
+	kind    jsonConstructorKind
 }
 
 type jsonConstructorOutput struct {
@@ -132,9 +132,13 @@ type jsonConstructorOutput struct {
 type JSONEncoding uint8
 
 const (
+	// JSONEncodingDefault omits an ENCODING clause and lets PostgreSQL use its default.
 	JSONEncodingDefault JSONEncoding = iota
+	// JSONEncodingUTF8 selects UTF8 for a FORMAT JSON value.
 	JSONEncodingUTF8
+	// JSONEncodingUTF16 selects UTF16 for a FORMAT JSON value.
 	JSONEncodingUTF16
+	// JSONEncodingUTF32 selects UTF32 for a FORMAT JSON value.
 	JSONEncodingUTF32
 )
 
@@ -171,40 +175,41 @@ const (
 
 type jsonObjectConstructorPayload struct {
 	members []JSONMember
+	output  jsonConstructorOutput
 	nulls   jsonNullPolicy
 	unique  jsonKeyUniqueness
-	output  jsonConstructorOutput
 }
 
 type jsonArrayConstructorPayload struct {
 	values []jsonConstructorValue
-	nulls  jsonNullPolicy
 	output jsonConstructorOutput
+	nulls  jsonNullPolicy
 }
 
 type jsonObjectAggregatePayload struct {
-	key, value jsonConstructorValue
-	nulls      jsonNullPolicy
-	unique     jsonKeyUniqueness
-	output     jsonConstructorOutput
-	tail       aggregateTail
-	invalid    string
+	key     jsonConstructorValue
+	value   jsonConstructorValue
+	tail    aggregateTail
+	invalid string
+	output  jsonConstructorOutput
+	nulls   jsonNullPolicy
+	unique  jsonKeyUniqueness
 }
 
 type jsonArrayAggregatePayload struct {
-	value   jsonConstructorValue
-	order   []Order
-	nulls   jsonNullPolicy
-	output  jsonConstructorOutput
-	tail    aggregateTail
 	invalid string
+	tail    aggregateTail
+	order   []Order
+	value   jsonConstructorValue
+	output  jsonConstructorOutput
+	nulls   jsonNullPolicy
 }
 
 type jsonArrayQueryPayload struct {
 	query         Rowset
+	output        jsonConstructorOutput
 	format        bool
 	inputEncoding JSONEncoding
-	output        jsonConstructorOutput
 }
 
 type jsonParsePayload struct {
@@ -230,10 +235,15 @@ type jsonIsPredicatePayload struct {
 type JSONPredicateItem uint8
 
 const (
+	// JSONPredicateAny accepts any valid JSON item in an IS JSON predicate.
 	JSONPredicateAny JSONPredicateItem = iota
+	// JSONPredicateValue restricts an IS JSON predicate to JSON values.
 	JSONPredicateValue
+	// JSONPredicateScalar restricts an IS JSON predicate to JSON scalars.
 	JSONPredicateScalar
+	// JSONPredicateArray restricts an IS JSON predicate to JSON arrays.
 	JSONPredicateArray
+	// JSONPredicateObject restricts an IS JSON predicate to JSON objects.
 	JSONPredicateObject
 )
 
@@ -243,8 +253,11 @@ const (
 type JSONNullPolicy uint8
 
 const (
+	// JSONNullDefault omits an ON NULL clause and uses the PostgreSQL default.
 	JSONNullDefault JSONNullPolicy = iota
+	// JSONNullOnNull retains entries whose value is SQL NULL.
 	JSONNullOnNull
+	// JSONAbsentOnNull omits entries whose value is SQL NULL.
 	JSONAbsentOnNull
 )
 
@@ -254,8 +267,11 @@ const (
 type JSONKeyUniqueness uint8
 
 const (
+	// JSONUniqueDefault omits a key uniqueness clause and uses the PostgreSQL default.
 	JSONUniqueDefault JSONKeyUniqueness = iota
+	// JSONWithUniqueKeys rejects duplicate object keys.
 	JSONWithUniqueKeys
+	// JSONWithoutUniqueKeys permits duplicate object keys.
 	JSONWithoutUniqueKeys
 )
 
@@ -285,34 +301,41 @@ func JSONObject(members ...JSONMember) JSONObjectBuilder {
 	return JSONObjectBuilder{payload: jsonObjectConstructorPayload{members: cloneSlice(members)}}
 }
 
+// Members appends key/value entries to the JSON object constructor.
 func (b JSONObjectBuilder) Members(members ...JSONMember) JSONObjectBuilder {
 	b.payload.members = slices.Concat(b.payload.members, members)
 	return b
 }
 
+// OnNull selects how JSON_OBJECT handles SQL NULL values.
 func (b JSONObjectBuilder) OnNull(policy JSONNullPolicy) JSONObjectBuilder {
 	b.payload.nulls = policy.internal()
 	return b
 }
 
+// NullOnNull makes JSON_OBJECT retain entries whose values are SQL NULL.
 func (b JSONObjectBuilder) NullOnNull() JSONObjectBuilder {
 	return b.OnNull(JSONNullOnNull)
 }
 
+// AbsentOnNull makes JSON_OBJECT omit entries whose values are SQL NULL.
 func (b JSONObjectBuilder) AbsentOnNull() JSONObjectBuilder {
 	return b.OnNull(JSONAbsentOnNull)
 }
 
+// WithUniqueKeys makes JSON_OBJECT reject duplicate object keys.
 func (b JSONObjectBuilder) WithUniqueKeys() JSONObjectBuilder {
 	b.payload.unique = jsonWithUniqueKeys
 	return b
 }
 
+// WithoutUniqueKeys makes JSON_OBJECT permit duplicate object keys.
 func (b JSONObjectBuilder) WithoutUniqueKeys() JSONObjectBuilder {
 	b.payload.unique = jsonWithoutUniqueKeys
 	return b
 }
 
+// UniqueKeys selects whether JSON_OBJECT enforces unique object keys.
 func (b JSONObjectBuilder) UniqueKeys(unique bool) JSONObjectBuilder {
 	if unique {
 		return b.WithUniqueKeys()
@@ -320,34 +343,40 @@ func (b JSONObjectBuilder) UniqueKeys(unique bool) JSONObjectBuilder {
 	return b.WithoutUniqueKeys()
 }
 
+// Returning selects the SQL type returned by JSON_OBJECT.
 func (b JSONObjectBuilder) Returning(typ DataType) JSONObjectBuilder {
 	b.payload.output.returning = typ
 	b.payload.output.hasReturning = true
 	return b
 }
 
+// FormatJSON marks the JSON_OBJECT result as formatted JSON.
 func (b JSONObjectBuilder) FormatJSON() JSONObjectBuilder {
 	b.payload.output.format = true
 	return b
 }
 
+// EncodingUTF8 selects UTF8 for the formatted JSON_OBJECT result.
 func (b JSONObjectBuilder) EncodingUTF8() JSONObjectBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = JSONEncodingUTF8
 	return b
 }
 
+// Encoding selects the encoding for the formatted JSON_OBJECT result.
 func (b JSONObjectBuilder) Encoding(encoding JSONEncoding) JSONObjectBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = encoding
 	return b
 }
 
+// Expr freezes the JSON_OBJECT builder as an expression.
 func (b JSONObjectBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonObjectConstructor, &p)
 }
 
+// As freezes the JSON_OBJECT builder as an aliased expression.
 func (b JSONObjectBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 // JSONArrayBuilder constructs PostgreSQL's SQL/JSON JSON_ARRAY constructor.
@@ -362,6 +391,7 @@ func JSONArray(values ...JSONInputValue) JSONArrayBuilder {
 	return b.Values(values...)
 }
 
+// Values appends input values to the JSON_ARRAY constructor.
 func (b JSONArrayBuilder) Values(values ...JSONInputValue) JSONArrayBuilder {
 	if len(values) == 0 {
 		return b
@@ -376,47 +406,56 @@ func (b JSONArrayBuilder) Values(values ...JSONInputValue) JSONArrayBuilder {
 	return b
 }
 
+// OnNull selects how JSON_ARRAY handles SQL NULL values.
 func (b JSONArrayBuilder) OnNull(policy JSONNullPolicy) JSONArrayBuilder {
 	b.payload.nulls = policy.internal()
 	return b
 }
 
+// NullOnNull makes JSON_ARRAY retain values that are SQL NULL.
 func (b JSONArrayBuilder) NullOnNull() JSONArrayBuilder {
 	return b.OnNull(JSONNullOnNull)
 }
 
+// AbsentOnNull makes JSON_ARRAY omit values that are SQL NULL.
 func (b JSONArrayBuilder) AbsentOnNull() JSONArrayBuilder {
 	return b.OnNull(JSONAbsentOnNull)
 }
 
+// Returning selects the SQL type returned by JSON_ARRAY.
 func (b JSONArrayBuilder) Returning(typ DataType) JSONArrayBuilder {
 	b.payload.output.returning = typ
 	b.payload.output.hasReturning = true
 	return b
 }
 
+// FormatJSON marks the JSON_ARRAY result as formatted JSON.
 func (b JSONArrayBuilder) FormatJSON() JSONArrayBuilder {
 	b.payload.output.format = true
 	return b
 }
 
+// EncodingUTF8 selects UTF8 for the formatted JSON_ARRAY result.
 func (b JSONArrayBuilder) EncodingUTF8() JSONArrayBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = JSONEncodingUTF8
 	return b
 }
 
+// Encoding selects the encoding for the formatted JSON_ARRAY result.
 func (b JSONArrayBuilder) Encoding(encoding JSONEncoding) JSONArrayBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = encoding
 	return b
 }
 
+// Expr freezes the JSON_ARRAY builder as an expression.
 func (b JSONArrayBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonArrayConstructor, &p)
 }
 
+// As freezes the JSON_ARRAY builder as an aliased expression.
 func (b JSONArrayBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 // JSONArrayQueryBuilder constructs JSON_ARRAY(SELECT ...), whose PostgreSQL
@@ -425,6 +464,7 @@ type JSONArrayQueryBuilder struct {
 	payload jsonArrayQueryPayload
 }
 
+// JSONArrayQuery constructs the query form of JSON_ARRAY from a one-column rowset.
 func JSONArrayQuery(query Rowset) JSONArrayQueryBuilder {
 	return JSONArrayQueryBuilder{payload: jsonArrayQueryPayload{query: query}}
 }
@@ -444,34 +484,40 @@ func (b JSONArrayQueryBuilder) InputEncoding(encoding JSONEncoding) JSONArrayQue
 	return b
 }
 
+// Returning selects the SQL type returned by the query form of JSON_ARRAY.
 func (b JSONArrayQueryBuilder) Returning(typ DataType) JSONArrayQueryBuilder {
 	b.payload.output.returning = typ
 	b.payload.output.hasReturning = true
 	return b
 }
 
+// FormatJSON marks the query form of JSON_ARRAY as formatted JSON.
 func (b JSONArrayQueryBuilder) FormatJSON() JSONArrayQueryBuilder {
 	b.payload.output.format = true
 	return b
 }
 
+// EncodingUTF8 selects UTF8 for the formatted query result.
 func (b JSONArrayQueryBuilder) EncodingUTF8() JSONArrayQueryBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = JSONEncodingUTF8
 	return b
 }
 
+// Encoding selects the encoding for the formatted query result.
 func (b JSONArrayQueryBuilder) Encoding(encoding JSONEncoding) JSONArrayQueryBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = encoding
 	return b
 }
 
+// Expr freezes the query form of JSON_ARRAY as an expression.
 func (b JSONArrayQueryBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonArrayQueryConstructor, &p)
 }
 
+// As freezes the query form of JSON_ARRAY as an aliased expression.
 func (b JSONArrayQueryBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 // JSONObjectAggregateBuilder constructs JSON_OBJECTAGG. JSON_OBJECTAGG has
@@ -480,6 +526,7 @@ type JSONObjectAggregateBuilder struct {
 	payload jsonObjectAggregatePayload
 }
 
+// JSONObjectAggregate constructs a JSON_OBJECTAGG builder from a key and value.
 func JSONObjectAggregate(key Expr, value JSONInputValue) JSONObjectAggregateBuilder {
 	return JSONObjectAggregateBuilder{payload: jsonObjectAggregatePayload{
 		key:   jsonConstructorValue{expr: key},
@@ -487,57 +534,68 @@ func JSONObjectAggregate(key Expr, value JSONInputValue) JSONObjectAggregateBuil
 	}}
 }
 
+// OnNull selects how JSON_OBJECTAGG handles SQL NULL values.
 func (b JSONObjectAggregateBuilder) OnNull(policy JSONNullPolicy) JSONObjectAggregateBuilder {
 	b.payload.nulls = policy.internal()
 	return b
 }
 
+// NullOnNull makes JSON_OBJECTAGG retain rows whose values are SQL NULL.
 func (b JSONObjectAggregateBuilder) NullOnNull() JSONObjectAggregateBuilder {
 	return b.OnNull(JSONNullOnNull)
 }
 
+// AbsentOnNull makes JSON_OBJECTAGG omit rows whose values are SQL NULL.
 func (b JSONObjectAggregateBuilder) AbsentOnNull() JSONObjectAggregateBuilder {
 	return b.OnNull(JSONAbsentOnNull)
 }
 
+// WithUniqueKeys makes JSON_OBJECTAGG reject duplicate object keys.
 func (b JSONObjectAggregateBuilder) WithUniqueKeys() JSONObjectAggregateBuilder {
 	b.payload.unique = jsonWithUniqueKeys
 	return b
 }
 
+// WithoutUniqueKeys makes JSON_OBJECTAGG permit duplicate object keys.
 func (b JSONObjectAggregateBuilder) WithoutUniqueKeys() JSONObjectAggregateBuilder {
 	b.payload.unique = jsonWithoutUniqueKeys
 	return b
 }
 
+// Returning selects the SQL type returned by JSON_OBJECTAGG.
 func (b JSONObjectAggregateBuilder) Returning(typ DataType) JSONObjectAggregateBuilder {
 	b.payload.output.returning = typ
 	b.payload.output.hasReturning = true
 	return b
 }
 
+// FormatJSON marks the JSON_OBJECTAGG result as formatted JSON.
 func (b JSONObjectAggregateBuilder) FormatJSON() JSONObjectAggregateBuilder {
 	b.payload.output.format = true
 	return b
 }
 
+// EncodingUTF8 selects UTF8 for the formatted JSON_OBJECTAGG result.
 func (b JSONObjectAggregateBuilder) EncodingUTF8() JSONObjectAggregateBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = JSONEncodingUTF8
 	return b
 }
 
+// Encoding selects the encoding for the formatted JSON_OBJECTAGG result.
 func (b JSONObjectAggregateBuilder) Encoding(encoding JSONEncoding) JSONObjectAggregateBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = encoding
 	return b
 }
 
+// Filter adds conditions to the JSON_OBJECTAGG FILTER clause.
 func (b JSONObjectAggregateBuilder) Filter(conditions ...Condition) JSONObjectAggregateBuilder {
 	b.payload.tail.filter = slices.Concat(b.payload.tail.filter, conditions)
 	return b
 }
 
+// Over attaches a window specification to JSON_OBJECTAGG.
 func (b JSONObjectAggregateBuilder) Over(window WindowSpec) JSONObjectAggregateBuilder {
 	b.payload.tail.window = &window
 	b.payload.tail.windowName = ""
@@ -545,6 +603,8 @@ func (b JSONObjectAggregateBuilder) Over(window WindowSpec) JSONObjectAggregateB
 	return b
 }
 
+// OverNamed attaches a named window to JSON_OBJECTAGG. An empty name records a
+// render-time validation error.
 func (b JSONObjectAggregateBuilder) OverNamed(name string) JSONObjectAggregateBuilder {
 	if name == "" {
 		b.payload.invalid = "OVER requires a non-empty window name"
@@ -556,11 +616,13 @@ func (b JSONObjectAggregateBuilder) OverNamed(name string) JSONObjectAggregateBu
 	return b
 }
 
+// Expr freezes the JSON_OBJECTAGG builder as an expression.
 func (b JSONObjectAggregateBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonObjectAggregate, &p)
 }
 
+// As freezes the JSON_OBJECTAGG builder as an aliased expression.
 func (b JSONObjectAggregateBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 // JSONArrayAggregateBuilder constructs JSON_ARRAYAGG. It supports
@@ -569,56 +631,67 @@ type JSONArrayAggregateBuilder struct {
 	payload jsonArrayAggregatePayload
 }
 
+// JSONArrayAggregate constructs a JSON_ARRAYAGG builder from one input value.
 func JSONArrayAggregate(value JSONInputValue) JSONArrayAggregateBuilder {
 	return JSONArrayAggregateBuilder{payload: jsonArrayAggregatePayload{value: constructorInputValue(value)}}
 }
 
+// OrderBy appends in-call ordering terms to JSON_ARRAYAGG.
 func (b JSONArrayAggregateBuilder) OrderBy(terms ...Order) JSONArrayAggregateBuilder {
 	b.payload.order = slices.Concat(b.payload.order, terms)
 	return b
 }
 
+// OnNull selects how JSON_ARRAYAGG handles SQL NULL values.
 func (b JSONArrayAggregateBuilder) OnNull(policy JSONNullPolicy) JSONArrayAggregateBuilder {
 	b.payload.nulls = policy.internal()
 	return b
 }
 
+// NullOnNull makes JSON_ARRAYAGG retain rows whose values are SQL NULL.
 func (b JSONArrayAggregateBuilder) NullOnNull() JSONArrayAggregateBuilder {
 	return b.OnNull(JSONNullOnNull)
 }
 
+// AbsentOnNull makes JSON_ARRAYAGG omit rows whose values are SQL NULL.
 func (b JSONArrayAggregateBuilder) AbsentOnNull() JSONArrayAggregateBuilder {
 	return b.OnNull(JSONAbsentOnNull)
 }
 
+// Returning selects the SQL type returned by JSON_ARRAYAGG.
 func (b JSONArrayAggregateBuilder) Returning(typ DataType) JSONArrayAggregateBuilder {
 	b.payload.output.returning = typ
 	b.payload.output.hasReturning = true
 	return b
 }
 
+// FormatJSON marks the JSON_ARRAYAGG result as formatted JSON.
 func (b JSONArrayAggregateBuilder) FormatJSON() JSONArrayAggregateBuilder {
 	b.payload.output.format = true
 	return b
 }
 
+// EncodingUTF8 selects UTF8 for the formatted JSON_ARRAYAGG result.
 func (b JSONArrayAggregateBuilder) EncodingUTF8() JSONArrayAggregateBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = JSONEncodingUTF8
 	return b
 }
 
+// Encoding selects the encoding for the formatted JSON_ARRAYAGG result.
 func (b JSONArrayAggregateBuilder) Encoding(encoding JSONEncoding) JSONArrayAggregateBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = encoding
 	return b
 }
 
+// Filter adds conditions to the JSON_ARRAYAGG FILTER clause.
 func (b JSONArrayAggregateBuilder) Filter(conditions ...Condition) JSONArrayAggregateBuilder {
 	b.payload.tail.filter = slices.Concat(b.payload.tail.filter, conditions)
 	return b
 }
 
+// Over attaches a window specification to JSON_ARRAYAGG.
 func (b JSONArrayAggregateBuilder) Over(window WindowSpec) JSONArrayAggregateBuilder {
 	b.payload.tail.window = &window
 	b.payload.tail.windowName = ""
@@ -626,6 +699,8 @@ func (b JSONArrayAggregateBuilder) Over(window WindowSpec) JSONArrayAggregateBui
 	return b
 }
 
+// OverNamed attaches a named window to JSON_ARRAYAGG. An empty name records a
+// render-time validation error.
 func (b JSONArrayAggregateBuilder) OverNamed(name string) JSONArrayAggregateBuilder {
 	if name == "" {
 		b.payload.invalid = "OVER requires a non-empty window name"
@@ -637,11 +712,13 @@ func (b JSONArrayAggregateBuilder) OverNamed(name string) JSONArrayAggregateBuil
 	return b
 }
 
+// Expr freezes the JSON_ARRAYAGG builder as an expression.
 func (b JSONArrayAggregateBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonArrayAggregate, &p)
 }
 
+// As freezes the JSON_ARRAYAGG builder as an aliased expression.
 func (b JSONArrayAggregateBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 // JSONParseBuilder constructs PostgreSQL's JSON(...) parser/converter.
@@ -649,25 +726,30 @@ type JSONParseBuilder struct {
 	payload jsonParsePayload
 }
 
+// JSONParse constructs a JSON parser/converter builder from an input value.
 func JSONParse(value JSONInputValue) JSONParseBuilder {
 	return JSONParseBuilder{payload: jsonParsePayload{value: constructorInputValue(value)}}
 }
 
+// WithUniqueKeys makes JSON reject duplicate object keys while parsing.
 func (b JSONParseBuilder) WithUniqueKeys() JSONParseBuilder {
 	b.payload.unique = jsonWithUniqueKeys
 	return b
 }
 
+// WithoutUniqueKeys makes JSON permit duplicate object keys while parsing.
 func (b JSONParseBuilder) WithoutUniqueKeys() JSONParseBuilder {
 	b.payload.unique = jsonWithoutUniqueKeys
 	return b
 }
 
+// Expr freezes the JSON parser builder as an expression.
 func (b JSONParseBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonParseConstructor, &p)
 }
 
+// As freezes the JSON parser builder as an aliased expression.
 func (b JSONParseBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 // JSONScalar converts one ordinary SQL scalar expression to JSON. PostgreSQL's
@@ -682,38 +764,45 @@ type JSONSerializeBuilder struct {
 	payload jsonSerializePayload
 }
 
+// JSONSerialize constructs a JSON_SERIALIZE builder from an input value.
 func JSONSerialize(value JSONInputValue) JSONSerializeBuilder {
 	return JSONSerializeBuilder{payload: jsonSerializePayload{value: constructorInputValue(value)}}
 }
 
+// Returning selects the SQL type returned by JSON_SERIALIZE.
 func (b JSONSerializeBuilder) Returning(typ DataType) JSONSerializeBuilder {
 	b.payload.output.returning = typ
 	b.payload.output.hasReturning = true
 	return b
 }
 
+// FormatJSON marks the JSON_SERIALIZE result as formatted JSON.
 func (b JSONSerializeBuilder) FormatJSON() JSONSerializeBuilder {
 	b.payload.output.format = true
 	return b
 }
 
+// EncodingUTF8 selects UTF8 for the formatted JSON_SERIALIZE result.
 func (b JSONSerializeBuilder) EncodingUTF8() JSONSerializeBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = JSONEncodingUTF8
 	return b
 }
 
+// Encoding selects the encoding for the formatted JSON_SERIALIZE result.
 func (b JSONSerializeBuilder) Encoding(encoding JSONEncoding) JSONSerializeBuilder {
 	b.payload.output.format = true
 	b.payload.output.encoding = encoding
 	return b
 }
 
+// Expr freezes the JSON_SERIALIZE builder as an expression.
 func (b JSONSerializeBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonSerializeConstructor, &p)
 }
 
+// As freezes the JSON_SERIALIZE builder as an aliased expression.
 func (b JSONSerializeBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 // JSONPredicateBuilder constructs an IS JSON predicate. Call Condition when
@@ -722,57 +811,71 @@ type JSONPredicateBuilder struct {
 	payload jsonIsPredicatePayload
 }
 
+// IsJSON constructs an IS JSON predicate builder for value.
 func IsJSON(value Expr) JSONPredicateBuilder {
 	return JSONPredicateBuilder{payload: jsonIsPredicatePayload{value: value, item: jsonPredicateAny}}
 }
 
+// Type selects the JSON item kind checked by the IS JSON predicate.
 func (b JSONPredicateBuilder) Type(item JSONPredicateItem) JSONPredicateBuilder {
 	b.payload.item = item.internal()
 	return b
 }
 
+// Value restricts the IS JSON predicate to JSON values.
 func (b JSONPredicateBuilder) Value() JSONPredicateBuilder {
 	return b.Type(JSONPredicateValue)
 }
 
+// Any allows any JSON item in the IS JSON predicate.
 func (b JSONPredicateBuilder) Any() JSONPredicateBuilder {
 	return b.Type(JSONPredicateAny)
 }
 
+// Scalar restricts the IS JSON predicate to JSON scalars.
 func (b JSONPredicateBuilder) Scalar() JSONPredicateBuilder {
 	return b.Type(JSONPredicateScalar)
 }
 
+// Array restricts the IS JSON predicate to JSON arrays.
 func (b JSONPredicateBuilder) Array() JSONPredicateBuilder {
 	return b.Type(JSONPredicateArray)
 }
 
+// Object restricts the IS JSON predicate to JSON objects.
 func (b JSONPredicateBuilder) Object() JSONPredicateBuilder {
 	return b.Type(JSONPredicateObject)
 }
 
+// WithUniqueKeys requires unique object keys in the IS JSON predicate.
 func (b JSONPredicateBuilder) WithUniqueKeys() JSONPredicateBuilder {
 	b.payload.unique = jsonWithUniqueKeys
 	return b
 }
 
+// WithoutUniqueKeys permits duplicate object keys in the IS JSON predicate.
 func (b JSONPredicateBuilder) WithoutUniqueKeys() JSONPredicateBuilder {
 	b.payload.unique = jsonWithoutUniqueKeys
 	return b
 }
 
+// Not changes the predicate to IS NOT JSON.
 func (b JSONPredicateBuilder) Not() JSONPredicateBuilder {
 	b.payload.not = true
 	return b
 }
 
+// Expr freezes the IS JSON builder as an expression.
 func (b JSONPredicateBuilder) Expr() Expr {
 	p := b.payload
 	return jsonConstructorExpr(jsonIsPredicate, &p)
 }
 
+// Condition freezes the IS JSON builder as a condition.
 func (b JSONPredicateBuilder) Condition() Condition { return AsCondition(b.Expr()) }
-func (b JSONPredicateBuilder) As(name string) Expr  { return b.Expr().As(name) }
+
+// As freezes the IS JSON builder as an aliased expression.
+func (b JSONPredicateBuilder) As(name string) Expr { return b.Expr().As(name) }
 
 func jsonConstructorExpr(kind jsonConstructorKind, payload any) Expr {
 	return Expr{kind: exprJSONConstructor, value: &jsonConstructor{kind: kind, payload: payload}}
@@ -786,23 +889,23 @@ func (w *renderer) jsonConstructor(e Expr) {
 	}
 	switch c.kind {
 	case jsonObjectConstructor:
-		w.jsonObjectConstructor(c.payload.(*jsonObjectConstructorPayload))
+		w.jsonObjectConstructor(ownedPayload[*jsonObjectConstructorPayload](c.payload))
 	case jsonArrayConstructor:
-		w.jsonArrayConstructor(c.payload.(*jsonArrayConstructorPayload))
+		w.jsonArrayConstructor(ownedPayload[*jsonArrayConstructorPayload](c.payload))
 	case jsonObjectAggregate:
-		w.jsonObjectAggregate(c.payload.(*jsonObjectAggregatePayload))
+		w.jsonObjectAggregate(ownedPayload[*jsonObjectAggregatePayload](c.payload))
 	case jsonArrayAggregate:
-		w.jsonArrayAggregate(c.payload.(*jsonArrayAggregatePayload))
+		w.jsonArrayAggregate(ownedPayload[*jsonArrayAggregatePayload](c.payload))
 	case jsonArrayQueryConstructor:
-		w.jsonArrayQueryConstructor(c.payload.(*jsonArrayQueryPayload))
+		w.jsonArrayQueryConstructor(ownedPayload[*jsonArrayQueryPayload](c.payload))
 	case jsonParseConstructor:
-		w.jsonParse(c.payload.(*jsonParsePayload))
+		w.jsonParse(ownedPayload[*jsonParsePayload](c.payload))
 	case jsonScalarConstructor:
-		w.jsonScalar(c.payload.(*jsonScalarPayload))
+		w.jsonScalar(ownedPayload[*jsonScalarPayload](c.payload))
 	case jsonSerializeConstructor:
-		w.jsonSerialize(c.payload.(*jsonSerializePayload))
+		w.jsonSerialize(ownedPayload[*jsonSerializePayload](c.payload))
 	case jsonIsPredicate:
-		w.jsonIsPredicate(c.payload.(*jsonIsPredicatePayload))
+		w.jsonIsPredicate(ownedPayload[*jsonIsPredicatePayload](c.payload))
 	default:
 		w.fail(ErrInvalid, "SQL/JSON", "unknown constructor")
 	}
@@ -1019,7 +1122,7 @@ func (w *renderer) jsonIsPredicate(p *jsonIsPredicatePayload) {
 // jsonConstructor clones the complete constructor payload while preserving
 // nested rowset sharing through cloneContext's statement map.
 func (c *cloneContext) jsonConstructor(e Expr) Expr {
-	n := *e.value.(*jsonConstructor)
+	n := *ownedPayload[*jsonConstructor](e.value)
 	switch p := n.payload.(type) {
 	case *jsonObjectConstructorPayload:
 		v := *p

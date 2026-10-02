@@ -60,6 +60,7 @@ func connect(t *testing.T) (context.Context, *pgx.Conn) {
 	return ctx, conn
 }
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestTypedJSONDocuments(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
@@ -197,6 +198,7 @@ func TestExactLiteralSemantics(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestExplainSerialization(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
@@ -220,7 +222,9 @@ func TestExplainSerialization(t *testing.T) {
 				t.Fatal(err)
 			}
 			var plans []struct {
-				Serialization *struct{ Format string }
+				Serialization *struct {
+					Format string `json:"Format"`
+				} `json:"Serialization"`
 			}
 			if err := json.Unmarshal(result, &plans); err != nil {
 				t.Fatal(err)

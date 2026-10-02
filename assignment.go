@@ -6,23 +6,34 @@ import "strings"
 type Assignment struct {
 	target  Expr
 	value   Expr
-	columns []Expr
 	query   Rowset
+	columns []Expr
 	row     bool
 }
 
+// Set assigns a bound value to a column.
 func Set(column string, value any) Assignment { return SetExpr(column, parameter(value)) }
+
+// SetExpr assigns an expression to a column.
 func SetExpr(column string, value Expr) Assignment {
 	return Assignment{target: Col(column), value: value}
 }
-func SetNull(column string) Assignment    { return SetExpr(column, NullLiteral()) }
+
+// SetNull assigns SQL NULL to a column.
+func SetNull(column string) Assignment { return SetExpr(column, NullLiteral()) }
+
+// SetDefault assigns SQL DEFAULT to a column.
 func SetDefault(column string) Assignment { return SetExpr(column, Default()) }
+
+// SetNullable assigns a typed nullable value as a bound parameter.
 func SetNullable[T any](column string, value Null[T]) Assignment {
 	return SetExpr(column, ParamNull(value))
 }
 
 // Assign permits explicit composite-field and subscript targets.
 func Assign(target, value Expr) Assignment { return Assignment{target: target, value: value} }
+
+// SetRow assigns expressions to a row of named columns.
 func SetRow(columns []string, values ...Expr) Assignment {
 	targets := make([]Expr, len(columns))
 	for i, c := range columns {
@@ -30,6 +41,8 @@ func SetRow(columns []string, values ...Expr) Assignment {
 	}
 	return Assignment{columns: targets, value: listExpr("ROW", values), row: true}
 }
+
+// SetRowFrom assigns the result columns of a rowset to named columns.
 func SetRowFrom(columns []string, query Rowset) Assignment {
 	targets := make([]Expr, len(columns))
 	for i, c := range columns {
@@ -44,6 +57,7 @@ func AssignRow(targets []Expr, values RowExpr) Assignment {
 	return Assignment{columns: cloneSlice(targets), value: values.expr, row: true}
 }
 
+// AssignRowFrom assigns a rowset to explicit or parenthesized row targets.
 func AssignRowFrom(targets []Expr, query Rowset) Assignment {
 	return Assignment{columns: cloneSlice(targets), query: query, row: true}
 }
@@ -58,7 +72,7 @@ func unqualifiedTarget(column Expr) Expr {
 			column.text = column.text[i+1:]
 		}
 	case exprIdentifierParts:
-		parts := column.value.(identifierParts)
+		parts := ownedPayload[identifierParts](column.value)
 		if len(parts) > 0 {
 			column = Ident(parts[len(parts)-1])
 		}
@@ -67,7 +81,7 @@ func unqualifiedTarget(column Expr) Expr {
 		n.left = unqualifiedTarget(n.left)
 		column.node = &n
 	case exprSlice:
-		n := *column.value.(*sliceExpression)
+		n := *ownedPayload[*sliceExpression](column.value)
 		n.value = unqualifiedTarget(n.value)
 		column.value = &n
 	default:
@@ -76,7 +90,10 @@ func unqualifiedTarget(column Expr) Expr {
 	return column
 }
 
+// Excluded references the proposed row in an ON CONFLICT update.
 func Excluded(column string) Expr { return Ident("excluded", column) }
+
+// SetAllExcluded creates one assignment from each column to its EXCLUDED value.
 func SetAllExcluded(columns ...string) []Assignment {
 	assignments := make([]Assignment, len(columns))
 	for i, column := range columns {
@@ -90,7 +107,7 @@ func sameIdentifier(a, b Expr) bool {
 		return a.text == b.text
 	}
 	if a.kind == exprIdentifierParts && b.kind == exprIdentifierParts {
-		left, right := a.value.(identifierParts), b.value.(identifierParts)
+		left, right := ownedPayload[identifierParts](a.value), ownedPayload[identifierParts](b.value)
 		if len(left) != len(right) {
 			return false
 		}
@@ -105,7 +122,7 @@ func sameIdentifier(a, b Expr) bool {
 		a, b = b, a
 	}
 	if a.kind == exprIdentifier && b.kind == exprIdentifierParts {
-		parts := b.value.(identifierParts)
+		parts := ownedPayload[identifierParts](b.value)
 		return len(parts) == 1 && !strings.Contains(a.text, ".") && parts[0] == a.text
 	}
 	return false
@@ -169,7 +186,7 @@ func (w *renderer) assignmentTarget(e Expr) {
 		w.expr(e.node.right)
 		w.byte(']')
 	case exprSlice:
-		n := e.value.(*sliceExpression)
+		n := ownedPayload[*sliceExpression](e.value)
 		w.assignmentTarget(n.value)
 		w.byte('[')
 		if n.hasLower {
@@ -215,7 +232,7 @@ func (w *renderer) assignments(assignments []Assignment) {
 				if !w.require(a.value.kind == exprList && (a.value.text == "ROW" || a.value.text == ""), "SET ROW", "requires a row value or subquery") {
 					return
 				}
-				width := projectionWidth(a.value.value.([]Expr))
+				width := projectionWidth(ownedPayload[[]Expr](a.value.value))
 				if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "value count differs from target count or nil subquery") {
 					return
 				}
@@ -230,7 +247,12 @@ func (w *renderer) assignments(assignments []Assignment) {
 }
 
 // ReturningAliases names OLD and NEW output rows (PostgreSQL 18+).
-type ReturningAliases struct{ Old, New string }
+type ReturningAliases struct {
+	// Old is the alias for the row before the mutation.
+	Old string
+	// New is the alias for the row after the mutation.
+	New string
+}
 
 // Old references a pre-mutation RETURNING column (PostgreSQL 18+).
 func Old(column string) Expr {

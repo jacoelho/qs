@@ -118,7 +118,7 @@ func TestQueryUtilityCloneSources(t *testing.T) {
 	}
 }
 
-func ctasForDepth(query Rowset) Statement { return CreateTableAs("copy", query) }
+func ctasForDepth(query Rowset) *CreateTableAsBuilder { return CreateTableAs("copy", query) }
 
 func checkErrorWithOptions(t *testing.T, statement Statement, options Options, cause error) {
 	t.Helper()

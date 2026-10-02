@@ -24,6 +24,7 @@ func syntaxText(t *testing.T, ctx context.Context, conn *pgx.Conn, expr qs.Expr)
 	return value
 }
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestSQLSyntaxLiveSemantics(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
@@ -82,6 +83,7 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestSQLValueFunctionPrecision(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)

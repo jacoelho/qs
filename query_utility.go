@@ -10,6 +10,7 @@ type ExecuteBuilder struct {
 	args []Expr
 }
 
+// Execute constructs an EXECUTE command for a prepared statement name.
 func Execute(name string, args ...Expr) *ExecuteBuilder {
 	return &ExecuteBuilder{name: name, args: cloneSlice(args)}
 }
@@ -43,18 +44,21 @@ const (
 type OnCommitAction uint8
 
 const (
+	// OnCommitPreserveRows retains rows in a temporary destination after commit.
 	OnCommitPreserveRows OnCommitAction = iota + 1
+	// OnCommitDeleteRows deletes rows in a temporary destination after commit.
 	OnCommitDeleteRows
+	// OnCommitDrop drops a temporary destination after commit.
 	OnCommitDrop
 )
 
 type createTableAsDestination struct {
 	name        string
+	access      string
+	tablespace  string
 	columns     []string
 	persistence utilityPersistence
 	ifNotExists bool
-	access      string
-	tablespace  string
 	onCommit    OnCommitAction
 	hasOnCommit bool
 	noData      bool
@@ -63,10 +67,10 @@ type createTableAsDestination struct {
 
 type materializedViewDestination struct {
 	name        string
-	columns     []string
-	ifNotExists bool
 	access      string
 	tablespace  string
+	columns     []string
+	ifNotExists bool
 	noData      bool
 	hasData     bool
 }
@@ -135,10 +139,11 @@ func appendUtilityData(w *renderer, noData, hasData bool) {
 // source form. The two constructors intentionally share the private source
 // storage so cloning and validation have one implementation.
 type CreateTableAsBuilder struct {
-	destination createTableAsDestination
 	source      queryUtilitySource
+	destination createTableAsDestination
 }
 
+// CreateTableAs constructs CREATE TABLE AS from a rowset.
 func CreateTableAs(name string, query Rowset) *CreateTableAsBuilder {
 	return &CreateTableAsBuilder{
 		destination: createTableAsDestination{name: name},
@@ -146,6 +151,7 @@ func CreateTableAs(name string, query Rowset) *CreateTableAsBuilder {
 	}
 }
 
+// CreateTableAsExecute constructs CREATE TABLE AS from EXECUTE.
 func CreateTableAsExecute(name string, query *ExecuteBuilder) *CreateTableAsBuilder {
 	return &CreateTableAsBuilder{
 		destination: createTableAsDestination{name: name},
@@ -153,48 +159,57 @@ func CreateTableAsExecute(name string, query *ExecuteBuilder) *CreateTableAsBuil
 	}
 }
 
+// Temporary makes the CTAS destination temporary, replacing its persistence mode.
 func (b *CreateTableAsBuilder) Temporary() *CreateTableAsBuilder {
 	b.destination.persistence = utilityTemporary
 	return b
 }
 
+// Unlogged makes the CTAS destination unlogged, replacing its persistence mode.
 func (b *CreateTableAsBuilder) Unlogged() *CreateTableAsBuilder {
 	b.destination.persistence = utilityUnlogged
 	return b
 }
 
+// IfNotExists adds IF NOT EXISTS to the CTAS destination.
 func (b *CreateTableAsBuilder) IfNotExists() *CreateTableAsBuilder {
 	b.destination.ifNotExists = true
 	return b
 }
 
+// Columns appends CTAS destination column aliases.
 func (b *CreateTableAsBuilder) Columns(names ...string) *CreateTableAsBuilder {
 	appendUtilityColumns(&b.destination.columns, names...)
 	return b
 }
 
+// Using sets the CTAS table access method.
 func (b *CreateTableAsBuilder) Using(accessMethod string) *CreateTableAsBuilder {
 	b.destination.access = accessMethod
 	return b
 }
 
+// Tablespace sets the CTAS destination tablespace.
 func (b *CreateTableAsBuilder) Tablespace(name string) *CreateTableAsBuilder {
 	b.destination.tablespace = name
 	return b
 }
 
+// OnCommit sets the temporary-table commit policy, replacing any prior policy.
 func (b *CreateTableAsBuilder) OnCommit(action OnCommitAction) *CreateTableAsBuilder {
 	b.destination.onCommit = action
 	b.destination.hasOnCommit = true
 	return b
 }
 
+// WithNoData requests that CTAS create the destination without copying rows.
 func (b *CreateTableAsBuilder) WithNoData() *CreateTableAsBuilder {
 	b.destination.noData = true
 	b.destination.hasData = true
 	return b
 }
 
+// WithData requests that CTAS copy rows into the destination.
 func (b *CreateTableAsBuilder) WithData() *CreateTableAsBuilder {
 	b.destination.noData = false
 	b.destination.hasData = true
@@ -255,40 +270,47 @@ func (b *CreateTableAsBuilder) append(w *renderer) {
 // MaterializedViewBuilder is deliberately separate from CTAS: PostgreSQL
 // materialized views have no temporary or unlogged destination form.
 type MaterializedViewBuilder struct {
-	destination materializedViewDestination
 	query       Rowset
+	destination materializedViewDestination
 }
 
+// MaterializedViewAs constructs CREATE MATERIALIZED VIEW from a rowset.
 func MaterializedViewAs(name string, query Rowset) *MaterializedViewBuilder {
 	return &MaterializedViewBuilder{destination: materializedViewDestination{name: name}, query: query}
 }
 
+// IfNotExists adds IF NOT EXISTS to the materialized-view destination.
 func (b *MaterializedViewBuilder) IfNotExists() *MaterializedViewBuilder {
 	b.destination.ifNotExists = true
 	return b
 }
 
+// Columns appends materialized-view column aliases.
 func (b *MaterializedViewBuilder) Columns(names ...string) *MaterializedViewBuilder {
 	appendUtilityColumns(&b.destination.columns, names...)
 	return b
 }
 
+// Using sets the materialized-view access method.
 func (b *MaterializedViewBuilder) Using(accessMethod string) *MaterializedViewBuilder {
 	b.destination.access = accessMethod
 	return b
 }
 
+// Tablespace sets the materialized-view destination tablespace.
 func (b *MaterializedViewBuilder) Tablespace(name string) *MaterializedViewBuilder {
 	b.destination.tablespace = name
 	return b
 }
 
+// WithNoData requests that the materialized view be created without rows.
 func (b *MaterializedViewBuilder) WithNoData() *MaterializedViewBuilder {
 	b.destination.noData = true
 	b.destination.hasData = true
 	return b
 }
 
+// WithData requests that the materialized view be populated.
 func (b *MaterializedViewBuilder) WithData() *MaterializedViewBuilder {
 	b.destination.noData = false
 	b.destination.hasData = true
@@ -337,16 +359,19 @@ func (b *MaterializedViewBuilder) append(w *renderer) {
 type CursorScrollMode uint8
 
 const (
+	// CursorScrollUnspecified leaves PostgreSQL's cursor scroll behavior unspecified.
 	CursorScrollUnspecified CursorScrollMode = iota
+	// CursorScroll requests a scrollable cursor.
 	CursorScroll
+	// CursorNoScroll requests a non-scrollable cursor.
 	CursorNoScroll
 )
 
 // DeclareCursorBuilder constructs DECLARE CURSOR. The source is a Rowset so
 // cursor options cannot accidentally wrap an arbitrary statement.
 type DeclareCursorBuilder struct {
-	name        string
 	query       Rowset
+	name        string
 	scroll      CursorScrollMode
 	binary      bool
 	insensitive bool
@@ -354,31 +379,37 @@ type DeclareCursorBuilder struct {
 	hasHold     bool
 }
 
+// DeclareCursor constructs DECLARE CURSOR for a rowset.
 func DeclareCursor(name string, query Rowset) *DeclareCursorBuilder {
 	return &DeclareCursorBuilder{name: name, query: query}
 }
 
+// Scroll replaces the cursor's scroll mode.
 func (b *DeclareCursorBuilder) Scroll(mode CursorScrollMode) *DeclareCursorBuilder {
 	b.scroll = mode
 	return b
 }
 
+// Binary requests binary cursor output.
 func (b *DeclareCursorBuilder) Binary() *DeclareCursorBuilder {
 	b.binary = true
 	return b
 }
 
+// Insensitive requests an insensitive cursor.
 func (b *DeclareCursorBuilder) Insensitive() *DeclareCursorBuilder {
 	b.insensitive = true
 	return b
 }
 
+// WithHold requests that the cursor remain usable after commit.
 func (b *DeclareCursorBuilder) WithHold() *DeclareCursorBuilder {
 	b.hold = true
 	b.hasHold = true
 	return b
 }
 
+// WithoutHold requests that the cursor close at commit.
 func (b *DeclareCursorBuilder) WithoutHold() *DeclareCursorBuilder {
 	b.hold = false
 	b.hasHold = true
@@ -435,11 +466,13 @@ type SelectIntoBuilder struct {
 	destination selectIntoTarget
 }
 
+// Temporary makes the SELECT INTO destination temporary.
 func (b *SelectIntoBuilder) Temporary() *SelectIntoBuilder {
 	b.destination.persistence = utilityTemporary
 	return b
 }
 
+// Unlogged makes the SELECT INTO destination unlogged.
 func (b *SelectIntoBuilder) Unlogged() *SelectIntoBuilder {
 	b.destination.persistence = utilityUnlogged
 	return b
@@ -466,8 +499,8 @@ type selectIntoTarget struct {
 }
 
 type selectIntoDestination struct {
-	destination selectIntoTarget
 	clause      string
+	destination selectIntoTarget
 }
 
 func (d *selectIntoDestination) append(w *renderer) {

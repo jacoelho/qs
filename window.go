@@ -14,34 +14,52 @@ const (
 
 // Bound is a SQL window-frame boundary.
 type Bound struct {
-	kind   boundKind
 	offset Expr
+	kind   boundKind
 }
 
+// UnboundedPreceding returns an unbounded lower frame boundary.
 func UnboundedPreceding() Bound { return Bound{kind: boundUnboundedPreceding} }
+
+// UnboundedFollowing returns an unbounded upper frame boundary.
 func UnboundedFollowing() Bound { return Bound{kind: boundUnboundedFollowing} }
-func CurrentRow() Bound         { return Bound{kind: boundCurrentRow} }
+
+// CurrentRow returns a frame boundary at the current row.
+func CurrentRow() Bound { return Bound{kind: boundCurrentRow} }
+
+// Preceding returns a frame boundary count rows before the current row.
 func Preceding(count int) Bound {
 	if count < 0 {
 		return Bound{kind: boundPreceding, offset: invalidExpr("frame", "negative offset")}
 	}
 	return PrecedingExpr(Param(count))
 }
+
+// Following returns a frame boundary count rows after the current row.
 func Following(count int) Bound {
 	if count < 0 {
 		return Bound{kind: boundFollowing, offset: invalidExpr("frame", "negative offset")}
 	}
 	return FollowingExpr(Param(count))
 }
+
+// PrecedingExpr returns a frame boundary whose offset is an expression.
 func PrecedingExpr(offset Expr) Bound { return Bound{kind: boundPreceding, offset: offset} }
+
+// FollowingExpr returns a frame boundary whose offset is an expression.
 func FollowingExpr(offset Expr) Bound { return Bound{kind: boundFollowing, offset: offset} }
 
+// FrameExclusion selects which rows a window frame excludes.
 type FrameExclusion uint8
 
 const (
+	// ExcludeNoOthers keeps every row in the frame.
 	ExcludeNoOthers FrameExclusion = iota + 1
+	// ExcludeCurrentRow excludes the current row from the frame.
 	ExcludeCurrentRow
+	// ExcludeGroup excludes the peer group containing the current row.
 	ExcludeGroup
+	// ExcludeTies excludes peers of the current row but keeps the current row.
 	ExcludeTies
 )
 
@@ -59,19 +77,27 @@ type WindowSpec struct {
 	base       string
 	partition  []Expr
 	order      []Order
+	start      Bound
+	end        Bound
 	frame      windowFrame
-	start, end Bound
 	shorthand  bool
 	exclude    FrameExclusion
 	hasExclude bool
 }
 
-func Window() WindowSpec                         { return WindowSpec{} }
+// Window returns an empty window definition.
+func Window() WindowSpec { return WindowSpec{} }
+
+// Base makes the window inherit from a previously named window definition.
 func (s WindowSpec) Base(name string) WindowSpec { s.base = name; return s }
+
+// PartitionBy appends expressions to the window's PARTITION BY clause.
 func (s WindowSpec) PartitionBy(expressions ...Expr) WindowSpec {
 	s.partition = slices.Concat(s.partition, expressions)
 	return s
 }
+
+// OrderBy appends terms to the window's ORDER BY clause.
 func (s WindowSpec) OrderBy(terms ...Order) WindowSpec {
 	s.order = slices.Concat(s.order, terms)
 	return s
@@ -305,7 +331,14 @@ func (w *renderer) bound(b Bound) {
 	}
 }
 
-func Rollup(expressions ...Expr) Expr      { return listExpr("ROLLUP", expressions) }
-func Cube(expressions ...Expr) Expr        { return listExpr("CUBE", expressions) }
-func GroupingSets(sets ...Expr) Expr       { return listExpr("GROUPING SETS ", sets) }
+// Rollup returns a ROLLUP grouping expression.
+func Rollup(expressions ...Expr) Expr { return listExpr("ROLLUP", expressions) }
+
+// Cube returns a CUBE grouping expression.
+func Cube(expressions ...Expr) Expr { return listExpr("CUBE", expressions) }
+
+// GroupingSets returns a GROUPING SETS expression from the supplied sets.
+func GroupingSets(sets ...Expr) Expr { return listExpr("GROUPING SETS ", sets) }
+
+// GroupingSet returns one grouping set from its expressions.
 func GroupingSet(expressions ...Expr) Expr { return listExpr("", expressions) }

@@ -174,7 +174,7 @@ func TestPlaceholderErrorsAreAtomic(t *testing.T) {
 				}
 			}
 			options := tc.options
-			if tc.cause == ErrParameterLimit {
+			if errors.Is(tc.cause, ErrParameterLimit) {
 				options.MaxParameters = 1
 			}
 			owned, ownedArgs, err := tc.query.ToSQLWith(options)

@@ -10,6 +10,7 @@ import (
 	"github.com/jacoelho/qs"
 )
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)
@@ -110,6 +111,7 @@ func TestJSONTableExistsAgainstPostgres(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestRowMembershipAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	ctx, conn := connect(t)

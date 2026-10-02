@@ -55,7 +55,8 @@ func TestSelectStructuredReuseOwnsProjectionSlice(t *testing.T) {
 	columns[0], columns[1] = Col("id"), Col("created_at")
 	q := Select(columns...).Columns(Col("name"))
 	columns[0] = Col("different")
-	columns = append(columns, Col("another"))
+	columns = columns[:3]
+	columns[2] = Col("another")
 	checkSQL(t, q, `SELECT "id", "created_at", "name"`)
 }
 

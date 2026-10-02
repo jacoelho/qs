@@ -7,7 +7,9 @@ import "slices"
 type XMLMode uint8
 
 const (
+	// XMLContent selects XML content rather than a complete XML document.
 	XMLContent XMLMode = iota + 1
+	// XMLDocument selects a complete XML document.
 	XMLDocument
 )
 
@@ -16,8 +18,11 @@ const (
 type XMLWhitespaceMode uint8
 
 const (
+	// XMLWhitespaceDefault omits a whitespace clause and uses PostgreSQL's default.
 	XMLWhitespaceDefault XMLWhitespaceMode = iota
+	// XMLPreserveWhitespace preserves whitespace while parsing XML.
 	XMLPreserveWhitespace
+	// XMLStripWhitespace strips whitespace while parsing XML.
 	XMLStripWhitespace
 )
 
@@ -25,9 +30,13 @@ const (
 type XMLStandalone uint8
 
 const (
+	// XMLStandaloneOmitted omits the XMLROOT STANDALONE clause.
 	XMLStandaloneOmitted XMLStandalone = iota
+	// XMLStandaloneYes emits STANDALONE YES.
 	XMLStandaloneYes
+	// XMLStandaloneNo emits STANDALONE NO.
 	XMLStandaloneNo
+	// XMLStandaloneNoValue emits STANDALONE NO VALUE.
 	XMLStandaloneNoValue
 )
 
@@ -36,8 +45,11 @@ const (
 type XMLPassingMode uint8
 
 const (
+	// XMLPassingDefault omits an XML PASSING mode clause.
 	XMLPassingDefault XMLPassingMode = iota
+	// XMLPassingByRef emits PASSING BY REF.
 	XMLPassingByRef
+	// XMLPassingByValue emits PASSING BY VALUE.
 	XMLPassingByValue
 )
 
@@ -59,8 +71,8 @@ const (
 // for XMLATTRIBUTES and XMLFOREST; unnamed items retain PostgreSQL's derived
 // name behaviour.
 type XMLItem struct {
-	value   Expr
 	name    string
+	value   Expr
 	hasName bool
 }
 
@@ -81,24 +93,22 @@ func (v XMLItem) As(name string) XMLItem {
 }
 
 type xmlExpression struct {
-	kind xmlKind
-
-	name       string
-	items      []XMLItem
-	values     []Expr
-	value      Expr
-	path       Expr
-	document   Expr
-	version    Expr
-	hasVersion bool
-	noVersion  bool
-
+	name        string
+	value       Expr
+	path        Expr
+	document    Expr
+	version     Expr
+	items       []XMLItem
+	values      []Expr
+	typ         DataType
+	hasVersion  bool
+	noVersion   bool
 	mode        XMLMode
 	whitespace  XMLWhitespaceMode
 	standalone  XMLStandalone
 	passing     XMLPassingMode
 	notDocument bool
-	typ         DataType
+	kind        xmlKind
 	hasIndent   bool
 	indent      bool
 }
@@ -129,16 +139,19 @@ func XMLElement(name string, content ...Expr) XMLElementBuilder {
 	return XMLElementBuilder{name: name, content: cloneSlice(content)}
 }
 
+// Attributes appends XMLATTRIBUTES entries to the XMLELEMENT descriptor.
 func (b XMLElementBuilder) Attributes(attributes ...XMLItem) XMLElementBuilder {
 	b.attributes = slices.Concat(b.attributes, attributes)
 	return b
 }
 
+// Content appends content expressions to the XMLELEMENT descriptor.
 func (b XMLElementBuilder) Content(content ...Expr) XMLElementBuilder {
 	b.content = slices.Concat(b.content, content)
 	return b
 }
 
+// Expr freezes the XMLELEMENT descriptor as an expression.
 func (b XMLElementBuilder) Expr() Expr {
 	return xmlExpr(xmlExpression{
 		kind:   xmlElement,
@@ -148,11 +161,13 @@ func (b XMLElementBuilder) Expr() Expr {
 	})
 }
 
+// As freezes the XMLELEMENT descriptor as an aliased expression.
 func (b XMLElementBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLForestBuilder is an immutable XMLFOREST descriptor.
 type XMLForestBuilder struct{ items []XMLItem }
 
+// XMLForest constructs an XMLFOREST descriptor from named or unnamed items.
 func XMLForest(items ...XMLItem) XMLForestBuilder {
 	return XMLForestBuilder{items: cloneSlice(items)}
 }
@@ -167,38 +182,45 @@ func XMLForestExpr(values ...Expr) Expr {
 	return xmlExpr(xmlExpression{kind: xmlForest, items: items})
 }
 
+// Values appends items to the XMLFOREST descriptor.
 func (b XMLForestBuilder) Values(items ...XMLItem) XMLForestBuilder {
 	b.items = slices.Concat(b.items, items)
 	return b
 }
 
+// Expr freezes the XMLFOREST descriptor as an expression.
 func (b XMLForestBuilder) Expr() Expr {
 	return xmlExpr(xmlExpression{kind: xmlForest, items: b.items})
 }
 
+// As freezes the XMLFOREST descriptor as an aliased expression.
 func (b XMLForestBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLParseBuilder is an immutable XMLPARSE descriptor.
 type XMLParseBuilder struct {
-	mode       XMLMode
 	value      Expr
+	mode       XMLMode
 	whitespace XMLWhitespaceMode
 }
 
+// XMLParse constructs an XMLPARSE descriptor for value.
 func XMLParse(mode XMLMode, value Expr) XMLParseBuilder {
 	return XMLParseBuilder{mode: mode, value: value}
 }
 
+// PreserveWhitespace requests PRESERVE WHITESPACE for XMLPARSE.
 func (b XMLParseBuilder) PreserveWhitespace() XMLParseBuilder {
 	b.whitespace = XMLPreserveWhitespace
 	return b
 }
 
+// StripWhitespace requests STRIP WHITESPACE for XMLPARSE.
 func (b XMLParseBuilder) StripWhitespace() XMLParseBuilder {
 	b.whitespace = XMLStripWhitespace
 	return b
 }
 
+// Expr freezes the XMLPARSE descriptor as an expression.
 func (b XMLParseBuilder) Expr() Expr {
 	return xmlExpr(xmlExpression{
 		kind:       xmlParse,
@@ -208,6 +230,7 @@ func (b XMLParseBuilder) Expr() Expr {
 	})
 }
 
+// As freezes the XMLPARSE descriptor as an aliased expression.
 func (b XMLParseBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLPIBuilder is an immutable XMLPI descriptor.
@@ -216,19 +239,23 @@ type XMLPIBuilder struct {
 	value []Expr
 }
 
+// XMLPI constructs an XML processing-instruction descriptor.
 func XMLPI(name string, value ...Expr) XMLPIBuilder {
 	return XMLPIBuilder{name: name, value: cloneSlice(value)}
 }
 
+// Content appends the optional content expression to XMLPI.
 func (b XMLPIBuilder) Content(value Expr) XMLPIBuilder {
 	b.value = slices.Concat(b.value, []Expr{value})
 	return b
 }
 
+// Expr freezes the XMLPI descriptor as an expression.
 func (b XMLPIBuilder) Expr() Expr {
 	return xmlExpr(xmlExpression{kind: xmlPI, name: b.name, values: b.value})
 }
 
+// As freezes the XMLPI descriptor as an aliased expression.
 func (b XMLPIBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLRootBuilder is an immutable XMLROOT descriptor. PostgreSQL requires a
@@ -241,6 +268,8 @@ type XMLRootBuilder struct {
 	standalone XMLStandalone
 }
 
+// XMLRoot constructs an XMLROOT descriptor. At most one VERSION expression may
+// be supplied; use VersionNoValue to emit VERSION NO VALUE.
 func XMLRoot(value Expr, version ...Expr) XMLRootBuilder {
 	b := XMLRootBuilder{value: value}
 	if len(version) == 1 {
@@ -254,6 +283,7 @@ func XMLRoot(value Expr, version ...Expr) XMLRootBuilder {
 	return b
 }
 
+// Version sets the XMLROOT VERSION expression.
 func (b XMLRootBuilder) Version(version Expr) XMLRootBuilder {
 	b.version = version
 	b.hasVersion = true
@@ -261,6 +291,7 @@ func (b XMLRootBuilder) Version(version Expr) XMLRootBuilder {
 	return b
 }
 
+// VersionNoValue selects XMLROOT VERSION NO VALUE.
 func (b XMLRootBuilder) VersionNoValue() XMLRootBuilder {
 	b.version = Expr{}
 	b.hasVersion = true
@@ -268,11 +299,13 @@ func (b XMLRootBuilder) VersionNoValue() XMLRootBuilder {
 	return b
 }
 
+// Standalone selects the XMLROOT STANDALONE clause.
 func (b XMLRootBuilder) Standalone(value XMLStandalone) XMLRootBuilder {
 	b.standalone = value
 	return b
 }
 
+// Expr freezes the XMLROOT descriptor as an expression.
 func (b XMLRootBuilder) Expr() Expr {
 	return xmlExpr(xmlExpression{
 		kind:       xmlRoot,
@@ -284,33 +317,38 @@ func (b XMLRootBuilder) Expr() Expr {
 	})
 }
 
+// As freezes the XMLROOT descriptor as an aliased expression.
 func (b XMLRootBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLSerializeBuilder is an immutable XMLSERIALIZE descriptor.
 type XMLSerializeBuilder struct {
-	mode      XMLMode
 	value     Expr
 	typ       DataType
+	mode      XMLMode
 	hasIndent bool
 	indent    bool
 }
 
+// XMLSerialize constructs an XMLSERIALIZE descriptor for value.
 func XMLSerialize(mode XMLMode, value Expr, typ DataType) XMLSerializeBuilder {
 	return XMLSerializeBuilder{mode: mode, value: value, typ: typ}
 }
 
+// Indent requests INDENT for XMLSERIALIZE.
 func (b XMLSerializeBuilder) Indent() XMLSerializeBuilder {
 	b.hasIndent = true
 	b.indent = true
 	return b
 }
 
+// NoIndent requests NO INDENT for XMLSERIALIZE.
 func (b XMLSerializeBuilder) NoIndent() XMLSerializeBuilder {
 	b.hasIndent = true
 	b.indent = false
 	return b
 }
 
+// Expr freezes the XMLSERIALIZE descriptor as an expression.
 func (b XMLSerializeBuilder) Expr() Expr {
 	return xmlExpr(xmlExpression{
 		kind:      xmlSerialize,
@@ -322,6 +360,7 @@ func (b XMLSerializeBuilder) Expr() Expr {
 	})
 }
 
+// As freezes the XMLSERIALIZE descriptor as an aliased expression.
 func (b XMLSerializeBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLExistsBuilder is an immutable XMLEXISTS descriptor. Use Expr in a
@@ -332,25 +371,30 @@ type XMLExistsBuilder struct {
 	passing  XMLPassingMode
 }
 
+// XMLExists constructs an XMLEXISTS descriptor for path and document.
 func XMLExists(path, document Expr) XMLExistsBuilder {
 	return XMLExistsBuilder{path: path, document: document}
 }
 
+// ByRef selects PASSING BY REF for XMLEXISTS.
 func (b XMLExistsBuilder) ByRef() XMLExistsBuilder {
 	b.passing = XMLPassingByRef
 	return b
 }
 
+// ByValue selects PASSING BY VALUE for XMLEXISTS.
 func (b XMLExistsBuilder) ByValue() XMLExistsBuilder {
 	b.passing = XMLPassingByValue
 	return b
 }
 
+// Passing selects the PASSING mode for XMLEXISTS.
 func (b XMLExistsBuilder) Passing(mode XMLPassingMode) XMLExistsBuilder {
 	b.passing = mode
 	return b
 }
 
+// Expr freezes the XMLEXISTS descriptor as an expression.
 func (b XMLExistsBuilder) Expr() Expr {
 	return xmlExpr(xmlExpression{
 		kind:     xmlExists,
@@ -360,7 +404,10 @@ func (b XMLExistsBuilder) Expr() Expr {
 	})
 }
 
+// Condition converts XMLEXISTS to a condition for WHERE or JOIN predicates.
 func (b XMLExistsBuilder) Condition() Condition { return AsCondition(b.Expr()) }
+
+// As freezes the XMLEXISTS descriptor as an aliased expression.
 func (b XMLExistsBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // XMLIsDocument tests whether an XML value has document shape. PostgreSQL
@@ -369,18 +416,22 @@ func XMLIsDocument(value Expr) Condition {
 	return AsCondition(xmlExpr(xmlExpression{kind: xmlIsDocument, value: value}))
 }
 
+// XMLIsNotDocument tests whether an XML value is not a document.
 func XMLIsNotDocument(value Expr) Condition {
 	return AsCondition(xmlExpr(xmlExpression{kind: xmlIsDocument, value: value, notDocument: true}))
 }
 
-func (e Expr) IsDocument() Condition    { return XMLIsDocument(e) }
+// IsDocument tests whether the expression has XML document shape.
+func (e Expr) IsDocument() Condition { return XMLIsDocument(e) }
+
+// IsNotDocument tests whether the expression does not have XML document shape.
 func (e Expr) IsNotDocument() Condition { return XMLIsNotDocument(e) }
 
 // XMLNamespaceSpec describes one XMLNAMESPACES entry. The defaultNS flag
 // selects the DEFAULT form accepted by PostgreSQL's grammar.
 type XMLNamespaceSpec struct {
-	uri       Expr
 	name      string
+	uri       Expr
 	defaultNS bool
 }
 
@@ -390,18 +441,19 @@ func XMLNamespace(uri Expr, name string) XMLNamespaceSpec {
 	return XMLNamespaceSpec{uri: uri, name: name}
 }
 
+// XMLDefaultNamespace creates a default XML namespace declaration.
 func XMLDefaultNamespace(uri Expr) XMLNamespaceSpec {
 	return XMLNamespaceSpec{uri: uri, defaultNS: true}
 }
 
 // XMLTableColumn describes one XMLTABLE output column.
 type XMLTableColumn struct {
-	kind        xmlTableColumnKind
 	name        string
-	typ         DataType
 	path        Expr
-	hasPath     bool
 	defaultExpr Expr
+	typ         DataType
+	kind        xmlTableColumnKind
+	hasPath     bool
 	hasDefault  bool
 	nullability xmlNullability
 }
@@ -429,31 +481,37 @@ func (n xmlNullability) valid() bool {
 	return n >= xmlNullabilityUnspecified && n <= xmlNotNull
 }
 
+// XMLColumn creates an XMLTABLE value column with a SQL type.
 func XMLColumn(name string, typ DataType) XMLTableColumn {
 	return XMLTableColumn{kind: xmlTableValueColumn, name: name, typ: typ}
 }
 
+// XMLOrdinality creates an XMLTABLE ordinality column.
 func XMLOrdinality(name string) XMLTableColumn {
 	return XMLTableColumn{kind: xmlTableOrdinality, name: name}
 }
 
+// Path sets the XPath expression used to populate an XMLTABLE value column.
 func (c XMLTableColumn) Path(path Expr) XMLTableColumn {
 	c.path = path
 	c.hasPath = true
 	return c
 }
 
+// Default sets the expression used when an XMLTABLE value column is absent.
 func (c XMLTableColumn) Default(value Expr) XMLTableColumn {
 	c.defaultExpr = value
 	c.hasDefault = true
 	return c
 }
 
+// NotNull requires an XMLTABLE value column to be NOT NULL.
 func (c XMLTableColumn) NotNull() XMLTableColumn {
 	c.nullability = xmlNotNull
 	return c
 }
 
+// Null explicitly marks an XMLTABLE value column as nullable.
 func (c XMLTableColumn) Null() XMLTableColumn {
 	c.nullability = xmlNullable
 	return c
@@ -468,169 +526,215 @@ type XMLTableBuilder struct {
 	passing    XMLPassingMode
 }
 
+// XMLTable constructs an XMLTABLE relation descriptor.
 func XMLTable(rowPath, document Expr, columns ...XMLTableColumn) XMLTableBuilder {
 	return XMLTableBuilder{rowPath: rowPath, document: document, columns: cloneSlice(columns)}
 }
 
+// Columns appends output columns to XMLTABLE.
 func (b XMLTableBuilder) Columns(columns ...XMLTableColumn) XMLTableBuilder {
 	b.columns = slices.Concat(b.columns, columns)
 	return b
 }
 
+// Namespaces appends XMLNAMESPACES declarations to XMLTABLE.
 func (b XMLTableBuilder) Namespaces(namespaces ...XMLNamespaceSpec) XMLTableBuilder {
 	b.namespaces = slices.Concat(b.namespaces, namespaces)
 	return b
 }
 
+// ByRef selects PASSING BY REF for XMLTABLE.
 func (b XMLTableBuilder) ByRef() XMLTableBuilder {
 	b.passing = XMLPassingByRef
 	return b
 }
 
+// ByValue selects PASSING BY VALUE for XMLTABLE.
 func (b XMLTableBuilder) ByValue() XMLTableBuilder {
 	b.passing = XMLPassingByValue
 	return b
 }
 
+// Passing selects the PASSING mode for XMLTABLE.
 func (b XMLTableBuilder) Passing(mode XMLPassingMode) XMLTableBuilder {
 	b.passing = mode
 	return b
 }
 
+// Ref freezes XMLTABLE as a relation.
 func (b XMLTableBuilder) Ref() Relation {
 	return Relation{kind: relationXMLTable, value: &b}
 }
 
+// As freezes XMLTABLE as a relation with a table alias and optional column aliases.
 func (b XMLTableBuilder) As(name string, columns ...string) Relation {
 	return b.Ref().As(name, columns...)
 }
 
 func (w *renderer) xml(e Expr) {
-	x := e.value.(*xmlExpression)
+	x := ownedPayload[*xmlExpression](e.value)
 	switch x.kind {
 	case xmlConcat:
-		if !w.require(len(x.values) > 0, "XMLCONCAT", "requires at least one expression") {
-			return
-		}
-		w.text("XMLCONCAT(")
-		w.exprs(x.values, ", ")
-		w.byte(')')
+		w.xmlConcat(x)
 	case xmlElement:
-		w.text("XMLELEMENT(NAME ")
-		w.identifierPart(x.name)
-		if len(x.items) > 0 {
-			w.text(", XMLATTRIBUTES(")
-			w.xmlItems(x.items)
-			w.byte(')')
-		}
-		if len(x.values) > 0 {
-			w.text(", ")
-			w.exprs(x.values, ", ")
-		}
-		w.byte(')')
+		w.xmlElement(x)
 	case xmlForest:
-		if !w.require(len(x.items) > 0, "XMLFOREST", "requires at least one expression") {
-			return
-		}
-		w.text("XMLFOREST(")
-		w.xmlItems(x.items)
-		w.byte(')')
+		w.xmlForest(x)
 	case xmlParse:
-		if !w.xmlMode(x.mode, "XMLPARSE") {
-			return
-		}
-		w.text("XMLPARSE(")
-		w.xmlModeText(x.mode)
-		w.byte(' ')
-		w.expr(x.value)
-		switch x.whitespace {
-		case XMLWhitespaceDefault:
-		case XMLPreserveWhitespace:
-			w.text(" PRESERVE WHITESPACE")
-		case XMLStripWhitespace:
-			w.text(" STRIP WHITESPACE")
-		default:
-			w.fail(ErrInvalid, "XMLPARSE", "unknown whitespace mode")
-		}
-		w.byte(')')
+		w.xmlParse(x)
 	case xmlPI:
-		if !w.require(len(x.values) <= 1, "XMLPI", "accepts at most one expression") {
-			return
-		}
-		w.text("XMLPI(NAME ")
-		w.identifierPart(x.name)
-		if len(x.values) == 1 {
-			w.text(", ")
-			w.expr(x.values[0])
-		}
-		w.byte(')')
+		w.xmlPI(x)
 	case xmlRoot:
-		if !w.require(x.hasVersion, "XMLROOT", "requires VERSION or VERSION NO VALUE") {
-			return
-		}
-		w.text("XMLROOT(")
-		w.expr(x.value)
-		w.text(", VERSION ")
-		if x.noVersion {
-			w.text("NO VALUE")
-		} else {
-			w.expr(x.version)
-		}
-		switch x.standalone {
-		case XMLStandaloneOmitted:
-		case XMLStandaloneYes:
-			w.text(", STANDALONE YES")
-		case XMLStandaloneNo:
-			w.text(", STANDALONE NO")
-		case XMLStandaloneNoValue:
-			w.text(", STANDALONE NO VALUE")
-		default:
-			w.fail(ErrInvalid, "XMLROOT", "unknown STANDALONE mode")
-		}
-		w.byte(')')
+		w.xmlRoot(x)
 	case xmlSerialize:
-		if !w.xmlMode(x.mode, "XMLSERIALIZE") {
-			return
-		}
-		w.text("XMLSERIALIZE(")
-		w.xmlModeText(x.mode)
-		w.byte(' ')
-		w.expr(x.value)
-		w.text(" AS ")
-		w.dataType(x.typ)
-		if x.hasIndent {
-			w.feature(PostgreSQL16, "XMLSERIALIZE INDENT")
-			if x.indent {
-				w.text(" INDENT")
-			} else {
-				w.text(" NO INDENT")
-			}
-		}
-		w.byte(')')
+		w.xmlSerialize(x)
 	case xmlExists:
-		w.text("XMLEXISTS(")
-		w.xmlCExpr(x.path)
-		w.text(" PASSING")
-		if x.passing == XMLPassingByRef {
-			w.text(" BY REF")
-		} else if x.passing == XMLPassingByValue {
-			w.text(" BY VALUE")
-		} else if x.passing != XMLPassingDefault {
-			w.fail(ErrInvalid, "XMLEXISTS", "unknown PASSING mode")
-			return
-		}
-		w.byte(' ')
-		w.xmlCExpr(x.document)
-		w.byte(')')
+		w.xmlExists(x)
 	case xmlIsDocument:
-		w.expr(x.value)
-		if x.notDocument {
-			w.text(" IS NOT DOCUMENT")
-		} else {
-			w.text(" IS DOCUMENT")
-		}
+		w.xmlDocumentPredicate(x)
 	default:
 		w.fail(ErrInvalid, "XML", "unknown XML expression")
+	}
+}
+
+func (w *renderer) xmlConcat(x *xmlExpression) {
+	if !w.require(len(x.values) > 0, "XMLCONCAT", "requires at least one expression") {
+		return
+	}
+	w.text("XMLCONCAT(")
+	w.exprs(x.values, ", ")
+	w.byte(')')
+}
+
+func (w *renderer) xmlElement(x *xmlExpression) {
+	w.text("XMLELEMENT(NAME ")
+	w.identifierPart(x.name)
+	if len(x.items) > 0 {
+		w.text(", XMLATTRIBUTES(")
+		w.xmlItems(x.items)
+		w.byte(')')
+	}
+	if len(x.values) > 0 {
+		w.text(", ")
+		w.exprs(x.values, ", ")
+	}
+	w.byte(')')
+}
+
+func (w *renderer) xmlForest(x *xmlExpression) {
+	if !w.require(len(x.items) > 0, "XMLFOREST", "requires at least one expression") {
+		return
+	}
+	w.text("XMLFOREST(")
+	w.xmlItems(x.items)
+	w.byte(')')
+}
+
+func (w *renderer) xmlParse(x *xmlExpression) {
+	if !w.xmlMode(x.mode, "XMLPARSE") {
+		return
+	}
+	w.text("XMLPARSE(")
+	w.xmlModeText(x.mode)
+	w.byte(' ')
+	w.expr(x.value)
+	switch x.whitespace {
+	case XMLWhitespaceDefault:
+	case XMLPreserveWhitespace:
+		w.text(" PRESERVE WHITESPACE")
+	case XMLStripWhitespace:
+		w.text(" STRIP WHITESPACE")
+	default:
+		w.fail(ErrInvalid, "XMLPARSE", "unknown whitespace mode")
+	}
+	w.byte(')')
+}
+
+func (w *renderer) xmlPI(x *xmlExpression) {
+	if !w.require(len(x.values) <= 1, "XMLPI", "accepts at most one expression") {
+		return
+	}
+	w.text("XMLPI(NAME ")
+	w.identifierPart(x.name)
+	if len(x.values) == 1 {
+		w.text(", ")
+		w.expr(x.values[0])
+	}
+	w.byte(')')
+}
+
+func (w *renderer) xmlRoot(x *xmlExpression) {
+	if !w.require(x.hasVersion, "XMLROOT", "requires VERSION or VERSION NO VALUE") {
+		return
+	}
+	w.text("XMLROOT(")
+	w.expr(x.value)
+	w.text(", VERSION ")
+	if x.noVersion {
+		w.text("NO VALUE")
+	} else {
+		w.expr(x.version)
+	}
+	switch x.standalone {
+	case XMLStandaloneOmitted:
+	case XMLStandaloneYes:
+		w.text(", STANDALONE YES")
+	case XMLStandaloneNo:
+		w.text(", STANDALONE NO")
+	case XMLStandaloneNoValue:
+		w.text(", STANDALONE NO VALUE")
+	default:
+		w.fail(ErrInvalid, "XMLROOT", "unknown STANDALONE mode")
+	}
+	w.byte(')')
+}
+
+func (w *renderer) xmlSerialize(x *xmlExpression) {
+	if !w.xmlMode(x.mode, "XMLSERIALIZE") {
+		return
+	}
+	w.text("XMLSERIALIZE(")
+	w.xmlModeText(x.mode)
+	w.byte(' ')
+	w.expr(x.value)
+	w.text(" AS ")
+	w.dataType(x.typ)
+	if x.hasIndent {
+		w.feature(PostgreSQL16, "XMLSERIALIZE INDENT")
+		if x.indent {
+			w.text(" INDENT")
+		} else {
+			w.text(" NO INDENT")
+		}
+	}
+	w.byte(')')
+}
+
+func (w *renderer) xmlExists(x *xmlExpression) {
+	w.text("XMLEXISTS(")
+	w.xmlCExpr(x.path)
+	w.text(" PASSING")
+	switch x.passing {
+	case XMLPassingDefault:
+	case XMLPassingByRef:
+		w.text(" BY REF")
+	case XMLPassingByValue:
+		w.text(" BY VALUE")
+	default:
+		w.fail(ErrInvalid, "XMLEXISTS", "unknown PASSING mode")
+		return
+	}
+	w.byte(' ')
+	w.xmlCExpr(x.document)
+	w.byte(')')
+}
+
+func (w *renderer) xmlDocumentPredicate(x *xmlExpression) {
+	w.expr(x.value)
+	if x.notDocument {
+		w.text(" IS NOT DOCUMENT")
+	} else {
+		w.text(" IS DOCUMENT")
 	}
 }
 
@@ -676,34 +780,57 @@ func (w *renderer) xmlItems(items []XMLItem) {
 }
 
 func (w *renderer) xmlTable(b *XMLTableBuilder) {
-	if !w.require(b != nil, "XMLTABLE", "nil descriptor") {
+	if !w.validXMLTable(b) {
 		return
 	}
+
+	w.text("XMLTABLE(")
+	w.xmlTableNamespaces(b.namespaces)
+	w.xmlCExpr(b.rowPath)
+	w.text(" PASSING")
+	switch b.passing {
+	case XMLPassingDefault:
+	case XMLPassingByRef:
+		w.text(" BY REF")
+	case XMLPassingByValue:
+		w.text(" BY VALUE")
+	}
+	w.byte(' ')
+	w.xmlCExpr(b.document)
+	w.text(" COLUMNS ")
+	w.xmlTableColumns(b.columns)
+	w.byte(')')
+}
+
+func (w *renderer) validXMLTable(b *XMLTableBuilder) bool {
+	if !w.require(b != nil, "XMLTABLE", "nil descriptor") {
+		return false
+	}
 	if !w.require(len(b.columns) > 0, "XMLTABLE", "requires columns") {
-		return
+		return false
 	}
 	for i, column := range b.columns {
 		if column.name == "" {
 			w.fail(ErrInvalid, "XMLTABLE", "column name is required")
-			return
+			return false
 		}
 		for j := range i {
 			if b.columns[j].name == column.name {
 				w.fail(ErrInvalid, "XMLTABLE", "duplicate column name")
-				return
+				return false
 			}
 		}
 		if !column.kind.valid() {
 			w.fail(ErrInvalid, "XMLTABLE", "unknown column kind")
-			return
+			return false
 		}
 		if !column.nullability.valid() {
 			w.fail(ErrInvalid, "XMLTABLE", "unknown column nullability")
-			return
+			return false
 		}
 		if column.kind == xmlTableOrdinality {
 			if !w.require(!column.hasPath && !column.hasDefault && column.nullability == xmlNullabilityUnspecified, "XMLTABLE", "ordinality cannot have path, default or nullability options") {
-				return
+				return false
 			}
 		}
 	}
@@ -714,17 +841,21 @@ func (w *renderer) xmlTable(b *XMLTableBuilder) {
 		}
 	}
 	if !w.require(ordinality <= 1, "XMLTABLE", "at most one ordinality column is allowed") {
-		return
+		return false
 	}
-	if b.passing != XMLPassingDefault && b.passing != XMLPassingByRef && b.passing != XMLPassingByValue {
+	switch b.passing {
+	case XMLPassingDefault, XMLPassingByRef, XMLPassingByValue:
+	default:
 		w.fail(ErrInvalid, "XMLTABLE", "unknown PASSING mode")
-		return
+		return false
 	}
+	return true
+}
 
-	w.text("XMLTABLE(")
-	if len(b.namespaces) > 0 {
+func (w *renderer) xmlTableNamespaces(namespaces []XMLNamespaceSpec) {
+	if len(namespaces) > 0 {
 		w.text("XMLNAMESPACES(")
-		for i, namespace := range b.namespaces {
+		for i, namespace := range namespaces {
 			if i > 0 {
 				w.text(", ")
 			}
@@ -739,17 +870,10 @@ func (w *renderer) xmlTable(b *XMLTableBuilder) {
 		}
 		w.text("), ")
 	}
-	w.xmlCExpr(b.rowPath)
-	w.text(" PASSING")
-	if b.passing == XMLPassingByRef {
-		w.text(" BY REF")
-	} else if b.passing == XMLPassingByValue {
-		w.text(" BY VALUE")
-	}
-	w.byte(' ')
-	w.xmlCExpr(b.document)
-	w.text(" COLUMNS ")
-	for i, column := range b.columns {
+}
+
+func (w *renderer) xmlTableColumns(columns []XMLTableColumn) {
+	for i, column := range columns {
 		if i > 0 {
 			w.text(", ")
 		}
@@ -778,11 +902,10 @@ func (w *renderer) xmlTable(b *XMLTableBuilder) {
 			w.fail(ErrInvalid, "XMLTABLE", "unknown column nullability")
 		}
 	}
-	w.byte(')')
 }
 
 func (c *cloneContext) xml(e Expr) Expr {
-	n := *e.value.(*xmlExpression)
+	n := *ownedPayload[*xmlExpression](e.value)
 	n.items = c.xmlItems(n.items)
 	n.values = c.exprs(n.values)
 	n.value = c.expr(n.value)

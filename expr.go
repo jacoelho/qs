@@ -50,10 +50,10 @@ const (
 // filter. Use Param for values, Col/Ident for identifiers, and UnsafeSQL only
 // for trusted syntax. It represents a SQL expression, not a schema proof.
 type Expr struct {
-	kind  exprKind
-	text  string
 	value any
 	node  *expression
+	text  string
+	kind  exprKind
 }
 
 type expression struct{ left, right Expr }
@@ -68,8 +68,8 @@ type subqueryExpression struct {
 }
 type membershipExpression struct {
 	left   Expr
-	values []Expr
 	query  Rowset
+	values []Expr
 	width  int
 }
 type betweenExpression struct{ value, lower, upper Expr }
@@ -103,6 +103,7 @@ func parameter(value any) Expr {
 	return Expr{kind: exprParameter, value: value}
 }
 
+// ParamNull binds a valid value or binds SQL NULL when value is invalid.
 func ParamNull[T any](value Null[T]) Expr {
 	if !value.Valid {
 		return parameter(nil)
@@ -118,7 +119,9 @@ func ArrayParam[T any](values []T, element DataType) Expr {
 
 // NullExpr is a literal, explicitly typed SQL NULL and has no parameter.
 func NullExpr(typ DataType) Expr { return NullLiteral().Cast(typ) }
-func NullLiteral() Expr          { return Expr{kind: exprLiteral, text: "NULL"} }
+
+// NullLiteral returns an untyped SQL NULL literal.
+func NullLiteral() Expr { return Expr{kind: exprLiteral, text: "NULL"} }
 
 // Default requests the destination column's default; it is not a literal value.
 func Default() Expr { return Expr{kind: exprKeyword, text: "DEFAULT"} }
@@ -128,12 +131,17 @@ func Default() Expr { return Expr{kind: exprKeyword, text: "DEFAULT"} }
 func LiteralInt(value int64) Expr {
 	return Expr{kind: exprLiteral, text: strconv.FormatInt(value, 10)}
 }
+
+// LiteralBool returns a SQL TRUE or FALSE literal.
 func LiteralBool(value bool) Expr {
 	if value {
-		return Expr{kind: exprLiteral, text: "TRUE"}
+		return Expr{kind: exprLiteral, text: sqlTrue}
 	}
 	return Expr{kind: exprLiteral, text: "FALSE"}
 }
+
+// LiteralFloat returns a finite SQL numeric literal. Non-finite values produce
+// an invalid expression; bind those values with Param instead.
 func LiteralFloat(value float64) Expr {
 	if math.IsNaN(value) || math.IsInf(value, 0) {
 		return invalidExpr("literal", "non-finite float literal; bind it instead")
@@ -169,11 +177,16 @@ func (e Expr) Parenthesized() Expr {
 // It intentionally does not implement Rowset; subqueries should be structural.
 func StatementSQL(parts ...Expr) *SQLStatement { return &SQLStatement{expr: Fragment(parts...)} }
 
+// SQLStatement is a trusted statement fragment created by StatementSQL. It is
+// rendered as supplied and does not implement Rowset or parse SQL syntax.
 type SQLStatement struct{ expr Expr }
 
+// As aliases an expression with a validated SQL identifier.
 func (e Expr) As(alias string) Expr {
 	return Expr{kind: exprAlias, text: alias, node: &expression{left: e}}
 }
+
+// Cast adds an explicit PostgreSQL type cast to an expression.
 func (e Expr) Cast(typ DataType) Expr {
 	return Expr{kind: exprCast, value: &castExpression{expr: e, typ: typ}}
 }
@@ -189,6 +202,8 @@ func (e Expr) Field(name string) Expr {
 func (e Expr) Fields() Expr {
 	return Expr{kind: exprFields, node: &expression{left: e}}
 }
+
+// Collate applies a PostgreSQL collation name to an expression.
 func (e Expr) Collate(name string) Expr {
 	return Expr{kind: exprCollate, text: name, node: &expression{left: e}}
 }
@@ -212,31 +227,65 @@ func listExpr(prefix string, items []Expr) Expr {
 	return Expr{kind: exprList, text: prefix, value: cloneSlice(items)}
 }
 
-func (e Expr) Add(other Expr) Expr        { return binary(e, "+", other) }
-func (e Expr) Sub(other Expr) Expr        { return binary(e, "-", other) }
-func (e Expr) Mul(other Expr) Expr        { return binary(e, "*", other) }
-func (e Expr) Div(other Expr) Expr        { return binary(e, "/", other) }
-func (e Expr) Mod(other Expr) Expr        { return binary(e, "%", other) }
-func (e Expr) Concat(other Expr) Expr     { return binary(e, "||", other) }
-func (e Expr) Negate() Expr               { return prefix("-", e) }
-func (e Expr) BitAnd(other Expr) Expr     { return binary(e, "&", other) }
-func (e Expr) BitOr(other Expr) Expr      { return binary(e, "|", other) }
-func (e Expr) BitXor(other Expr) Expr     { return binary(e, "#", other) }
-func (e Expr) BitNot() Expr               { return prefix("~", e) }
-func (e Expr) ShiftLeft(other Expr) Expr  { return binary(e, "<<", other) }
+// Add returns the SQL addition of e and other.
+func (e Expr) Add(other Expr) Expr { return binary(e, "+", other) }
+
+// Sub returns the SQL subtraction of other from e.
+func (e Expr) Sub(other Expr) Expr { return binary(e, "-", other) }
+
+// Mul returns the SQL multiplication of e and other.
+func (e Expr) Mul(other Expr) Expr { return binary(e, "*", other) }
+
+// Div returns the SQL division of e by other.
+func (e Expr) Div(other Expr) Expr { return binary(e, "/", other) }
+
+// Mod returns the SQL remainder of e divided by other.
+func (e Expr) Mod(other Expr) Expr { return binary(e, "%", other) }
+
+// Concat returns the SQL string concatenation of e and other.
+func (e Expr) Concat(other Expr) Expr { return binary(e, "||", other) }
+
+// Negate returns the SQL unary negation of e.
+func (e Expr) Negate() Expr { return prefix("-", e) }
+
+// BitAnd returns the SQL bitwise AND of e and other.
+func (e Expr) BitAnd(other Expr) Expr { return binary(e, "&", other) }
+
+// BitOr returns the SQL bitwise OR of e and other.
+func (e Expr) BitOr(other Expr) Expr { return binary(e, "|", other) }
+
+// BitXor returns the SQL bitwise exclusive OR of e and other.
+func (e Expr) BitXor(other Expr) Expr { return binary(e, "#", other) }
+
+// BitNot returns the SQL bitwise complement of e.
+func (e Expr) BitNot() Expr { return prefix("~", e) }
+
+// ShiftLeft returns the SQL left shift of e by other.
+func (e Expr) ShiftLeft(other Expr) Expr { return binary(e, "<<", other) }
+
+// ShiftRight returns the SQL right shift of e by other.
 func (e Expr) ShiftRight(other Expr) Expr { return binary(e, ">>", other) }
-func (e Expr) AtTimeZone(zone Expr) Expr  { return binary(e, "AT TIME ZONE", zone) }
+
+// AtTimeZone applies PostgreSQL's AT TIME ZONE operator to e and zone.
+func (e Expr) AtTimeZone(zone Expr) Expr { return binary(e, "AT TIME ZONE", zone) }
 
 // Index is PostgreSQL subscripting (SQL arrays are conventionally 1-based).
+// Index returns a PostgreSQL subscript expression for e and index.
 func (e Expr) Index(index Expr) Expr {
 	return Expr{kind: exprSubscript, node: &expression{left: e, right: index}}
 }
+
+// Slice returns a PostgreSQL slice with both lower and upper bounds.
 func (e Expr) Slice(lower, upper Expr) Expr {
 	return Expr{kind: exprSlice, value: &sliceExpression{e, lower, upper, true, true}}
 }
+
+// SliceFrom returns a PostgreSQL slice with only a lower bound.
 func (e Expr) SliceFrom(lower Expr) Expr {
 	return Expr{kind: exprSlice, value: &sliceExpression{value: e, lower: lower, hasLower: true}}
 }
+
+// SliceTo returns a PostgreSQL slice with only an upper bound.
 func (e Expr) SliceTo(upper Expr) Expr {
 	return Expr{kind: exprSlice, value: &sliceExpression{value: e, upper: upper, hasUpper: true}}
 }
@@ -303,11 +352,7 @@ func (w *renderer) expr(e Expr) {
 	defer func() { w.depth-- }()
 	switch e.kind {
 	case exprInvalid:
-		if v, ok := e.value.(*invalidExpression); ok {
-			w.fail(ErrInvalid, v.clause, v.detail)
-		} else {
-			w.fail(ErrInvalid, "expression", "zero expression")
-		}
+		w.renderInvalid(e)
 	case exprIdentifier:
 		w.identifierPath(e.text, true)
 	case exprIdentifierParts:
@@ -316,71 +361,27 @@ func (w *renderer) expr(e Expr) {
 	case exprParameter:
 		w.bind(e.value)
 	case exprRaw:
-		if w.require(strings.TrimSpace(e.text) != "" && strings.IndexByte(e.text, 0) < 0 && utf8.ValidString(e.text), "SQL", "empty, NUL-containing or invalid UTF-8 raw SQL") {
-			w.text(e.text)
-		}
+		w.renderRaw(e.text)
 	case exprLiteral, exprKeyword:
 		w.text(e.text)
 	case exprStringLiteral:
-		if !w.require(utf8.ValidString(e.text) && strings.IndexByte(e.text, 0) < 0, "literal", "invalid UTF-8 or NUL in string literal") {
-			return
-		}
-		w.text("E'")
-		for i := range len(e.text) {
-			switch e.text[i] {
-			case '\\':
-				w.text("\\\\")
-			case '\'':
-				w.text("''")
-			default:
-				w.byte(e.text[i])
-			}
-		}
-		w.byte('\'')
+		w.renderStringLiteral(e.text)
 	case exprBinary:
-		w.byte('(')
-		w.expr(e.node.left)
-		w.byte(' ')
-		w.text(e.text)
-		w.byte(' ')
-		w.expr(e.node.right)
-		w.byte(')')
+		w.renderBinary(e)
 	case exprPrefix:
-		w.byte('(')
-		w.text(e.text)
-		w.byte(' ')
-		w.expr(e.node.right)
-		w.byte(')')
+		w.renderPrefix(e)
 	case exprPostfix:
-		w.byte('(')
-		w.expr(e.node.left)
-		w.byte(' ')
-		w.text(e.text)
-		w.byte(')')
+		w.renderPostfix(e)
 	case exprGroup:
-		w.byte('(')
-		w.exprs(e.value.([]Expr), e.text)
-		w.byte(')')
+		w.renderGroup(e)
 	case exprFragment:
-		w.exprs(e.value.([]Expr), "")
+		w.renderFragment(e)
 	case exprAlias:
-		w.expr(e.node.left)
-		w.text(" AS ")
-		w.identifierPart(e.text)
+		w.renderAlias(e)
 	case exprCast:
-		n := e.value.(*castExpression)
-		w.byte('(')
-		w.expr(n.expr)
-		w.text(")::")
-		w.dataType(n.typ)
+		w.renderCast(e)
 	case exprField, exprFields:
-		w.indirectionBase(e.node.left)
-		w.byte('.')
-		if e.kind == exprField {
-			w.identifierPart(e.text)
-		} else {
-			w.byte('*')
-		}
+		w.renderField(e)
 	case exprCall:
 		w.call(e)
 	case exprSpecialCall:
@@ -392,83 +393,208 @@ func (w *renderer) expr(e Expr) {
 	case exprJSONConstructor:
 		w.jsonConstructor(e)
 	case exprSubquery, exprExists:
-		n := e.value.(*subqueryExpression)
-		width := statementWidth(n.query, w.options.MaxDepth)
-		if n.expectedWidth > 0 && width >= 0 && width != n.expectedWidth {
-			w.fail(ErrInvalid, "subquery", "projection has the wrong number of columns")
-			return
-		}
-		if e.kind == exprExists {
-			w.text(e.text)
-		}
-		w.byte('(')
-		w.statement(n.query)
-		w.byte(')')
+		w.renderSubquery(e)
 	case exprList:
-		w.text(e.text)
-		if e.text == "ARRAY" {
-			w.byte('[')
-		} else {
-			w.byte('(')
-		}
-		w.exprs(e.value.([]Expr), ", ")
-		if e.text == "ARRAY" {
-			w.byte(']')
-		} else {
-			w.byte(')')
-		}
+		w.renderList(e)
 	case exprMembership:
 		w.membership(e)
 	case exprBetween:
-		n := e.value.(*betweenExpression)
-		w.byte('(')
-		w.expr(n.value)
-		w.byte(' ')
-		w.text(e.text)
-		w.byte(' ')
-		w.expr(n.lower)
-		w.text(" AND ")
-		w.expr(n.upper)
-		w.byte(')')
+		w.renderBetween(e)
 	case exprCase:
-		w.caseExpr(e.value.(*CaseBuilder))
+		w.caseExpr(ownedPayload[*caseExpression](e.value))
 	case exprQuantified:
-		w.text(e.text)
-		w.byte('(')
-		w.expr(e.node.left)
-		w.byte(')')
+		w.renderQuantified(e)
 	case exprSubscript:
-		w.indirectionBase(e.node.left)
-		w.byte('[')
-		w.expr(e.node.right)
-		w.byte(']')
+		w.renderSubscript(e)
 	case exprSlice:
-		n := e.value.(*sliceExpression)
-		w.indirectionBase(n.value)
-		w.byte('[')
-		if n.hasLower {
-			w.expr(n.lower)
-		}
-		w.byte(':')
-		if n.hasUpper {
-			w.expr(n.upper)
-		}
-		w.byte(']')
+		w.renderSlice(e)
 	case exprCollate:
-		w.byte('(')
-		w.expr(e.node.left)
-		w.text(" COLLATE ")
-		w.identifierPath(e.text, false)
-		w.byte(')')
+		w.renderCollate(e)
 	case exprSQLJSON:
 		w.sqlJSON(e)
 	case exprVersioned:
-		n := e.value.(*versionedExpression)
-		w.feature(n.version, n.feature)
-		w.expr(n.expr)
+		w.renderVersioned(e)
 	default:
 		w.fail(ErrInvalid, "expression", "unknown expression kind")
 	}
+}
+
+func (w *renderer) renderInvalid(e Expr) {
+	if v, ok := e.value.(*invalidExpression); ok {
+		w.fail(ErrInvalid, v.clause, v.detail)
+		return
+	}
+	w.fail(ErrInvalid, "expression", "zero expression")
+}
+
+func (w *renderer) renderRaw(sql string) {
+	if w.require(strings.TrimSpace(sql) != "" && strings.IndexByte(sql, 0) < 0 && utf8.ValidString(sql), "SQL", "empty, NUL-containing or invalid UTF-8 raw SQL") {
+		w.text(sql)
+	}
+}
+
+func (w *renderer) renderStringLiteral(value string) {
+	if !w.require(utf8.ValidString(value) && strings.IndexByte(value, 0) < 0, "literal", "invalid UTF-8 or NUL in string literal") {
+		return
+	}
+	w.text("E'")
+	for i := range len(value) {
+		switch value[i] {
+		case '\\':
+			w.text("\\\\")
+		case '\'':
+			w.text("''")
+		default:
+			w.byte(value[i])
+		}
+	}
+	w.byte('\'')
+}
+
+func (w *renderer) renderBinary(e Expr) {
+	w.byte('(')
+	w.expr(e.node.left)
+	w.byte(' ')
+	w.text(e.text)
+	w.byte(' ')
+	w.expr(e.node.right)
+	w.byte(')')
+}
+
+func (w *renderer) renderPrefix(e Expr) {
+	w.byte('(')
+	w.text(e.text)
+	w.byte(' ')
+	w.expr(e.node.right)
+	w.byte(')')
+}
+
+func (w *renderer) renderPostfix(e Expr) {
+	w.byte('(')
+	w.expr(e.node.left)
+	w.byte(' ')
+	w.text(e.text)
+	w.byte(')')
+}
+
+func (w *renderer) renderGroup(e Expr) {
+	w.byte('(')
+	w.exprs(ownedPayload[[]Expr](e.value), e.text)
+	w.byte(')')
+}
+
+func (w *renderer) renderFragment(e Expr) {
+	w.exprs(ownedPayload[[]Expr](e.value), "")
+}
+
+func (w *renderer) renderAlias(e Expr) {
+	w.expr(e.node.left)
+	w.text(" AS ")
+	w.identifierPart(e.text)
+}
+
+func (w *renderer) renderCast(e Expr) {
+	n := ownedPayload[*castExpression](e.value)
+	w.byte('(')
+	w.expr(n.expr)
+	w.text(")::")
+	w.dataType(n.typ)
+}
+
+func (w *renderer) renderField(e Expr) {
+	w.indirectionBase(e.node.left)
+	w.byte('.')
+	if e.kind == exprField {
+		w.identifierPart(e.text)
+		return
+	}
+	w.byte('*')
+}
+
+func (w *renderer) renderSubquery(e Expr) {
+	n := ownedPayload[*subqueryExpression](e.value)
+	width := statementWidth(n.query, w.options.MaxDepth)
+	if n.expectedWidth > 0 && width >= 0 && width != n.expectedWidth {
+		w.fail(ErrInvalid, "subquery", "projection has the wrong number of columns")
+		return
+	}
+	if e.kind == exprExists {
+		w.text(e.text)
+	}
+	w.byte('(')
+	w.statement(n.query)
+	w.byte(')')
+}
+
+func (w *renderer) renderList(e Expr) {
+	w.text(e.text)
+	array := e.text == sqlArray
+	if array {
+		w.byte('[')
+	} else {
+		w.byte('(')
+	}
+	w.exprs(ownedPayload[[]Expr](e.value), ", ")
+	if array {
+		w.byte(']')
+	} else {
+		w.byte(')')
+	}
+}
+
+func (w *renderer) renderBetween(e Expr) {
+	n := ownedPayload[*betweenExpression](e.value)
+	w.byte('(')
+	w.expr(n.value)
+	w.byte(' ')
+	w.text(e.text)
+	w.byte(' ')
+	w.expr(n.lower)
+	w.text(" AND ")
+	w.expr(n.upper)
+	w.byte(')')
+}
+
+func (w *renderer) renderQuantified(e Expr) {
+	w.text(e.text)
+	w.byte('(')
+	w.expr(e.node.left)
+	w.byte(')')
+}
+
+func (w *renderer) renderSubscript(e Expr) {
+	w.indirectionBase(e.node.left)
+	w.byte('[')
+	w.expr(e.node.right)
+	w.byte(']')
+}
+
+func (w *renderer) renderSlice(e Expr) {
+	n := ownedPayload[*sliceExpression](e.value)
+	w.indirectionBase(n.value)
+	w.byte('[')
+	if n.hasLower {
+		w.expr(n.lower)
+	}
+	w.byte(':')
+	if n.hasUpper {
+		w.expr(n.upper)
+	}
+	w.byte(']')
+}
+
+func (w *renderer) renderCollate(e Expr) {
+	w.byte('(')
+	w.expr(e.node.left)
+	w.text(" COLLATE ")
+	w.identifierPath(e.text, false)
+	w.byte(')')
+}
+
+func (w *renderer) renderVersioned(e Expr) {
+	n := ownedPayload[*versionedExpression](e.value)
+	w.feature(n.version, n.feature)
+	w.expr(n.expr)
 }
 
 func (w *renderer) indirectionBase(e Expr) {
@@ -485,7 +611,7 @@ func (w *renderer) indirectionBase(e Expr) {
 type identifierParts []string
 
 func (w *renderer) identifierParts(e Expr) {
-	parts := e.value.(identifierParts)
+	parts := ownedPayload[identifierParts](e.value)
 	if !w.require(len(parts) > 0, "identifier", "empty identifier") {
 		return
 	}
@@ -498,11 +624,11 @@ func (w *renderer) identifierParts(e Expr) {
 }
 
 type versionedExpression struct {
-	version PostgreSQLVersion
 	feature string
 	expr    Expr
+	version PostgreSQLVersion
 }
 
 func versionExpression(version PostgreSQLVersion, feature string, expr Expr) Expr {
-	return Expr{kind: exprVersioned, value: &versionedExpression{version, feature, expr}}
+	return Expr{kind: exprVersioned, value: &versionedExpression{version: version, feature: feature, expr: expr}}
 }

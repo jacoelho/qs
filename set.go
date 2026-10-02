@@ -6,10 +6,11 @@ import "slices"
 // Limit and OrderBy on a branch apply to that branch; those on this builder
 // apply to the combined result.
 type SetBuilder struct {
-	base        statementBase
-	left, right Rowset
-	operator    setOperator
-	tail        queryTail
+	left     Rowset
+	right    Rowset
+	tail     queryTail
+	base     statementBase
+	operator setOperator
 }
 
 type setOperator uint8
@@ -30,21 +31,34 @@ func setOperation(operator setOperator, left, right Rowset, rest []Rowset) *SetB
 	}
 	return b
 }
+
+// Union combines two or more rowsets with UNION, preserving each branch's
+// parentheses and appending any additional rowsets in order.
 func Union(left, right Rowset, rest ...Rowset) *SetBuilder {
 	return setOperation(setUnion, left, right, rest)
 }
+
+// UnionAll combines two or more rowsets with UNION ALL.
 func UnionAll(left, right Rowset, rest ...Rowset) *SetBuilder {
 	return setOperation(setUnionAll, left, right, rest)
 }
+
+// Intersect combines two or more rowsets with INTERSECT.
 func Intersect(left, right Rowset, rest ...Rowset) *SetBuilder {
 	return setOperation(setIntersect, left, right, rest)
 }
+
+// IntersectAll combines two or more rowsets with INTERSECT ALL.
 func IntersectAll(left, right Rowset, rest ...Rowset) *SetBuilder {
 	return setOperation(setIntersectAll, left, right, rest)
 }
+
+// Except combines two or more rowsets with EXCEPT.
 func Except(left, right Rowset, rest ...Rowset) *SetBuilder {
 	return setOperation(setExcept, left, right, rest)
 }
+
+// ExceptAll combines two or more rowsets with EXCEPT ALL.
 func ExceptAll(left, right Rowset, rest ...Rowset) *SetBuilder {
 	return setOperation(setExceptAll, left, right, rest)
 }
@@ -91,6 +105,7 @@ type ValuesBuilder struct {
 	tail queryTail
 }
 
+// Values starts a VALUES rowset with one bound-parameter row.
 func Values(values ...any) *ValuesBuilder {
 	b := &ValuesBuilder{}
 	if len(values) > 0 {
@@ -98,6 +113,8 @@ func Values(values ...any) *ValuesBuilder {
 	}
 	return b
 }
+
+// ValuesExpr starts a VALUES rowset with one explicit-expression row.
 func ValuesExpr(expressions ...Expr) *ValuesBuilder {
 	b := &ValuesBuilder{}
 	if len(expressions) > 0 {
@@ -105,6 +122,8 @@ func ValuesExpr(expressions ...Expr) *ValuesBuilder {
 	}
 	return b
 }
+
+// Row appends a row whose values become bound parameters.
 func (b *ValuesBuilder) Row(values ...any) *ValuesBuilder {
 	exprs := make([]Expr, len(values))
 	for i, v := range values {
@@ -113,6 +132,8 @@ func (b *ValuesBuilder) Row(values ...any) *ValuesBuilder {
 	b.rows = append(b.rows, exprs)
 	return b
 }
+
+// RowExpr appends a row of explicit expressions.
 func (b *ValuesBuilder) RowExpr(expressions ...Expr) *ValuesBuilder {
 	b.rows = append(b.rows, cloneSlice(expressions))
 	return b
@@ -161,7 +182,10 @@ type TableBuilder struct {
 	tail  queryTail
 }
 
-func TableRows(name string) *TableBuilder   { return &TableBuilder{table: Table(name)} }
+// TableRows starts a TABLE rowset for a named table.
+func TableRows(name string) *TableBuilder { return &TableBuilder{table: Table(name)} }
+
+// Only restricts TABLE to the named table, excluding inherited tables.
 func (b *TableBuilder) Only() *TableBuilder { b.table = b.table.Only(); return b }
 func (b *TableBuilder) append(w *renderer) {
 	w.head(b.base)
@@ -187,7 +211,7 @@ func unknownProjection(e Expr) bool {
 			continue
 		}
 		if e.kind == exprGroup {
-			items := e.value.([]Expr)
+			items := ownedPayload[[]Expr](e.value)
 			if len(items) == 1 {
 				e = items[0]
 				continue

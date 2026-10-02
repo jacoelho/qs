@@ -3325,7 +3325,7 @@ func build09351() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("j1_tbl").As("t1", "a", "b", "c"), qs.Table("j2_tbl").As("t2", "a", "b")).Using("b")).OrderBy((qs.Ident("b")).Asc(), (qs.Ident("t1", "a")).Asc())
 }
 func build09359() qs.Statement {
-	return qs.Select(qs.Star("x")).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).Using("i").UsingAs("x")).Where(qs.AsCondition(qs.Operator(qs.Ident("j1_tbl", "t"), "=", qs.LiteralString("one"))))
+	return qs.Select(qs.Star("x")).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).UsingAs("x", "i")).Where(qs.AsCondition(qs.Operator(qs.Ident("j1_tbl", "t"), "=", qs.LiteralString("one"))))
 }
 func build09367() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).On(qs.AsCondition(qs.Operator(qs.Ident("j1_tbl", "i"), "=", qs.Ident("j2_tbl", "k")))))
@@ -3365,7 +3365,7 @@ func build09463() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("t3")).UsingExpr(qs.Table("t3").As("t3_other")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t3", "x"), "=", qs.Ident("t3_other", "x"))), qs.AsCondition(qs.Operator(qs.Ident("t3", "y"), "=", qs.Ident("t3_other", "y")))).Expr()))
 }
 func build09471() qs.Statement {
-	return qs.Select(qs.Star("bar"), qs.Star("unnamed_join")).FromExpr(qs.InnerJoin(qs.Table("t1"), qs.Table("t2")).Using("a").UsingAs("foo").As("bar"), qs.Table("t3").As("unnamed_join")).Lock(qs.ForUpdate().Of("foo"))
+	return qs.Select(qs.Star("bar"), qs.Star("unnamed_join")).FromExpr(qs.InnerJoin(qs.Table("t1"), qs.Table("t2")).UsingAs("foo", "a").As("bar"), qs.Table("t3").As("unnamed_join")).Lock(qs.ForUpdate().Of("foo"))
 }
 func build09479() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("tbl_ra")).From(qs.Select(qs.Ident("i"), qs.Operator(qs.Ident("i"), "%", qs.LiteralInt(100))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(1000))).As("i")))

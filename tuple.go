@@ -2,56 +2,101 @@
 
 package qs
 
-// Tuple2Expr is a statically typed SQL row of degree 2.
+// Tuple2Expr is a statically typed SQL row of degree 2. Its type parameters describe the Go value types accepted by its comparison methods; they do not validate SQL types or nullability.
 type Tuple2Expr[A any, B any] struct{ row RowExpr }
 
+// Tuple2 constructs a degree-2 row from typed fields in argument order.
 func Tuple2[A any, B any](a Field[A], b Field[B]) Tuple2Expr[A, B] {
 	return Tuple2Expr[A, B]{row: Row(a.expr, b.expr)}
 }
-func (r Tuple2Expr[A, B]) Expr() Expr                   { return r.row.Expr() }
-func (r Tuple2Expr[A, B]) EqValues(a A, b B) Condition  { return r.row.EqValues(a, b) }
-func (r Tuple2Expr[A, B]) NeValues(a A, b B) Condition  { return r.row.NeValues(a, b) }
-func (r Tuple2Expr[A, B]) LtValues(a A, b B) Condition  { return r.row.LtValues(a, b) }
+
+// Expr returns the underlying row expression.
+func (r Tuple2Expr[A, B]) Expr() Expr { return r.row.Expr() }
+
+// EqValues compares r with a row of bound values using SQL =. Values are bound in argument order.
+func (r Tuple2Expr[A, B]) EqValues(a A, b B) Condition { return r.row.EqValues(a, b) }
+
+// NeValues compares r with a row of bound values using SQL <>. Values are bound in argument order.
+func (r Tuple2Expr[A, B]) NeValues(a A, b B) Condition { return r.row.NeValues(a, b) }
+
+// LtValues compares r with a row of bound values using SQL <. Values are bound in argument order.
+func (r Tuple2Expr[A, B]) LtValues(a A, b B) Condition { return r.row.LtValues(a, b) }
+
+// LteValues compares r with a row of bound values using SQL <=. Values are bound in argument order.
 func (r Tuple2Expr[A, B]) LteValues(a A, b B) Condition { return r.row.LteValues(a, b) }
-func (r Tuple2Expr[A, B]) GtValues(a A, b B) Condition  { return r.row.GtValues(a, b) }
+
+// GtValues compares r with a row of bound values using SQL >. Values are bound in argument order.
+func (r Tuple2Expr[A, B]) GtValues(a A, b B) Condition { return r.row.GtValues(a, b) }
+
+// GteValues compares r with a row of bound values using SQL >=. Values are bound in argument order.
 func (r Tuple2Expr[A, B]) GteValues(a A, b B) Condition { return r.row.GteValues(a, b) }
 
-// Tuple3Expr is a statically typed SQL row of degree 3.
+// Tuple3Expr is a statically typed SQL row of degree 3. Its type parameters describe the Go value types accepted by its comparison methods; they do not validate SQL types or nullability.
 type Tuple3Expr[A any, B any, C any] struct{ row RowExpr }
 
+// Tuple3 constructs a degree-3 row from typed fields in argument order.
 func Tuple3[A any, B any, C any](a Field[A], b Field[B], c Field[C]) Tuple3Expr[A, B, C] {
 	return Tuple3Expr[A, B, C]{row: Row(a.expr, b.expr, c.expr)}
 }
-func (r Tuple3Expr[A, B, C]) Expr() Expr                        { return r.row.Expr() }
-func (r Tuple3Expr[A, B, C]) EqValues(a A, b B, c C) Condition  { return r.row.EqValues(a, b, c) }
-func (r Tuple3Expr[A, B, C]) NeValues(a A, b B, c C) Condition  { return r.row.NeValues(a, b, c) }
-func (r Tuple3Expr[A, B, C]) LtValues(a A, b B, c C) Condition  { return r.row.LtValues(a, b, c) }
+
+// Expr returns the underlying row expression.
+func (r Tuple3Expr[A, B, C]) Expr() Expr { return r.row.Expr() }
+
+// EqValues compares r with a row of bound values using SQL =. Values are bound in argument order.
+func (r Tuple3Expr[A, B, C]) EqValues(a A, b B, c C) Condition { return r.row.EqValues(a, b, c) }
+
+// NeValues compares r with a row of bound values using SQL <>. Values are bound in argument order.
+func (r Tuple3Expr[A, B, C]) NeValues(a A, b B, c C) Condition { return r.row.NeValues(a, b, c) }
+
+// LtValues compares r with a row of bound values using SQL <. Values are bound in argument order.
+func (r Tuple3Expr[A, B, C]) LtValues(a A, b B, c C) Condition { return r.row.LtValues(a, b, c) }
+
+// LteValues compares r with a row of bound values using SQL <=. Values are bound in argument order.
 func (r Tuple3Expr[A, B, C]) LteValues(a A, b B, c C) Condition { return r.row.LteValues(a, b, c) }
-func (r Tuple3Expr[A, B, C]) GtValues(a A, b B, c C) Condition  { return r.row.GtValues(a, b, c) }
+
+// GtValues compares r with a row of bound values using SQL >. Values are bound in argument order.
+func (r Tuple3Expr[A, B, C]) GtValues(a A, b B, c C) Condition { return r.row.GtValues(a, b, c) }
+
+// GteValues compares r with a row of bound values using SQL >=. Values are bound in argument order.
 func (r Tuple3Expr[A, B, C]) GteValues(a A, b B, c C) Condition { return r.row.GteValues(a, b, c) }
 
-// Tuple4Expr is a statically typed SQL row of degree 4.
+// Tuple4Expr is a statically typed SQL row of degree 4. Its type parameters describe the Go value types accepted by its comparison methods; they do not validate SQL types or nullability.
 type Tuple4Expr[A any, B any, C any, D any] struct{ row RowExpr }
 
+// Tuple4 constructs a degree-4 row from typed fields in argument order.
 func Tuple4[A any, B any, C any, D any](a Field[A], b Field[B], c Field[C], d Field[D]) Tuple4Expr[A, B, C, D] {
 	return Tuple4Expr[A, B, C, D]{row: Row(a.expr, b.expr, c.expr, d.expr)}
 }
+
+// Expr returns the underlying row expression.
 func (r Tuple4Expr[A, B, C, D]) Expr() Expr { return r.row.Expr() }
+
+// EqValues compares r with a row of bound values using SQL =. Values are bound in argument order.
 func (r Tuple4Expr[A, B, C, D]) EqValues(a A, b B, c C, d D) Condition {
 	return r.row.EqValues(a, b, c, d)
 }
+
+// NeValues compares r with a row of bound values using SQL <>. Values are bound in argument order.
 func (r Tuple4Expr[A, B, C, D]) NeValues(a A, b B, c C, d D) Condition {
 	return r.row.NeValues(a, b, c, d)
 }
+
+// LtValues compares r with a row of bound values using SQL <. Values are bound in argument order.
 func (r Tuple4Expr[A, B, C, D]) LtValues(a A, b B, c C, d D) Condition {
 	return r.row.LtValues(a, b, c, d)
 }
+
+// LteValues compares r with a row of bound values using SQL <=. Values are bound in argument order.
 func (r Tuple4Expr[A, B, C, D]) LteValues(a A, b B, c C, d D) Condition {
 	return r.row.LteValues(a, b, c, d)
 }
+
+// GtValues compares r with a row of bound values using SQL >. Values are bound in argument order.
 func (r Tuple4Expr[A, B, C, D]) GtValues(a A, b B, c C, d D) Condition {
 	return r.row.GtValues(a, b, c, d)
 }
+
+// GteValues compares r with a row of bound values using SQL >=. Values are bound in argument order.
 func (r Tuple4Expr[A, B, C, D]) GteValues(a A, b B, c C, d D) Condition {
 	return r.row.GteValues(a, b, c, d)
 }

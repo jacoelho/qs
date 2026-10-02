@@ -3364,10 +3364,10 @@ func build09345() qs.Statement {
 	return qs.Select(qs.Ident("ii"), qs.Ident("tt"), qs.Ident("kk")).FromExpr(qs.CrossJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).As("tx", "ii", "jj", "tt", "ii2", "kk"))
 }
 func build09353() qs.Statement {
-	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).Using("i").UsingAs("x")).Where(qs.AsCondition(qs.Operator(qs.Ident("j1_tbl", "t"), "=", qs.LiteralString("one"))))
+	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).UsingAs("x", "i")).Where(qs.AsCondition(qs.Operator(qs.Ident("j1_tbl", "t"), "=", qs.LiteralString("one"))))
 }
 func build09361() qs.Statement {
-	return qs.Select(qs.Call("row_to_json", qs.Star("x"))).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).Using("i").UsingAs("x")).Where(qs.AsCondition(qs.Operator(qs.Ident("j1_tbl", "t"), "=", qs.LiteralString("one"))))
+	return qs.Select(qs.Call("row_to_json", qs.Star("x"))).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).UsingAs("x", "i")).Where(qs.AsCondition(qs.Operator(qs.Ident("j1_tbl", "t"), "=", qs.LiteralString("one"))))
 }
 func build09369() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.LeftJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).Using("i")).OrderBy((qs.Ident("i")).Asc(), (qs.Ident("k")).Asc(), (qs.Ident("t")).Asc())

@@ -22,7 +22,7 @@ func LiteralNumeric(value string) Expr {
 
 func validNumericLiteral(value string) bool {
 	i := 0
-	if len(value) > 0 && (value[0] == '+' || value[0] == '-') {
+	if value != "" && (value[0] == '+' || value[0] == '-') {
 		i++
 	}
 	if len(value)-i >= 2 && value[i] == '0' {
@@ -103,9 +103,13 @@ func LiteralBit(bits string) Expr {
 func LiteralHex(digits string) Expr {
 	for i := range len(digits) {
 		c := digits[i]
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
+		if !hexDigit(c) {
 			return invalidExpr("hex literal", "requires hexadecimal digits")
 		}
 	}
 	return Expr{kind: exprLiteral, text: "X'" + digits + "'"}
+}
+
+func hexDigit(c byte) bool {
+	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
 }

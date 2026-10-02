@@ -4,9 +4,13 @@ package qs
 type ExplainFormat uint8
 
 const (
+	// ExplainText requests PostgreSQL's text plan format.
 	ExplainText ExplainFormat = iota
+	// ExplainJSON requests PostgreSQL's JSON plan format.
 	ExplainJSON
+	// ExplainXML requests PostgreSQL's XML plan format.
 	ExplainXML
+	// ExplainYAML requests PostgreSQL's YAML plan format.
 	ExplainYAML
 )
 
@@ -21,8 +25,11 @@ type explainOption struct {
 type ExplainSerialization uint8
 
 const (
+	// SerializeNone disables EXPLAIN ANALYZE serialization measurement.
 	SerializeNone ExplainSerialization = iota
+	// SerializeText measures text serialization during EXPLAIN ANALYZE.
 	SerializeText
+	// SerializeBinary measures binary serialization during EXPLAIN ANALYZE.
 	SerializeBinary
 )
 
@@ -33,11 +40,12 @@ type ExplainBuilder struct {
 	options []explainOption
 }
 
+// Explain constructs EXPLAIN for a supported statement.
 func Explain(query Statement) *ExplainBuilder { return &ExplainBuilder{query: query} }
 func (b *ExplainBuilder) option(name string, value bool, version PostgreSQLVersion) *ExplainBuilder {
 	text := "FALSE"
 	if value {
-		text = "TRUE"
+		text = sqlTrue
 	}
 	return b.setOption(name, text, version)
 }
@@ -104,7 +112,7 @@ func (b *ExplainBuilder) Memory(value bool) *ExplainBuilder {
 // which defaults to TEXT. All modes except NONE require Analyze(true).
 func (b *ExplainBuilder) Serialize(modes ...ExplainSerialization) *ExplainBuilder {
 	if len(modes) == 0 {
-		b.setOption("SERIALIZE", "TRUE", PostgreSQL17)
+		b.setOption("SERIALIZE", sqlTrue, PostgreSQL17)
 		for i := range b.options {
 			if b.options[i].name == "SERIALIZE" {
 				b.options[i].bare = true
@@ -125,6 +133,8 @@ func (b *ExplainBuilder) Serialize(modes ...ExplainSerialization) *ExplainBuilde
 	}
 	return b.setOption("SERIALIZE", value, PostgreSQL17)
 }
+
+// Format sets the EXPLAIN plan representation.
 func (b *ExplainBuilder) Format(format ExplainFormat) *ExplainBuilder {
 	var value string
 	switch format {
@@ -150,13 +160,13 @@ func (b *ExplainBuilder) append(w *renderer) {
 	analyze, generic := false, false
 	for _, o := range b.options {
 		if o.name == "ANALYZE" {
-			analyze = o.value == "TRUE"
+			analyze = o.value == sqlTrue
 		}
 		if o.name == "GENERIC_PLAN" {
-			generic = o.value == "TRUE"
+			generic = o.value == sqlTrue
 		}
 	}
-	if !w.require(!(analyze && generic), "EXPLAIN", "ANALYZE and GENERIC_PLAN are incompatible") {
+	if !w.require(!analyze || !generic, "EXPLAIN", "ANALYZE and GENERIC_PLAN are incompatible") {
 		return
 	}
 	for _, o := range b.options {
@@ -199,28 +209,41 @@ type TruncateBuilder struct {
 	behaviour bool
 }
 
+// Truncate starts TRUNCATE for one or more named tables.
 func Truncate(names ...string) *TruncateBuilder { b := &TruncateBuilder{}; return b.Tables(names...) }
+
+// Tables appends named tables to the TRUNCATE list.
 func (b *TruncateBuilder) Tables(names ...string) *TruncateBuilder {
 	for _, n := range names {
 		b.tables = append(b.tables, Table(n))
 	}
 	return b
 }
+
+// TablesExpr appends relation expressions to the TRUNCATE list.
 func (b *TruncateBuilder) TablesExpr(tables ...Relation) *TruncateBuilder {
 	b.tables = append(b.tables, tables...)
 	return b
 }
+
+// RestartIdentity requests that truncated sequences restart at their starts.
 func (b *TruncateBuilder) RestartIdentity() *TruncateBuilder {
 	b.identity = true
 	b.restart = true
 	return b
 }
+
+// ContinueIdentity requests that truncated sequences retain their values.
 func (b *TruncateBuilder) ContinueIdentity() *TruncateBuilder {
 	b.identity = true
 	b.restart = false
 	return b
 }
+
+// Cascade selects cascading truncation of dependent tables.
 func (b *TruncateBuilder) Cascade() *TruncateBuilder { b.behaviour = true; b.cascade = true; return b }
+
+// Restrict selects restrictive truncation of dependent tables.
 func (b *TruncateBuilder) Restrict() *TruncateBuilder {
 	b.behaviour = true
 	b.cascade = false

@@ -1,50 +1,86 @@
 package qs
 
-// CaseBuilder constructs a searched CASE (Case) or simple CASE (CaseOf).
+// SearchedCaseBuilder constructs a searched CASE expression.
 // End snapshots the branches so later builder changes cannot affect an Expr.
-type CaseBuilder struct {
-	operand   Expr
-	simple    bool
-	branches  []caseBranch
-	otherwise Expr
-	hasElse   bool
-	invalid   string
+type SearchedCaseBuilder struct {
+	searched caseExpression
 }
+
+// SimpleCaseBuilder constructs a simple CASE expression.
+// End snapshots the branches so later builder changes cannot affect an Expr.
+type SimpleCaseBuilder struct {
+	simple caseExpression
+}
+
+type caseExpression struct {
+	operand   Expr
+	otherwise Expr
+	branches  []caseBranch
+	simple    bool
+	hasElse   bool
+}
+
 type caseBranch struct{ when, then Expr }
 
-func Case() *CaseBuilder             { return &CaseBuilder{} }
-func CaseOf(value Expr) *CaseBuilder { return &CaseBuilder{operand: value, simple: true} }
-func (b *CaseBuilder) When(condition Condition, result Expr) *CaseBuilder {
-	if b.simple {
-		b.invalid = "use WhenValue for a simple CASE"
-	}
-	b.branches = append(b.branches, caseBranch{condition.expr, result})
+// Case starts a searched CASE. Rendering rejects an expression with no branches.
+func Case() *SearchedCaseBuilder { return &SearchedCaseBuilder{} }
+
+// CaseOf starts a simple CASE; a zero operand remains a rendering error.
+func CaseOf(value Expr) *SimpleCaseBuilder {
+	return &SimpleCaseBuilder{simple: caseExpression{operand: value}}
+}
+
+// When appends a branch in evaluation order; a zero condition is invalid.
+func (b *SearchedCaseBuilder) When(condition Condition, result Expr) *SearchedCaseBuilder {
+	b.searched.branches = append(b.searched.branches, caseBranch{condition.expr, result})
 	return b
 }
-func (b *CaseBuilder) WhenValue(value, result Expr) *CaseBuilder {
-	if !b.simple {
-		b.invalid = "use When for a searched CASE"
-	}
-	b.branches = append(b.branches, caseBranch{value, result})
+
+// Else replaces the fallback. Use Param(nil) for an explicit SQL NULL.
+func (b *SearchedCaseBuilder) Else(result Expr) *SearchedCaseBuilder {
+	b.searched.otherwise = result
+	b.searched.hasElse = true
 	return b
 }
-func (b *CaseBuilder) Else(result Expr) *CaseBuilder {
-	b.otherwise = result
-	b.hasElse = true
-	return b
-}
-func (b *CaseBuilder) End() Expr {
+
+// End snapshots branch selection while retaining live nested statements.
+// A nil receiver produces an expression that fails rendering.
+func (b *SearchedCaseBuilder) End() Expr {
 	if b == nil {
 		return invalidExpr("CASE", "nil CASE builder")
 	}
-	copy := *b
-	copy.branches = cloneSlice(b.branches)
-	return Expr{kind: exprCase, value: &copy}
+	snapshot := b.searched
+	snapshot.simple = false
+	snapshot.branches = cloneSlice(b.searched.branches)
+	return Expr{kind: exprCase, value: &snapshot}
 }
-func (w *renderer) caseExpr(b *CaseBuilder) {
-	if !w.require(b.invalid == "", "CASE", b.invalid) {
-		return
+
+// WhenValue appends an operand comparison in evaluation order.
+func (b *SimpleCaseBuilder) WhenValue(value, result Expr) *SimpleCaseBuilder {
+	b.simple.branches = append(b.simple.branches, caseBranch{value, result})
+	return b
+}
+
+// Else replaces the fallback. Use Param(nil) for an explicit SQL NULL.
+func (b *SimpleCaseBuilder) Else(result Expr) *SimpleCaseBuilder {
+	b.simple.otherwise = result
+	b.simple.hasElse = true
+	return b
+}
+
+// End snapshots branch selection while retaining live nested statements.
+// A nil receiver produces an expression that fails rendering.
+func (b *SimpleCaseBuilder) End() Expr {
+	if b == nil {
+		return invalidExpr("CASE", "nil CASE builder")
 	}
+	snapshot := b.simple
+	snapshot.simple = true
+	snapshot.branches = cloneSlice(b.simple.branches)
+	return Expr{kind: exprCase, value: &snapshot}
+}
+
+func (w *renderer) caseExpr(b *caseExpression) {
 	if !w.require(len(b.branches) != 0, "CASE", "requires at least one WHEN") {
 		return
 	}

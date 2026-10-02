@@ -19,8 +19,8 @@ const (
 // JSONBehavior is an explicit SQL/JSON empty/error result. Its zero value means
 // use the PostgreSQL default. Constructors constrain expression-bearing defaults.
 type JSONBehavior struct {
-	kind  jsonBehaviorKind
 	value Expr
+	kind  jsonBehaviorKind
 }
 
 // JSONError requests an error when the selected SQL/JSON condition occurs.
@@ -81,42 +81,58 @@ const (
 )
 
 type jsonOptions struct {
-	returning            DataType
-	hasReturning, format bool
-	encoding             JSONEncoding
-	wrapper              jsonWrapper
-	quotes               jsonQuotes
-	empty, onError       JSONBehavior
+	empty        JSONBehavior
+	onError      JSONBehavior
+	returning    DataType
+	hasReturning bool
+	format       bool
+	encoding     JSONEncoding
+	wrapper      jsonWrapper
+	quotes       jsonQuotes
 }
 
 // JSONQueryBuilder is an immutable SQL/JSON function descriptor. Call Expr to
 // freeze it into an expression. These query functions require PostgreSQL 17.
 type JSONQueryBuilder struct {
-	kind           jsonQueryKind
-	document, path Expr
-	passing        []jsonPassing
-	options        jsonOptions
+	document Expr
+	path     Expr
+	passing  []jsonPassing
+	options  jsonOptions
+	kind     jsonQueryKind
 }
 
+// JSONValue constructs a JSON_VALUE descriptor for document and path.
 func JSONValue(document, path Expr) JSONQueryBuilder {
 	return JSONQueryBuilder{kind: jsonQueryValue, document: document, path: path}
 }
+
+// JSONQuery constructs a JSON_QUERY descriptor for document and path.
 func JSONQuery(document, path Expr) JSONQueryBuilder {
 	return JSONQueryBuilder{kind: jsonQueryQuery, document: document, path: path}
 }
+
+// JSONExists constructs a JSON_EXISTS descriptor for document and path.
 func JSONExists(document, path Expr) JSONQueryBuilder {
 	return JSONQueryBuilder{kind: jsonQueryExists, document: document, path: path}
 }
+
+// Passing adds a named variable to the SQL/JSON PASSING clause.
 func (b JSONQueryBuilder) Passing(name string, value Expr) JSONQueryBuilder {
-	b.passing = slices.Concat(b.passing, []jsonPassing{{name, value}})
+	b.passing = slices.Concat(b.passing, []jsonPassing{{name: name, value: value}})
 	return b
 }
+
+// Returning selects the SQL type returned by the SQL/JSON query function.
 func (b JSONQueryBuilder) Returning(typ DataType) JSONQueryBuilder {
 	b.options.returning = typ
 	b.options.hasReturning = true
 	return b
 }
+
+// FormatJSON marks JSON_VALUE or JSON_QUERY output as formatted JSON.
 func (b JSONQueryBuilder) FormatJSON() JSONQueryBuilder { b.options.format = true; return b }
+
+// EncodingUTF8 selects UTF8 for formatted SQL/JSON query output.
 func (b JSONQueryBuilder) EncodingUTF8() JSONQueryBuilder {
 	b.options.format = true
 	b.options.encoding = JSONEncodingUTF8
@@ -171,6 +187,9 @@ func (b JSONQueryBuilder) Expr() Expr { return Expr{kind: exprSQLJSON, value: &b
 
 // As captures the SQL/JSON descriptor as an aliased expression.
 func (b JSONQueryBuilder) As(name string) Expr { return b.Expr().As(name) }
+
+// Condition converts JSON_EXISTS to a condition. Other SQL/JSON query kinds
+// produce an invalid condition descriptor.
 func (b JSONQueryBuilder) Condition() Condition {
 	if b.kind != jsonQueryExists {
 		return AsCondition(invalidExpr("SQL/JSON", "only JSON_EXISTS is a boolean predicate"))
@@ -230,11 +249,14 @@ func (w *renderer) jsonBehaviour(b JSONBehavior, clause string, kind jsonQueryKi
 		w.text("DEFAULT ")
 		w.expr(b.value)
 	case jsonBehaviorTrue:
-		w.text("TRUE")
+		w.text(sqlTrue)
 	case jsonBehaviorFalse:
 		w.text("FALSE")
 	case jsonBehaviorUnknown:
 		w.text("UNKNOWN")
+	default:
+		w.fail(ErrInvalid, clause, "unknown SQL/JSON behaviour")
+		return
 	}
 	w.byte(' ')
 	w.text(clause)
@@ -301,7 +323,7 @@ func (w *renderer) jsonDecorations(o jsonOptions) {
 	}
 }
 func (w *renderer) sqlJSON(e Expr) {
-	b := e.value.(*JSONQueryBuilder)
+	b := ownedPayload[*JSONQueryBuilder](e.value)
 	w.feature(PostgreSQL17, "SQL/JSON query functions")
 	switch b.kind {
 	case jsonQueryValue:
@@ -326,12 +348,14 @@ func (w *renderer) sqlJSON(e Expr) {
 // Paths in JSON_TABLE are SQL string literals, escaped by the library, rather
 // than interpolated SQL. Runtime path variables belong in Passing.
 type JSONTableColumn struct {
-	kind                 jsonTableColumnKind
-	name, path, pathName string
-	hasPath              bool
-	typ                  DataType
-	options              jsonOptions
-	columns              []JSONTableColumn
+	name     string
+	path     string
+	pathName string
+	columns  []JSONTableColumn
+	typ      DataType
+	options  jsonOptions
+	kind     jsonTableColumnKind
+	hasPath  bool
 }
 
 type jsonTableColumnKind uint8
@@ -343,6 +367,7 @@ const (
 	jsonTableNestedColumn
 )
 
+// JSONColumn creates a JSON_TABLE value column with a SQL type.
 func JSONColumn(name string, typ DataType) JSONTableColumn {
 	return JSONTableColumn{kind: jsonTableValueColumn, name: name, typ: typ}
 }
@@ -352,15 +377,27 @@ func JSONColumn(name string, typ DataType) JSONTableColumn {
 func JSONOrdinality(name string) JSONTableColumn {
 	return JSONTableColumn{kind: jsonTableOrdinalityColumn, name: name}
 }
+
+// JSONExistsColumn creates a JSON_TABLE EXISTS column with a SQL type.
 func JSONExistsColumn(name string, typ DataType) JSONTableColumn {
 	return JSONTableColumn{kind: jsonTableExistsColumn, name: name, typ: typ}
 }
+
+// JSONNested creates a nested JSON_TABLE column group at path.
 func JSONNested(path string, columns ...JSONTableColumn) JSONTableColumn {
 	return JSONTableColumn{kind: jsonTableNestedColumn, path: path, hasPath: true, columns: cloneSlice(columns)}
 }
-func (c JSONTableColumn) Path(path string) JSONTableColumn     { c.path = path; c.hasPath = true; return c }
+
+// Path selects the JSON path used to populate a JSON_TABLE value column.
+func (c JSONTableColumn) Path(path string) JSONTableColumn { c.path = path; c.hasPath = true; return c }
+
+// PathName gives a nested JSON_TABLE path an SQL identifier.
 func (c JSONTableColumn) PathName(name string) JSONTableColumn { c.pathName = name; return c }
-func (c JSONTableColumn) FormatJSON() JSONTableColumn          { c.options.format = true; return c }
+
+// FormatJSON marks a JSON_TABLE value column as formatted JSON.
+func (c JSONTableColumn) FormatJSON() JSONTableColumn { c.options.format = true; return c }
+
+// EncodingUTF8 selects UTF8 for a formatted JSON_TABLE value column.
 func (c JSONTableColumn) EncodingUTF8() JSONTableColumn {
 	c.options.format = true
 	c.options.encoding = JSONEncodingUTF8
@@ -412,28 +449,43 @@ func (c JSONTableColumn) OnError(v JSONBehavior) JSONTableColumn { c.options.onE
 
 // JSONTableBuilder is an immutable relation descriptor, requiring PostgreSQL 17.
 type JSONTableBuilder struct {
-	document       Expr
-	path, pathName string
-	passing        []jsonPassing
-	columns        []JSONTableColumn
-	onError        JSONBehavior
+	path     string
+	pathName string
+	document Expr
+	passing  []jsonPassing
+	columns  []JSONTableColumn
+	onError  JSONBehavior
 }
 
+// JSONTable constructs a JSON_TABLE relation descriptor. JSON_TABLE requires
+// PostgreSQL 17 or later and at least one column at render time.
 func JSONTable(document Expr, path string, columns ...JSONTableColumn) JSONTableBuilder {
 	return JSONTableBuilder{document: document, path: path, columns: cloneSlice(columns)}
 }
+
+// Columns appends output columns to JSON_TABLE.
 func (b JSONTableBuilder) Columns(columns ...JSONTableColumn) JSONTableBuilder {
 	b.columns = slices.Concat(b.columns, columns)
 	return b
 }
+
+// Passing adds a named variable to JSON_TABLE's PASSING clause.
 func (b JSONTableBuilder) Passing(name string, value Expr) JSONTableBuilder {
-	b.passing = slices.Concat(b.passing, []jsonPassing{{name, value}})
+	b.passing = slices.Concat(b.passing, []jsonPassing{{name: name, value: value}})
 	return b
 }
-func (b JSONTableBuilder) PathName(name string) JSONTableBuilder   { b.pathName = name; return b }
+
+// PathName gives JSON_TABLE's row path an SQL identifier.
+func (b JSONTableBuilder) PathName(name string) JSONTableBuilder { b.pathName = name; return b }
+
+// OnError sets JSON_TABLE's row-level error policy.
 func (b JSONTableBuilder) OnError(v JSONBehavior) JSONTableBuilder { b.onError = v; return b }
-func (b JSONTableBuilder) Ref() Relation                           { return Relation{kind: relationJSONTable, value: &b} }
-func (b JSONTableBuilder) As(name string) Relation                 { return b.Ref().As(name) }
+
+// Ref freezes JSON_TABLE as a relation.
+func (b JSONTableBuilder) Ref() Relation { return Relation{kind: relationJSONTable, value: &b} }
+
+// As freezes JSON_TABLE as a relation with a table alias.
+func (b JSONTableBuilder) As(name string) Relation { return b.Ref().As(name) }
 func (w *renderer) jsonTable(b *JSONTableBuilder) {
 	w.feature(PostgreSQL17, "JSON_TABLE")
 	w.text("JSON_TABLE(")

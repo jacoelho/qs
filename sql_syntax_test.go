@@ -189,7 +189,11 @@ func TestSQLSyntaxCloneChildren(t *testing.T) {
 
 	original := Select(SubstringFrom(Param("original"), LiteralInt(1)))
 	cloned := Clone(original)
-	cloned.columns[0].value.(*sqlSyntaxExpression).args[0] = Param("clone")
+	syntax, ok := cloned.columns[0].value.(*sqlSyntaxExpression)
+	if !ok {
+		t.Fatalf("cloned expression has type %T, want *sqlSyntaxExpression", cloned.columns[0].value)
+	}
+	syntax.args[0] = Param("clone")
 
 	checkSQL(t, original, `SELECT SUBSTRING($1 FROM 1)`, "original")
 	checkSQL(t, cloned, `SELECT SUBSTRING($1 FROM 1)`, "clone")

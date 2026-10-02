@@ -22,6 +22,9 @@ jobs:
       - run: go test -run='^$' -fuzz='^FuzzIdentifier$' -fuzztime=15s -parallel=2 .
       - run: go test -run='^$' -fuzz='^FuzzValueIsolation$' -fuzztime=15s -parallel=2 .
       - run: go test -run='^$' -fuzz='^FuzzNestedNumbering$' -fuzztime=15s -parallel=2 .
+      - run: go test -run='^$' -fuzz='^FuzzCaseRoles$' -fuzztime=15s -parallel=2 .
+      - run: go test -run='^$' -fuzz='^FuzzMergeRoles$' -fuzztime=15s -parallel=2 .
+      - run: go test -run='^$' -fuzz='^FuzzJoinRoles$' -fuzztime=15s -parallel=2 .
       - run: go test -run='^$' -bench=. -benchmem -count=3 .
   postgres:
     runs-on: ubuntu-latest

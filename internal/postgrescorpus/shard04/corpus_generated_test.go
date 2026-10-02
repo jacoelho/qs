@@ -3311,7 +3311,7 @@ func build09348() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).Using("i"))
 }
 func build09356() qs.Statement {
-	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).Using("i").UsingAs("x")).Where(qs.AsCondition(qs.Operator(qs.Ident("x", "t"), "=", qs.LiteralString("one"))))
+	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).UsingAs("x", "i")).Where(qs.AsCondition(qs.Operator(qs.Ident("x", "t"), "=", qs.LiteralString("one"))))
 }
 func build09364() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.NaturalJoin(qs.Table("j1_tbl").As("t1", "a", "b", "c"), qs.Table("j2_tbl").As("t2", "d", "a")))

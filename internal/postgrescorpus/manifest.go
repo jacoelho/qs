@@ -13,50 +13,80 @@ import (
 
 // ParserManifest pins the independent development-time SQL oracle.
 type ParserManifest struct {
-	Package    string `json:"package"`
-	Version    string `json:"version"`
+	// Package is the parser package name, currently pglast.
+	Package string `json:"package"`
+	// Version is the parser package version used to produce the corpus.
+	Version string `json:"version"`
+	// PostgreSQL is the PostgreSQL grammar/version reported by the parser package.
 	PostgreSQL string `json:"postgresql"`
 }
 
 // CountsManifest records occurrence coverage and whole-corpus shape coverage.
 type CountsManifest struct {
-	Total                         int `json:"total"`
-	Verified                      int `json:"verified"`
-	ConstructionError             int `json:"construction_error"`
-	Unsupported                   int `json:"unsupported"`
-	PlannerTotal                  int `json:"planner_total"`
-	PlannerVerified               int `json:"planner_verified"`
-	DistinctShapes                int `json:"distinct_shapes"`
-	DistinctVerifiedShapes        int `json:"distinct_verified_shapes"`
-	PlannerDistinctShapes         int `json:"planner_distinct_shapes"`
+	// Total is the number of occurrences across all shards.
+	Total int `json:"total"`
+	// Verified is the number of occurrences with StatusVerified.
+	Verified int `json:"verified"`
+	// ConstructionError is the number of occurrences with StatusConstructionErr.
+	ConstructionError int `json:"construction_error"`
+	// Unsupported is the number of occurrences with StatusUnsupported.
+	Unsupported int `json:"unsupported"`
+	// PlannerTotal is the number of planner-focused occurrences.
+	PlannerTotal int `json:"planner_total"`
+	// PlannerVerified is the number of verified planner-focused occurrences.
+	PlannerVerified int `json:"planner_verified"`
+	// DistinctShapes is the number of unique normalized query shapes.
+	DistinctShapes int `json:"distinct_shapes"`
+	// DistinctVerifiedShapes is the number of shapes whose every occurrence is verified.
+	DistinctVerifiedShapes int `json:"distinct_verified_shapes"`
+	// PlannerDistinctShapes is the number of shapes containing at least one planner occurrence.
+	PlannerDistinctShapes int `json:"planner_distinct_shapes"`
+	// PlannerDistinctVerifiedShapes is the number of planner shapes whose every occurrence is verified.
 	PlannerDistinctVerifiedShapes int `json:"planner_distinct_verified_shapes"`
 }
 
 // ShardManifest pins one package's complete strided occurrence inventory.
 type ShardManifest struct {
-	Package           string `json:"package"`
-	JSONL             string `json:"jsonl"`
-	SHA256            string `json:"sha256"`
-	Index             int    `json:"index"`
-	Count             int    `json:"count"`
-	FirstID           int    `json:"first_id"`
-	LastID            int    `json:"last_id"`
-	Verified          int    `json:"verified"`
-	ConstructionError int    `json:"construction_error"`
-	Unsupported       int    `json:"unsupported"`
+	// Package is the shard package directory name, such as shard00.
+	Package string `json:"package"`
+	// JSONL is the shard's manifest-relative JSONL path.
+	JSONL string `json:"jsonl"`
+	// SHA256 is the lowercase SHA-256 digest of the complete JSONL file.
+	SHA256 string `json:"sha256"`
+	// Index is the zero-based shard index.
+	Index int `json:"index"`
+	// Count is the number of records in the shard.
+	Count int `json:"count"`
+	// FirstID is the first global occurrence ID assigned to the shard.
+	FirstID int `json:"first_id"`
+	// LastID is the last global occurrence ID assigned to the shard.
+	LastID int `json:"last_id"`
+	// Verified is the number of verified records in the shard.
+	Verified int `json:"verified"`
+	// ConstructionError is the number of construction-error records in the shard.
+	ConstructionError int `json:"construction_error"`
+	// Unsupported is the number of unsupported records in the shard.
+	Unsupported int `json:"unsupported"`
 }
 
 // Manifest is the canonical inventory of the pinned corpus artifacts.
 type Manifest struct {
-	Schema    string          `json:"schema"`
-	Revision  string          `json:"revision"`
-	SQLSHA256 string          `json:"sql_sha256"`
-	Parser    ParserManifest  `json:"parser"`
-	Shards    []ShardManifest `json:"shards"`
-	Counts    CountsManifest  `json:"counts"`
+	// Schema identifies the manifest format and validation rules.
+	Schema string `json:"schema"`
+	// Revision is the source PostgreSQL repository revision used for the corpus.
+	Revision string `json:"revision"`
+	// SQLSHA256 is the digest of the source regression SQL corpus.
+	SQLSHA256 string `json:"sql_sha256"`
+	// Parser records the independent parser provenance for the corpus.
+	Parser ParserManifest `json:"parser"`
+	// Shards lists every strided JSONL and generated-test shard.
+	Shards []ShardManifest `json:"shards"`
+	// Counts records the global occurrence and shape coverage totals.
+	Counts CountsManifest `json:"counts"`
 }
 
-// ReadManifest decodes and validates a single manifest, rejecting trailers.
+// ReadManifest decodes and validates one manifest, rejecting unknown fields
+// and trailing JSON values.
 func ReadManifest(reader io.Reader) (Manifest, error) {
 	var manifest Manifest
 	decoder := json.NewDecoder(reader)
@@ -152,8 +182,9 @@ type shapeCoverage struct {
 	failed  bool
 }
 
-// Audit checks the actual package inventory, every JSONL hash and occurrence,
-// and the global union of shapes. It never retains all decoded cases.
+// Audit checks the actual shard inventory, every JSONL hash and occurrence,
+// and the global union of shapes against the manifest. It never retains all
+// decoded cases at once.
 func Audit(root fs.FS, manifest Manifest) error {
 	if err := manifest.validate(); err != nil {
 		return err

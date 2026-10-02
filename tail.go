@@ -1,12 +1,16 @@
 package qs
 
+// FetchMode selects how a FETCH clause handles rows at its boundary.
 type FetchMode uint8
 
 const (
+	// OnlyRows emits FETCH ... ROWS ONLY.
 	OnlyRows FetchMode = iota + 1
+	// WithTies emits FETCH ... ROWS WITH TIES.
 	WithTies
 )
 
+// LockStrength selects the row-locking strength of a LockClause.
 type LockStrength uint8
 
 const (
@@ -24,27 +28,45 @@ const (
 	waitSkipLocked
 )
 
-// LockClause identifies row-lock strength, locked relations and wait behaviour.
+// LockClause identifies row-lock strength, locked relations and wait behavior.
 type LockClause struct {
-	strength LockStrength
 	of       []string
+	strength LockStrength
 	wait     lockWait
 }
 
-func ForUpdate() LockClause                            { return LockClause{strength: lockUpdate} }
-func ForNoKeyUpdate() LockClause                       { return LockClause{strength: lockNoKeyUpdate} }
-func ForShare() LockClause                             { return LockClause{strength: lockShare} }
-func ForKeyShare() LockClause                          { return LockClause{strength: lockKeyShare} }
+// ForUpdate returns a FOR UPDATE lock clause.
+func ForUpdate() LockClause { return LockClause{strength: lockUpdate} }
+
+// ForNoKeyUpdate returns a FOR NO KEY UPDATE lock clause.
+func ForNoKeyUpdate() LockClause { return LockClause{strength: lockNoKeyUpdate} }
+
+// ForShare returns a FOR SHARE lock clause.
+func ForShare() LockClause { return LockClause{strength: lockShare} }
+
+// ForKeyShare returns a FOR KEY SHARE lock clause.
+func ForKeyShare() LockClause { return LockClause{strength: lockKeyShare} }
+
+// Of limits a lock clause to the named relations.
 func (l LockClause) Of(relations ...string) LockClause { l.of = cloneSlice(relations); return l }
-func (l LockClause) NoWait() LockClause                { l.wait = waitNoWait; return l }
-func (l LockClause) SkipLocked() LockClause            { l.wait = waitSkipLocked; return l }
+
+// NoWait makes a lock clause fail immediately when a row cannot be locked.
+func (l LockClause) NoWait() LockClause { l.wait = waitNoWait; return l }
+
+// SkipLocked makes a lock clause skip rows that cannot be locked immediately.
+func (l LockClause) SkipLocked() LockClause { l.wait = waitSkipLocked; return l }
 
 type queryTail struct {
-	order                                   []Order
-	limit, offset, fetch                    Expr
-	hasLimit, limitAll, hasOffset, hasFetch bool
-	fetchMode                               FetchMode
-	locks                                   []LockClause
+	limit     Expr
+	offset    Expr
+	fetch     Expr
+	order     []Order
+	locks     []LockClause
+	hasLimit  bool
+	limitAll  bool
+	hasOffset bool
+	hasFetch  bool
+	fetchMode FetchMode
 }
 
 func limitValue(n int) Expr {
@@ -54,7 +76,7 @@ func limitValue(n int) Expr {
 	return Param(n)
 }
 func (w *renderer) tail(t queryTail, allowLocks bool) {
-	if !w.require(!(t.hasLimit && t.hasFetch), "pagination", "LIMIT and FETCH are mutually exclusive") {
+	if !w.require(!t.hasLimit || !t.hasFetch, "pagination", "LIMIT and FETCH are mutually exclusive") {
 		return
 	}
 	if len(t.order) > 0 {

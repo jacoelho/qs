@@ -1,5 +1,7 @@
 package qs
 
+import "strconv"
+
 // sqlSyntaxKind identifies one of PostgreSQL's grammar productions that looks
 // like a function call but is not an ordinary function invocation.  The
 // renderer owns the spelling of each production; callers cannot supply a
@@ -27,9 +29,13 @@ const (
 type UnicodeNormalForm uint8
 
 const (
+	// NFC selects canonical decomposition followed by canonical composition.
 	NFC UnicodeNormalForm = iota + 1
+	// NFD selects canonical decomposition.
 	NFD
+	// NFKC selects compatibility decomposition followed by canonical composition.
 	NFKC
+	// NFKD selects compatibility decomposition.
 	NFKD
 )
 
@@ -39,8 +45,11 @@ func (f UnicodeNormalForm) valid() bool { return f >= NFC && f <= NFKD }
 type TrimDirection uint8
 
 const (
+	// TrimBothDirection trims from both ends of the value.
 	TrimBothDirection TrimDirection = iota + 1
+	// TrimLeadingDirection trims from the beginning of the value.
 	TrimLeadingDirection
+	// TrimTrailingDirection trims from the end of the value.
 	TrimTrailingDirection
 )
 
@@ -70,14 +79,14 @@ const (
 // traverse args through the current renderer so nested parameters, statements,
 // depth limits and placeholder styles remain part of the outer render.
 type sqlSyntaxExpression struct {
-	kind      sqlSyntaxKind
 	args      []Expr
+	precision int
+	kind      sqlSyntaxKind
 	form      UnicodeNormalForm
 	hasForm   bool
 	direction TrimDirection
 	negated   bool
 	value     sqlValueKind
-	precision int
 	hasPrec   bool
 }
 
@@ -195,7 +204,7 @@ func TrimSyntax(value Expr, direction TrimDirection, characters ...Expr) Expr {
 		args = []Expr{characters[0], value}
 	}
 	e := newSQLSyntax(sqlTrim, args)
-	n := *e.value.(*sqlSyntaxExpression)
+	n := *ownedPayload[*sqlSyntaxExpression](e.value)
 	n.direction = direction
 	e.value = &n
 	return e
@@ -223,7 +232,7 @@ func normalized(value Expr, negated bool, form ...UnicodeNormalForm) Expr {
 		return invalid
 	}
 	e := newSQLSyntax(sqlIsNormalized, []Expr{value})
-	n := *e.value.(*sqlSyntaxExpression)
+	n := *ownedPayload[*sqlSyntaxExpression](e.value)
 	n.negated = negated
 	n.form = f
 	n.hasForm = hasForm
@@ -242,7 +251,7 @@ func sqlValue(value sqlValueKind, precision ...int) Expr {
 	if precision[0] < 0 || precision[0] > 6 {
 		return invalidExpr("SQL value function", "precision must be between 0 and 6")
 	}
-	n := e.value.(*sqlSyntaxExpression)
+	n := ownedPayload[*sqlSyntaxExpression](e.value)
 	n.precision = precision[0]
 	n.hasPrec = true
 	return e
@@ -267,178 +276,225 @@ func CurrentSchema() Expr { return sqlValue(sqlCurrentSchema) }
 func CurrentCatalog() Expr { return sqlValue(sqlCurrentCatalog) }
 
 func (w *renderer) sqlSyntax(e Expr) {
-	n := e.value.(*sqlSyntaxExpression)
+	n := ownedPayload[*sqlSyntaxExpression](e.value)
 	switch n.kind {
 	case sqlSubstringFrom:
-		if !w.require(len(n.args) == 2 || len(n.args) == 3, "SUBSTRING", "requires value, start and optional length") {
-			return
-		}
-		w.text("SUBSTRING(")
-		w.expr(n.args[0])
-		w.text(" FROM ")
-		w.expr(n.args[1])
-		if len(n.args) == 3 {
-			w.text(" FOR ")
-			w.expr(n.args[2])
-		}
-		w.byte(')')
+		w.sqlSubstringFrom(n)
 	case sqlSubstringFor:
-		if !w.require(len(n.args) == 2, "SUBSTRING", "requires value and length") {
-			return
-		}
-		w.text("SUBSTRING(")
-		w.expr(n.args[0])
-		w.text(" FOR ")
-		w.expr(n.args[1])
-		w.byte(')')
+		w.sqlSubstringFor(n)
 	case sqlSubstringSimilar:
-		if !w.require(len(n.args) == 3, "SUBSTRING", "requires value, pattern and escape") {
-			return
-		}
-		w.text("SUBSTRING(")
-		w.expr(n.args[0])
-		w.text(" SIMILAR ")
-		w.expr(n.args[1])
-		w.text(" ESCAPE ")
-		w.expr(n.args[2])
-		w.byte(')')
+		w.sqlSubstringSimilar(n)
 	case sqlPosition:
-		if !w.require(len(n.args) == 2, "POSITION", "requires substring and value") {
-			return
-		}
-		w.text("POSITION(")
-		w.expr(n.args[0])
-		w.text(" IN ")
-		w.expr(n.args[1])
-		w.byte(')')
+		w.sqlPosition(n)
 	case sqlNormalize:
-		if !w.require(len(n.args) == 1, "NORMALIZE", "requires one value") {
-			return
-		}
-		w.text("NORMALIZE(")
-		w.expr(n.args[0])
-		if n.hasForm {
-			w.text(", ")
-			w.normalForm(n.form)
-		}
-		w.byte(')')
+		w.sqlNormalize(n)
 	case sqlOverlay:
-		if !w.require(len(n.args) == 3 || len(n.args) == 4, "OVERLAY", "requires value, replacement, start and optional length") {
-			return
-		}
-		w.text("OVERLAY(")
-		w.expr(n.args[0])
-		w.text(" PLACING ")
-		w.expr(n.args[1])
-		w.text(" FROM ")
-		w.expr(n.args[2])
-		if len(n.args) == 4 {
-			w.text(" FOR ")
-			w.expr(n.args[3])
-		}
-		w.byte(')')
+		w.sqlOverlay(n)
 	case sqlOverlaps:
-		if !w.require(len(n.args) == 4, "OVERLAPS", "requires two pairs of expressions") {
-			return
-		}
-		w.byte('(')
-		w.byte('(')
-		w.expr(n.args[0])
-		w.text(", ")
-		w.expr(n.args[1])
-		w.text(") OVERLAPS (")
-		w.expr(n.args[2])
-		w.text(", ")
-		w.expr(n.args[3])
-		w.text("))")
+		w.sqlOverlaps(n)
 	case sqlAtLocal:
-		if !w.require(len(n.args) == 1, "AT LOCAL", "requires one value") {
-			return
-		}
-		w.byte('(')
-		w.expr(n.args[0])
-		w.text(" AT LOCAL)")
+		w.sqlAtLocal(n)
 	case sqlTrim:
-		if !w.require(len(n.args) == 1 || len(n.args) == 2, "TRIM", "requires value and optional trim character") {
-			return
-		}
-		if !w.require(n.direction.valid(), "TRIM", "unknown trim direction") {
-			return
-		}
-		w.text("TRIM(")
-		w.trimDirection(n.direction)
-		if len(n.args) == 2 {
-			w.byte(' ')
-			w.expr(n.args[0])
-		}
-		w.text(" FROM ")
-		if len(n.args) == 2 {
-			w.expr(n.args[1])
-		} else {
-			w.expr(n.args[0])
-		}
-		w.byte(')')
+		w.sqlTrim(n)
 	case sqlCollationFor:
-		if !w.require(len(n.args) == 1, "COLLATION FOR", "requires one value") {
-			return
-		}
-		w.text("COLLATION FOR (")
-		w.expr(n.args[0])
-		w.byte(')')
+		w.sqlCollationFor(n)
 	case sqlIsNormalized:
-		if !w.require(len(n.args) == 1, "NORMALIZED", "requires one value") {
-			return
-		}
-		if n.hasForm && !n.form.valid() {
-			w.fail(ErrInvalid, "NORMALIZED", "unknown normalization form")
-			return
-		}
-		w.byte('(')
-		w.expr(n.args[0])
-		if n.negated {
-			w.text(" IS NOT ")
-		} else {
-			w.text(" IS ")
-		}
-		if n.hasForm {
-			w.normalForm(n.form)
-			w.byte(' ')
-		}
-		w.text("NORMALIZED)")
+		w.sqlIsNormalized(n)
 	case sqlValueFunction:
-		if !w.require(n.value >= sqlCurrentTime && n.value <= sqlCurrentCatalog, "SQL value function", "unknown SQL value function") {
-			return
-		}
-		if !w.require(!n.hasPrec || n.value <= sqlLocalTimestamp, "SQL value function", "precision is only valid for time and timestamp values") {
-			return
-		}
-		if n.hasPrec && (n.precision < 0 || n.precision > 6) {
-			w.fail(ErrInvalid, "SQL value function", "precision must be between 0 and 6")
-			return
-		}
-		switch n.value {
-		case sqlCurrentTime:
-			w.text("CURRENT_TIME")
-		case sqlCurrentTimestamp:
-			w.text("CURRENT_TIMESTAMP")
-		case sqlLocalTime:
-			w.text("LOCALTIME")
-		case sqlLocalTimestamp:
-			w.text("LOCALTIMESTAMP")
-		case sqlSessionUser:
-			w.text("SESSION_USER")
-		case sqlCurrentSchema:
-			w.text("CURRENT_SCHEMA")
-		case sqlCurrentCatalog:
-			w.text("CURRENT_CATALOG")
-		}
-		if n.hasPrec {
-			w.byte('(')
-			w.sqlInt(n.precision)
-			w.byte(')')
-		}
+		w.sqlValueFunction(n)
 	default:
 		w.fail(ErrInvalid, "SQL syntax", "unknown SQL syntax expression")
+	}
+}
+
+func (w *renderer) sqlSubstringFrom(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 2 || len(n.args) == 3, "SUBSTRING", "requires value, start and optional length") {
+		return
+	}
+	w.text("SUBSTRING(")
+	w.expr(n.args[0])
+	w.text(" FROM ")
+	w.expr(n.args[1])
+	if len(n.args) == 3 {
+		w.text(" FOR ")
+		w.expr(n.args[2])
+	}
+	w.byte(')')
+}
+
+func (w *renderer) sqlSubstringFor(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 2, "SUBSTRING", "requires value and length") {
+		return
+	}
+	w.text("SUBSTRING(")
+	w.expr(n.args[0])
+	w.text(" FOR ")
+	w.expr(n.args[1])
+	w.byte(')')
+}
+
+func (w *renderer) sqlSubstringSimilar(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 3, "SUBSTRING", "requires value, pattern and escape") {
+		return
+	}
+	w.text("SUBSTRING(")
+	w.expr(n.args[0])
+	w.text(" SIMILAR ")
+	w.expr(n.args[1])
+	w.text(" ESCAPE ")
+	w.expr(n.args[2])
+	w.byte(')')
+}
+
+func (w *renderer) sqlPosition(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 2, "POSITION", "requires substring and value") {
+		return
+	}
+	w.text("POSITION(")
+	w.expr(n.args[0])
+	w.text(" IN ")
+	w.expr(n.args[1])
+	w.byte(')')
+}
+
+func (w *renderer) sqlNormalize(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 1, "NORMALIZE", "requires one value") {
+		return
+	}
+	w.text("NORMALIZE(")
+	w.expr(n.args[0])
+	if n.hasForm {
+		w.text(", ")
+		w.normalForm(n.form)
+	}
+	w.byte(')')
+}
+
+func (w *renderer) sqlOverlay(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 3 || len(n.args) == 4, "OVERLAY", "requires value, replacement, start and optional length") {
+		return
+	}
+	w.text("OVERLAY(")
+	w.expr(n.args[0])
+	w.text(" PLACING ")
+	w.expr(n.args[1])
+	w.text(" FROM ")
+	w.expr(n.args[2])
+	if len(n.args) == 4 {
+		w.text(" FOR ")
+		w.expr(n.args[3])
+	}
+	w.byte(')')
+}
+
+func (w *renderer) sqlOverlaps(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 4, "OVERLAPS", "requires two pairs of expressions") {
+		return
+	}
+	w.text("((")
+	w.expr(n.args[0])
+	w.text(", ")
+	w.expr(n.args[1])
+	w.text(") OVERLAPS (")
+	w.expr(n.args[2])
+	w.text(", ")
+	w.expr(n.args[3])
+	w.text("))")
+}
+
+func (w *renderer) sqlAtLocal(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 1, "AT LOCAL", "requires one value") {
+		return
+	}
+	w.byte('(')
+	w.expr(n.args[0])
+	w.text(" AT LOCAL)")
+}
+
+func (w *renderer) sqlTrim(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 1 || len(n.args) == 2, "TRIM", "requires value and optional trim character") {
+		return
+	}
+	if !w.require(n.direction.valid(), "TRIM", "unknown trim direction") {
+		return
+	}
+	w.text("TRIM(")
+	w.trimDirection(n.direction)
+	if len(n.args) == 2 {
+		w.byte(' ')
+		w.expr(n.args[0])
+	}
+	w.text(" FROM ")
+	if len(n.args) == 2 {
+		w.expr(n.args[1])
+	} else {
+		w.expr(n.args[0])
+	}
+	w.byte(')')
+}
+
+func (w *renderer) sqlCollationFor(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 1, "COLLATION FOR", "requires one value") {
+		return
+	}
+	w.text("COLLATION FOR (")
+	w.expr(n.args[0])
+	w.byte(')')
+}
+
+func (w *renderer) sqlIsNormalized(n *sqlSyntaxExpression) {
+	if !w.require(len(n.args) == 1, "NORMALIZED", "requires one value") {
+		return
+	}
+	if n.hasForm && !n.form.valid() {
+		w.fail(ErrInvalid, "NORMALIZED", "unknown normalization form")
+		return
+	}
+	w.byte('(')
+	w.expr(n.args[0])
+	if n.negated {
+		w.text(" IS NOT ")
+	} else {
+		w.text(" IS ")
+	}
+	if n.hasForm {
+		w.normalForm(n.form)
+		w.byte(' ')
+	}
+	w.text("NORMALIZED)")
+}
+
+func (w *renderer) sqlValueFunction(n *sqlSyntaxExpression) {
+	if !w.require(n.value >= sqlCurrentTime && n.value <= sqlCurrentCatalog, "SQL value function", "unknown SQL value function") {
+		return
+	}
+	if !w.require(!n.hasPrec || n.value <= sqlLocalTimestamp, "SQL value function", "precision is only valid for time and timestamp values") {
+		return
+	}
+	if n.hasPrec && (n.precision < 0 || n.precision > 6) {
+		w.fail(ErrInvalid, "SQL value function", "precision must be between 0 and 6")
+		return
+	}
+	switch n.value {
+	case sqlCurrentTime:
+		w.text("CURRENT_TIME")
+	case sqlCurrentTimestamp:
+		w.text("CURRENT_TIMESTAMP")
+	case sqlLocalTime:
+		w.text("LOCALTIME")
+	case sqlLocalTimestamp:
+		w.text("LOCALTIMESTAMP")
+	case sqlSessionUser:
+		w.text("SESSION_USER")
+	case sqlCurrentSchema:
+		w.text("CURRENT_SCHEMA")
+	case sqlCurrentCatalog:
+		w.text("CURRENT_CATALOG")
+	}
+	if n.hasPrec {
+		w.byte('(')
+		w.sqlInt(n.precision)
+		w.byte(')')
 	}
 }
 
@@ -472,6 +528,6 @@ func (w *renderer) trimDirection(direction TrimDirection) {
 
 func (w *renderer) sqlInt(value int) {
 	if value >= 0 {
-		w.byte(byte('0' + value))
+		w.sql = strconv.AppendInt(w.sql, int64(value), 10)
 	}
 }

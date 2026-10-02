@@ -103,7 +103,6 @@ func TestJSONConstructorSQL(t *testing.T) {
 			checkSQL(t, tc.statement, tc.sql, tc.args...)
 		})
 	}
-
 }
 
 func TestJSONConstructorErrorsAndVersions(t *testing.T) {
@@ -212,8 +211,12 @@ func TestJSONConstructorBoundValuesBorrowed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	value[0] = '{'
-	if got := args[0].([]byte); !reflect.DeepEqual(got, value) {
+	value[5] = '2'
+	got, ok := args[0].([]byte)
+	if !ok {
+		t.Fatalf("bound JSON input has type %T, want []byte", args[0])
+	}
+	if !reflect.DeepEqual(got, value) {
 		t.Fatalf("bound JSON input was copied: got %#v want %#v", got, value)
 	}
 }

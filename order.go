@@ -19,21 +19,34 @@ const (
 // Order is a structural ORDER BY term. Identifiers and directions never share a
 // raw string, so a user-supplied direction cannot inject SQL syntax.
 type Order struct {
+	operator  string
 	expr      Expr
 	direction direction
 	nulls     nullOrdering
-	operator  string
 }
 
-func Asc(column string) Order  { return Col(column).Asc() }
+// Asc returns an ascending order term for a column path.
+func Asc(column string) Order { return Col(column).Asc() }
+
+// Desc returns a descending order term for a column path.
 func Desc(column string) Order { return Col(column).Desc() }
-func (e Expr) Asc() Order      { return Order{expr: e, direction: ascending} }
-func (e Expr) Desc() Order     { return Order{expr: e, direction: descending} }
+
+// Asc returns an ascending order term for an expression.
+func (e Expr) Asc() Order { return Order{expr: e, direction: ascending} }
+
+// Desc returns a descending order term for an expression.
+func (e Expr) Desc() Order { return Order{expr: e, direction: descending} }
+
+// Using returns an order term that uses a validated PostgreSQL operator.
 func (e Expr) Using(operator string) Order {
 	return Order{expr: e, direction: usingOperator, operator: operator}
 }
+
+// NullsFirst places NULL values before non-NULL values.
 func (o Order) NullsFirst() Order { o.nulls = nullsFirst; return o }
-func (o Order) NullsLast() Order  { o.nulls = nullsLast; return o }
+
+// NullsLast places NULL values after non-NULL values.
+func (o Order) NullsLast() Order { o.nulls = nullsLast; return o }
 
 // Ordinal is a 1-based output-column index for ORDER BY or GROUP BY, not a bind.
 func Ordinal(index int) Expr {

@@ -15,48 +15,77 @@ import (
 
 // Corpus statuses retain both verified queries and explicit coverage gaps.
 const (
-	StatusVerified        = "verified"
+	// StatusVerified marks a case whose builder matches the frozen SQL oracle.
+	StatusVerified = "verified"
+	// StatusConstructionErr marks a case whose public builder could not be constructed.
 	StatusConstructionErr = "construction_error"
-	StatusUnsupported     = "unsupported"
-	ShardCount            = 8
-	DefaultGroupSize      = 256
+	// StatusUnsupported marks a case for which the public API has no builder.
+	StatusUnsupported = "unsupported"
+	// ShardCount is the number of strided JSONL and generated-test shards.
+	ShardCount = 8
+	// DefaultGroupSize is the number of cases in a StreamShard group when unspecified.
+	DefaultGroupSize = 256
 )
 
-// Case holds one occurrence's frozen SQL, arguments and source provenance.
+// Case holds one occurrence's frozen SQL, arguments, shape and source provenance.
 type Case struct {
-	Source            string   `json:"source"`
-	Origin            string   `json:"origin"`
-	Wrapper           string   `json:"wrapper"`
-	Statement         string   `json:"statement"`
-	ExpectedOutput    string   `json:"expected_output"`
-	Status            string   `json:"status"`
-	Reason            string   `json:"reason"`
-	Shape             string   `json:"shape"`
-	OriginalSQL       string   `json:"original_sql"`
-	WantSQL           string   `json:"want_sql"`
-	Families          []string `json:"families"`
-	Normalization     []string `json:"normalization"`
-	WantArgs          []string `json:"want_args"`
-	ID                int      `json:"id"`
-	Line              int      `json:"line"`
-	Planner           bool     `json:"planner"`
-	ExpectedErrorHint bool     `json:"expected_error_hint"`
+	// Source is the path of the PostgreSQL regression SQL file.
+	Source string `json:"source"`
+	// Origin identifies where the query came from, such as a direct statement or wrapper body.
+	Origin string `json:"origin"`
+	// Wrapper identifies the enclosing PostgreSQL statement when Origin is a wrapper body.
+	Wrapper string `json:"wrapper"`
+	// Statement is the PostgreSQL parse-node type used to classify the occurrence.
+	Statement string `json:"statement"`
+	// ExpectedOutput is the path of the PostgreSQL expected-output file, when one exists.
+	ExpectedOutput string `json:"expected_output"`
+	// Status is one of the corpus status constants declared above.
+	Status string `json:"status"`
+	// Reason explains why a case has a construction error or is unsupported.
+	Reason string `json:"reason"`
+	// Shape is the stable identifier for the occurrence's normalized query shape.
+	Shape string `json:"shape"`
+	// OriginalSQL is the source SQL text for the occurrence.
+	OriginalSQL string `json:"original_sql"`
+	// WantSQL is the SQL expected from the public builder for a verified case.
+	WantSQL string `json:"want_sql"`
+	// Families lists the grammar and feature families containing the occurrence.
+	Families []string `json:"families"`
+	// Normalization lists documented source-to-rendered SQL equivalences used by the oracle.
+	Normalization []string `json:"normalization"`
+	// WantArgs contains the oracle's string arguments in order; verified cases compare them with builder output.
+	WantArgs []string `json:"want_args"`
+	// ID is the zero-based global occurrence identifier.
+	ID int `json:"id"`
+	// Line is the one-based source line containing the occurrence.
+	Line int `json:"line"`
+	// Planner reports whether the occurrence belongs to the planner-focused corpus slice.
+	Planner bool `json:"planner"`
+	// ExpectedErrorHint records a comment-derived expected-error hint; it is not an oracle.
+	ExpectedErrorHint bool `json:"expected_error_hint"`
 }
 
 // Factory explicitly associates a generated public-constructor builder with
 // an occurrence and its frozen coverage status.
 type Factory struct {
-	Build  func() qs.Statement
+	// Build constructs the public statement for the occurrence. It is nil only for unsupported cases.
+	Build func() qs.Statement
+	// Status must match the associated Case.Status.
 	Status string
-	ID     int
+	// ID must match the associated Case.ID.
+	ID int
 }
 
 // ShardSpec supplies the complete ordered inventory for one JSONL stream.
 type ShardSpec struct {
-	Name        string
+	// Name is the shard package name used in validation and error messages.
+	Name string
+	// ExpectedIDs is the stream's ordered global occurrence IDs.
 	ExpectedIDs []int
-	Index       int
-	GroupSize   int
+	// Index is the zero-based shard index in the range [0, ShardCount).
+	Index int
+	// GroupSize controls the maximum number of cases passed to one consumer call; zero selects DefaultGroupSize.
+	GroupSize int
 }
 
 // StreamShard decodes bounded groups into fresh Case values. A nil factories
@@ -176,7 +205,8 @@ func validateFactory(item Case, factory Factory) error {
 	return nil
 }
 
-// VerifyCase compares rendered SQL and arguments with the frozen oracle.
+// VerifyCase compares a generated statement's SQL and string arguments with the frozen oracle.
+// It rejects construction-error and unsupported cases before invoking Build.
 func VerifyCase(item Case, factory Factory) error {
 	if err := validateFactory(item, factory); err != nil {
 		return err
@@ -207,8 +237,9 @@ func VerifyCase(item Case, factory Factory) error {
 	return nil
 }
 
-// Run checks one embedded shard and schedules parallel cases in serial groups.
-// Each group completes before the next is decoded, bounding retained metadata.
+// Run validates one embedded shard and schedules its cases in parallel within
+// serial groups. It reads the parent manifest, checks the embedded JSONL hash,
+// and skips cases whose status is not StatusVerified.
 func Run(t *testing.T, index int, data string, factories []Factory) {
 	t.Helper()
 	file, err := os.Open("../manifest.json")
