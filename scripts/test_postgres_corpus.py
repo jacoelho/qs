@@ -131,6 +131,118 @@ class PostgreSQLCorpusTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             postgres_corpus._threshold_fraction(101)
 
+    def test_fixed_pinned_coverage_uses_immutable_floors_and_denominators(self) -> None:
+        floors = postgres_corpus._PINNED_CORPUS_FLOORS
+        metrics = dict(floors)
+        self.assertEqual(
+            postgres_corpus._fixed_coverage_failures(
+                metrics,
+                floors["total"],
+                commit=postgres_corpus._PINNED_POSTGRES_COMMIT,
+                expected_sql_sha256=postgres_corpus._PINNED_SQL_SHA256,
+                parser_version=postgres_corpus._PINNED_PGLAST_VERSION,
+                parser_postgres_version=postgres_corpus._PINNED_POSTGRES_VERSION,
+            ),
+            [],
+        )
+        for field in (
+            "verified",
+            "planner_verified",
+            "distinct_verified_shapes",
+            "planner_distinct_verified_shapes",
+        ):
+            with self.subTest(field=field):
+                lowered = dict(metrics)
+                lowered[field] -= 1
+                failures = postgres_corpus._fixed_coverage_failures(
+                    lowered,
+                    floors["total"],
+                    commit=postgres_corpus._PINNED_POSTGRES_COMMIT,
+                    expected_sql_sha256=postgres_corpus._PINNED_SQL_SHA256,
+                    parser_version=postgres_corpus._PINNED_PGLAST_VERSION,
+                    parser_postgres_version=postgres_corpus._PINNED_POSTGRES_VERSION,
+                )
+                self.assertTrue(any(field in failure for failure in failures))
+        for field in ("total", "planner_total", "distinct_shapes", "planner_distinct_shapes"):
+            with self.subTest(field=field):
+                lowered = dict(metrics)
+                lowered[field] -= 1
+                census = floors["total"] if field != "total" else floors["total"] - 1
+                failures = postgres_corpus._fixed_coverage_failures(
+                    lowered,
+                    census,
+                    commit=postgres_corpus._PINNED_POSTGRES_COMMIT,
+                    expected_sql_sha256=postgres_corpus._PINNED_SQL_SHA256,
+                    parser_version=postgres_corpus._PINNED_PGLAST_VERSION,
+                    parser_postgres_version=postgres_corpus._PINNED_POSTGRES_VERSION,
+                )
+                self.assertTrue(any(field in failure or "census total" in failure for failure in failures))
+
+    def test_pinned_coverage_mode_rejects_partial_or_unprobed_runs(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-pinned-mode-") as directory:
+            root = self._mini_root(Path(directory))
+            args = self._args(root, Path(directory) / "partial.json", minimum_support=None, limit=1)
+            args.require_pinned_coverage = True
+            with mock.patch.object(
+                postgres_corpus,
+                "_go_probe",
+                side_effect=lambda _, occurrences, __: {0: {"sql": "SELECT 1", "args": []}},
+            ):
+                self.assertEqual(self._run_quiet(args), 1)
+            report = json.loads((Path(directory) / "partial.json").read_text())
+            self.assertFalse(report["thresholds"]["passed"])
+            self.assertTrue(
+                any("complete unbounded corpus" in failure for failure in report["thresholds"]["failures"])
+            )
+
+            args = self._args(root, Path(directory) / "unprobed.json", minimum_support=None)
+            args.require_pinned_coverage = True
+            args.probe = False
+            self.assertEqual(self._run_quiet(args), 1)
+            report = json.loads((Path(directory) / "unprobed.json").read_text())
+            self.assertTrue(
+                any("compiled Go probe" in failure for failure in report["thresholds"]["failures"])
+            )
+
+    def test_pinned_coverage_mode_compares_baseline_without_export(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-pinned-baseline-") as directory:
+            root = self._mini_root(Path(directory))
+            units, occurrences, _ = postgres_corpus.census(root)
+            for occurrence in occurrences:
+                occurrence.status = "verified"
+                occurrence.generated_sql = "SELECT 1"
+                occurrence.builder = "qs.Select(qs.LiteralInt(1))"
+            baseline = Path(directory) / "baseline"
+            postgres_corpus._export_go(
+                baseline,
+                occurrences,
+                source_root=root,
+                commit="a" * 40,
+                sql_sha256=_MINI_SQL_SHA256,
+                parser_version=postgres_corpus.pglast.__version__,
+                parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+            )
+            manifest_path = baseline / "manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["revision"] = "c" * 40
+            manifest_path.write_text(json.dumps(manifest) + "\n")
+
+            args = self._args(root, Path(directory) / "report.json", minimum_support=None)
+            args.require_pinned_coverage = True
+            args.baseline_fixtures = baseline
+            with mock.patch.object(
+                postgres_corpus,
+                "_go_probe",
+                side_effect=lambda _, values, __: {
+                    occurrence.id: {"sql": "SELECT 1", "args": []} for occurrence in values
+                },
+            ), mock.patch.object(postgres_corpus, "_fixed_coverage_failures", return_value=[]):
+                self.assertEqual(self._run_quiet(args), 1)
+            report = json.loads((Path(directory) / "report.json").read_text())
+            self.assertTrue(
+                any("baseline" in failure for failure in report["thresholds"]["failures"])
+            )
+
     def test_canonical_oracles_cover_literals_operands_and_qualification(self) -> None:
         postgres_corpus._canonical_oracles()
         for left, right in (
@@ -485,7 +597,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
             planner=False,
             families=("select",),
             status="verified",
-            builder='qs.Select(qs.Param[any]("qs-postgres-corpus-0-param-1"))',
+            builder='qs.Select(qs.Param("qs-postgres-corpus-0-param-1"))',
             generated_sql="SELECT $1",
         )
         with tempfile.TemporaryDirectory(prefix="qs-postgres-export-") as directory:
@@ -538,6 +650,193 @@ class PostgreSQLCorpusTests(unittest.TestCase):
                     self._run_quiet(args)
             self.assertFalse(args.export_go.exists())
 
+    def test_fixture_baseline_rejects_verified_downgrade_with_equal_aggregate_totals(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-baseline-ids-") as directory:
+            root = Path(directory)
+            baseline = root / "baseline"
+            before = self._baseline_occurrences()
+            postgres_corpus._export_go(
+                baseline,
+                before,
+                source_root=root,
+                commit="a" * 40,
+                sql_sha256="b" * 64,
+                parser_version=postgres_corpus.pglast.__version__,
+                parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+            )
+
+            after = self._baseline_occurrences()
+            # Keep the aggregate verified count unchanged while moving support
+            # from an old construction error onto a previously verified ID.
+            after[0].status = "construction_error"
+            after[0].generated_sql = ""
+            after[0].builder = "qs.Select(qs.LiteralInt(1))"
+            after[2].status = "verified"
+            after[2].generated_sql = "SELECT 1"
+            after[2].builder = "qs.Select(qs.LiteralInt(1))"
+            with self.assertRaisesRegex(SystemExit, "lost verified coverage"):
+                postgres_corpus._compare_fixture_baseline(
+                    after,
+                    baseline,
+                    source_root=root,
+                    commit="a" * 40,
+                    sql_sha256="b" * 64,
+                    parser_version=postgres_corpus.pglast.__version__,
+                    parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+                )
+
+    def test_fixture_baseline_rejects_oracle_provenance_pins_and_inventory_drift(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-baseline-drift-") as directory:
+            root = Path(directory)
+            baseline = root / "baseline"
+            before = self._baseline_occurrences()
+            postgres_corpus._export_go(
+                baseline,
+                before,
+                source_root=root,
+                commit="a" * 40,
+                sql_sha256="b" * 64,
+                parser_version=postgres_corpus.pglast.__version__,
+                parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+            )
+
+            changed = self._baseline_occurrences()
+            changed[0].generated_sql = "SELECT 2"
+            with self.assertRaisesRegex(SystemExit, "want_sql changed"):
+                postgres_corpus._compare_fixture_baseline(
+                    changed,
+                    baseline,
+                    source_root=root,
+                    commit="a" * 40,
+                    sql_sha256="b" * 64,
+                    parser_version=postgres_corpus.pglast.__version__,
+                    parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+                )
+
+            with self.assertRaisesRegex(SystemExit, "pinned source"):
+                postgres_corpus._compare_fixture_baseline(
+                    before,
+                    baseline,
+                    source_root=root,
+                    commit="c" * 40,
+                    sql_sha256="b" * 64,
+                    parser_version=postgres_corpus.pglast.__version__,
+                    parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+                )
+
+            with self.assertRaisesRegex(SystemExit, "occurrence count changed"):
+                postgres_corpus._compare_fixture_baseline(
+                    before[:-1],
+                    baseline,
+                    source_root=root,
+                    commit="a" * 40,
+                    sql_sha256="b" * 64,
+                    parser_version=postgres_corpus.pglast.__version__,
+                    parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+                )
+
+            with self.assertRaisesRegex(SystemExit, "occurrence order changed"):
+                postgres_corpus._compare_fixture_baseline(
+                    [before[1], before[0], *before[2:]],
+                    baseline,
+                    source_root=root,
+                    commit="a" * 40,
+                    sql_sha256="b" * 64,
+                    parser_version=postgres_corpus.pglast.__version__,
+                    parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+                )
+
+    def test_checked_in_baseline_keeps_default_coverage_and_negative_width_cases(self) -> None:
+        manifest, records = postgres_corpus._read_baseline_fixtures(
+            Path(__file__).resolve().parents[1] / "internal" / "postgrescorpus"
+        )
+        self.assertEqual(manifest["counts"]["verified"], 28111)
+        defaults = [
+            item
+            for item in records
+            if item["status"] == "verified"
+            and item["statement"] in {"InsertStmt", "UpdateStmt", "MergeStmt"}
+            and "DEFAULT" in item["original_sql"].upper()
+        ]
+        self.assertGreaterEqual(len(defaults), 95)
+        self.assertEqual(next(item for item in records if item["id"] == 26577)["status"], "verified")
+        for identifier in (8209, 8212):
+            item = next(item for item in records if item["id"] == identifier)
+            self.assertEqual(item["status"], "construction_error")
+            self.assertIn("value count differs", item["reason"])
+
+    def test_run_checks_baseline_before_touching_existing_export_directory(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qs-postgres-baseline-export-") as directory:
+            root = self._mini_root(Path(directory))
+            units, occurrences, _ = postgres_corpus.census(root)
+            self.assertEqual(len(occurrences), 10)
+            for occurrence in occurrences:
+                occurrence.status = "verified"
+                occurrence.generated_sql = "SELECT 1"
+                occurrence.builder = "qs.Select(qs.LiteralInt(1))"
+            baseline = Path(directory) / "baseline"
+            postgres_corpus._export_go(
+                baseline,
+                occurrences,
+                source_root=root,
+                commit="a" * 40,
+                sql_sha256=_MINI_SQL_SHA256,
+                parser_version=postgres_corpus.pglast.__version__,
+                parser_postgres_version=tuple(postgres_corpus.pglast.get_postgresql_version()),
+            )
+            output = Path(directory) / "generated"
+            output.mkdir()
+            sentinel = output / "sentinel"
+            sentinel.write_text("preserve")
+            args = self._args(root, Path(directory) / "report.json", minimum_support=None)
+            args.export_go = output
+            args.baseline_fixtures = baseline
+            args.commit = "c" * 40
+            probe = lambda _, values, __: {
+                occurrence.id: {"sql": "SELECT 1", "args": []} for occurrence in values
+            }
+            with mock.patch.object(postgres_corpus, "_go_probe", side_effect=probe):
+                with self.assertRaisesRegex(SystemExit, "source commit"):
+                    self._run_quiet(args)
+            self.assertEqual(sentinel.read_text(), "preserve")
+            self.assertEqual(sorted(path.name for path in output.iterdir()), ["sentinel"])
+
+    @staticmethod
+    def _baseline_occurrences() -> list[postgres_corpus.QueryOccurrence]:
+        result: list[postgres_corpus.QueryOccurrence] = []
+        statuses = ["verified", "verified", "construction_error", "unsupported", "verified", "verified", "verified", "verified"]
+        for identifier, status in enumerate(statuses):
+            sql = "SELECT 1"
+            statement = postgres_corpus.parse_sql(sql)[0].stmt
+            unit = postgres_corpus.SQLUnit(
+                file=f"src/test/regress/sql/baseline-{identifier}.sql",
+                start=0,
+                end=len(sql),
+                line=identifier + 1,
+                sql=sql,
+            )
+            result.append(
+                postgres_corpus.QueryOccurrence(
+                    id=identifier,
+                    unit=unit,
+                    node=statement,
+                    statement_type="SelectStmt",
+                    origin="direct",
+                    wrapper_type=None,
+                    source_sql=sql,
+                    source_ast=statement,
+                    expected_error=False,
+                    expected_hint="",
+                    planner=identifier % 2 == 0,
+                    families=("select",),
+                    status=status,
+                    reason="synthetic baseline" if status != "verified" else "",
+                    generated_sql=sql if status == "verified" else "",
+                    builder="qs.Select(qs.LiteralInt(1))" if status != "unsupported" else "",
+                )
+            )
+        return result
+
     def test_export_uses_stride_shards_and_explicit_status_associations(self) -> None:
         def make_case(identifier: int, sql: str, status: str) -> postgres_corpus.QueryOccurrence:
             statement = postgres_corpus.parse_sql(sql)[0].stmt
@@ -565,7 +864,7 @@ class PostgreSQLCorpusTests(unittest.TestCase):
                 reason="unsupported in the mini fixture" if status == "unsupported" else "",
                 generated_sql=sql if status == "verified" else "",
                 builder=(
-                    "qs.Select(qs.Param[any](\"qs-postgres-corpus-%d-param-1\"))" % identifier
+                    "qs.Select(qs.Param(\"qs-postgres-corpus-%d-param-1\"))" % identifier
                     if status != "unsupported"
                     else ""
                 ),

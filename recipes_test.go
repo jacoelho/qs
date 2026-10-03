@@ -29,7 +29,7 @@ func TestRecipes(t *testing.T) {
 	nestedBooks := Select(Coalesce(JSONBAgg(JSONBBuildObject(LiteralString("id"), Col("book.id"), LiteralString("title"), Col("book.title"))).OrderBy(Asc("book.id")), LiteralString("[]").Cast(TypeJSONB))).
 		From("book").Where(EqColumns("book.author_id", "author.id"))
 	runCases(t, []renderCase{
-		{"bounded_update", Update("jobs").With(picked).Set(Set("status", "claimed")).From("picked").Where(EqColumns("jobs.id", "picked.id")).ReturningCols("jobs.id"),
+		{"bounded_update", Update("jobs").With(picked).Set(Set("status", Write(Param("claimed")))).From("picked").Where(EqColumns("jobs.id", "picked.id")).ReturningCols("jobs.id"),
 			`WITH "picked" AS (SELECT "id" FROM "jobs" WHERE ("status" = $1) ORDER BY "id" ASC LIMIT $2 FOR UPDATE SKIP LOCKED) UPDATE "jobs" SET "status" = $3 FROM "picked" WHERE ("jobs"."id" = "picked"."id") RETURNING "jobs"."id"`, []any{"ready", 10, "claimed"}},
 		{"bounded_delete", DeleteFrom("jobs").With(picked).Using("picked").Where(EqColumns("jobs.id", "picked.id")).ReturningCols("jobs.id"),
 			`WITH "picked" AS (SELECT "id" FROM "jobs" WHERE ("status" = $1) ORDER BY "id" ASC LIMIT $2 FOR UPDATE SKIP LOCKED) DELETE FROM "jobs" USING "picked" WHERE ("jobs"."id" = "picked"."id") RETURNING "jobs"."id"`, []any{"ready", 10}},

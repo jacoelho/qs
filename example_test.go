@@ -2,6 +2,7 @@ package qs_test
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jacoelho/qs"
 )
@@ -44,8 +45,8 @@ func ExampleNull() {
 }
 
 func ExampleInsertInto() {
-	query, args, err := qs.InsertInto("users").Columns("id", "name").Values(42, "Ana").
-		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.SetExpr("name", qs.Excluded("name")))).
+	query, args, err := qs.InsertInto("users").Columns("id", "name").Values(qs.Value(42), qs.Value("Ana")).
+		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
 		ReturningCols("id").ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
@@ -94,8 +95,8 @@ func filteredUsers(tenantID int, prefix string, roles []string) *qs.SelectBuilde
 		Where(qs.Eq("tenant_id", tenantID), qs.IsNull("deleted_at"))
 	if prefix != "" {
 		q.Where(qs.Or(
-			qs.ILike("name", prefix+"%"),
-			qs.ILike("email", prefix+"%"),
+			qs.ILikePrefix("name", prefix),
+			qs.ILikePrefix("email", prefix),
 		))
 	}
 	if len(roles) > 0 {
@@ -113,10 +114,40 @@ func ExampleSelectBuilder_filters() {
 	fmt.Println(query)
 	fmt.Println(args, err)
 	// Output:
-	// SELECT "id", "email" FROM "users" WHERE ("tenant_id" = $1) AND ("deleted_at" IS NULL) AND (("name" ILIKE $2) OR ("email" ILIKE $3)) AND ("role" IN ($4, $5))
+	// SELECT "id", "email" FROM "users" WHERE ("tenant_id" = $1) AND ("deleted_at" IS NULL) AND (("name" ILIKE $2 ESCAPE E'!') OR ("email" ILIKE $3 ESCAPE E'!')) AND ("role" IN ($4, $5))
 	// [42 jo% jo% admin editor] <nil>
 	// SELECT "id", "email" FROM "users" WHERE ("tenant_id" = $1) AND ("deleted_at" IS NULL)
 	// [42] <nil>
+}
+
+func ExampleTypedExpr_search() {
+	users := qs.Table("users").As("u")
+	id := qs.TypedExpr[int64](users.Col("id"))
+	ids := []int64{10, 20}
+	requiredTags := []string{"staff", "active"}
+	rawUsername := "Al"
+
+	q := qs.Select(
+		id.As("id"),
+		users.Col("username"),
+		qs.CountAll().Over(qs.Window()).As("total"),
+	).FromExpr(users)
+	if len(ids) > 0 {
+		q.Where(id.In(ids...))
+	}
+	if len(requiredTags) > 0 {
+		q.Where(qs.ArrayContains(users.Col("tags"), qs.ArrayParam(requiredTags, qs.TypeText)))
+	}
+	if rawUsername != "" {
+		q.Where(qs.Lower(users.Col("username")).LikePrefix(strings.ToLower(rawUsername)))
+	}
+
+	query, args, err := q.OrderBy(id.Asc()).Limit(20).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "u"."id" AS "id", "u"."username", count(*) OVER () AS "total" FROM "users" AS "u" WHERE ("u"."id" IN ($1, $2)) AND ("u"."tags" @> ($3)::text[]) AND (lower("u"."username") LIKE $4 ESCAPE E'!') ORDER BY "u"."id" ASC LIMIT $5
+	// [10 20 [staff active] al% 20] <nil>
 }
 
 func ExampleSelectBuilder_pagination() {
@@ -169,4 +200,156 @@ func ExampleCTE_report() {
 	// Output:
 	// WITH "paid_orders" AS (SELECT "o"."user_id", sum("o"."total") AS "total_spend" FROM "orders" AS "o" WHERE ("o"."status" = $1) GROUP BY "o"."user_id" HAVING (sum("o"."total") >= $2)) SELECT "u"."id", "u"."email", "p"."total_spend", CASE WHEN ("p"."total_spend" >= $3) THEN $4 ELSE $5 END AS "tier" FROM ("users" AS "u" JOIN "paid_orders" AS "p" ON ("u"."id" = "p"."user_id")) WHERE ("u"."active" = $6) ORDER BY "p"."total_spend" DESC, "u"."id" ASC LIMIT $7 OFFSET $8
 	// [paid 100 1000 vip standard true 20 40] <nil>
+}
+
+func ExampleInsertInto_row() {
+	query, args, err := qs.InsertInto("users").
+		Columns("id", "name").
+		Values(qs.Value(42), qs.Value("Ana")).
+		ReturningCols("id").
+		ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// INSERT INTO "users" ("id", "name") VALUES ($1, $2) RETURNING "id"
+	// [42 Ana] <nil>
+}
+
+func ExampleUpdate() {
+	query, args, err := qs.Update("users").
+		Set(qs.Set("name", qs.Value("Ana"))).
+		Where(qs.Eq("id", 42)).
+		ReturningCols("id", "name").
+		ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// UPDATE "users" SET "name" = $1 WHERE ("id" = $2) RETURNING "id", "name"
+	// [Ana 42] <nil>
+}
+
+func ExampleDeleteFrom() {
+	query, args, err := qs.DeleteFrom("users").
+		Where(qs.Eq("id", 42)).
+		ReturningCols("id").
+		ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// DELETE FROM "users" WHERE ("id" = $1) RETURNING "id"
+	// [42] <nil>
+}
+
+func ExampleConflictColumnsTarget_DoUpdateSlice() {
+	columns := []string{"name", "email"}
+	query, args, err := qs.InsertInto("users").
+		Columns("id", "name", "email").
+		Values(qs.Value(42), qs.Value("Ana"), qs.Value("ana@example.com")).
+		OnConflict(qs.ConflictColumns("id").
+			DoUpdateSlice(qs.SetAllExcluded(columns...))).
+		ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// INSERT INTO "users" ("id", "name", "email") VALUES ($1, $2, $3) ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name", "email" = "excluded"."email"
+	// [42 Ana ana@example.com] <nil>
+}
+
+func ExampleConflictIndexTarget_DoUpdateSlice() {
+	query, args, err := qs.InsertInto("users").
+		Columns("id", "name").
+		Values(qs.Value(42), qs.Value("Ana")).
+		OnConflict(qs.ConflictIndex(qs.IndexColumn("id")).
+			DoUpdateSlice(qs.SetAllExcluded("name"))).
+		ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// INSERT INTO "users" ("id", "name") VALUES ($1, $2) ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name"
+	// [42 Ana] <nil>
+}
+
+func ExampleConflictConstraintTarget_DoUpdateSlice() {
+	query, args, err := qs.InsertInto("users").
+		Columns("id", "name").
+		Values(qs.Value(42), qs.Value("Ana")).
+		OnConflict(qs.ConflictConstraint("users_pkey").
+			DoUpdateSlice(qs.SetAllExcluded("name"))).
+		ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// INSERT INTO "users" ("id", "name") VALUES ($1, $2) ON CONFLICT ON CONSTRAINT "users_pkey" DO UPDATE SET "name" = "excluded"."name"
+	// [42 Ana] <nil>
+}
+
+func ExampleSetAllExcluded() {
+	query, args, err := qs.InsertInto("settings").
+		Columns("id", "a.b").
+		Values(qs.Value(42), qs.Value("new")).
+		OnConflict(qs.ConflictColumns("id").
+			DoUpdateSlice(qs.SetAllExcluded("a.b"))).
+		Returning(qs.Ident("a.b")).
+		ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// INSERT INTO "settings" ("id", "a.b") VALUES ($1, $2) ON CONFLICT ("id") DO UPDATE SET "a.b" = "excluded"."a.b" RETURNING "a.b"
+	// [42 new] <nil>
+}
+
+func ExampleParam_nil() {
+	query, args, err := qs.Select(qs.Param(nil).Cast(qs.TypeText)).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT ($1)::text
+	// [<nil>] <nil>
+}
+
+func ExampleInsertTarget_ColumnsSlice() {
+	columns := []string{"id", "name"}
+	row := []qs.WriteValue{qs.Value(42), qs.Value("Ana")}
+	query, args, err := qs.InsertInto("users").ColumnsSlice(columns).ValuesSlice(row).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// INSERT INTO "users" ("id", "name") VALUES ($1, $2)
+	// [42 Ana] <nil>
+}
+
+func ExampleValuesBuilder_Row_widthError() {
+	_, _, err := qs.Values(1).Row(2, 3).ToSQL()
+	fmt.Println(err)
+	// Output:
+	// qs: invalid query (VALUES): row 2: expected 1 value, got 2 values
+}
+
+func ExampleILikePrefix() {
+	query, args, err := qs.SelectCols("id").From("users").Where(qs.ILikePrefix("name", "a_%")).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "id" FROM "users" WHERE ("name" ILIKE $1 ESCAPE E'!')
+	// [a!_!%%] <nil>
+}
+
+func ExampleLikeSuffix() {
+	query, args, err := qs.SelectCols("id").From("users").
+		Where(qs.LikeSuffix("email", "@example.com")).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "id" FROM "users" WHERE ("email" LIKE $1 ESCAPE E'!')
+	// [%@example.com] <nil>
+}
+
+func ExampleILikeContains() {
+	query, args, err := qs.SelectCols("id").From("users").
+		Where(qs.ILikeContains("display_name", "50%_")).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "id" FROM "users" WHERE ("display_name" ILIKE $1 ESCAPE E'!')
+	// [%50!%!_%] <nil>
 }

@@ -21,13 +21,13 @@ func BenchmarkGrammarRoles(b *testing.B) {
 			return Select(CaseOf(Col("v")).WhenValue(Param(7), Param("yes")).WhenValue(Param(9), Param("later")).Else(Param("no")).End())
 		}, `SELECT CASE "v" WHEN $1 THEN $2 WHEN $3 THEN $4 ELSE $5 END`, []any{7, "yes", 9, "later", "no"}},
 		{"Merge", func() Statement {
-			return MergeInto("t").Using(Table("s")).On(EqColumns("t.id", "s.id")).When(Matched().And(Eq("s.state", "open")).ThenUpdate(Set("v", 7)), NotMatched().OverridingSystemValue().ThenInsert(Set("id", 11), Set("v", 13)))
+			return MergeInto("t").Using(Table("s")).On(EqColumns("t.id", "s.id")).When(Matched().And(Eq("s.state", "open")).ThenUpdate(Set("v", Write(Param(7)))), NotMatched().OverridingSystemValue().ThenInsert(Set("id", Write(Param(11))), Set("v", Write(Param(13)))))
 		}, `MERGE INTO "t" USING "s" ON ("t"."id" = "s"."id") WHEN MATCHED AND ("s"."state" = $1) THEN UPDATE SET "v" = $2 WHEN NOT MATCHED THEN INSERT ("id", "v") OVERRIDING SYSTEM VALUE VALUES ($3, $4)`, []any{"open", 7, 11, 13}},
 		{"Join", func() Statement {
 			return Select(Col("a.id")).FromExpr(LeftJoin(Table("a"), Table("b")).On(EqColumns("a.id", "b.id"), Eq("b.active", true)))
 		}, `SELECT "a"."id" FROM ("a" LEFT JOIN "b" ON ("a"."id" = "b"."id") AND ("b"."active" = $1))`, []any{true}},
 		{"Conflict", func() Statement {
-			return InsertInto("t").Columns("v").Values(7).OnConflict(ConflictColumns("v").TargetWhere(Eq("live", true)).DoUpdate(Set("v", 9)).Where(Eq("state", "open")))
+			return InsertInto("t").Columns("v").Values(Write(Param(7))).OnConflict(ConflictColumns("v").TargetWhere(Eq("live", true)).DoUpdate(Set("v", Write(Param(9)))).Where(Eq("state", "open")))
 		}, `INSERT INTO "t" ("v") VALUES ($1) ON CONFLICT ("v") WHERE ("live" = $2) DO UPDATE SET "v" = $3 WHERE ("state" = $4)`, []any{7, true, 9, "open"}},
 		{"JSONValue", func() Statement {
 			return Select(JSONValue(Col("doc"), Param("$.v")).Passing("p", Param(7)).Returning(TypeInt4).OnEmpty(JSONDefault(Param(9))).OnError(JSONNull()).Expr())

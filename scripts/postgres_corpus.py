@@ -21,7 +21,10 @@ Typical invocation (from the qs repository):
 
 The Go probe is transient unless ``--probe-dir`` is supplied.  ``--export-go``
 writes eight fixed JSONL shards and test-only typed builders after complete
-verification. The command does not contact the network. Install the pinned
+verification and a pre-export comparison with the existing fixture baseline.
+``--require-pinned-coverage`` applies the immutable full-corpus acceptance
+denominators and support floors without relying on percentage thresholds.
+The command does not contact the network. Install the pinned
 parser from ``scripts/requirements-postgres.txt`` in a development virtualenv.
 """
 
@@ -113,6 +116,18 @@ _VARIABLE_RE = re.compile(r"(?<!:):(?:[A-Za-z_][A-Za-z_0-9]*|['\"][^'\"]+['\"])"
 _COPY_STDIN_RE = re.compile(r"\bCOPY\b[\s\S]*\bFROM\s+STDIN\s*$", re.I)
 _PINNED_PGLAST_VERSION = "v8.4"
 _PINNED_POSTGRES_VERSION = (18, 4)
+_PINNED_POSTGRES_COMMIT = "630e607397424196a0a3ebb14a5658c2473ddadf"
+_PINNED_SQL_SHA256 = "ddec651ca5f78d1ae9b721476efe586daf9220d80d5284f6fccd8329ed66218d"
+_PINNED_CORPUS_FLOORS = {
+    "total": 28197,
+    "verified": 28111,
+    "planner_total": 5150,
+    "planner_verified": 5124,
+    "distinct_shapes": 13722,
+    "distinct_verified_shapes": 13645,
+    "planner_distinct_shapes": 3893,
+    "planner_distinct_verified_shapes": 3867,
+}
 _CORPUS_SCHEMA = "qs-postgres-corpus-v2"
 _CORPUS_SHARDS = 8
 _CORPUS_GROUP_SIZE = 256
@@ -825,9 +840,12 @@ class GoEmitter:
             self.param_numbers[number] = self.next_param
             self.next_param += 1
             sentinel = _parameter_sentinel(self.occurrence_id, number)
-            return f"qs.Param[any]({_go_quote(sentinel)})"
+            return f"qs.Param({_go_quote(sentinel)})"
         if name == "SetToDefault":
-            return "qs.Default()"
+            # DEFAULT is a destination value, not a general expression.  Keep
+            # it out of nested expression rendering; direct write positions
+            # use write_value() below, which returns qs.Default().
+            raise self.unsupported("DEFAULT is only allowed directly in a write position")
         if name == "TypeCast":
             typ = self.data_type(node.typeName)
             return f"({self.expr(node.arg)}).Cast({typ})"
@@ -1026,6 +1044,29 @@ class GoEmitter:
         if name == "CoerceToDomain":
             return self.expr(node.arg)
         raise self.unsupported(f"unsupported expression node {name}")
+
+    def write_value(self, node: Any) -> str:
+        """Render one expression in a direct INSERT/assignment write slot."""
+
+        if node is None:
+            raise self.unsupported("missing write value")
+        if _node_name(node) == "SetToDefault":
+            return "qs.Default()"
+        return f"qs.Write({self.expr(node)})"
+
+    def write_row(self, node: Any) -> str:
+        """Render a row-valued write while preserving ROW versus tuple syntax."""
+
+        if _node_name(node) != "RowExpr":
+            raise self.unsupported(f"row write source {_node_name(node)}")
+        args = list(node.args or ())
+        if not args:
+            raise self.unsupported("empty row write")
+        row_format = _enum_name(getattr(node, "row_format", None))
+        constructor = "qs.WriteTuple" if row_format == "COERCE_IMPLICIT_CAST" else "qs.WriteRow"
+        if constructor == "qs.WriteTuple" and len(args) < 2:
+            raise self.unsupported("tuple write requires at least two values")
+        return f"{constructor}({_join(self.write_value(value) for value in args)})"
 
     def _json_encoding(self, encoding: str, *, input_value: bool) -> str:
         methods = {
@@ -2497,16 +2538,12 @@ class GoEmitter:
                 if _node_name(source) == "SubLink" and _enum_name(source.subLinkType) == "EXPR_SUBLINK":
                     values.append(f"qs.AssignRowFrom({target_exprs}, {self.rowset(source.subselect)})")
                 elif _node_name(source) == "RowExpr":
-                    row_format = _enum_name(getattr(source, "row_format", None))
-                    constructor = "qs.Tuple" if row_format == "COERCE_IMPLICIT_CAST" else "qs.Row"
-                    values.append(
-                        f"qs.AssignRow({target_exprs}, {constructor}({_join(self.expr(arg) for arg in source.args)}))"
-                    )
+                    values.append(f"qs.AssignRow({target_exprs}, {self.write_row(source)})")
                 else:
                     raise self.unsupported(f"row assignment source {_node_name(source)}")
                 index += count
                 continue
-            value = self.expr(target.val)
+            value = self.write_value(target.val)
             values.append(f"qs.Assign({self.expr_from_target(target)}, {value})")
             index += 1
         return values
@@ -2528,10 +2565,10 @@ class GoEmitter:
         if not target_list:
             if not value_list:
                 return ".ThenInsertDefault()"
-            rendered = _join(self.expr(value) for value in value_list)
+            rendered = _join(self.write_value(value) for value in value_list)
             return f".ThenInsertValues([]string{{}}, {rendered})"
 
-        rendered_values = [self.expr(value) for value in value_list]
+        rendered_values = [self.write_value(value) for value in value_list]
         if all(not target.indirection for target in target_list):
             columns = _join(_go_quote(str(target.name)) for target in target_list)
             return f".ThenInsertValues([]string{{{columns}}}, {_join(rendered_values)})"
@@ -2572,6 +2609,10 @@ class GoEmitter:
     def insert(self, node: Any) -> str:
         relation = self.relation(node.relation)
         builder = f"qs.InsertIntoTable({relation})"
+
+        # Target columns are selected before the source.  The staged API keeps
+        # this choice on InsertTarget, so completed source roles cannot change
+        # their target shape later.
         target_indirections = bool(node.cols and any(col.indirection for col in node.cols))
         if node.cols:
             if target_indirections:
@@ -2581,6 +2622,7 @@ class GoEmitter:
                 builder += f".Targets({_join(self.expr_from_target(col) for col in node.cols)})"
             else:
                 builder += f".Columns({_join(_go_quote(col.name) for col in node.cols)})"
+
         select = node.selectStmt
         if select is None:
             builder += ".DefaultValues()"
@@ -2590,15 +2632,26 @@ class GoEmitter:
             rows = list(select.valuesLists)
             if not rows:
                 raise self.unsupported("INSERT has empty VALUES")
-            builder += f".ValuesExpr({_join(self.expr(value) for value in rows[0])})"
+            builder += f".Values({_join(self.write_value(value) for value in rows[0])})"
             for row in rows[1:]:
-                builder += f".ValuesExpr({_join(self.expr(value) for value in row)})"
+                builder += f".Values({_join(self.write_value(value) for value in row)})"
         elif select.targetList is not None or select.op != pgenums.SetOperation.SETOP_NONE:
             if getattr(select, "intoClause", None) is not None:
                 raise self.unsupported("SELECT INTO cannot be an INSERT source")
             builder += f".From({self.rowset(select)})"
         else:
             raise self.unsupported("INSERT source shape")
+
+        override = _enum_name(node.override)
+        if override == "OVERRIDING_SYSTEM_VALUE":
+            if select is None:
+                raise self.unsupported("DEFAULT VALUES cannot specify OVERRIDING")
+            builder += ".OverridingSystemValue()"
+        elif override == "OVERRIDING_USER_VALUE":
+            if select is None:
+                raise self.unsupported("DEFAULT VALUES cannot specify OVERRIDING")
+            builder += ".OverridingUserValue()"
+
         if node.onConflictClause is not None:
             builder += f".OnConflict({self.conflict(node.onConflictClause)})"
         returning, aliases = self.returning(node.returningClause)
@@ -2607,11 +2660,6 @@ class GoEmitter:
         if returning:
             builder += f".Returning({_join(returning)})"
         builder = self._with(builder, node.withClause)
-        override = _enum_name(node.override)
-        if override == "OVERRIDING_SYSTEM_VALUE":
-            builder += ".OverridingSystemValue()"
-        elif override == "OVERRIDING_USER_VALUE":
-            builder += ".OverridingUserValue()"
         return builder
 
     def conflict(self, node: Any) -> str:
@@ -3376,6 +3424,286 @@ def _export_metrics(occurrences: Sequence[QueryOccurrence]) -> dict[str, int]:
     }
 
 
+def _fixed_coverage_failures(
+    metrics: dict[str, int],
+    census_occurrences: int,
+    *,
+    commit: str | None = None,
+    expected_sql_sha256: str | None = None,
+    parser_version: str | None = None,
+    parser_postgres_version: tuple[int, int] | None = None,
+    require_pins: bool = True,
+) -> list[str]:
+    """Return failures against the immutable pinned corpus acceptance contract."""
+
+    failures: list[str] = []
+    expected_total = _PINNED_CORPUS_FLOORS["total"]
+    if census_occurrences != expected_total:
+        failures.append(
+            f"census total {census_occurrences} differs from pinned {expected_total}"
+        )
+    if metrics.get("total") != expected_total:
+        failures.append(
+            f"derived total {metrics.get('total')} differs from pinned {expected_total}"
+        )
+    for field in (
+        "planner_total",
+        "distinct_shapes",
+        "planner_distinct_shapes",
+    ):
+        expected = _PINNED_CORPUS_FLOORS[field]
+        actual = metrics.get(field)
+        if actual != expected:
+            failures.append(f"{field} denominator {actual} differs from pinned {expected}")
+    for field in (
+        "verified",
+        "planner_verified",
+        "distinct_verified_shapes",
+        "planner_distinct_verified_shapes",
+    ):
+        expected = _PINNED_CORPUS_FLOORS[field]
+        actual = metrics.get(field, 0)
+        if actual < expected:
+            failures.append(f"{field} {actual} is below pinned floor {expected}")
+    if require_pins:
+        if commit != _PINNED_POSTGRES_COMMIT:
+            failures.append(
+                f"source commit {commit!r} differs from pinned {_PINNED_POSTGRES_COMMIT}"
+            )
+        if expected_sql_sha256 != _PINNED_SQL_SHA256:
+            failures.append("SQL source hash differs from the pinned regression corpus")
+        if parser_version != _PINNED_PGLAST_VERSION:
+            failures.append(
+                f"parser version {parser_version!r} differs from pinned {_PINNED_PGLAST_VERSION}"
+            )
+        if parser_postgres_version != _PINNED_POSTGRES_VERSION:
+            failures.append(
+                "parser PostgreSQL version "
+                f"{parser_postgres_version!r} differs from pinned {_PINNED_POSTGRES_VERSION!r}"
+            )
+    return failures
+
+
+_BASELINE_RECORD_FIELDS = (
+    "id",
+    "source",
+    "line",
+    "origin",
+    "wrapper",
+    "statement",
+    "families",
+    "planner",
+    "expected_error_hint",
+    "expected_output",
+    "shape",
+    "original_sql",
+    "normalization",
+)
+
+
+def _read_baseline_fixtures(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Read and authenticate the immutable JSONL fixture baseline."""
+
+    manifest_path = path / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"cannot read baseline fixture manifest {manifest_path}: {exc}") from exc
+    if not isinstance(manifest, dict) or manifest.get("schema") != _CORPUS_SCHEMA:
+        raise SystemExit(f"baseline fixture has unsupported schema: {manifest_path}")
+    shards = manifest.get("shards")
+    if not isinstance(shards, list) or len(shards) != _CORPUS_SHARDS:
+        raise SystemExit("baseline fixture must contain all eight shards")
+
+    records: list[dict[str, Any]] = []
+    shard_records_by_index: list[list[dict[str, Any]]] = []
+    base = path.resolve()
+    for index, shard in enumerate(shards):
+        if not isinstance(shard, dict) or shard.get("index") != index:
+            raise SystemExit(f"baseline fixture shard {index} has invalid manifest entry")
+        relative = shard.get("jsonl")
+        if not isinstance(relative, str):
+            raise SystemExit(f"baseline fixture shard {index} has no JSONL path")
+        jsonl_path = (path / relative).resolve()
+        try:
+            jsonl_path.relative_to(base)
+        except ValueError as exc:
+            raise SystemExit(f"baseline fixture shard {index} escapes its root") from exc
+        try:
+            data = jsonl_path.read_bytes()
+        except OSError as exc:
+            raise SystemExit(f"cannot read baseline fixture {jsonl_path}: {exc}") from exc
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != shard.get("sha256"):
+            raise SystemExit(
+                f"baseline fixture shard {index} hash mismatch: expected {shard.get('sha256')}, got {digest}"
+            )
+        shard_records: list[dict[str, Any]] = []
+        for line_number, line in enumerate(data.splitlines(), 1):
+            try:
+                item = json.loads(line)
+            except ValueError as exc:
+                raise SystemExit(
+                    f"baseline fixture shard {index} line {line_number} is invalid JSON"
+                ) from exc
+            if not isinstance(item, dict):
+                raise SystemExit(f"baseline fixture shard {index} line {line_number} is not an object")
+            shard_records.append(item)
+        expected_ids = list(range(index, len(shard_records) * _CORPUS_SHARDS, _CORPUS_SHARDS))
+        if [item.get("id") for item in shard_records] != expected_ids:
+            raise SystemExit(f"baseline fixture shard {index} IDs are not in stride order")
+        if shard.get("count") != len(shard_records):
+            raise SystemExit(f"baseline fixture shard {index} count disagrees with JSONL records")
+        records.extend(shard_records)
+        shard_records_by_index.append(shard_records)
+
+    records.sort(key=lambda item: item.get("id", -1))
+    identifiers = [item.get("id") for item in records]
+    expected = list(range(len(records)))
+    if identifiers != expected:
+        raise SystemExit("baseline fixture IDs are not a contiguous global order")
+    counts = manifest.get("counts")
+    if not isinstance(counts, dict) or counts.get("total") != len(records):
+        raise SystemExit("baseline fixture manifest total disagrees with JSONL records")
+    for index, (shard, shard_records) in enumerate(zip(shards, shard_records_by_index, strict=True)):
+        expected_first = index if shard_records else -1
+        expected_last = index + (len(shard_records) - 1) * _CORPUS_SHARDS if shard_records else -1
+        if (
+            shard.get("package") != f"shard{index:02d}"
+            or shard.get("jsonl") != f"shard{index:02d}/corpus.jsonl"
+            or shard.get("first_id") != expected_first
+            or shard.get("last_id") != expected_last
+        ):
+            raise SystemExit(f"baseline fixture shard {index} has invalid inventory metadata")
+        local = Counter(item.get("status") for item in shard_records)
+        if any(
+            shard.get(field) != local.get(status, 0)
+            for field, status in (
+                ("verified", "verified"),
+                ("construction_error", "construction_error"),
+                ("unsupported", "unsupported"),
+            )
+        ):
+            raise SystemExit(f"baseline fixture shard {index} status counts disagree with JSONL")
+    shape_groups: dict[Any, list[dict[str, Any]]] = defaultdict(list)
+    for item in records:
+        shape_groups[item.get("shape")].append(item)
+    derived_counts = {
+        "verified": sum(item.get("status") == "verified" for item in records),
+        "construction_error": sum(item.get("status") == "construction_error" for item in records),
+        "unsupported": sum(item.get("status") == "unsupported" for item in records),
+        "planner_total": sum(bool(item.get("planner")) for item in records),
+        "planner_verified": sum(bool(item.get("planner")) and item.get("status") == "verified" for item in records),
+        "distinct_shapes": len(shape_groups),
+        "distinct_verified_shapes": sum(
+            all(item.get("status") == "verified" for item in group)
+            for group in shape_groups.values()
+        ),
+    }
+    planner_groups = [group for group in shape_groups.values() if any(item.get("planner") for item in group)]
+    derived_counts["planner_distinct_shapes"] = len(planner_groups)
+    derived_counts["planner_distinct_verified_shapes"] = sum(
+        all(item.get("status") == "verified" for item in group)
+        for group in planner_groups
+    )
+    for field, value in derived_counts.items():
+        if counts.get(field) != value:
+            raise SystemExit(
+                f"baseline fixture manifest {field} disagrees with JSONL: "
+                f"expected {value}, got {counts.get(field)}"
+            )
+    return manifest, records
+
+
+def _compare_fixture_baseline(
+    occurrences: Sequence[QueryOccurrence],
+    baseline_path: Path,
+    *,
+    source_root: Path,
+    commit: str,
+    sql_sha256: str,
+    parser_version: str,
+    parser_postgres_version: tuple[int, int],
+) -> None:
+    """Reject export changes that regress or reshuffle the checked-in corpus."""
+
+    manifest, baseline_records = _read_baseline_fixtures(baseline_path)
+    expected_parser = {
+        "package": "pglast",
+        "version": parser_version,
+        "postgresql": f"{parser_postgres_version[0]}.{parser_postgres_version[1]}",
+    }
+    expected_manifest = {
+        "schema": _CORPUS_SCHEMA,
+        "revision": commit,
+        "sql_sha256": sql_sha256,
+        "parser": expected_parser,
+    }
+    for key, expected in expected_manifest.items():
+        if manifest.get(key) != expected:
+            raise SystemExit(
+                f"baseline fixture {key} disagrees with pinned source: "
+                f"expected {expected!r}, got {manifest.get(key)!r}"
+            )
+
+    current = [_fixture_record(item, source_root) for item in occurrences]
+    if len(current) != len(baseline_records):
+        raise SystemExit(
+            "baseline fixture occurrence count changed: "
+            f"expected {len(baseline_records)}, got {len(current)}"
+        )
+    for position, (before, after) in enumerate(zip(baseline_records, current, strict=True)):
+        if before.get("id") != after.get("id"):
+            raise SystemExit(
+                f"baseline fixture occurrence order changed at position {position}: "
+                f"expected id {before.get('id')}, got {after.get('id')}"
+            )
+        for field in _BASELINE_RECORD_FIELDS:
+            if before.get(field) != after.get(field):
+                raise SystemExit(
+                    f"baseline fixture id {after.get('id')} {field} changed: "
+                    f"expected {before.get(field)!r}, got {after.get(field)!r}"
+                )
+        before_status = before.get("status")
+        after_status = after.get("status")
+        if before_status == "verified":
+            if after_status != "verified":
+                raise SystemExit(
+                    f"baseline fixture id {after.get('id')} lost verified coverage: {after_status!r}"
+                )
+            for field in ("want_sql", "want_args"):
+                if before.get(field) != after.get(field):
+                    raise SystemExit(
+                        f"baseline fixture id {after.get('id')} {field} changed: "
+                        f"expected {before.get(field)!r}, got {after.get(field)!r}"
+                    )
+        elif after_status not in {before_status, "verified"}:
+            raise SystemExit(
+                f"baseline fixture id {after.get('id')} status regressed: "
+                f"expected {before_status!r} or verified, got {after_status!r}"
+            )
+
+    before_counts = manifest["counts"]
+    after_counts = _export_metrics(occurrences)
+    for field in ("total", "planner_total", "distinct_shapes", "planner_distinct_shapes"):
+        if before_counts.get(field) != after_counts.get(field):
+            raise SystemExit(
+                f"baseline fixture {field} changed: expected {before_counts.get(field)}, "
+                f"got {after_counts.get(field)}"
+            )
+    for field in (
+        "verified",
+        "planner_verified",
+        "distinct_verified_shapes",
+        "planner_distinct_verified_shapes",
+    ):
+        if after_counts.get(field, 0) < before_counts.get(field, 0):
+            raise SystemExit(
+                f"baseline fixture {field} decreased: expected at least {before_counts.get(field)}, "
+                f"got {after_counts.get(field)}"
+            )
+
+
 def _validate_export_state(
     occurrences: Sequence[QueryOccurrence],
     census_occurrences: int,
@@ -3383,6 +3711,9 @@ def _validate_export_state(
     *,
     expected_sql_sha256: str | None,
     commit: str | None,
+    baseline_fixtures: Path | None = None,
+    source_root: Path | None = None,
+    parser_postgres_version: tuple[int, int] | None = None,
 ) -> None:
     """Reject anything that could produce a misleading frozen fixture."""
 
@@ -3448,6 +3779,29 @@ def _validate_export_state(
             raise SystemExit(f"{item.status} occurrence {item.id} has no builder")
         if item.status == "verified" and item.id not in probe_results:
             raise SystemExit(f"verified occurrence {item.id} has no probe result")
+    fixed_failures = _fixed_coverage_failures(
+        _export_metrics(occurrences),
+        census_occurrences,
+        commit=commit,
+        expected_sql_sha256=expected_sql_sha256,
+        parser_version=pglast.__version__,
+        parser_postgres_version=parser_postgres_version or tuple(pglast.get_postgresql_version()),
+    )
+    if fixed_failures:
+        raise SystemExit("--export-go fixed pinned coverage failed: " + "; ".join(fixed_failures))
+    if baseline_fixtures is not None:
+        if source_root is None:
+            raise SystemExit("--export-go baseline comparison requires the PostgreSQL source root")
+        postgres_version = parser_postgres_version or tuple(pglast.get_postgresql_version())
+        _compare_fixture_baseline(
+            occurrences,
+            baseline_fixtures,
+            source_root=source_root,
+            commit=commit,
+            sql_sha256=expected_sql_sha256,
+            parser_version=pglast.__version__,
+            parser_postgres_version=postgres_version,
+        )
 
 
 def _fixture_record(occurrence: QueryOccurrence, root: Path) -> dict[str, Any]:
@@ -3768,6 +4122,7 @@ def run(args: argparse.Namespace) -> int:
     minimum_planner_shape_support = _threshold_fraction(
         getattr(args, "minimum_planner_shape_support", None)
     )
+    require_pinned_coverage = bool(getattr(args, "require_pinned_coverage", False))
     threshold_reasons: list[str] = []
     if (
         minimum_support is not None
@@ -3800,11 +4155,46 @@ def run(args: argparse.Namespace) -> int:
                 f"{report['counts']['planner_distinct_rate']:.4f} is below "
                 f"{minimum_planner_shape_support:.4f}"
             )
+    if require_pinned_coverage:
+        if args.limit is not None:
+            threshold_reasons.append("--require-pinned-coverage requires the complete unbounded corpus")
+        if not args.probe:
+            threshold_reasons.append("--require-pinned-coverage requires the compiled Go probe")
+        fixed_failures = _fixed_coverage_failures(
+            _export_metrics(occurrences),
+            census_occurrences,
+            commit=commit,
+            expected_sql_sha256=getattr(args, "expected_sql_sha256", None),
+            parser_version=pglast.__version__,
+            parser_postgres_version=tuple(pglast.get_postgresql_version()),
+        )
+        threshold_reasons.extend(
+            f"--require-pinned-coverage: {failure}" for failure in fixed_failures
+        )
+    baseline_fixtures = getattr(args, "baseline_fixtures", None)
+    if baseline_fixtures is None:
+        baseline_fixtures = repo / "internal" / "postgrescorpus"
+    else:
+        baseline_fixtures = Path(baseline_fixtures).resolve()
+    if require_pinned_coverage and export_go is None and args.limit is None and args.probe:
+        try:
+            _compare_fixture_baseline(
+                occurrences,
+                baseline_fixtures,
+                source_root=root,
+                commit=commit,
+                sql_sha256=getattr(args, "expected_sql_sha256", None) or _source_hash(root),
+                parser_version=pglast.__version__,
+                parser_postgres_version=tuple(pglast.get_postgresql_version()),
+            )
+        except SystemExit as exc:
+            threshold_reasons.append(f"--require-pinned-coverage baseline: {exc}")
     report["thresholds"] = {
         "minimum_support": minimum_support,
         "minimum_planner_support": minimum_planner_support,
         "minimum_shape_support": minimum_shape_support,
         "minimum_planner_shape_support": minimum_planner_shape_support,
+        "require_pinned_coverage": require_pinned_coverage,
         "passed": not threshold_reasons,
         "failures": threshold_reasons,
     }
@@ -3815,6 +4205,9 @@ def run(args: argparse.Namespace) -> int:
             probe_results,
             expected_sql_sha256=args.expected_sql_sha256,
             commit=args.commit,
+            baseline_fixtures=baseline_fixtures,
+            source_root=root,
+            parser_postgres_version=tuple(pglast.get_postgresql_version()),
         )
         _export_go(
             Path(export_go).resolve(),
@@ -3859,6 +4252,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--export-go",
         type=Path,
         help="write the eight-shard native corpus fixture after a complete verified probe",
+    )
+    parser.add_argument(
+        "--baseline-fixtures",
+        type=Path,
+        help="fixture directory used as the pre-export corpus baseline (defaults to repo/internal/postgrescorpus)",
+    )
+    parser.add_argument(
+        "--require-pinned-coverage",
+        action="store_true",
+        help="require the complete pinned PostgreSQL corpus and its fixed support floors",
     )
     parser.add_argument("--limit", type=int, help="process only the first N query occurrences (development smoke check)")
     parser.add_argument(

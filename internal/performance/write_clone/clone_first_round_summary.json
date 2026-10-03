@@ -1,0 +1,170 @@
+{
+  "BenchmarkAPICloneXMLJSON/flat_xml": {
+    "effect_percent": -1.191659531534388,
+    "ci95_percent": [
+      -2.957506105031061,
+      0.6063195026604288
+    ],
+    "baseline_ns": 560.0,
+    "candidate_ns": 555.9,
+    "baseline_bytes_allocs": [
+      [
+        1040,
+        5
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1040,
+        5
+      ]
+    ]
+  },
+  "BenchmarkAPICloneXMLJSON/nested_xml": {
+    "effect_percent": 1.2980687722578161,
+    "ci95_percent": [
+      0.2824247993228153,
+      2.3239990209966126
+    ],
+    "baseline_ns": 811.1500000000001,
+    "candidate_ns": 823.8,
+    "baseline_bytes_allocs": [
+      [
+        1728,
+        6
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1728,
+        6
+      ]
+    ]
+  },
+  "BenchmarkAPICloneXMLJSON/shared_cte_xml": {
+    "effect_percent": 1.6235754150490025,
+    "ci95_percent": [
+      -0.5087177772087178,
+      3.8015678299538616
+    ],
+    "baseline_ns": 974.0999999999999,
+    "candidate_ns": 977.3,
+    "baseline_bytes_allocs": [
+      [
+        1688,
+        9
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1688,
+        9
+      ]
+    ]
+  },
+  "BenchmarkAPICloneXMLJSON/flat_json": {
+    "effect_percent": 2.3242221579269655,
+    "ci95_percent": [
+      1.190339480849425,
+      3.4708104937854998
+    ],
+    "baseline_ns": 525.25,
+    "candidate_ns": 539.3,
+    "baseline_bytes_allocs": [
+      [
+        888,
+        5
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        888,
+        5
+      ]
+    ]
+  },
+  "BenchmarkAPICloneXMLJSON/nested_json": {
+    "effect_percent": -1.560696736279774,
+    "ci95_percent": [
+      -2.81344485587537,
+      -0.29180052038811105
+    ],
+    "baseline_ns": 562.95,
+    "candidate_ns": 553.6,
+    "baseline_bytes_allocs": [
+      [
+        976,
+        7
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        976,
+        7
+      ]
+    ]
+  },
+  "BenchmarkAPICloneXMLJSON/shared_cte_json": {
+    "effect_percent": 0.9024989060801996,
+    "ci95_percent": [
+      -0.786182710443057,
+      2.619922946591247
+    ],
+    "baseline_ns": 882.2,
+    "candidate_ns": 892.45,
+    "baseline_bytes_allocs": [
+      [
+        1472,
+        10
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1472,
+        10
+      ]
+    ]
+  },
+  "BenchmarkAPICloneBoundedCycle": {
+    "effect_percent": -4.021842762046423,
+    "ci95_percent": [
+      -7.44649796841677,
+      -0.4704688143526279
+    ],
+    "baseline_ns": 393.29999999999995,
+    "candidate_ns": 383.25,
+    "baseline_bytes_allocs": [
+      [
+        624,
+        3
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        624,
+        3
+      ]
+    ]
+  },
+  "BenchmarkClone": {
+    "effect_percent": -1.3740176020107748,
+    "ci95_percent": [
+      -3.7922112803530426,
+      1.1049576486324086
+    ],
+    "baseline_ns": 899.0,
+    "candidate_ns": 894.75,
+    "baseline_bytes_allocs": [
+      [
+        1296,
+        8
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1296,
+        8
+      ]
+    ]
+  }
+}

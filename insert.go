@@ -1,5 +1,7 @@
 package qs
 
+import "fmt"
+
 type overridingMode uint8
 
 const (
@@ -8,236 +10,271 @@ const (
 	overridingUserValue
 )
 
-// InsertBuilder supports rows, DEFAULT VALUES, INSERT SELECT, and ordered
-// assignments for a single row. These source forms are mutually exclusive.
-type InsertBuilder struct {
-	source     Rowset
-	conflict   *ConflictClause
-	aliases    ReturningAliases
-	targets    []Expr
-	rows       [][]Expr
-	set        []Assignment
-	returning  []Expr
-	table      Relation
-	base       statementBase
-	hasSource  bool
-	defaults   bool
-	overriding overridingMode
+// InsertTarget holds only the relation that will receive a completed INSERT.
+// Select a source or a target-column list before adding other INSERT clauses.
+type InsertTarget struct{ table Relation }
+
+// InsertColumnsTarget holds an INSERT relation and its immutable target-column
+// list. Select a source to obtain a completed INSERT role.
+type InsertColumnsTarget struct {
+	columnsTargets []Expr
+	columnsTable   Relation
 }
 
-// InsertInto starts an INSERT for a named table.
-func InsertInto(table string) *InsertBuilder { return &InsertBuilder{table: Table(table)} }
+// InsertInto starts an INSERT target for a named table.
+func InsertInto(table string) InsertTarget { return InsertTarget{table: Table(table)} }
 
-// InsertIntoTable starts an INSERT for a relation expression.
-func InsertIntoTable(table Relation) *InsertBuilder { return &InsertBuilder{table: table} }
+// InsertIntoTable starts an INSERT target for a relation expression.
+func InsertIntoTable(table Relation) InsertTarget { return InsertTarget{table: table} }
 
-// Into replaces the INSERT target with a named table.
-func (b *InsertBuilder) Into(table string) *InsertBuilder { b.table = Table(table); return b }
+func newInsertColumnsTarget(table Relation, first string, rest []string) InsertColumnsTarget {
+	targets := make([]Expr, 1+len(rest))
+	targets[0] = Ident(first)
+	for i, column := range rest {
+		targets[i+1] = Ident(column)
+	}
+	return InsertColumnsTarget{columnsTable: table, columnsTargets: targets}
+}
 
-// Columns appends ordinary target-column names.
-func (b *InsertBuilder) Columns(columns ...string) *InsertBuilder {
+// ColumnsSlice selects literal target-column names and copies the slice.
+// An empty list is invalid when the completed INSERT is rendered.
+func (t InsertTarget) ColumnsSlice(columns []string) InsertColumnsTarget {
+	targets := make([]Expr, len(columns))
+	for i, column := range columns {
+		targets[i] = Ident(column)
+	}
+	return InsertColumnsTarget{columnsTable: t.table, columnsTargets: targets}
+}
+
+func newInsertExprTarget(table Relation, first Expr, rest []Expr) InsertColumnsTarget {
+	targets := make([]Expr, 1+len(rest))
+	targets[0] = first
+	copy(targets[1:], rest)
+	return InsertColumnsTarget{columnsTable: table, columnsTargets: targets}
+}
+
+type insertBase struct {
+	table     Relation
+	aliases   ReturningAliases
+	conflict  *conflictClause
+	returning []Expr
+	targets   []Expr
+	statementBase
+	overriding      overridingMode
+	targetsSelected bool
+}
+
+// InsertRows is an INSERT whose source is one or more direct value rows.
+type InsertRows struct {
+	rows [][]WriteValue
+	base insertBase
+}
+
+// InsertSelect is an INSERT whose source is a rowset.
+type InsertSelect struct {
+	source Rowset
+	base   insertBase
+}
+
+// InsertAssignments is an INSERT whose source is one row of assignments.
+type InsertAssignments struct {
+	assignments []Assignment
+	base        insertBase
+}
+
+// InsertDefaults is an INSERT using the target table's default values.
+type InsertDefaults struct{ base insertBase }
+
+func (t InsertTarget) base() insertBase { return insertBase{table: t.table} }
+
+func (t InsertColumnsTarget) base() insertBase {
+	return insertBase{table: t.columnsTable, targets: t.columnsTargets, targetsSelected: true}
+}
+
+func insertReturningCols(base *insertBase, columns ...string) {
 	for _, column := range columns {
-		b.targets = append(b.targets, Ident(column))
+		base.returning = append(base.returning, Col(column))
 	}
+}
+
+// Values selects a direct value-row source.
+func (t InsertTarget) Values(first WriteValue, rest ...WriteValue) *InsertRows {
+	b := &InsertRows{base: t.base()}
+	return b.Values(first, rest...)
+}
+
+// ValuesSlice selects one direct value row and copies its structural slice.
+// An empty row is invalid when rendered; nested statements remain live.
+func (t InsertTarget) ValuesSlice(values []WriteValue) *InsertRows {
+	b := &InsertRows{base: t.base()}
+	return b.ValuesSlice(values)
+}
+
+// From selects a rowset source.
+func (t InsertTarget) From(source Rowset) *InsertSelect {
+	return &InsertSelect{base: t.base(), source: source}
+}
+
+// Set selects an assignment source.
+func (t InsertTarget) Set(first Assignment, rest ...Assignment) *InsertAssignments {
+	b := &InsertAssignments{base: t.base()}
+	return b.Set(first, rest...)
+}
+
+// DefaultValues selects the target table's server-side defaults.
+func (t InsertTarget) DefaultValues() *InsertDefaults {
+	return &InsertDefaults{base: t.base()}
+}
+
+// Values appends a direct value row to the INSERT.
+func (b *InsertRows) Values(first WriteValue, rest ...WriteValue) *InsertRows {
+	b.rows = append(b.rows, ownedWriteValues(first, rest))
 	return b
 }
 
-// Targets names columns or composite/array locations receiving each value.
-// Use Columns for ordinary names; field and subscript targets use expression
-// constructors and retain SQL placeholder order.
-func (b *InsertBuilder) Targets(targets ...Expr) *InsertBuilder {
-	b.targets = append(b.targets, targets...)
+// ValuesSlice appends one direct value row and copies its structural slice.
+// An empty row remains invalid; nested statements remain live and payloads shallow.
+func (b *InsertRows) ValuesSlice(values []WriteValue) *InsertRows {
+	b.rows = append(b.rows, cloneSlice(values))
 	return b
 }
 
-// Values appends a row whose values become bound parameters.
-func (b *InsertBuilder) Values(values ...any) *InsertBuilder {
-	exprs := make([]Expr, len(values))
-	for i, v := range values {
-		exprs[i] = parameter(v)
-	}
-	b.rows = append(b.rows, exprs)
-	return b
-}
-
-// ValuesExpr appends a row of explicit expressions.
-func (b *InsertBuilder) ValuesExpr(expressions ...Expr) *InsertBuilder {
-	b.rows = append(b.rows, cloneSlice(expressions))
-	return b
-}
-
-// Set appends assignments for the single-row INSERT SET form.
-func (b *InsertBuilder) Set(assignments ...Assignment) *InsertBuilder {
-	b.set = append(b.set, assignments...)
-	return b
-}
-
-// From selects INSERT input from a rowset, replacing the previous source.
-func (b *InsertBuilder) From(source Rowset) *InsertBuilder {
+// From replaces the rowset source of the INSERT.
+func (b *InsertSelect) From(source Rowset) *InsertSelect {
 	b.source = source
-	b.hasSource = true
 	return b
 }
 
-// DefaultValues requests a row of defaults, excluding other INSERT source forms.
-func (b *InsertBuilder) DefaultValues() *InsertBuilder { b.defaults = true; return b }
-
-// OverridingSystemValue permits explicit values for GENERATED ALWAYS identities.
-func (b *InsertBuilder) OverridingSystemValue() *InsertBuilder {
-	b.overriding = overridingSystemValue
+// Set appends assignments to the single-row INSERT source.
+func (b *InsertAssignments) Set(first Assignment, rest ...Assignment) *InsertAssignments {
+	b.assignments = appendAssignments(b.assignments, first, rest)
 	return b
 }
 
-// OverridingUserValue ignores supplied identity values and generates replacements.
-func (b *InsertBuilder) OverridingUserValue() *InsertBuilder {
-	b.overriding = overridingUserValue
-	return b
-}
-
-// OnConflict adds or replaces the INSERT ON CONFLICT clause.
-func (b *InsertBuilder) OnConflict(conflict ConflictClause) *InsertBuilder {
-	b.conflict = &conflict
-	return b
-}
-
-// Returning appends expressions to the INSERT RETURNING projection.
-func (b *InsertBuilder) Returning(expressions ...Expr) *InsertBuilder {
-	b.returning = append(b.returning, expressions...)
-	return b
-}
-
-// ReturningCols appends named columns to the INSERT RETURNING projection.
-func (b *InsertBuilder) ReturningCols(columns ...string) *InsertBuilder {
-	for _, c := range columns {
-		b.returning = append(b.returning, Col(c))
-	}
-	return b
-}
-
-// ReturningRows replaces the OLD and NEW row aliases for INSERT RETURNING.
-func (b *InsertBuilder) ReturningRows(aliases ReturningAliases) *InsertBuilder {
-	b.aliases = aliases
-	return b
-}
-
-func (b *InsertBuilder) append(w *renderer) {
-	if !b.validate(w) {
-		return
-	}
-	if !b.appendHeader(w) {
-		return
-	}
-	if !b.appendSource(w) {
-		return
-	}
-	if b.conflict != nil {
-		w.conflict(*b.conflict)
-	}
-	w.returning(b.returning, b.aliases)
-	w.foot(b.base)
-}
-
-func (b *InsertBuilder) validate(w *renderer) bool {
-	modes := 0
-	if len(b.rows) > 0 {
-		modes++
-	}
-	if len(b.set) > 0 {
-		modes++
-	}
-	if b.hasSource {
-		modes++
-	}
-	if b.defaults {
-		modes++
-	}
-	if !w.require(modes == 1, "INSERT", "requires exactly one of VALUES, assignments, SELECT or DEFAULT VALUES") {
+func (b *insertBase) validateTargets(w *renderer) bool {
+	if !w.require(!b.targetsSelected || len(b.targets) > 0, "INSERT", "requires at least one target column") {
 		return false
 	}
-	if !w.require(len(b.set) == 0 || len(b.targets) == 0, "INSERT", "assignments already define the target columns") {
-		return false
-	}
-	if !w.require(!b.defaults || b.overriding == overridingNone, "INSERT", "DEFAULT VALUES cannot specify OVERRIDING") {
-		return false
-	}
-	for i, c := range b.targets {
+	for i, target := range b.targets {
 		for j := range i {
-			if sameIdentifier(b.targets[j], c) {
+			if sameIdentifier(b.targets[j], target) {
 				w.fail(ErrInvalid, "INSERT", "duplicate target column")
 				return false
 			}
 		}
 	}
-	if len(b.set) > 0 && !w.validateAssignments(b.set) {
-		return false
-	}
 	return true
 }
 
-func (b *InsertBuilder) appendHeader(w *renderer) bool {
-	w.head(b.base)
+func (b *insertBase) appendHeader(w *renderer, assignments []Assignment, allowOverride bool) bool {
+	w.head(b.statementBase)
 	w.text("INSERT INTO ")
 	w.target(b.table, true)
-	if len(b.targets) > 0 {
+	if len(assignments) > 0 {
+		w.text(" (")
+		for i, assignment := range assignments {
+			if !w.require(!assignment.row, "INSERT SET", "tuple assignments are not supported in single-row insert assignments") {
+				return false
+			}
+			if i != 0 {
+				w.text(", ")
+			}
+			w.assignmentTarget(assignment.target)
+		}
+		w.byte(')')
+	} else if b.targetsSelected {
 		w.text(" (")
 		for i, target := range b.targets {
-			if i > 0 {
+			if i != 0 {
 				w.text(", ")
 			}
 			w.assignmentTarget(target)
 		}
 		w.byte(')')
 	}
-	if len(b.set) > 0 {
-		w.text(" (")
-		for i, a := range b.set {
-			if !w.require(!a.row, "INSERT SET", "tuple assignments are not supported in single-row insert assignments") {
-				return false
-			}
-			if i != 0 {
-				w.text(", ")
-			}
-			w.assignmentTarget(a.target)
-		}
-		w.byte(')')
+	if !allowOverride && !w.require(b.overriding == overridingNone, "INSERT", "DEFAULT VALUES cannot specify OVERRIDING") {
+		return false
 	}
 	w.overriding(b.overriding)
 	w.byte(' ')
 	return true
 }
 
-func (b *InsertBuilder) appendSource(w *renderer) bool {
-	switch {
-	case len(b.rows) > 0:
-		if len(b.targets) > 0 {
-			for _, row := range b.rows {
-				width := projectionWidth(row)
-				if width >= 0 && !w.require(width == len(b.targets), "INSERT", "value count differs from target columns") {
-					return false
-				}
-			}
-		}
-		w.values(b.rows, true)
-	case len(b.set) > 0:
-		w.text("VALUES (")
-		for i, a := range b.set {
-			if i != 0 {
-				w.text(", ")
-			}
-			w.expr(a.value)
-		}
-		w.byte(')')
-	case b.hasSource:
-		width := statementWidth(b.source, w.options.MaxDepth)
-		if width >= 0 && len(b.targets) > 0 && !w.require(width == len(b.targets), "INSERT SELECT", "projection width differs from target columns") {
-			return false
-		}
-		w.statement(b.source)
-	case b.defaults:
-		w.text("DEFAULT VALUES")
+func (b *insertBase) appendTail(w *renderer) {
+	if b.conflict != nil {
+		w.conflict(*b.conflict)
 	}
-	return true
+	w.returning(b.returning, b.aliases)
+	w.foot(b.statementBase)
 }
+
+func (b *InsertRows) append(w *renderer) {
+	if !b.base.validateTargets(w) {
+		return
+	}
+	if b.base.targetsSelected {
+		for i, row := range b.rows {
+			width := writeProjectionWidth(row)
+			if !w.rowWidth("INSERT", i+1, width, len(b.base.targets)) {
+				return
+			}
+		}
+	}
+	if !b.base.appendHeader(w, nil, true) {
+		return
+	}
+	w.writeValues(b.rows)
+	b.base.appendTail(w)
+}
+
+func (b *InsertSelect) append(w *renderer) {
+	if !b.base.validateTargets(w) {
+		return
+	}
+	width := statementWidth(b.source, w.options.MaxDepth)
+	if width >= 0 && b.base.targetsSelected && width != len(b.base.targets) {
+		w.fail(ErrInvalid, "INSERT SELECT", fmt.Sprintf("expected %d target columns, got %d projected columns", len(b.base.targets), width))
+		return
+	}
+	if !b.base.appendHeader(w, nil, true) {
+		return
+	}
+	w.statement(b.source)
+	b.base.appendTail(w)
+}
+
+func (b *InsertAssignments) append(w *renderer) {
+	if !w.require(len(b.assignments) > 0, "INSERT", "requires assignments") {
+		return
+	}
+	if !w.validateAssignments(b.assignments) {
+		return
+	}
+	if !b.base.appendHeader(w, b.assignments, true) {
+		return
+	}
+	w.text("VALUES (")
+	for i, assignment := range b.assignments {
+		if i != 0 {
+			w.text(", ")
+		}
+		w.writeExpr(assignment.value)
+	}
+	w.byte(')')
+	b.base.appendTail(w)
+}
+
+func (b *InsertDefaults) append(w *renderer) {
+	if !b.base.validateTargets(w) {
+		return
+	}
+	if !b.base.appendHeader(w, nil, false) {
+		return
+	}
+	w.text("DEFAULT VALUES")
+	b.base.appendTail(w)
+}
+
 func (w *renderer) overriding(mode overridingMode) {
 	switch mode {
 	case overridingNone:
@@ -249,6 +286,3 @@ func (w *renderer) overriding(mode overridingMode) {
 		w.fail(ErrInvalid, "OVERRIDING", "unknown mode")
 	}
 }
-
-// Reset clears the INSERT builder, including its target and accumulated clauses.
-func (b *InsertBuilder) Reset() { *b = InsertBuilder{} }

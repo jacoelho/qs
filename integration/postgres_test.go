@@ -303,14 +303,14 @@ func TestPostgreSQL18Mutations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	upsert := qs.InsertInto("target").Columns("id", "name").Values(int64(1), "updated").
-		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.SetExpr("name", qs.Excluded("name")))).ReturningCols("name")
+	upsert := qs.InsertInto("target").Columns("id", "name").Values(qs.Write(qs.Param(int64(1))), qs.Write(qs.Param("updated"))).
+		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).ReturningCols("name")
 	if got := queryStrings(t, ctx, conn, upsert); !reflect.DeepEqual(got, []string{"updated"}) {
 		t.Fatal(got)
 	}
 	q := qs.MergeInto("target").Using(qs.Table("source")).On(qs.EqColumns("target.id", "source.id")).
-		When(qs.Matched().ThenUpdate(qs.SetExpr("name", qs.Col("source.name"))),
-			qs.NotMatchedByTarget().ThenInsert(qs.SetExpr("id", qs.Col("source.id")), qs.SetExpr("name", qs.Col("source.name")))).
+		When(qs.Matched().ThenUpdate(qs.Set("name", qs.Write(qs.Col("source.name")))),
+			qs.NotMatchedByTarget().ThenInsert(qs.Set("id", qs.Write(qs.Col("source.id"))), qs.Set("name", qs.Write(qs.Col("source.name"))))).
 		Returning(qs.MergeAction())
 	got := queryStrings(t, ctx, conn, q)
 	actions := map[string]int{}
@@ -320,7 +320,7 @@ func TestPostgreSQL18Mutations(t *testing.T) {
 	if actions["INSERT"] != 1 || actions["UPDATE"] != 1 || len(got) != 2 {
 		t.Fatal(got)
 	}
-	oldNew := qs.Update("target").Set(qs.Set("name", "latest")).Where(qs.Eq("id", int64(1))).Returning(qs.Old("name"), qs.New("name"))
+	oldNew := qs.Update("target").Set(qs.Set("name", qs.Write(qs.Param("latest")))).Where(qs.Eq("id", int64(1))).Returning(qs.Old("name"), qs.New("name"))
 	sql, args, err := oldNew.ToSQL()
 	if err != nil {
 		t.Fatal(err)
@@ -331,6 +331,77 @@ func TestPostgreSQL18Mutations(t *testing.T) {
 	}
 	if oldName != "new" || newName != "latest" {
 		t.Fatal(oldName, newName)
+	}
+}
+
+func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
+	t.Parallel()
+	ctx, conn := connect(t)
+	if _, err := conn.Exec(ctx, `
+		CREATE TEMP TABLE write_defaults (
+			id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+			name text DEFAULT 'server-name',
+			count integer DEFAULT 7,
+			note text DEFAULT 'server-note'
+		);
+		CREATE TEMP TABLE merge_defaults_source (id bigint, note text);
+		INSERT INTO merge_defaults_source VALUES (3, 'merge-note');`); err != nil {
+		t.Fatal(err)
+	}
+
+	defaults := qs.InsertInto("write_defaults").DefaultValues().ReturningCols("name", "count", "note")
+	sql, args, err := defaults.ToSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var name, note string
+	var count int
+	if err := conn.QueryRow(ctx, sql, args...).Scan(&name, &count, &note); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	if name != "server-name" || count != 7 || note != "server-note" {
+		t.Fatalf("default values name=%q count=%d note=%q", name, count, note)
+	}
+
+	writeDefault := qs.InsertInto("write_defaults").Columns("name", "count").Values(qs.Default(), qs.Write(qs.Param(11))).ReturningCols("name", "count")
+	sql, args, err = writeDefault.ToSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRow(ctx, sql, args...).Scan(&name, &count); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	if name != "server-name" || count != 11 {
+		t.Fatalf("direct default name=%q count=%d", name, count)
+	}
+
+	rowDefault := qs.Update("write_defaults").Set(qs.AssignRow(
+		[]qs.Expr{qs.Col("name"), qs.Col("count")},
+		qs.WriteTuple(qs.Default(), qs.Write(qs.Param(23))),
+	)).Where(qs.Eq("count", 11)).ReturningCols("name", "count")
+	sql, args, err = rowDefault.ToSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRow(ctx, sql, args...).Scan(&name, &count); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	if name != "server-name" || count != 23 {
+		t.Fatalf("row default name=%q count=%d", name, count)
+	}
+
+	merge := qs.MergeInto("write_defaults").Using(qs.Table("merge_defaults_source")).On(qs.EqColumns("write_defaults.id", "merge_defaults_source.id")).
+		When(qs.NotMatched().ThenInsertValues([]string{"name", "note"}, qs.Default(), qs.Write(qs.Col("merge_defaults_source.note")))).
+		Returning(qs.Col("write_defaults.name"), qs.Col("write_defaults.note"))
+	sql, args, err = merge.ToSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRow(ctx, sql, args...).Scan(&name, &note); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	if name != "server-name" || note != "merge-note" {
+		t.Fatalf("merge default name=%q note=%q", name, note)
 	}
 }
 

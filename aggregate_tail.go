@@ -22,12 +22,3 @@ func (w *renderer) aggregateTail(t aggregateTail) {
 		w.identifierPart(t.windowName)
 	}
 }
-
-func (c *cloneContext) aggregateTail(t aggregateTail) aggregateTail {
-	t.filter = c.conditions(t.filter)
-	if t.window != nil {
-		window := c.window(*t.window)
-		t.window = &window
-	}
-	return t
-}

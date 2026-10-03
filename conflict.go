@@ -31,9 +31,7 @@ const (
 	conflictConstraint
 )
 
-// ConflictClause keeps the index-inference predicate (TargetWhere) separate
-// from the update-action predicate (Where).
-type ConflictClause struct {
+type conflictClause struct {
 	constraint  string
 	columns     []string
 	index       []IndexElement
@@ -44,47 +42,174 @@ type ConflictClause struct {
 	doNothing   bool
 }
 
-// AnyConflict targets any conflict and can only be used with DoNothing.
-func AnyConflict() ConflictClause { return ConflictClause{target: conflictAny} }
+// AnyConflictTarget targets any conflict and can only be completed with
+// DoNothing.
+type AnyConflictTarget struct{ anyTarget conflictClause }
 
-// ConflictColumns infers a conflict target from named columns.
-func ConflictColumns(columns ...string) ConflictClause {
-	return ConflictClause{target: conflictColumns, columns: cloneSlice(columns)}
+// ConflictColumnsTarget infers a conflict target from named columns.
+type ConflictColumnsTarget struct{ columnsTarget conflictClause }
+
+// ConflictIndexTarget infers a conflict target from index elements.
+type ConflictIndexTarget struct{ indexTarget conflictClause }
+
+// ConflictConstraintTarget targets a named unique or exclusion constraint.
+type ConflictConstraintTarget struct{ constraintTarget conflictClause }
+
+// ConflictNothing is a completed ON CONFLICT DO NOTHING action.
+type ConflictNothing struct{ nothing conflictClause }
+
+// ConflictUpdate is a completed ON CONFLICT DO UPDATE action.
+type ConflictUpdate struct{ update conflictClause }
+
+// conflictAction closes the only two accepted ON CONFLICT action types. Its
+// union is kept private so callers cannot supply a different action wrapper.
+type conflictAction interface {
+	conflictInto(base *insertBase)
+	ConflictNothing | ConflictUpdate
 }
 
-// ConflictIndex infers a conflict target from index elements.
-func ConflictIndex(elements ...IndexElement) ConflictClause {
-	return ConflictClause{target: conflictIndex, index: cloneSlice(elements)}
+func (c ConflictNothing) conflictInto(base *insertBase) {
+	clause := c.nothing
+	base.conflict = &clause
 }
 
-// ConflictConstraint targets a named unique or exclusion constraint.
-func ConflictConstraint(name string) ConflictClause {
-	return ConflictClause{target: conflictConstraint, constraint: name}
+func (c ConflictUpdate) conflictInto(base *insertBase) {
+	clause := c.update
+	base.conflict = &clause
+}
+
+// setInsertConflict normalizes either completed action without retaining an
+// interface value in the builder.
+func setInsertConflict[C conflictAction](base *insertBase, action C) {
+	action.conflictInto(base)
+}
+
+// AnyConflict starts an unrestricted ON CONFLICT target.
+func AnyConflict() AnyConflictTarget {
+	return AnyConflictTarget{anyTarget: conflictClause{target: conflictAny}}
+}
+
+// ConflictColumns starts inference from named columns.
+func ConflictColumns(first string, rest ...string) ConflictColumnsTarget {
+	columns := make([]string, 1+len(rest))
+	columns[0] = first
+	copy(columns[1:], rest)
+	return ConflictColumnsTarget{columnsTarget: conflictClause{
+		target:  conflictColumns,
+		columns: columns,
+	}}
+}
+
+// ConflictIndex starts inference from index elements.
+func ConflictIndex(first IndexElement, rest ...IndexElement) ConflictIndexTarget {
+	elements := make([]IndexElement, 1+len(rest))
+	elements[0] = first
+	copy(elements[1:], rest)
+	return ConflictIndexTarget{indexTarget: conflictClause{
+		target: conflictIndex,
+		index:  elements,
+	}}
+}
+
+// ConflictConstraint starts a constraint-named ON CONFLICT target.
+func ConflictConstraint(name string) ConflictConstraintTarget {
+	return ConflictConstraintTarget{constraintTarget: conflictClause{
+		target:     conflictConstraint,
+		constraint: name,
+	}}
+}
+
+// TargetWhere appends a predicate to column inference.
+func (c ConflictColumnsTarget) TargetWhere(conditions ...Condition) ConflictColumnsTarget {
+	c.columnsTarget.targetWhere = slices.Concat(c.columnsTarget.targetWhere, conditions)
+	return c
 }
 
 // TargetWhere appends a predicate to index inference.
-func (c ConflictClause) TargetWhere(conditions ...Condition) ConflictClause {
-	c.targetWhere = slices.Concat(c.targetWhere, conditions)
+func (c ConflictIndexTarget) TargetWhere(conditions ...Condition) ConflictIndexTarget {
+	c.indexTarget.targetWhere = slices.Concat(c.indexTarget.targetWhere, conditions)
 	return c
 }
 
-// DoNothing selects the ON CONFLICT DO NOTHING action and clears assignments.
-func (c ConflictClause) DoNothing() ConflictClause { c.doNothing = true; c.updates = nil; return c }
+// DoNothing completes an unrestricted conflict target.
+func (c AnyConflictTarget) DoNothing() ConflictNothing {
+	c.anyTarget.doNothing = true
+	return ConflictNothing{nothing: c.anyTarget}
+}
 
-// DoUpdate selects the ON CONFLICT DO UPDATE action and replaces assignments.
-func (c ConflictClause) DoUpdate(assignments ...Assignment) ConflictClause {
-	c.doNothing = false
-	c.updates = cloneSlice(assignments)
+// DoNothing completes a column-inference target.
+func (c ConflictColumnsTarget) DoNothing() ConflictNothing {
+	c.columnsTarget.doNothing = true
+	return ConflictNothing{nothing: c.columnsTarget}
+}
+
+// DoUpdate completes a column-inference target with a non-empty assignment list.
+func (c ConflictColumnsTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
+	c.columnsTarget.doNothing = false
+	c.columnsTarget.updates = ownedAssignments(first, rest)
+	return ConflictUpdate{update: c.columnsTarget}
+}
+
+// DoUpdateSlice completes a column-inference target with a copy of assignments.
+// Nil or empty slices fail rendering with ErrInvalid. Nested queries remain live
+// and bound application values are shallow-copied.
+func (c ConflictColumnsTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
+	c.columnsTarget.doNothing = false
+	c.columnsTarget.updates = cloneSlice(assignments)
+	return ConflictUpdate{update: c.columnsTarget}
+}
+
+// DoNothing completes an index-inference target.
+func (c ConflictIndexTarget) DoNothing() ConflictNothing {
+	c.indexTarget.doNothing = true
+	return ConflictNothing{nothing: c.indexTarget}
+}
+
+// DoUpdate completes an index-inference target with a non-empty assignment list.
+func (c ConflictIndexTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
+	c.indexTarget.doNothing = false
+	c.indexTarget.updates = ownedAssignments(first, rest)
+	return ConflictUpdate{update: c.indexTarget}
+}
+
+// DoUpdateSlice completes an index-inference target with a copy of assignments.
+// Nil or empty slices fail rendering with ErrInvalid. Nested queries remain live
+// and bound application values are shallow-copied.
+func (c ConflictIndexTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
+	c.indexTarget.doNothing = false
+	c.indexTarget.updates = cloneSlice(assignments)
+	return ConflictUpdate{update: c.indexTarget}
+}
+
+// DoNothing completes a constraint target.
+func (c ConflictConstraintTarget) DoNothing() ConflictNothing {
+	c.constraintTarget.doNothing = true
+	return ConflictNothing{nothing: c.constraintTarget}
+}
+
+// DoUpdate completes a constraint target with a non-empty assignment list.
+func (c ConflictConstraintTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
+	c.constraintTarget.doNothing = false
+	c.constraintTarget.updates = ownedAssignments(first, rest)
+	return ConflictUpdate{update: c.constraintTarget}
+}
+
+// DoUpdateSlice completes a constraint target with a copy of assignments.
+// Nil or empty slices fail rendering with ErrInvalid. Nested queries remain live
+// and bound application values are shallow-copied.
+func (c ConflictConstraintTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
+	c.constraintTarget.doNothing = false
+	c.constraintTarget.updates = cloneSlice(assignments)
+	return ConflictUpdate{update: c.constraintTarget}
+}
+
+// Where appends the predicate controlling an ON CONFLICT update action.
+func (c ConflictUpdate) Where(conditions ...Condition) ConflictUpdate {
+	c.update.where = slices.Concat(c.update.where, conditions)
 	return c
 }
 
-// Where appends the predicate that controls an ON CONFLICT update action.
-func (c ConflictClause) Where(conditions ...Condition) ConflictClause {
-	c.where = slices.Concat(c.where, conditions)
-	return c
-}
-
-func (w *renderer) conflict(c ConflictClause) {
+func (w *renderer) conflict(c conflictClause) {
 	w.text(" ON CONFLICT")
 	switch c.target {
 	case conflictAny:
@@ -139,9 +264,6 @@ func (w *renderer) conflict(c ConflictClause) {
 		w.conditions(c.targetWhere)
 	}
 	if c.doNothing {
-		if !w.require(len(c.where) == 0, "ON CONFLICT", "DO NOTHING has no update predicate") {
-			return
-		}
 		w.text(" DO NOTHING")
 	} else {
 		w.text(" DO UPDATE SET ")

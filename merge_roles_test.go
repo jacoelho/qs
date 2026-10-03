@@ -19,7 +19,7 @@ func TestMergeRoleActions(t *testing.T) {
 	}{
 		{
 			name: "matched_update",
-			stmt: base(Matched().ThenUpdate(Set("value", 1))),
+			stmt: base(Matched().ThenUpdate(Set("value", Write(Param(1))))),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN MATCHED THEN UPDATE SET "value" = $1`,
 			args: []any{1},
 		},
@@ -35,13 +35,13 @@ func TestMergeRoleActions(t *testing.T) {
 		},
 		{
 			name: "not_matched_assignments",
-			stmt: base(NotMatched().ThenInsert(Set("id", 1), Set("value", 2))),
+			stmt: base(NotMatched().ThenInsert(Set("id", Write(Param(1))), Set("value", Write(Param(2))))),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN NOT MATCHED THEN INSERT ("id", "value") VALUES ($1, $2)`,
 			args: []any{1, 2},
 		},
 		{
 			name: "not_matched_values",
-			stmt: base(NotMatched().ThenInsertValues([]string{"id"}, Param(1))),
+			stmt: base(NotMatched().ThenInsertValues([]string{"id"}, Write(Param(1)))),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN NOT MATCHED THEN INSERT ("id") VALUES ($1)`,
 			args: []any{1},
 		},
@@ -57,7 +57,7 @@ func TestMergeRoleActions(t *testing.T) {
 		},
 		{
 			name: "not_matched_by_source_update",
-			stmt: base(NotMatchedBySource().ThenUpdate(Set("value", 1))),
+			stmt: base(NotMatchedBySource().ThenUpdate(Set("value", Write(Param(1))))),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN NOT MATCHED BY SOURCE THEN UPDATE SET "value" = $1`,
 			args: []any{1},
 		},
@@ -73,13 +73,13 @@ func TestMergeRoleActions(t *testing.T) {
 		},
 		{
 			name: "override_system_assignments",
-			stmt: base(NotMatched().OverridingSystemValue().ThenInsert(Set("id", 1))),
+			stmt: base(NotMatched().OverridingSystemValue().ThenInsert(Set("id", Write(Param(1))))),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN NOT MATCHED THEN INSERT ("id") OVERRIDING SYSTEM VALUE VALUES ($1)`,
 			args: []any{1},
 		},
 		{
 			name: "override_user_values",
-			stmt: base(NotMatched().OverridingUserValue().ThenInsertValues([]string{"id"}, Param(1))),
+			stmt: base(NotMatched().OverridingUserValue().ThenInsertValues([]string{"id"}, Write(Param(1)))),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN NOT MATCHED THEN INSERT ("id") OVERRIDING USER VALUE VALUES ($1)`,
 			args: []any{1},
 		},
@@ -98,11 +98,11 @@ func TestMergeRoleConditionsAndSiblingImmutability(t *testing.T) {
 	notMatched := NotMatched().And(Eq("source.state", "new"))
 	override := notMatched.OverridingSystemValue()
 	query := MergeInto("target").Using(Table("source")).On(EqColumns("target.id", "source.id")).When(
-		matched.ThenUpdate(Set("value", 1)),
+		matched.ThenUpdate(Set("value", Write(Param(1)))),
 		matched.ThenDelete(),
-		notMatched.ThenInsert(Set("id", 2)),
+		notMatched.ThenInsert(Set("id", Write(Param(2)))),
 		notMatched.ThenDoNothing(),
-		override.ThenInsertValues([]string{"id"}, Param(3)),
+		override.ThenInsertValues([]string{"id"}, Write(Param(3))),
 	)
 	checkSQL(t, query,
 		`MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN MATCHED AND ("source"."state" = $1) THEN UPDATE SET "value" = $2 WHEN MATCHED AND ("source"."state" = $3) THEN DELETE WHEN NOT MATCHED AND ("source"."state" = $4) THEN INSERT ("id") VALUES ($5) WHEN NOT MATCHED AND ("source"."state" = $6) THEN DO NOTHING WHEN NOT MATCHED AND ("source"."state" = $7) THEN INSERT ("id") OVERRIDING SYSTEM VALUE VALUES ($8)`,
@@ -122,7 +122,7 @@ func TestMergeZeroRoleRemainsInvalid(t *testing.T) {
 	}{
 		{name: "matched", branch: (MergeMatched{}).ThenDelete()},
 		{name: "not_matched", branch: (MergeNotMatched{}).ThenInsertDefault()},
-		{name: "override", branch: (MergeInsertOverride{}).ThenInsert(Set("id", 1))},
+		{name: "override", branch: (MergeInsertOverride{}).ThenInsert(Set("id", Write(Param(1))))},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

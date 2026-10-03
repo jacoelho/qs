@@ -211,63 +211,81 @@ func (w *renderer) dispatchStatement(s Statement) {
 	case *SelectBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil SELECT")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
-	case *InsertBuilder:
+	case *InsertRows:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil INSERT")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
+	case *InsertSelect:
+		if b == nil {
+			w.fail(ErrInvalid, "statement", "nil INSERT")
+		} else {
+			b.append(w)
+		}
+	case *InsertAssignments:
+		if b == nil {
+			w.fail(ErrInvalid, "statement", "nil INSERT")
+		} else {
+			b.append(w)
+		}
+	case *InsertDefaults:
+		if b == nil {
+			w.fail(ErrInvalid, "statement", "nil INSERT")
+		} else {
+			b.append(w)
+		}
 	case *UpdateBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil UPDATE")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *DeleteBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil DELETE")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *MergeBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil MERGE")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *SetBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil set operation")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *ValuesBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil VALUES")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *TableBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil TABLE")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *ExplainBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil EXPLAIN")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *TruncateBuilder:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil TRUNCATE")
-			return
+		} else {
+			b.append(w)
 		}
-		b.append(w)
 	case *ExecuteBuilder:
 		w.queryUtilityStatement(s)
 	case *CreateTableAsBuilder, *MaterializedViewBuilder, *DeclareCursorBuilder, *SelectIntoBuilder:
@@ -275,9 +293,9 @@ func (w *renderer) dispatchStatement(s Statement) {
 	case *SQLStatement:
 		if b == nil {
 			w.fail(ErrInvalid, "statement", "nil SQL statement")
-			return
+		} else {
+			w.expr(b.expr)
 		}
-		w.expr(b.expr)
 	default:
 		w.fail(ErrInvalid, "statement", "nil or unknown statement")
 	}

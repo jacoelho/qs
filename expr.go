@@ -89,12 +89,12 @@ func invalidExpr(clause, detail string) Expr {
 // Param binds exactly one value. It does not inspect pointers, expand slices,
 // invoke driver.Valuer or call a codec. Use ParamNull for qs.Null values and In
 // for expanded lists. The value must not be mutated before execution completes.
-func Param[T any](value T) Expr { return parameter(value) }
+func Param(value any) Expr { return parameter(value) }
 
 func parameter(value any) Expr {
 	switch value.(type) {
-	case interface{ qxExpression() }, Statement:
-		return invalidExpr("parameter", "an expression or statement cannot be bound as a value")
+	case interface{ qxExpression() }, Statement, WriteValue, WriteRowValue, *WriteValue, *WriteRowValue:
+		return invalidExpr("parameter", "an expression, statement or destination write cannot be bound as a value")
 	case interface{ optionalValue() }:
 		return invalidExpr("parameter", "test Optional.Present before binding its Value")
 	case interface{ qxNull() }:
@@ -122,9 +122,6 @@ func NullExpr(typ DataType) Expr { return NullLiteral().Cast(typ) }
 
 // NullLiteral returns an untyped SQL NULL literal.
 func NullLiteral() Expr { return Expr{kind: exprLiteral, text: "NULL"} }
-
-// Default requests the destination column's default; it is not a literal value.
-func Default() Expr { return Expr{kind: exprKeyword, text: "DEFAULT"} }
 
 // LiteralInt is for SQL grammar positions such as an ordinal. Normal application
 // values should use Param so the query shape is independent of their values.
@@ -363,7 +360,7 @@ func (w *renderer) expr(e Expr) {
 	case exprRaw:
 		w.renderRaw(e.text)
 	case exprLiteral, exprKeyword:
-		w.text(e.text)
+		w.renderLiteral(e)
 	case exprStringLiteral:
 		w.renderStringLiteral(e.text)
 	case exprBinary:
@@ -417,6 +414,14 @@ func (w *renderer) expr(e Expr) {
 	default:
 		w.fail(ErrInvalid, "expression", "unknown expression kind")
 	}
+}
+
+func (w *renderer) renderLiteral(e Expr) {
+	if e.kind == exprKeyword && e.text == sqlDefault {
+		w.fail(ErrInvalid, "expression", "DEFAULT is only allowed directly in a destination write")
+		return
+	}
+	w.text(e.text)
 }
 
 func (w *renderer) renderInvalid(e Expr) {

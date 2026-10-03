@@ -1,0 +1,1922 @@
+[
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        421.6,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        351.6,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1122.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        989.2,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        551.8,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        394.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        395.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        716.1,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        547.4,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        416.1,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        350.6,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1188.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        949.4,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        534.0,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        396.3,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        392.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        731.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        542.6,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        410.5,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        350.1,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1208.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        940.4,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        542.0,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        399.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        390.8,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        732.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        551.2,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        407.6,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        358.8,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1170.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        956.3,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        563.2,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        390.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        395.5,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        717.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        542.9,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        418.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        350.1,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1155.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        956.2,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        556.6,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        391.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        387.3,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        722.1,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        580.3,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        431.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        340.2,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1177.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        915.8,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        516.4,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        394.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        378.2,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        734.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        533.5,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        402.9,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        362.5,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1127.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        923.8,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        531.6,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        372.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        401.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        727.1,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        535.9,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        415.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        343.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1149.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        919.3,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        545.4,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        396.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        375.3,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        721.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        526.0,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        401.1,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        360.8,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1075.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        960.3,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        539.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        371.2,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        400.8,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        704.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        530.0,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        418.9,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        340.4,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1188.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        890.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        536.2,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        397.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        388.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        746.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        541.5,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        438.8,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        367.6,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        2235.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        2912.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        1387.0,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        470.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        401.0,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        804.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        543.0,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        420.5,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        364.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1151.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        977.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        562.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        391.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        392.9,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        741.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        535.6,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        411.6,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        362.6,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1139.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        984.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        563.7,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        396.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        399.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        731.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        535.6,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        424.1,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        363.7,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1172.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        958.7,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        556.8,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        396.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        404.2,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        739.0,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        551.2,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        433.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        356.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1185.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        958.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        552.0,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        395.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        401.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        734.6,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        549.3,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        425.2,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        355.6,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1140.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        987.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        559.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        398.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        394.9,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        759.9,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        573.4,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        478.5,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        362.5,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1198.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1070.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        576.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        552.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        424.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        734.8,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        547.2,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        424.0,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        354.5,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1125.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        883.6,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        500.2,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        353.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        363.2,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        698.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        497.8,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        388.5,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        328.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1131.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        849.4,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        493.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        361.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        353.0,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        679.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        504.7,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        383.0,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        323.0,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1079.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        884.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        507.0,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        354.3,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        356.2,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        675.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        488.2,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        383.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        326.4,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1051.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        869.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        539.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        383.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        374.5,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        724.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        502.1,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        412.4,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        320.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1115.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        834.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        485.7,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        364.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        356.4,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        676.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        495.3,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        398.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        323.9,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1097.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        856.6,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        492.5,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        380.4,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        363.3,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        695.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        524.4,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        465.1,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        366.0,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1084.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1270.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        540.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        360.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        369.7,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        690.8,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        495.7,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        390.8,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        324.2,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1028.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        899.4,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        509.4,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        351.4,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        357.5,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        683.6,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        506.8,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        391.6,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        341.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1201.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1143.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        540.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        382.3,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        408.1,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        742.1,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        521.0,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        422.1,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        349.1,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1157.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        891.3,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        548.8,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        399.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        395.5,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        734.3,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        553.9,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        408.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        364.1,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1158.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        957.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        555.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        401.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        389.2,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        728.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        539.9,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        468.0,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        377.4,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1152.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        926.6,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        505.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        358.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        357.4,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        662.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        484.7,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        398.8,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        321.1,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1155.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        844.9,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        491.3,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        404.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        364.9,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        700.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        520.3,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        449.3,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        339.7,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1125.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1251.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        521.3,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        367.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        358.0,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        693.0,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        530.7,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        376.3,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        323.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1050.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        862.3,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        508.2,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        351.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        349.0,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        686.6,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        558.0,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        388.9,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        327.2,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1069.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        877.4,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        526.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        359.2,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        360.2,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        668.0,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        491.2,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        375.1,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        330.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1086.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        881.7,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        506.5,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        350.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        354.7,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        699.1,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        562.4,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        420.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        353.3,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1203.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        902.5,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        505.5,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        405.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        393.4,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        730.6,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        529.8,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        409.9,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        366.2,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1146.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        962.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        560.3,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        392.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        391.9,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        736.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        528.6,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        410.8,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        372.0,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1143.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        987.5,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        598.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        423.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        398.6,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        750.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        535.9,
+        1032,
+        11
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        415.9,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        347.5,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1089.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        855.8,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        498.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        348.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        359.5,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        701.0,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        510.2,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        439.7,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        346.1,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1157.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1007.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        485.3,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        349.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        360.8,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        702.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        494.8,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        387.8,
+        728,
+        10
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        334.4,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1055.0,
+        2064,
+        20
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        864.2,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        515.0,
+        1568,
+        2
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        356.4,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        341.8,
+        824,
+        7
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        694.6,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        488.8,
+        1032,
+        11
+      ]
+    }
+  }
+]

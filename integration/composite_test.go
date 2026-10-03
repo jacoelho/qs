@@ -61,8 +61,8 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 	}
 
 	update := qs.Update("qs_composite_people").Set(
-		qs.Assign(person.Field("first_name"), qs.Param("Grace")),
-		qs.Assign(person.Field("age"), qs.Param(37)),
+		qs.Assign(person.Field("first_name"), qs.Write(qs.Param("Grace"))),
+		qs.Assign(person.Field("age"), qs.Write(qs.Param(37))),
 	).Where(qs.Eq("id", 1))
 	sql, args, err = update.ToSQL()
 	if err != nil {
@@ -82,7 +82,9 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		qs.Col("id"),
 		person.Field("first_name"),
 		person.Field("age"),
-	).Values(2, "Alan", 41)
+	).Values(
+		qs.Write(qs.Param(2)), qs.Write(qs.Param("Alan")), qs.Write(qs.Param(41)),
+	)
 	sql, args, err = insert.ToSQL()
 	if err != nil {
 		t.Fatal(err)

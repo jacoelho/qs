@@ -113,9 +113,9 @@ func TestPlaceholderErrorsAreAtomic(t *testing.T) {
 	unknownQuantifier.distinct = selectQuantifier(255)
 	unknownCTE := CTE("c", Select(Param("second")))
 	unknownCTE.materialization = cteMaterialization(255)
-	unknownOverride := InsertInto("t").Values("second").Prefix(Param("first"))
-	unknownOverride.overriding = overridingMode(255)
-	unknownMergeOverride := NotMatched().ThenInsertValues([]string{"id"}, Param("second"))
+	unknownOverride := InsertInto("t").Values(Write(Param("second"))).Prefix(Param("first"))
+	unknownOverride.base.overriding = overridingMode(255)
+	unknownMergeOverride := NotMatched().ThenInsertValues([]string{"id"}, Write(Param("second")))
 	unknownMergeOverride.overriding = overridingMode(255)
 	for _, style := range []PlaceholderStyle{2, 255} {
 		_, _, err := valid.ToSQLWith(Options{PlaceholderStyle: style})

@@ -86,6 +86,17 @@ func TestCloneIndependentGraph(t *testing.T) {
 		t.Fatal("graph sharing not preserved")
 	}
 }
+
+func TestCloneOwnsLockTargetSlices(t *testing.T) {
+	t.Parallel()
+
+	original := Select(Star()).From("a", "b", "c").Lock(ForUpdate().Of("a", "b"))
+	clone := Clone(original)
+	clone.tail.locks[0].of[0] = "c"
+	checkSQL(t, original, `SELECT * FROM "a", "b", "c" FOR UPDATE OF "a", "b"`)
+	checkSQL(t, clone, `SELECT * FROM "a", "b", "c" FOR UPDATE OF "c", "b"`)
+}
+
 func TestCyclesAndDepth(t *testing.T) {
 	t.Parallel()
 
@@ -158,7 +169,7 @@ func TestOptions(t *testing.T) {
 			t.Fatalf("PostgreSQL %d: SQL=%q args=%#v error=%v", version, sql, args, err)
 		}
 	}
-	sql, args, err := Update("t").Set(Set("a", 1)).Returning(Old("a")).ToSQLWith(Options{})
+	sql, args, err := Update("t").Set(Set("a", Write(Param(1)))).Returning(Old("a")).ToSQLWith(Options{})
 	if err != nil || sql != `UPDATE "t" SET "a" = $1 RETURNING "old"."a"` || len(args) != 1 || args[0] != 1 {
 		t.Fatalf("default version: SQL=%q args=%#v error=%v", sql, args, err)
 	}
@@ -212,7 +223,7 @@ func TestIdentifierAndValueBoundaries(t *testing.T) {
 	attack := `x"; DROP TABLE users; --`
 	checkSQL(t, Select(Ident(attack), Ident("literal.dot"), Col("schema.table.column")).From("users").Where(Eq("name", attack)), `SELECT "x""; DROP TABLE users; --", "literal.dot", "schema"."table"."column" FROM "users" WHERE ("name" = $1)`, attack)
 	checkSQL(t, Select(LiteralString("a'\\b")), `SELECT E'a''\\b'`)
-	checkSQL(t, InsertInto("t").Columns("a.b").Values(7).
+	checkSQL(t, InsertInto("t").Columns("a.b").Values(Write(Param(7))).
 		OnConflict(ConflictIndex(IndexColumn("a.b")).DoNothing()),
 		`INSERT INTO "t" ("a.b") VALUES ($1) ON CONFLICT ("a.b") DO NOTHING`, 7)
 }

@@ -14,7 +14,7 @@ func Row(expressions ...Expr) RowExpr {
 	if len(expressions) == 0 {
 		return RowExpr{expr: invalidExpr("row", "row requires at least one expression")}
 	}
-	return RowExpr{expr: listExpr("ROW", expressions), width: projectionWidth(expressions)}
+	return RowExpr{expr: listExpr(sqlRow, expressions), width: projectionWidth(expressions)}
 }
 
 // Tuple uses PostgreSQL's parenthesized row syntax. A single parenthesized
@@ -70,7 +70,7 @@ func rowValues(values []any) RowExpr {
 	for i, v := range values {
 		exprs[i] = parameter(v)
 	}
-	return RowExpr{expr: Expr{kind: exprList, text: "ROW", value: exprs}, width: len(exprs)}
+	return RowExpr{expr: Expr{kind: exprList, text: sqlRow, value: exprs}, width: len(exprs)}
 }
 
 // EqValues compares r with a row built from bound values.
@@ -197,21 +197,23 @@ func (f Field[T]) Between(lower, upper T) Condition { return f.expr.Between(lowe
 func (f Field[T]) InQuery(query Rowset) Condition { return f.expr.InQuery(query) }
 
 // Set assigns a bound value of T to f.
-func (f Field[T]) Set(value T) Assignment { return assignTarget(f.expr, Param(value)) }
+func (f Field[T]) Set(value T) Assignment { return assignTypedTarget(f.expr, Write(Param(value))) }
 
 // SetField assigns another field of the same Go type to f.
-func (f Field[T]) SetField(value Field[T]) Assignment { return assignTarget(f.expr, value.expr) }
+func (f Field[T]) SetField(value Field[T]) Assignment {
+	return assignTypedTarget(f.expr, Write(value.expr))
+}
 
 // SetNullable assigns a nullable value to f, binding NULL when value is invalid.
 func (f Field[T]) SetNullable(value Null[T]) Assignment {
-	return assignTarget(f.expr, ParamNull(value))
+	return assignTypedTarget(f.expr, Write(ParamNull(value)))
 }
 
 // SetNull assigns the SQL NULL literal to f.
-func (f Field[T]) SetNull() Assignment { return assignTarget(f.expr, NullLiteral()) }
+func (f Field[T]) SetNull() Assignment { return assignTypedTarget(f.expr, Write(NullLiteral())) }
 
 // SetDefault assigns the destination column's DEFAULT to f.
-func (f Field[T]) SetDefault() Assignment { return assignTarget(f.expr, Default()) }
+func (f Field[T]) SetDefault() Assignment { return assignTypedTarget(f.expr, Default()) }
 
 // LteField compares f with another field of the same Go type using less-than-or-equal.
 func (f Field[T]) LteField(other Field[T]) Condition { return f.expr.LteExpr(other.expr) }

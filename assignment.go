@@ -1,6 +1,9 @@
 package qs
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // Assignment is a scalar, composite-field, subscript or row assignment.
 type Assignment struct {
@@ -11,35 +14,34 @@ type Assignment struct {
 	row     bool
 }
 
-// Set assigns a bound value to a column.
-func Set(column string, value any) Assignment { return SetExpr(column, parameter(value)) }
-
-// SetExpr assigns an expression to a column.
-func SetExpr(column string, value Expr) Assignment {
-	return Assignment{target: Col(column), value: value}
+// Set assigns a destination value to a column.
+func Set(column string, value WriteValue) Assignment {
+	return Assignment{target: Col(column), value: value.expr()}
 }
 
 // SetNull assigns SQL NULL to a column.
-func SetNull(column string) Assignment { return SetExpr(column, NullLiteral()) }
+func SetNull(column string) Assignment { return Set(column, Write(NullLiteral())) }
 
 // SetDefault assigns SQL DEFAULT to a column.
-func SetDefault(column string) Assignment { return SetExpr(column, Default()) }
+func SetDefault(column string) Assignment { return Set(column, Default()) }
 
 // SetNullable assigns a typed nullable value as a bound parameter.
 func SetNullable[T any](column string, value Null[T]) Assignment {
-	return SetExpr(column, ParamNull(value))
+	return Set(column, Write(ParamNull(value)))
 }
 
 // Assign permits explicit composite-field and subscript targets.
-func Assign(target, value Expr) Assignment { return Assignment{target: target, value: value} }
+func Assign(target Expr, value WriteValue) Assignment {
+	return Assignment{target: target, value: value.expr()}
+}
 
-// SetRow assigns expressions to a row of named columns.
-func SetRow(columns []string, values ...Expr) Assignment {
+// SetRow assigns destination values to a row of named columns.
+func SetRow(columns []string, first WriteValue, rest ...WriteValue) Assignment {
 	targets := make([]Expr, len(columns))
 	for i, c := range columns {
 		targets[i] = Col(c)
 	}
-	return Assignment{columns: targets, value: listExpr("ROW", values), row: true}
+	return Assignment{columns: targets, value: WriteRow(first, rest...).rowExpr().expr, row: true}
 }
 
 // SetRowFrom assigns the result columns of a rowset to named columns.
@@ -53,16 +55,33 @@ func SetRowFrom(columns []string, query Rowset) Assignment {
 
 // AssignRow preserves explicit or parenthesized row syntax and supports field
 // and subscript targets. Structural lists are copied; nested queries stay live.
-func AssignRow(targets []Expr, values RowExpr) Assignment {
-	return Assignment{columns: cloneSlice(targets), value: values.expr, row: true}
+func AssignRow(targets []Expr, values WriteRowValue) Assignment {
+	return Assignment{columns: cloneSlice(targets), value: values.rowExpr().expr, row: true}
 }
 
 // AssignRowFrom assigns a rowset to explicit or parenthesized row targets.
 func AssignRowFrom(targets []Expr, query Rowset) Assignment {
 	return Assignment{columns: cloneSlice(targets), query: query, row: true}
 }
-func assignTarget(column Expr, value Expr) Assignment {
-	return Assignment{target: unqualifiedTarget(column), value: value}
+func assignTypedTarget(column Expr, value WriteValue) Assignment {
+	return Assignment{target: unqualifiedTarget(column), value: value.expr()}
+}
+
+func ownedAssignments(first Assignment, rest []Assignment) []Assignment {
+	assignments := make([]Assignment, 1+len(rest))
+	assignments[0] = first
+	copy(assignments[1:], rest)
+	return assignments
+}
+
+func appendAssignments(dst []Assignment, first Assignment, rest []Assignment) []Assignment {
+	n := len(dst)
+	need := 1 + len(rest)
+	dst = slices.Grow(dst, need)
+	dst = dst[:n+need]
+	dst[n] = first
+	copy(dst[n+1:], rest)
+	return dst
 }
 
 func unqualifiedTarget(column Expr) Expr {
@@ -93,11 +112,12 @@ func unqualifiedTarget(column Expr) Expr {
 // Excluded references the proposed row in an ON CONFLICT update.
 func Excluded(column string) Expr { return Ident("excluded", column) }
 
-// SetAllExcluded creates one assignment from each column to its EXCLUDED value.
+// SetAllExcluded creates one assignment from each literal column name to its
+// EXCLUDED value. Dots are part of the name; use Assign for field or subscript targets.
 func SetAllExcluded(columns ...string) []Assignment {
 	assignments := make([]Assignment, len(columns))
 	for i, column := range columns {
-		assignments[i] = SetExpr(column, Excluded(column))
+		assignments[i] = Assign(Ident(column), Write(Excluded(column)))
 	}
 	return assignments
 }
@@ -229,19 +249,19 @@ func (w *renderer) assignments(assignments []Assignment) {
 				w.statement(a.query)
 				w.byte(')')
 			} else {
-				if !w.require(a.value.kind == exprList && (a.value.text == "ROW" || a.value.text == ""), "SET ROW", "requires a row value or subquery") {
+				if !w.require(a.value.kind == exprList && (a.value.text == sqlRow || a.value.text == ""), "SET ROW", "requires a row value or subquery") {
 					return
 				}
 				width := projectionWidth(ownedPayload[[]Expr](a.value.value))
 				if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "value count differs from target count or nil subquery") {
 					return
 				}
-				w.expr(a.value)
+				w.writeRow(a.value)
 			}
 		} else {
 			w.assignmentTarget(a.target)
 			w.text(" = ")
-			w.expr(a.value)
+			w.writeExpr(a.value)
 		}
 	}
 }

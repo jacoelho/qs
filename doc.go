@@ -4,6 +4,15 @@
 // methods and UnsafeSQL accept trusted application-authored SQL, never request
 // text. A single renderer numbers parameters through nested statements.
 //
+// Destination writes accept WriteValue: Value binds application data, Write
+// wraps an ordinary expression, and Default requests SQL DEFAULT. WriteRow and
+// WriteTuple construct row writes.
+// Write descriptors cannot be general expressions or application parameters.
+// InsertInto returns a target. Select optional Columns or Targets before Values,
+// From or DefaultValues; assignment sources select Set directly on the target.
+// Each source creates an independent completed statement with source-specific
+// methods. Column selectors own an immutable list shared between completions.
+//
 // Builders are mutable: use Clone before branching and do not mutate a builder
 // while another goroutine renders it. Expressions and relations are immutable
 // values. Subqueries retain references to their builders; Clone copies the

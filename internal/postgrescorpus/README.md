@@ -33,7 +33,9 @@ narrowly equivalent spellings such as implicit ASC, default window frames,
 EXPLAIN booleans and AND grouping with unchanged leaf order. This measures
 construction fidelity, not schema validity, query results or equivalent plans.
 
-Local corpus verification requires at least 98% support for all four measures:
+Pinned corpus acceptance uses fixed denominators and support floors. The
+percentages below are descriptive; a percentage threshold cannot replace these
+counts:
 
 | Measure | Verified / total | Support |
 |---|---:|---:|
@@ -49,6 +51,17 @@ queries and 53 generated-builder rejections. Missing translations include
 CURRENT_ROLE, USER, empty ROW and non-sequential parameters. EXTRACT(FORTNIGHT)
 remains rejected. The report is a conservative lower bound because adapter gaps
 can hide supported syntax.
+
+`--require-pinned-coverage` is the full-probe acceptance mode. It requires the
+complete pinned source and parser, all four denominators above, and every
+support floor. It also compares every occurrence with the existing fixture
+baseline, preserving verified IDs, provenance, normalization, SQL and argument
+oracles. `--baseline-fixtures` selects that baseline and defaults to
+`internal/postgrescorpus`. Export mode always enables the fixed gate and the
+baseline comparison before writing any shard.
+
+Runs with `--limit` or `--no-probe` remain useful diagnostics, but cannot pass
+the pinned acceptance gate.
 
 ## Inventory and bounds
 
@@ -79,6 +92,16 @@ make postgres-corpus POSTGRES_ROOT=/tmp/qs-postgres-source \
   CORPUS_PYTHON=/tmp/qs-corpus-venv/bin/python
 ```
 
+The full direct acceptance command is:
+
+```sh
+/tmp/qs-corpus-venv/bin/python scripts/postgres_corpus.py \
+  /tmp/qs-postgres-source --repo . \
+  --commit 630e607397424196a0a3ebb14a5658c2473ddadf \
+  --expected-sql-sha256 ddec651ca5f78d1ae9b721476efe586daf9220d80d5284f6fccd8329ed66218d \
+  --require-pinned-coverage
+```
+
 The generated `postgres-coverage.json` is ignored. It records source locations,
 SQL, argument checks, exclusions and failures. Override `CORPUS_REPORT` to choose
 another local path.
@@ -92,6 +115,7 @@ make postgres-corpus-update POSTGRES_ROOT=/tmp/qs-postgres-source \
 
 Export rejects partial/uncompiled runs, mismatched pins, missing/extra probe IDs,
 argument mismatches and raw constructors. Ordinary tests never update goldens.
-Refresh fixtures locally with the complete comparison and all four thresholds.
+Refresh fixtures locally only after the fixed gate and per-ID baseline comparison
+pass. The exporter checks the baseline before modifying the output directory.
 CI runs the committed Go fixtures without regenerating them. Review changes to
 the manifest, oracles and builders.

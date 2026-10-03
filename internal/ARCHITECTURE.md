@@ -2,7 +2,9 @@
 
 This is the architecture entry point. [README.md](../README.md) owns public usage
 and caller contracts; the [corpus README](postgrescorpus/README.md) owns
-construction-support measurement and fixture maintenance.
+construction-support measurement and fixture maintenance. The
+[performance report](PERFORMANCE.md) records the write API and clone acceptance
+measurements.
 
 ## Boundaries and representation
 
@@ -36,18 +38,84 @@ cross-role conversions. Zero values and unchecked names still require rendering
 validation. A universal modifier bag was rejected because it admits illegal
 method combinations; interface-backed completion would add boxing.
 
+Write destinations own `WriteValue` and `WriteRowValue`. Their distinct private
+fields prevent conversion into general expressions and tuple wrappers. `Value`
+binds application data, including nil, through the existing parameter boundary;
+its result type carries no application-type parameter. A generic constructor
+would prove no additional invariant and prevent inference for `Value(nil)`.
+The constructor uses the existing parameter representation and adds neither a
+value buffer nor another interface layer. `Write` captures an ordinary expression;
+`Default` constructs a token usable only at a direct destination position.
+Ordinary expressions retain their renderer even
+inside a write. The parameter boundary rejects write descriptors while leaving
+application values shallow and available through `Value(value)`.
+Assignment reuses one value slot; its existing row discriminator selects row
+rendering. Explicit scalar targets preserve their complete path; typed Field and
+JSON helpers remove the relation qualifier while retaining field/subscript steps.
+Row writes own one element buffer and preserve tuple versus ROW syntax.
+
+`InsertTarget` owns only the table descriptor. Optional `Columns` or `Targets`
+selection creates `InsertColumnsTarget`, which captures one exactly sized target
+list and exposes only rows, SELECT and default sources. Required-first methods
+prevent empty target lists; `ColumnsSlice` instead records explicit selection in `insertBase.targetsSelected` and rejects empty
+lists when rendered. This flag survives cloning independently of slice nilness.
+Assignment INSERTs start directly from `InsertTarget`.
+Neither target selector is a statement or rowset.
+
+Each source selection creates an independent `InsertRows`, `InsertSelect`,
+`InsertAssignments` or `InsertDefaults`. These are statements, never rowsets.
+Each role owns its mutable source and clause storage; private helpers own common
+INSERT rendering policy. Selected target lists are structurally immutable and
+shared between completions without a buffer copy. Their expressions can retain
+live child statements; generated cloning still traverses the list and graph.
+`ValuesSlice` copies each row slice and retains empty rows as invalid input;
+later rows cannot erase that failure. Completed builders cannot change column
+lists, switch source roles or reset.
+Defaults omit identity overriding. Supporting both column orderings was rejected
+because it would add target mutation and copying rules without a requested benefit.
+
+Conflict selectors distinguish unrestricted, inference and constraint targets.
+Completion produces `ConflictNothing` or `ConflictUpdate`; only updates have an
+action predicate. Generic OnConflict methods accept the exact completed value
+types and normalize into one private optional payload. No interface is retained.
+The generic method cannot satisfy a nongeneric consumer interface method.
+
+Targeted selectors keep `DoUpdate(first, rest...)` for statically nonempty calls.
+`DoUpdateSlice` accepts dynamic lists on column, index and constraint selectors;
+it copies the assignment slice and uses the same conflict representation and
+assignment validation. Nil and empty lists fail rendering with `ErrInvalid`,
+never become `DO NOTHING`. Nested queries remain live and bound application
+values remain shallow. A separate public nonempty-list type was rejected because
+it adds construction and zero-value rules without simplifying this boundary.
+`SetAllExcluded` treats column names literally on both assignment sides, matching
+INSERT columns and conflict column names; explicit `Assign` owns field/subscript
+targets.
+
 SQL grammar owners enforce local policy: JSON integer selectors are int4-bounded
 and cast to avoid PostgreSQL's unknown-parameter text overload; input/output JSON
 formats remain distinct. Assignment destinations have their own grammar.
 Parenthesized indirection preserves successive indexing and projection width.
 Window definitions validate local inheritance and effective frame ordering.
 Unknown widths remain unknown; all width consumers share a bounded inspector.
+Row-width errors identify one-based row positions and expected/actual counts,
+never bound data. Unknown rows do not erase the preceding known width.
+
+`LikePrefix`, `LikeSuffix`, `LikeContains` and their case-insensitive variants
+own literal-match escaping: one pass escapes `!`, `%`, and `_`, then adds the
+leading or trailing `%` required by the operation. The pattern is bound and the
+fixed escape is emitted with `LiteralString("!")`. Empty suffix and contains
+inputs intentionally match every non-NULL text value; callers decide whether an
+empty filter should be omitted. Existing `Like` and `ILike` retain raw-pattern
+semantics. Top-level helpers delegate to the `Expr` methods so the pattern
+builder and `ESCAPE` policy have one owner without a new node representation.
 
 ## Rendering and lifetime
 
 One renderer owns buffers, arguments, options, limits and the first error. It
 traverses in emitted SQL order, including nested statements. Parameter nodes bind
-values and emit their placeholder; identifiers, literals, operators and trusted
+values and emit their placeholder. `Param(any)` retains dynamic value types
+and admits untyped nil; a generic type parameter would establish no additional
+invariant. Parameters remain shallow; identifiers, literals, operators and trusted
 fragments are never rewritten. SQL-string placeholder replacement was rejected
 because question marks also occur in PostgreSQL grammar. Rendering never calls
 `driver.Valuer`, resolves a schema or independently renders subquery strings.
@@ -66,9 +134,19 @@ memoization, preserving shared children and cycles, but bound application values
 remain shallow. Automatic attachment snapshots add composition costs; validation
 caches would need invalidation for every live mutation.
 
+The standard-library clone generator discovers statement roots and traverses
+actual Go field types. Generated walkers register statement identities before
+recursion. One semantic policy classifies erased expression/JSON payloads and
+atomic values; it checks payload types as well as variant tags. Unknown roots,
+interfaces, maps and application-owned pointers fail generation. Atomic
+exemptions have checked shapes so new fields require review. Generation removes
+manual traversal maintenance, not runtime copying. Check mode detects stale
+output without rewriting it.
+
 Read-only renders can run concurrently once the graph and bound values are
 stable. Mutation and Reset are unsynchronized. SELECT Reset clears retained
-references while reusing clause capacity; DML Reset releases its lists. A parent
+references while reusing clause capacity; other resettable DML releases its lists.
+INSERT starts another completed builder. A parent
 referencing a reset child observes the reset state. Callers own buffer reuse and
 bound-value lifetime through execution.
 
@@ -83,8 +161,11 @@ Structural checks cover malformed nodes, required clauses, identifiers, known
 widths, duplicate assignments/CTEs, modifier conflicts, branch reachability and
 configured limits. They cannot prove column existence, SQL types, privileges,
 aggregate legality, functional dependencies, scalar-query row cardinality or
-custom driver encoding. Raw projections have unknown width. General `Expr` can
-still place DEFAULT in a forbidden context; this remains a validation gap.
+custom driver encoding. Raw projections have unknown width. Zero write values,
+nil rowsets, names, unknown widths and row assignments supplied to INSERT
+assignment sources retain runtime checks. The write roles prevent DEFAULT from
+entering general expressions through the public typed API; trusted SQL remains
+an intentional escape.
 
 Identifiers are quoted; values bind unless an explicit literal is selected.
 Unsafe fragments are trusted code. `RequireWhere` is a structural guard and
@@ -100,9 +181,9 @@ alternatives are not supported APIs or implementation commitments.
 |---|---|---|
 | 1 | NULL/absence | Keep public containers; false validity binds NULL. Opaque accessors have lower payoff. |
 | 2 | CASE | Separate concrete branch roles; reject sticky misuse state. |
-| 3 | INSERT source | Defer an exclusive source variant; stages sharing one mutable pointer do not enforce exclusivity. |
+| 3 | INSERT source | Immutable column selection before source completion; independent concrete roles; reject shared mutable stages and competing source flags. |
 | 4 | Join qualification | Pending qualifiers, completed CROSS/NATURAL; reject general qualifier methods and interface boxing. |
-| 5 | Conflict target/action | Defer concrete selectors; inference and action predicates have different grammar. |
+| 5 | Conflict target/action | Concrete selectors and completed actions; exact generic union, normalized optional payload. |
 | 6 | MERGE | Category selectors and terminal branches; pre-action override avoids an extra completion wrapper. |
 | 7 | Window frames | Keep dynamic pair/inheritance checks; elaborate bound typestate cannot establish effective ordering. |
 | 8 | Pagination | Defer one LIMIT/FETCH variant; preserve conflict errors instead of silent replacement. |
@@ -117,7 +198,7 @@ alternatives are not supported APIs or implementation commitments.
 | 17 | JSON_TABLE columns | Defer concrete completion roles; heterogeneous interfaces add storage costs without removing dynamic policies. |
 | 18 | XMLTABLE columns | Keep compact terminal storage; preserve value-column PATH, DEFAULT and nullability. |
 | 19 | CTE body | Defer sealed rowset-or-DML capability; nil and top-level placement still need validation. |
-| 20 | DEFAULT context | Defer expression-context checks; a standalone token complicates heterogeneous expression lists. |
+| 20 | DEFAULT context | Opaque concrete write values; direct destination rendering, no general-expression conversion. |
 | 21 | Query degree | Bounded width inspection; stars, composite expansion and live rowsets prevent universal static arity. |
 | 22 | CYCLE constants | Keep bounded inspection; capability bits require fragile propagation through wrappers. |
 | 23 | Identifier paths | Explicit literal/path constructors; eager owned path slices add allocation without schema proof. |
@@ -127,4 +208,4 @@ alternatives are not supported APIs or implementation commitments.
 | 27 | Utility parameters | Traverse for binds; literal-only types wrongly exclude parameter-free function expressions. |
 | 28 | Ordered-set calls | Narrow known helpers; custom function classification stays server-owned. |
 | 29 | Version ownership | Syntax owners and per-render options; reject global registries and version-bound graphs. |
-| 30 | Live/frozen graphs | Explicit Clone; reject automatic snapshots, persistent-builder rewrites and mutation-sensitive caches. |
+| 30 | Live/frozen graphs | Explicit generated graph copying; reject reflection, serialization, automatic snapshots, immutable-subtree sharing and mutation-sensitive caches. |

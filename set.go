@@ -1,6 +1,9 @@
 package qs
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 // SetBuilder combines two Rowsets and always preserves branch parentheses.
 // Limit and OrderBy on a branch apply to that branch; those on this builder
@@ -145,14 +148,14 @@ func (b *ValuesBuilder) append(w *renderer) {
 	w.foot(b.base)
 }
 func (w *renderer) values(rows [][]Expr, allowDefault bool) {
-	if !w.require(len(rows) > 0 && len(rows[0]) > 0, "VALUES", "requires a non-empty row") {
+	if !w.require(len(rows) > 0, "VALUES", "requires at least one row") {
 		return
 	}
 	width := -1
 	w.text("VALUES ")
 	for i, row := range rows {
 		rowWidth := projectionWidth(row)
-		if !w.require(len(row) > 0 && (width < 0 || rowWidth < 0 || rowWidth == width), "VALUES", "row widths differ") {
+		if !w.rowWidth("VALUES", i+1, rowWidth, width) {
 			return
 		}
 		if rowWidth >= 0 {
@@ -160,7 +163,7 @@ func (w *renderer) values(rows [][]Expr, allowDefault bool) {
 		}
 		if !allowDefault {
 			for _, e := range row {
-				if e.kind == exprKeyword && e.text == "DEFAULT" {
+				if e.kind == exprKeyword && e.text == sqlDefault {
 					w.fail(ErrInvalid, "VALUES", "DEFAULT is only allowed directly in INSERT")
 					return
 				}
@@ -171,6 +174,65 @@ func (w *renderer) values(rows [][]Expr, allowDefault bool) {
 		}
 		w.byte('(')
 		w.exprs(row, ", ")
+		w.byte(')')
+	}
+}
+
+// rowWidth retains unknown projections while reporting only structural counts.
+func (w *renderer) rowWidth(clause string, row, actual, expected int) bool {
+	if actual == 0 {
+		w.fail(ErrInvalid, clause, fmt.Sprintf("row %d: expected at least 1 value, got 0", row))
+		return false
+	}
+	if actual >= 0 && expected >= 0 && actual != expected {
+		noun := func(n int) string {
+			if n == 1 {
+				return "value"
+			}
+			return "values"
+		}
+		w.fail(ErrInvalid, clause, fmt.Sprintf("row %d: expected %d %s, got %d %s", row, expected, noun(expected), actual, noun(actual)))
+		return false
+	}
+	return true
+}
+
+func writeProjectionWidth(values []WriteValue) int {
+	if len(values) == 0 {
+		return 0
+	}
+	for _, value := range values {
+		if unknownProjection(value.expr()) {
+			return -1
+		}
+	}
+	return len(values)
+}
+
+func (w *renderer) writeValues(rows [][]WriteValue) {
+	if !w.require(len(rows) > 0, "INSERT", "requires at least one row") {
+		return
+	}
+	width := -1
+	w.text("VALUES ")
+	for i, row := range rows {
+		rowWidth := writeProjectionWidth(row)
+		if !w.rowWidth("INSERT", i+1, rowWidth, width) {
+			return
+		}
+		if rowWidth >= 0 {
+			width = rowWidth
+		}
+		if i != 0 {
+			w.text(", ")
+		}
+		w.byte('(')
+		for j, value := range row {
+			if j != 0 {
+				w.text(", ")
+			}
+			w.writeExpr(value.expr())
+		}
 		w.byte(')')
 	}
 }
@@ -249,9 +311,21 @@ func statementWidth(s Statement, maxDepth int) int {
 			if b != nil && len(b.rows) > 0 {
 				return projectionWidth(b.rows[0])
 			}
-		case *InsertBuilder:
+		case *InsertRows:
 			if b != nil {
-				return projectionWidth(b.returning)
+				return projectionWidth(b.base.returning)
+			}
+		case *InsertSelect:
+			if b != nil {
+				return projectionWidth(b.base.returning)
+			}
+		case *InsertAssignments:
+			if b != nil {
+				return projectionWidth(b.base.returning)
+			}
+		case *InsertDefaults:
+			if b != nil {
+				return projectionWidth(b.base.returning)
 			}
 		case *UpdateBuilder:
 			if b != nil {

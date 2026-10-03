@@ -1,0 +1,191 @@
+{
+  "BenchmarkAPIInsertConstruction/ordinary": {
+    "effect_percent": 0.2235076849256066,
+    "ci95_percent": [
+      -3.251358250424187,
+      3.823178403580871
+    ],
+    "baseline_ns": 417.2,
+    "candidate_ns": 421.45,
+    "baseline_bytes_allocs": [
+      [
+        728,
+        10
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        728,
+        10
+      ]
+    ]
+  },
+  "BenchmarkAPIInsertConstruction/mixed": {
+    "effect_percent": -0.5175518526540844,
+    "ci95_percent": [
+      -2.66436990862567,
+      1.6766160562040444
+    ],
+    "baseline_ns": 357.20000000000005,
+    "candidate_ns": 352.55,
+    "baseline_bytes_allocs": [
+      [
+        760,
+        6
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        760,
+        6
+      ]
+    ]
+  },
+  "BenchmarkAPIInsertConstruction/bulk": {
+    "effect_percent": 9.457807660090236,
+    "ci95_percent": [
+      -5.54517910056314,
+      26.843834371451752
+    ],
+    "baseline_ns": 1144.5,
+    "candidate_ns": 1181.0,
+    "baseline_bytes_allocs": [
+      [
+        2064,
+        20
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        2064,
+        20
+      ]
+    ]
+  },
+  "BenchmarkAPIInsertAssignmentsConstruction/chained": {
+    "effect_percent": 6.531027824365652,
+    "ci95_percent": [
+      -17.977400593286074,
+      38.36259727690138
+    ],
+    "baseline_ns": 968.65,
+    "candidate_ns": 932.0999999999999,
+    "baseline_bytes_allocs": [
+      [
+        2640,
+        5
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        2640,
+        5
+      ]
+    ]
+  },
+  "BenchmarkAPIInsertAssignmentsConstruction/one_call": {
+    "effect_percent": 5.434427625938895,
+    "ci95_percent": [
+      -14.986717815748912,
+      30.760961619109096
+    ],
+    "baseline_ns": 558.25,
+    "candidate_ns": 535.1,
+    "baseline_bytes_allocs": [
+      [
+        1568,
+        2
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1568,
+        2
+      ]
+    ]
+  },
+  "BenchmarkAPITupleUpdateConstruction/bound": {
+    "effect_percent": -2.0522429741338164,
+    "ci95_percent": [
+      -12.865445613587422,
+      10.102853844331273
+    ],
+    "baseline_ns": 393.1,
+    "candidate_ns": 395.9,
+    "baseline_bytes_allocs": [
+      [
+        824,
+        7
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        824,
+        7
+      ]
+    ]
+  },
+  "BenchmarkAPITupleUpdateConstruction/tuple_default": {
+    "effect_percent": -1.2365449260390822,
+    "ci95_percent": [
+      -5.206767686454836,
+      2.8999625825872353
+    ],
+    "baseline_ns": 395.0,
+    "candidate_ns": 391.45000000000005,
+    "baseline_bytes_allocs": [
+      [
+        824,
+        7
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        824,
+        7
+      ]
+    ]
+  },
+  "BenchmarkAPIConflictConstruction/single_assignment": {
+    "effect_percent": 1.3846446563559478,
+    "ci95_percent": [
+      -1.351327948278567,
+      4.196498121194906
+    ],
+    "baseline_ns": 721.8,
+    "candidate_ns": 733.3,
+    "baseline_bytes_allocs": [
+      [
+        1176,
+        15
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1176,
+        15
+      ]
+    ]
+  },
+  "BenchmarkAPIConflictConstruction/multi_assignment": {
+    "effect_percent": -0.9899917617997597,
+    "ci95_percent": [
+      -4.2820411962271825,
+      2.4152818743778455
+    ],
+    "baseline_ns": 539.25,
+    "candidate_ns": 542.05,
+    "baseline_bytes_allocs": [
+      [
+        1032,
+        11
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1032,
+        11
+      ]
+    ]
+  }
+}

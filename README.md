@@ -70,8 +70,8 @@ func filteredUsers(tenantID int, prefix string, roles []string) *qs.SelectBuilde
 
     if prefix != "" {
         q.Where(qs.Or(
-            qs.ILike("name", prefix+"%"),
-            qs.ILike("email", prefix+"%"),
+            qs.ILikePrefix("name", prefix),
+            qs.ILikePrefix("email", prefix),
         ))
     }
     if len(roles) > 0 {
@@ -89,7 +89,7 @@ query, args, err := filteredUsers(42, "jo", []string{"admin", "editor"}).ToSQL()
 SELECT "id", "email" FROM "users"
 WHERE ("tenant_id" = $1)
   AND ("deleted_at" IS NULL)
-  AND (("name" ILIKE $2) OR ("email" ILIKE $3))
+  AND (("name" ILIKE $2 ESCAPE E'!') OR ("email" ILIKE $3 ESCAPE E'!'))
   AND ("role" IN ($4, $5))
 ```
 
@@ -97,6 +97,90 @@ Arguments: `[42 jo% jo% admin editor]`. An empty prefix or role list omits that
 filter. `ILike` binds a SQL pattern; `%` and `_` retain their wildcard meaning.
 An empty `In` list produces FALSE, so guard the list when empty means “no filter”.
 Use `IsNull` for SQL NULL tests; `Eq` binds its value and does not infer IS NULL.
+
+`LikePrefix` and `ILikePrefix` treat `%`, `_`, and `!` in input literally.
+For example, `qs.ILikePrefix("name", "a_%")` renders
+`("name" ILIKE $1 ESCAPE E'!')` and binds `a!_!%%`. The helpers also work
+as `qs.Col("name").ILikePrefix(prefix)`. Their escape clause is fixed; use
+`Like`/`ILike` when supplying a pattern yourself. An empty prefix matches
+non-NULL text; the guard above instead omits that filter.
+
+For a literal suffix or substring, use `LikeSuffix`, `ILikeSuffix`,
+`LikeContains` or `ILikeContains`. They escape `%`, `_` and `!`, then add the
+wildcards required by the operation. The input is treated as text, not as a
+SQL pattern. Empty suffix and contains inputs therefore match every non-NULL
+text value; guard them when an empty input means “no filter”.
+
+Typed fields and relation aliases keep dynamic filters readable while retaining
+the Go type of values expanded by `IN`:
+
+```go
+users := qs.Table("users").As("u")
+id := qs.TypedExpr[int64](users.Col("id"))
+ids := []int64{10, 20}
+requiredTags := []string{"staff", "active"}
+rawUsername := "Al"
+
+q := qs.Select(
+    id.As("id"),
+    users.Col("username"),
+    qs.CountAll().Over(qs.Window()).As("total"),
+).FromExpr(users)
+if len(ids) > 0 {
+    q.Where(id.In(ids...))
+}
+if len(requiredTags) > 0 {
+    q.Where(qs.ArrayContains(users.Col("tags"), qs.ArrayParam(requiredTags, qs.TypeText)))
+}
+if rawUsername != "" {
+    q.Where(qs.Lower(users.Col("username")).LikePrefix(strings.ToLower(rawUsername)))
+}
+query, args, err := q.OrderBy(id.Asc()).Limit(20).ToSQL()
+```
+
+```sql
+SELECT "u"."id" AS "id", "u"."username", count(*) OVER () AS "total"
+FROM "users" AS "u"
+WHERE ("u"."id" IN ($1, $2))
+  AND ("u"."tags" @> ($3)::text[])
+  AND (lower("u"."username") LIKE $4 ESCAPE E'!')
+ORDER BY "u"."id" ASC LIMIT $5
+```
+
+Arguments: `[10 20 [staff active] al% 20]`. `TypedExpr[int64]` makes the
+expanded `IN` values type-checked by Go. `ArrayParam` binds one driver-encoded
+array and casts it to `text[]`; it does not expand one placeholder per tag.
+`LikePrefix` escapes pattern metacharacters in the raw username. Pass the
+original text; do not pre-escape it. The empty-list guards are application
+policy: `Field.In` with no values renders FALSE, while an application that
+treats an empty filter as “no filter” should omit it. The `LOWER(column) LIKE`
+form and PostgreSQL `ILIKE` are not equivalent for every locale or Unicode
+input; `strings.ToLower` and PostgreSQL `LOWER` can also differ. Choose based
+on the matching contract. A `count(*) OVER ()` value is present on each
+returned row, so an empty page has no row from which to read the count.
+
+```go
+query, args, err := qs.SelectCols("id").From("users").
+    Where(qs.LikeSuffix("email", "@example.com")).ToSQL()
+```
+
+```sql
+SELECT "id" FROM "users" WHERE ("email" LIKE $1 ESCAPE E'!')
+```
+
+Arguments: `[%@example.com]`.
+
+```go
+query, args, err := qs.SelectCols("id").From("users").
+    Where(qs.ILikeContains("display_name", "50%_")).ToSQL()
+```
+
+```sql
+SELECT "id" FROM "users" WHERE ("display_name" ILIKE $1 ESCAPE E'!')
+```
+
+Arguments: `[%50!%!_%]`. The `%` and `_` from the raw input are escaped and
+match literally.
 
 ## Compose queries with limits and offsets
 
@@ -132,6 +216,189 @@ page := base.Clone().
     OrderBy(qs.Asc("id")).
     Limit(10)
 ```
+
+## Write rows and handle conflicts
+
+Write values with `Value`, SQL expressions with `Write`, and server defaults with
+`Default`. Every example below renders SQL and a separate argument list. The
+`users` examples assume `id` is a primary key.
+
+### Insert a row
+
+```go
+query, args, err := qs.InsertInto("users").
+    Columns("id", "name").
+    Values(qs.Value(42), qs.Value("Ana")).
+    ReturningCols("id").
+    ToSQL()
+```
+
+```sql
+INSERT INTO "users" ("id", "name") VALUES ($1, $2) RETURNING "id"
+```
+
+Arguments: `[42 Ana]`.
+
+### Update a row
+
+```go
+query, args, err := qs.Update("users").
+    Set(qs.Set("name", qs.Value("Ana"))).
+    Where(qs.Eq("id", 42)).
+    ReturningCols("id", "name").
+    ToSQL()
+```
+
+```sql
+UPDATE "users" SET "name" = $1 WHERE ("id" = $2) RETURNING "id", "name"
+```
+
+Arguments: `[Ana 42]`.
+
+### Delete a row
+
+```go
+query, args, err := qs.DeleteFrom("users").
+    Where(qs.Eq("id", 42)).
+    ReturningCols("id").
+    ToSQL()
+```
+
+```sql
+DELETE FROM "users" WHERE ("id" = $1) RETURNING "id"
+```
+
+Arguments: `[42]`.
+
+### Upsert with explicit assignments
+
+```go
+query, args, err := qs.InsertInto("users").
+    Columns("id", "name").
+    Values(qs.Value(42), qs.Value("Ana")).
+    OnConflict(qs.ConflictColumns("id").
+        DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
+    ReturningCols("id").
+    ToSQL()
+```
+
+```sql
+INSERT INTO "users" ("id", "name") VALUES ($1, $2)
+ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name"
+RETURNING "id"
+```
+
+Arguments: `[42 Ana]`.
+
+### Upsert dynamic columns
+
+Build the assignment list from the columns that an operation actually updates:
+
+```go
+columns := []string{"name", "email"}
+query, args, err := qs.InsertInto("users").
+    Columns("id", "name", "email").
+    Values(qs.Value(42), qs.Value("Ana"), qs.Value("ana@example.com")).
+    OnConflict(qs.ConflictColumns("id").
+        DoUpdateSlice(qs.SetAllExcluded(columns...))).
+    ToSQL()
+```
+
+```sql
+INSERT INTO "users" ("id", "name", "email") VALUES ($1, $2, $3)
+ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name", "email" = "excluded"."email"
+```
+
+Arguments: `[42 Ana ana@example.com]`.
+
+`DoUpdateSlice` copies the assignment slice. Changing its entries afterward does
+not change the action; nested queries remain live and bound values remain shallow.
+An empty list returns `ErrInvalid` when rendered, with empty SQL and nil arguments.
+It does not become `DO NOTHING`.
+
+### Upsert with an inferred index target
+
+This assumes a unique index on `users.id`.
+
+```go
+query, args, err := qs.InsertInto("users").
+    Columns("id", "name").
+    Values(qs.Value(42), qs.Value("Ana")).
+    OnConflict(qs.ConflictIndex(qs.IndexColumn("id")).
+        DoUpdateSlice(qs.SetAllExcluded("name"))).
+    ToSQL()
+```
+
+```sql
+INSERT INTO "users" ("id", "name") VALUES ($1, $2)
+ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name"
+```
+
+Arguments: `[42 Ana]`.
+
+### Upsert with a named constraint
+
+This assumes `users_pkey` is the primary-key constraint on `users.id`.
+
+```go
+query, args, err := qs.InsertInto("users").
+    Columns("id", "name").
+    Values(qs.Value(42), qs.Value("Ana")).
+    OnConflict(qs.ConflictConstraint("users_pkey").
+        DoUpdateSlice(qs.SetAllExcluded("name"))).
+    ToSQL()
+```
+
+```sql
+INSERT INTO "users" ("id", "name") VALUES ($1, $2)
+ON CONFLICT ON CONSTRAINT "users_pkey" DO UPDATE SET "name" = "excluded"."name"
+```
+
+Arguments: `[42 Ana]`.
+
+### Upsert a literal dotted column
+
+`Columns`, `ConflictColumns` and `Ident` treat the dot as part of one identifier.
+Use `SetAllExcluded` when the update list is built from those literal column names.
+
+```go
+query, args, err := qs.InsertInto("settings").
+    Columns("id", "a.b").
+    Values(qs.Value(42), qs.Value("new")).
+    OnConflict(qs.ConflictColumns("id").
+        DoUpdateSlice(qs.SetAllExcluded("a.b"))).
+    Returning(qs.Ident("a.b")).
+    ToSQL()
+```
+
+```sql
+INSERT INTO "settings" ("id", "a.b") VALUES ($1, $2)
+ON CONFLICT ("id") DO UPDATE SET "a.b" = "excluded"."a.b"
+RETURNING "a.b"
+```
+
+Arguments: `[42 new]`. This assumes a primary key on `settings.id` and a literal
+text column named `a.b`.
+
+Check `err` before passing the SQL and arguments to your driver. `Value(value)`
+binds application data, including `nil`; `Write(expr)` uses a SQL expression at a
+destination; and `Default()` requests the destination's SQL default.
+
+### Insert runtime column and value slices
+
+```go
+columns := []string{"id", "name"}
+row := []qs.WriteValue{qs.Value(42), qs.Value("Ana")}
+query, args, err := qs.InsertInto("users").
+    ColumnsSlice(columns).ValuesSlice(row).ToSQL()
+// INSERT INTO "users" ("id", "name") VALUES ($1, $2)
+// args: [42 Ana]
+```
+
+`ValuesSlice` also starts positional inserts and appends rows to completed
+inserts. These methods copy slice entries, retain live nested statements, and
+keep parameter payloads shallow. Empty column lists and empty rows fail at
+render time; omit `ColumnsSlice` for positional insertion.
 
 ## Build a report with a CTE
 
@@ -188,25 +455,51 @@ through the CTE and outer query. `Having` uses the aggregate expression;
 `Using` or `UsingAs`. CROSS and natural joins are already complete relations.
 Use `Case` for condition branches and `CaseOf` for comparisons to one operand.
 
-## Insert and update on conflict
+## Builder composition and write roles
 
-```go
-query, args, err := qs.InsertInto("users").
-    Columns("id", "name").Values(42, "Ana").
-    OnConflict(qs.ConflictColumns("id").
-        DoUpdate(qs.SetExpr("name", qs.Excluded("name")))).
-    ReturningCols("id").
-    ToSQL()
-```
+Statement builders mutate. Repeated calls behave as follows:
 
-```sql
-INSERT INTO "users" ("id", "name") VALUES ($1, $2)
-ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name"
-RETURNING "id"
-```
+| Receiver | Method | Repeated call |
+|---|---|---|
+| `SelectBuilder` | `From`, `FromExpr` | Replaces the FROM list |
+| `UpdateBuilder` | `From`, `FromExpr` | Appends FROM items |
+| `DeleteBuilder` | `From` | Replaces the target table |
+| `InsertSelect` | `From` | Replaces the source query |
+| SELECT, UPDATE, DELETE builders | `Where` | Appends conditions with AND |
+| `UpdateBuilder`, `InsertAssignments` | `Set` | Appends assignments |
+| `InsertRows` | `Values` | Appends a row |
 
-Arguments: `[42 Ana]`. `Set` binds a Go value; `SetExpr` assigns an SQL expression.
-`ReturningCols` requests columns for your driver to scan.
+Conflict descriptors use value-style methods: retain the result of `TargetWhere`
+or `ConflictUpdate.Where`. `TargetWhere` filters index inference; `Where` filters
+the update action. These calls do not mutate an earlier descriptor.
+
+Select an optional column list before the INSERT source. `Columns(first, rest...)`
+and `Targets(first, rest...)` return an immutable `InsertColumnsTarget` exposing
+only `Values`, `From` and `DefaultValues`. Assignment INSERTs select `Set` directly
+on `InsertInto`; they cannot combine assignments with an explicit target list.
+
+Each source selection creates an independent completed builder: rows append
+`Values`, SELECT replaces `From`, assignments append `Set`, and defaults have no
+source method. Reusing either target selector creates separate builders sharing
+only the immutable target list. Target expressions can retain live child queries;
+`Clone` provides graph isolation. Completed builders have no `Columns`, `Targets`
+or `Reset`; defaults also omit identity overriding.
+
+Scalar assignments use `Set(column, Value(value))` for application data and
+`Set(column, Write(expr))` or `Assign(target, Write(expr))` for SQL expressions.
+Row assignments use `AssignRow(targets, WriteTuple(...))` or `WriteRow(...)`;
+`WriteRowExpr` accepts an existing ordinary row expression. These constructors
+preserve tuple versus `ROW(...)` spelling and allow direct DEFAULT elements.
+Write values cannot become general expressions or bound application values.
+Typed field, JSON, NULL and default assignment helpers use the same write owner.
+
+Conflict selectors expose only legal actions. `AnyConflict` permits `DoNothing`;
+column/index selectors also permit inference predicates and nonempty `DoUpdate`.
+Constraint selectors omit inference predicates. All three targeted selectors also
+accept `DoUpdateSlice`, whose nonempty-list requirement is checked when rendering.
+Only completed updates expose `Where`. Generic `OnConflict` accepts exactly the
+two completed action types, with type inference; it cannot implement a consumer
+interface's nongeneric `OnConflict` method.
 
 ## Cast a value to UUID
 
@@ -232,7 +525,8 @@ arrays from any descriptor.
 
 ## Use pgx types
 
-Pass pgx values directly to `Param`, `Eq` or `Values`. For example, with
+Pass pgx values directly to `Param`, `Eq` or standalone `Values`. Destination
+writes use `Value(value)`. For example, with
 `github.com/jackc/pgx/v5/pgtype` imported and an open `conn` and `ctx`:
 
 ```go
@@ -317,14 +611,27 @@ Use `Param` for values inside expressions, `Col` for qualified column paths and
 `Ident` for literal identifier parts. For example, `Col("u.id")` renders
 `"u"."id"`, while `Ident("u.id")` renders `"u.id"`.
 
-Methods ending in `Expr` accept expressions. Value-binding methods such as `Eq`
-and `Values` accept application values; use `EqExpr` and `ValuesExpr` to compose
-expressions instead. `Field[T]`, `Null[T]` and `Optional[T]` provide typed operands,
+Comparison methods such as `Eq` bind application values; `EqExpr` composes an
+expression. Standalone `Values` binds values and `ValuesExpr` builds an ordinary
+rowset from expressions. INSERT and MERGE destination values and scalar
+assignments accept `WriteValue`, constructed with `Value`, `Write` or `Default`.
+`Field[T]`, `Null[T]` and `Optional[T]` provide typed operands,
 explicit SQL NULL values and optional fields; see the [executable examples](example_test.go).
 
 `SelectSQL`, `UnsafeSQL`, `Fragment` and `StatementSQL` support trusted
 application-authored SQL. Keep request values in bind parameters. Raw fragments
 do not bind handwritten placeholders.
+
+`Param` accepts `any`, including an untyped nil:
+
+```go
+query, args, err := qs.Select(qs.Param(nil).Cast(qs.TypeText)).ToSQL()
+// SELECT ($1)::text
+// args: [<nil>]
+```
+
+When migrating explicit type arguments, preserve the argument type:
+`qs.Param[int64](1)` becomes `qs.Param(int64(1))`.
 
 ## Reuse buffers for repeated rendering
 
@@ -346,7 +653,7 @@ allocations when the query is prebuilt and the buffers have enough capacity.
 Nested builders remain live. `Clone` copies the statement graph, including shared
 subqueries; application values in parameters remain shallow. Read-only rendering
 can run concurrently once the graph and values are stable. Mutation and `Reset`
-are unsynchronized.
+are unsynchronized. INSERT builders use a fresh completed source instead of `Reset`.
 
 ## Render options and errors
 
@@ -359,6 +666,16 @@ Check rendering errors before execution. Errors wrap sentinels such as
 `ErrInvalid`, `ErrUnsupported` and `ErrParameterLimit` in `RenderError`; use
 `errors.Is` to inspect them. Failed `ToSQL` calls return empty SQL and nil
 arguments. Failed appends preserve their input lengths and visible prefixes.
+
+Row-width errors report one-based indexes and counts without bound values:
+
+```go
+_, _, err := qs.Values(1).Row(2, 3).ToSQL()
+// qs: invalid query (VALUES): row 2: expected 1 value, got 2 values
+```
+
+INSERT SELECT errors report target and projection counts. Unknown projection
+widths are left for PostgreSQL to validate.
 
 ## More examples and development
 

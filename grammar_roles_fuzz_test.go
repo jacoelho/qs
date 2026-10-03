@@ -157,7 +157,7 @@ func FuzzMergeRoles(f *testing.F) {
 			if category == 0 || category == 3 {
 				switch (step >> 2) % 3 {
 				case 0:
-					branch = matched.ThenUpdate(Set("v", value+50))
+					branch = matched.ThenUpdate(Set("v", Write(Param(value+50))))
 					golden += `UPDATE SET "v" = ?`
 					args = append(args, value+50)
 				case 1:
@@ -178,23 +178,23 @@ func FuzzMergeRoles(f *testing.F) {
 						selector := missing.OverridingSystemValue()
 						golden += " OVERRIDING SYSTEM VALUE"
 						if action == 0 {
-							branch = selector.ThenInsert(Set("v", value+50))
+							branch = selector.ThenInsert(Set("v", Write(Param(value+50))))
 						} else {
-							branch = selector.ThenInsertValues([]string{"v"}, Param(value+50))
+							branch = selector.ThenInsertValues([]string{"v"}, Write(Param(value+50)))
 						}
 					case 2:
 						selector := missing.OverridingUserValue()
 						golden += " OVERRIDING USER VALUE"
 						if action == 0 {
-							branch = selector.ThenInsert(Set("v", value+50))
+							branch = selector.ThenInsert(Set("v", Write(Param(value+50))))
 						} else {
-							branch = selector.ThenInsertValues([]string{"v"}, Param(value+50))
+							branch = selector.ThenInsertValues([]string{"v"}, Write(Param(value+50)))
 						}
 					default:
 						if action == 0 {
-							branch = missing.ThenInsert(Set("v", value+50))
+							branch = missing.ThenInsert(Set("v", Write(Param(value+50))))
 						} else {
-							branch = missing.ThenInsertValues([]string{"v"}, Param(value+50))
+							branch = missing.ThenInsertValues([]string{"v"}, Write(Param(value+50)))
 						}
 					}
 					golden += " VALUES (?)"

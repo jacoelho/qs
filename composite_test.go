@@ -16,9 +16,9 @@ func TestCompositeExpressions(t *testing.T) {
 		{"like_escape_expr", Select(Col("name").LikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()), `SELECT ("name" LIKE $1 ESCAPE $2)`, []any{`a\\_%`, `\\`}},
 		{"not_like_escape_expr", Select(Col("name").NotLikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()), `SELECT ("name" NOT LIKE $1 ESCAPE $2)`, []any{`a\\_%`, `\\`}},
 		{"not_ilike_escape_expr", Select(Col("name").NotILikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()), `SELECT ("name" NOT ILIKE $1 ESCAPE $2)`, []any{`a\\_%`, `\\`}},
-		{"complex_insert_targets", InsertInto("people").Targets(Col("person").Field("first_name"), Col("items").Index(LiteralInt(2))).ValuesExpr(Param("Ada"), Param("tag")), `INSERT INTO "people" ("person"."first_name", "items"[2]) VALUES ($1, $2)`, []any{"Ada", "tag"}},
-		{"multiple_insert_rows", InsertInto("people").Targets(Col("first_name"), Col("age")).Values("Ada", 36).Values("Grace", 37), `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2), ($3, $4)`, []any{"Ada", 36, "Grace", 37}},
-		{"row_assignment", Update("people").Set(AssignRow([]Expr{Col("person").Field("first_name"), Col("person").Field("age")}, Tuple(Param("Grace"), Param(37)))), `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, []any{"Grace", 37}},
+		{"complex_insert_targets", InsertInto("people").Targets(Col("profile").Field("name"), Col("items").Index(Param(2))).Values(Write(Param("Ada")), Write(Param("tag"))), `INSERT INTO "people" ("profile"."name", "items"[$1]) VALUES ($2, $3)`, []any{2, "Ada", "tag"}},
+		{"multiple_insert_rows", InsertInto("people").Columns("first_name", "age").Values(Write(Param("Ada")), Write(Param(36))).Values(Write(Param("Grace")), Write(Param(37))), `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2), ($3, $4)`, []any{"Ada", 36, "Grace", 37}},
+		{"row_assignment", Update("people").Set(AssignRow([]Expr{Col("person").Field("first_name"), Col("person").Field("age")}, WriteTuple(Write(Param("Grace")), Write(Param(37))))), `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, []any{"Grace", 37}},
 		{"subquery_row_assignment", Update("people").Set(AssignRowFrom([]Expr{Col("first_name"), Col("age")}, Select(Param("Grace"), Param(37)))), `UPDATE "people" SET ("first_name", "age") = (SELECT $1, $2)`, []any{"Grace", 37}},
 	})
 }
@@ -28,8 +28,8 @@ func TestCompositeUnknownProjectionWidths(t *testing.T) {
 
 	checkSQL(t, Select(Row(Col("person").Fields()).Expr()), `SELECT ROW(("person").*)`)
 	checkSQL(t, ValuesExpr(Col("person").Fields()), `VALUES (("person").*)`)
-	checkSQL(t, InsertInto("people").Columns("first_name", "age").ValuesExpr(Col("person").Fields()), `INSERT INTO "people" ("first_name", "age") VALUES (("person").*)`)
-	checkSQL(t, Update("people").Set(AssignRow([]Expr{Col("first_name"), Col("age")}, Row(Col("person").Fields()))), `UPDATE "people" SET ("first_name", "age") = ROW(("person").*)`)
+	checkSQL(t, InsertInto("people").Columns("first_name", "age").Values(Write(Col("person").Fields())), `INSERT INTO "people" ("first_name", "age") VALUES (("person").*)`)
+	checkSQL(t, Update("people").Set(AssignRow([]Expr{Col("first_name"), Col("age")}, WriteRowExpr(Row(Col("person").Fields())))), `UPDATE "people" SET ("first_name", "age") = ROW(("person").*)`)
 }
 
 func TestCompositeKnownWidthErrors(t *testing.T) {
@@ -39,32 +39,32 @@ func TestCompositeKnownWidthErrors(t *testing.T) {
 	checkError(t, Select(Row().Expr()), ErrInvalid)
 	checkError(t, Select(Row(Col("a"), Col("b")).Eq(Row(Col("a"))).Expr()), ErrInvalid)
 	checkError(t, ValuesExpr(Param(1)).RowExpr(Param(2), Param(3)), ErrInvalid)
-	checkError(t, InsertInto("people").Columns("first_name", "age").ValuesExpr(Param("Ada")), ErrInvalid)
-	checkError(t, InsertInto("people").Columns("first_name", "age").Columns("first_name").Values("Ada", 36, "duplicate"), ErrInvalid)
-	checkError(t, Update("people").Set(AssignRow([]Expr{Col("first_name"), Col("age")}, Tuple(Param("Ada")))), ErrInvalid)
+	checkError(t, InsertInto("people").Columns("first_name", "age").Values(Write(Param("Ada"))), ErrInvalid)
+	checkError(t, InsertInto("people").Columns("first_name", "age", "first_name").Values(Write(Param("Ada")), Write(Param(36)), Write(Param("duplicate"))), ErrInvalid)
+	checkError(t, Update("people").Set(AssignRow([]Expr{Col("first_name"), Col("age")}, WriteRowExpr(Tuple(Param("Ada"))))), ErrInvalid)
 	checkError(t, Update("people").Set(AssignRowFrom([]Expr{Col("first_name"), Col("age")}, Select(Param("Ada")))), ErrInvalid)
 	checkError(t, Select(Col("name").EqExpr(Param("Ada")).EscapeExpr(Param(`\\`)).Expr()), ErrInvalid)
-	checkError(t, InsertInto("people").Targets(Col("first_name"), Col("first_name")).Values("Ada", "Grace"), ErrInvalid)
+	checkError(t, InsertInto("people").Targets(Col("first_name"), Col("first_name")).Values(Write(Param("Ada")), Write(Param("Grace"))), ErrInvalid)
 }
 
 func TestCompositeSlicesAndCloneIsolation(t *testing.T) {
 	t.Parallel()
 
 	targets := []Expr{Col("person").Field("first_name"), Col("person").Field("age")}
-	row := Tuple(Param("Ada"), Param(36))
+	row := WriteTuple(Write(Param("Ada")), Write(Param(36)))
 	assignment := AssignRow(targets, row)
 	targets[0] = Col("changed")
 	checkSQL(t, Update("people").Set(assignment), `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, "Ada", 36)
 
 	insertTargets := []Expr{Col("first_name"), Col("age")}
-	insert := InsertInto("people").Targets(insertTargets...).Values("Ada", 36)
+	insert := InsertInto("people").Targets(insertTargets[0], insertTargets[1]).Values(Write(Param("Ada")), Write(Param(36)))
 	insertTargets[0] = Col("changed")
 	checkSQL(t, insert, `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2)`, "Ada", 36)
 
 	original := Update("people").Set(AssignRow([]Expr{
 		Col("person").Field("first_name"),
 		Col("person").Field("age"),
-	}, Tuple(Param("Ada"), Param(36))))
+	}, WriteTuple(Write(Param("Ada")), Write(Param(36)))))
 	cloned := Clone(original)
 	cloned.set[0].columns[0].node.left.text = "other"
 	checkSQL(t, original, `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, "Ada", 36)

@@ -251,7 +251,8 @@ func (w *renderer) foot(base statementBase) {
 }
 func isDML(s Statement) bool {
 	switch s.(type) {
-	case *InsertBuilder, *UpdateBuilder, *DeleteBuilder, *MergeBuilder:
+	case *InsertRows, *InsertSelect, *InsertAssignments, *InsertDefaults,
+		*UpdateBuilder, *DeleteBuilder, *MergeBuilder:
 		return true
 	default:
 		return false

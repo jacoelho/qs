@@ -114,7 +114,7 @@ func build00263() qs.Statement {
 	return qs.Select(qs.Call("string_agg", qs.Ident("a"), qs.LiteralString(","))).FromExpr(qs.Subquery(qs.ValuesExpr(qs.NullLiteral()).RowExpr(qs.NullLiteral()), "g", "a"))
 }
 func build00271() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("bytea_test_table")).ValuesExpr(qs.Call("decode", qs.LiteralString("aa"), qs.LiteralString("hex")))
+	return qs.InsertIntoTable(qs.Table("bytea_test_table")).Values(qs.Write(qs.Call("decode", qs.LiteralString("aa"), qs.LiteralString("hex"))))
 }
 func build00279() qs.Statement {
 	return qs.Select(qs.Call("min", qs.Ident("v"))).FromExpr(qs.Table("bytea_test_table"))
@@ -174,17 +174,17 @@ func build00423() qs.Statement {
 	return qs.Select(qs.Call("pg_describe_object", qs.Ident("refclassid"), qs.Ident("refobjid"), qs.Ident("refobjsubid")).As("ref"), qs.Ident("deptype")).FromExpr(qs.Table("pg_depend")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("classid"), "=", (qs.LiteralString("pg_operator")).Cast(qs.TypeNamed("regclass")))), qs.AsCondition(qs.Operator(qs.Ident("objid"), "=", (qs.LiteralString("===(bool,bool)")).Cast(qs.TypeNamed("regoperator"))))).Expr())).OrderBy((qs.LiteralInt(1)).Asc())
 }
 func build00431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("attmp")).Columns("a", "b", "c", "d", "e", "f", "g", "i", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z").ValuesExpr(qs.LiteralInt(4), qs.LiteralString("name"), qs.LiteralString("text"), qs.LiteralNumeric("4.1"), qs.LiteralNumeric("4.1"), qs.LiteralInt(2), qs.LiteralString("(4.1,4.1,3.1,3.1)"), qs.LiteralString("c"), qs.LiteralInt(314159), qs.LiteralString("(1,1)"), qs.LiteralString("512"), qs.LiteralString("1 2 3 4 5 6 7 8"), qs.LiteralBool(true), qs.LiteralString("(1.1,1.1)"), qs.LiteralString("(4.1,4.1,3.1,3.1)"), qs.LiteralString("(0,2,4.1,4.1,3.1,3.1)"), qs.LiteralString("(4.1,4.1,3.1,3.1)"), qs.LiteralString("epoch"), qs.LiteralString("01:00:10"), qs.LiteralString("{1.0,2.0,3.0,4.0}"), qs.LiteralString("{1.0,2.0,3.0,4.0}"), qs.LiteralString("{1,2,3,4}"))
+	return qs.InsertIntoTable(qs.Table("attmp")).Columns("a", "b", "c", "d", "e", "f", "g", "i", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z").Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("name")), qs.Write(qs.LiteralString("text")), qs.Write(qs.LiteralNumeric("4.1")), qs.Write(qs.LiteralNumeric("4.1")), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("(4.1,4.1,3.1,3.1)")), qs.Write(qs.LiteralString("c")), qs.Write(qs.LiteralInt(314159)), qs.Write(qs.LiteralString("(1,1)")), qs.Write(qs.LiteralString("512")), qs.Write(qs.LiteralString("1 2 3 4 5 6 7 8")), qs.Write(qs.LiteralBool(true)), qs.Write(qs.LiteralString("(1.1,1.1)")), qs.Write(qs.LiteralString("(4.1,4.1,3.1,3.1)")), qs.Write(qs.LiteralString("(0,2,4.1,4.1,3.1,3.1)")), qs.Write(qs.LiteralString("(4.1,4.1,3.1,3.1)")), qs.Write(qs.LiteralString("epoch")), qs.Write(qs.LiteralString("01:00:10")), qs.Write(qs.LiteralString("{1.0,2.0,3.0,4.0}")), qs.Write(qs.LiteralString("{1.0,2.0,3.0,4.0}")), qs.Write(qs.LiteralString("{1,2,3,4}")))
 }
 func build00439() qs.Statement {
 	return qs.Select(qs.Ident("typname")).FromExpr(qs.Table("pg_type")).Where(qs.AsCondition(qs.Operator(qs.Ident("oid"), "=", (qs.LiteralString("attmp_array2[]")).Cast(qs.TypeNamed("regtype")))))
 }
 func build00447() qs.Statement { return qs.Select(qs.Ident("unique1")).FromExpr(qs.Table("tenk1")) }
 func build00455() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("attmp3")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(50))
+	return qs.InsertIntoTable(qs.Table("attmp3")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(50)))
 }
 func build00463() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("attmp7")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(18))
+	return qs.InsertIntoTable(qs.Table("attmp7")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(18)))
 }
 func build00471() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("nv_parent")).Where(qs.AsCondition((qs.Ident("d")).BetweenExpr((qs.LiteralString("2009-08-01")).Cast(qs.TypeNamed("date")), (qs.LiteralString("2009-08-31")).Cast(qs.TypeNamed("date"))).Expr()))).Costs(false)
@@ -193,28 +193,28 @@ func build00479() qs.Statement {
 	return qs.Select(qs.Ident("conname"), (qs.Ident("tgfoid")).Cast(qs.TypeNamed("regproc")), qs.Ident("tgtype"), qs.Ident("tgdeferrable"), qs.Ident("tginitdeferred")).FromExpr(qs.InnerJoin(qs.Table("pg_trigger"), qs.Table("pg_constraint").As("con")).On(qs.AsCondition(qs.Operator(qs.Ident("con", "oid"), "=", qs.Ident("tgconstraint"))))).Where(qs.AsCondition(qs.Operator(qs.Ident("tgrelid"), "=", (qs.LiteralString("fktable")).Cast(qs.TypeNamed("regclass"))))).OrderBy((qs.LiteralInt(1)).Asc(), (qs.LiteralInt(2)).Asc(), (qs.LiteralInt(3)).Asc())
 }
 func build00487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc2")).Columns("test2").ValuesExpr(qs.LiteralInt(-3))
+	return qs.InsertIntoTable(qs.Table("atacc2")).Columns("test2").Values(qs.Write(qs.LiteralInt(-3)))
 }
 func build00495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc2")).Columns("test").ValuesExpr(qs.LiteralInt(-3))
+	return qs.InsertIntoTable(qs.Table("atacc2")).Columns("test").Values(qs.Write(qs.LiteralInt(-3)))
 }
 func build00503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test").ValuesExpr(qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test").Values(qs.Write(qs.LiteralInt(3)))
 }
 func build00511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test").ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test").Values(qs.Write(qs.LiteralInt(2)))
 }
 func build00519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test").ValuesExpr(qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test").Values(qs.Write(qs.LiteralInt(3)))
 }
 func build00527() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test", "test2").ValuesExpr(qs.LiteralInt(3), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("test", "test2").Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.NullLiteral()))
 }
 func build00535() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc1")).ValuesExpr(qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("atacc1")).Values(qs.Write(qs.NullLiteral()))
 }
 func build00543() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parent")).ValuesExpr(qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("parent")).Values(qs.Write(qs.NullLiteral()))
 }
 func build00551() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("def_test")) }
 func build00559() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("atacc1")) }
@@ -222,10 +222,10 @@ func build00567() qs.Statement {
 	return qs.Select(qs.Ident("b"), qs.Ident("c"), qs.Ident("d")).FromExpr(qs.Table("atacc1"))
 }
 func build00575() qs.Statement {
-	return qs.UpdateTable(qs.Table("atacc1")).Set(qs.Assign(qs.Ident("b"), qs.LiteralInt(2))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
+	return qs.UpdateTable(qs.Table("atacc1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralInt(2)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
 }
 func build00583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("a", "b", "c", "d").ValuesExpr(qs.LiteralInt(10), qs.LiteralInt(11), qs.LiteralInt(12), qs.LiteralInt(13))
+	return qs.InsertIntoTable(qs.Table("atacc1")).Columns("a", "b", "c", "d").Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralInt(12)), qs.Write(qs.LiteralInt(13)))
 }
 func build00591() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("atacc1")).Where(qs.AsCondition(qs.Operator(qs.Ident("........pg.dropped.1........"), "=", qs.LiteralInt(3))))
@@ -235,10 +235,10 @@ func build00607() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("
 func build00615() qs.Statement { return qs.Select(qs.Ident("f1")).FromExpr(qs.Table("c1")) }
 func build00623() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("p1")) }
 func build00631() qs.Statement {
-	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f3"), qs.LiteralString("zz")))
+	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f3"), qs.Write(qs.LiteralString("zz"))))
 }
 func build00639() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("anothertab")).Columns("atcol1", "atcol2").ValuesExpr(qs.Default(), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("anothertab")).Columns("atcol1", "atcol2").Values(qs.Default(), qs.Write(qs.NullLiteral()))
 }
 func build00647() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("another")) }
 func build00655() qs.Statement {
@@ -255,7 +255,7 @@ func build00687() qs.Statement {
 	return qs.Select(qs.Call("check_ddl_rewrite", qs.LiteralString("rewrite_test"), qs.LiteralString("\n  ALTER TABLE rewrite_test\n      ADD COLUMN empty1 text,\n      ADD COLUMN notempty1_rewrite serial;\n")))
 }
 func build00695() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("alterlock2")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("alterlock2")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)))
 }
 func build00703() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("my_locks")).OrderBy((qs.LiteralInt(1)).Asc())
@@ -277,26 +277,26 @@ func build00751() qs.Statement {
 	return qs.Select(qs.Ident("attislocal"), qs.Ident("attinhcount")).FromExpr(qs.Table("pg_attribute")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("attrelid"), "=", (qs.LiteralString("part_1")).Cast(qs.TypeNamed("regclass")))), qs.AsCondition(qs.Operator(qs.Ident("attnum"), ">", qs.LiteralInt(0)))).Expr()))
 }
 func build00759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("partr_def1")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(10))
+	return qs.InsertIntoTable(qs.Table("partr_def1")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(10)))
 }
 func build00767() qs.Statement { return qs.DeleteFromTable(qs.Table("hpart_2")) }
 func build00775() qs.Statement {
 	return qs.Select((qs.Ident("attrelid")).Cast(qs.TypeNamed("regclass")), qs.Ident("attname"), qs.Ident("attnum")).FromExpr(qs.Table("pg_attribute")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("attname"), "=", qs.LiteralString("a"))), qs.AsCondition(qs.Or(qs.AsCondition(qs.Operator(qs.Ident("attrelid"), "=", (qs.LiteralString("p")).Cast(qs.TypeNamed("regclass")))), qs.AsCondition(qs.Operator(qs.Ident("attrelid"), "=", (qs.LiteralString("p1")).Cast(qs.TypeNamed("regclass")))), qs.AsCondition(qs.Operator(qs.Ident("attrelid"), "=", (qs.LiteralString("p11")).Cast(qs.TypeNamed("regclass"))))).Expr())).Expr())).OrderBy((((qs.Ident("attrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).Asc())
 }
 func build00783() qs.Statement {
-	return qs.UpdateTable(qs.Table("bar1")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("bar1")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1)))))
 }
 func build00791() qs.Statement {
 	return qs.Select(qs.Ident("prop"), qs.Call("pg_indexam_has_property", qs.Ident("a", "oid"), qs.Ident("prop")).As("AM"), qs.Call("pg_index_has_property", (qs.LiteralString("onek_hundred")).Cast(qs.TypeNamed("regclass")), qs.Ident("prop")).As("Index"), qs.Call("pg_index_column_has_property", (qs.LiteralString("onek_hundred")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(1), qs.Ident("prop")).As("Column")).FromExpr(qs.Table("pg_am").As("a"), qs.TableFunc(qs.Call("unnest", (qs.Array(qs.LiteralString("asc"), qs.LiteralString("desc"), qs.LiteralString("nulls_first"), qs.LiteralString("nulls_last"), qs.LiteralString("orderable"), qs.LiteralString("distance_orderable"), qs.LiteralString("returnable"), qs.LiteralString("search_array"), qs.LiteralString("search_nulls"), qs.LiteralString("clusterable"), qs.LiteralString("index_scan"), qs.LiteralString("bitmap_scan"), qs.LiteralString("backward_scan"), qs.LiteralString("can_order"), qs.LiteralString("can_unique"), qs.LiteralString("can_multi_col"), qs.LiteralString("can_exclude"), qs.LiteralString("can_include"), qs.LiteralString("bogus"))).Cast(qs.TypeArray(qs.TypeNamed("text"))))).WithOrdinality().As("u", "prop", "ord")).Where(qs.AsCondition(qs.Operator(qs.Ident("a", "amname"), "=", qs.LiteralString("btree")))).OrderBy((qs.Ident("ord")).Asc())
 }
 func build00799() qs.Statement {
-	return qs.UpdateTable(qs.Table("arrtest")).Set(qs.Assign(qs.Ident("e").Index(qs.LiteralInt(0)), qs.LiteralString("1.1")))
+	return qs.UpdateTable(qs.Table("arrtest")).Set(qs.Assign(qs.Ident("e").Index(qs.LiteralInt(0)), qs.Write(qs.LiteralString("1.1"))))
 }
 func build00807() qs.Statement {
 	return qs.Select((qs.Ident("arrtest", "a")).Index(qs.LiteralInt(1)), (((qs.Ident("arrtest", "b")).Index(qs.LiteralInt(1))).Index(qs.LiteralInt(1))).Index(qs.LiteralInt(1)), (qs.Ident("arrtest", "c")).Index(qs.LiteralInt(1)), ((qs.Ident("arrtest", "d")).Index(qs.LiteralInt(1))).Index(qs.LiteralInt(1)), (qs.Ident("arrtest", "e")).Index(qs.LiteralInt(0))).FromExpr(qs.Table("arrtest"))
 }
 func build00815() qs.Statement {
-	return qs.UpdateTable(qs.Table("arrtest")).Set(qs.Assign(qs.Ident("c").Slice(qs.LiteralInt(2), qs.LiteralInt(2)), qs.LiteralString("{\"new_word\"}"))).Where(qs.AsCondition((qs.Call("array_dims", qs.Ident("c"))).IsNotNull().Expr()))
+	return qs.UpdateTable(qs.Table("arrtest")).Set(qs.Assign(qs.Ident("c").Slice(qs.LiteralInt(2), qs.LiteralInt(2)), qs.Write(qs.LiteralString("{\"new_word\"}")))).Where(qs.AsCondition((qs.Call("array_dims", qs.Ident("c"))).IsNotNull().Expr()))
 }
 func build00823() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("arrtest")).Where(qs.AsCondition(qs.And(qs.AsCondition(((qs.Ident("a")).Index(qs.LiteralInt(2))).IsNull().Expr()), qs.AsCondition((qs.Ident("b")).IsNull().Expr())).Expr()))
@@ -305,32 +305,32 @@ func build00831() qs.Statement {
 	return qs.Select((qs.LiteralString("[0:2][0:2]={{1,2,3},{4,5,6},{7,8,9}}")).Cast(qs.TypeArray(qs.TypeInt4)))
 }
 func build00839() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("arrtest_s")).ValuesExpr(qs.LiteralString("{1,2,3,4,5}"), qs.LiteralString("{{1,2,3}, {4,5,6}, {7,8,9}}"))
+	return qs.InsertIntoTable(qs.Table("arrtest_s")).Values(qs.Write(qs.LiteralString("{1,2,3,4,5}")), qs.Write(qs.LiteralString("{{1,2,3}, {4,5,6}, {7,8,9}}")))
 }
 func build00847() qs.Statement {
-	return qs.UpdateTable(qs.Table("arrtest_s")).Set(qs.Assign(qs.Ident("a").SliceFrom(qs.LiteralInt(3)), qs.LiteralString("{23, 24, 25}")), qs.Assign(qs.Ident("b").SliceFrom(qs.LiteralInt(2)).SliceFrom(qs.LiteralInt(2)), qs.LiteralString("{{25,26}, {28,29}}")))
+	return qs.UpdateTable(qs.Table("arrtest_s")).Set(qs.Assign(qs.Ident("a").SliceFrom(qs.LiteralInt(3)), qs.Write(qs.LiteralString("{23, 24, 25}"))), qs.Assign(qs.Ident("b").SliceFrom(qs.LiteralInt(2)).SliceFrom(qs.LiteralInt(2)), qs.Write(qs.LiteralString("{{25,26}, {28,29}}"))))
 }
 func build00855() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("point_tbl")).Columns("f1").ValuesExpr(qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("point_tbl")).Columns("f1").Values(qs.Write(qs.NullLiteral()))
 }
 func build00863() qs.Statement {
-	return qs.UpdateTable(qs.Table("point_tbl")).Set(qs.Assign(qs.Ident("f1").Index(qs.LiteralInt(0)), qs.LiteralInt(-10)), qs.Assign(qs.Ident("f1").Index(qs.LiteralInt(1)), qs.LiteralInt(-10))).Where(qs.AsCondition(qs.Operator((qs.Ident("f1")).Cast(qs.TypeNamed("text")), "=", ((qs.LiteralString("(10,10)")).Cast(qs.TypeNamed("point"))).Cast(qs.TypeNamed("text"))))).Returning(qs.Star())
+	return qs.UpdateTable(qs.Table("point_tbl")).Set(qs.Assign(qs.Ident("f1").Index(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(-10))), qs.Assign(qs.Ident("f1").Index(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(-10)))).Where(qs.AsCondition(qs.Operator((qs.Ident("f1")).Cast(qs.TypeNamed("text")), "=", ((qs.LiteralString("(10,10)")).Cast(qs.TypeNamed("point"))).Cast(qs.TypeNamed("text"))))).Returning(qs.Star())
 }
 func build00871() qs.Statement {
-	return qs.UpdateTable(qs.Table("arrtest1")).Set(qs.Assign(qs.Ident("i").Index(qs.LiteralInt(8)), qs.LiteralInt(8)), qs.Assign(qs.Ident("t").Index(qs.LiteralInt(8)), qs.LiteralString("eight")))
+	return qs.UpdateTable(qs.Table("arrtest1")).Set(qs.Assign(qs.Ident("i").Index(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(8))), qs.Assign(qs.Ident("t").Index(qs.LiteralInt(8)), qs.Write(qs.LiteralString("eight"))))
 }
 func build00879() qs.Statement {
-	return qs.UpdateTable(qs.Table("arrtest1")).Set(qs.Assign(qs.Ident("i").Slice(qs.LiteralInt(8), qs.LiteralInt(10)), qs.Array(qs.LiteralInt(18), qs.NullLiteral(), qs.LiteralInt(20))), qs.Assign(qs.Ident("t").Slice(qs.LiteralInt(8), qs.LiteralInt(10)), qs.Array(qs.LiteralString("p18"), qs.NullLiteral(), qs.LiteralString("p20"))))
+	return qs.UpdateTable(qs.Table("arrtest1")).Set(qs.Assign(qs.Ident("i").Slice(qs.LiteralInt(8), qs.LiteralInt(10)), qs.Write(qs.Array(qs.LiteralInt(18), qs.NullLiteral(), qs.LiteralInt(20)))), qs.Assign(qs.Ident("t").Slice(qs.LiteralInt(8), qs.LiteralInt(10)), qs.Write(qs.Array(qs.LiteralString("p18"), qs.NullLiteral(), qs.LiteralString("p20")))))
 }
 func build00887() qs.Statement {
-	return qs.UpdateTable(qs.Table("arrtest1")).Set(qs.Assign(qs.Ident("i").Slice(qs.LiteralInt(-7), qs.LiteralInt(-6)), qs.Array(qs.LiteralInt(-17), qs.NullLiteral())), qs.Assign(qs.Ident("t").Slice(qs.LiteralInt(-7), qs.LiteralInt(-6)), qs.Array(qs.LiteralString("m17"), qs.NullLiteral())))
+	return qs.UpdateTable(qs.Table("arrtest1")).Set(qs.Assign(qs.Ident("i").Slice(qs.LiteralInt(-7), qs.LiteralInt(-6)), qs.Write(qs.Array(qs.LiteralInt(-17), qs.NullLiteral()))), qs.Assign(qs.Ident("t").Slice(qs.LiteralInt(-7), qs.LiteralInt(-6)), qs.Write(qs.Array(qs.LiteralString("m17"), qs.NullLiteral()))))
 }
 func build00895() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("arrtest1")) }
 func build00903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("arrtest_f")).ValuesExpr(qs.LiteralInt(7), qs.LiteralString("cat2"), qs.LiteralNumeric("1.26"))
+	return qs.InsertIntoTable(qs.Table("arrtest_f")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("cat2")), qs.Write(qs.LiteralNumeric("1.26")))
 }
 func build00911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("arrtest_i")).ValuesExpr(qs.LiteralInt(6), qs.LiteralString("cat2"), qs.LiteralInt(15))
+	return qs.InsertIntoTable(qs.Table("arrtest_i")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("cat2")), qs.Write(qs.LiteralInt(15)))
 }
 func build00919() qs.Statement {
 	return qs.Select((qs.LiteralString("{1,null,3}")).Cast(qs.TypeArray(qs.TypeInt4)))
@@ -372,7 +372,7 @@ func build01015() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("arr_tbl")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("f1"), ">=", qs.LiteralString("{1,2,3}"))), qs.AsCondition(qs.Operator(qs.Ident("f1"), "<", qs.LiteralString("{1,5,3}")))).Expr()))
 }
 func build01023() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("arr_pk_tbl")).Targets(qs.Ident("pk"), qs.Ident("f1").Slice(qs.LiteralNumeric("-2147483648"), qs.LiteralInt(2147483647))).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("{}"))
+	return qs.InsertIntoTable(qs.Table("arr_pk_tbl")).Targets(qs.Ident("pk"), qs.Ident("f1").Slice(qs.LiteralNumeric("-2147483648"), qs.LiteralInt(2147483647))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("{}")))
 }
 func build01031() qs.Statement {
 	return qs.Select(qs.Operator(qs.LiteralString("foo"), "~~*", qs.AllArray(qs.Array(qs.LiteralString("F%"), qs.LiteralString("%O")))))
@@ -394,7 +394,7 @@ func build01071() qs.Statement {
 }
 func build01079() qs.Statement { return qs.Select((qs.Array()).Cast(qs.TypeNamed("int2vector"))) }
 func build01087() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("arraggtest")).Columns("f1", "f2", "f3").ValuesExpr(qs.LiteralString("{4,2,6,7,8,1}"), qs.LiteralString("{{red},{black},{purple},{blue},{blue}}"), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("arraggtest")).Columns("f1", "f2", "f3").Values(qs.Write(qs.LiteralString("{4,2,6,7,8,1}")), qs.Write(qs.LiteralString("{{red},{black},{purple},{blue},{blue}}")), qs.Write(qs.NullLiteral()))
 }
 func build01095() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("unnest2", qs.Array(qs.Array(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3)), qs.Array(qs.LiteralInt(4), qs.LiteralInt(5), qs.LiteralInt(6))))))
@@ -442,7 +442,7 @@ func build01207() qs.Statement {
 	return qs.Select(qs.Call("pg_typeof", qs.Array((qs.LiteralString("11 22 33")).Cast(qs.TypeNamed("oidvector")))))
 }
 func build01215() qs.Statement {
-	return qs.UpdateTable(qs.Table("t1")).Set(qs.Assign((qs.Ident("f1").Index(qs.LiteralInt(5))).Field("q2"), qs.LiteralInt(43)))
+	return qs.UpdateTable(qs.Table("t1")).Set(qs.Assign((qs.Ident("f1").Index(qs.LiteralInt(5))).Field("q2"), qs.Write(qs.LiteralInt(43))))
 }
 func build01223() qs.Statement {
 	return qs.Select(qs.Ident("op"), qs.Call("width_bucket", (qs.Ident("op")).Cast(qs.TypeNumeric), (qs.Array(qs.LiteralInt(1), qs.LiteralInt(3), qs.LiteralInt(5), qs.LiteralNumeric("10.0"))).Cast(qs.TypeArray(qs.TypeNumeric))).As("wb_n1"), qs.Call("width_bucket", (qs.Ident("op")).Cast(qs.TypeNumeric), (qs.Array(qs.LiteralInt(0), qs.LiteralNumeric("5.5"), qs.LiteralNumeric("9.99"))).Cast(qs.TypeArray(qs.TypeNumeric))).As("wb_n2"), qs.Call("width_bucket", (qs.Ident("op")).Cast(qs.TypeNumeric), (qs.Array(qs.LiteralInt(-6), qs.LiteralInt(-5), qs.LiteralNumeric("2.0"))).Cast(qs.TypeArray(qs.TypeNumeric))).As("wb_n3"), qs.Call("width_bucket", (qs.Ident("op")).Cast(qs.TypeNamed("float8")), (qs.Array(qs.LiteralInt(1), qs.LiteralInt(3), qs.LiteralInt(5), qs.LiteralNumeric("10.0"))).Cast(qs.TypeArray(qs.TypeNamed("float8")))).As("wb_f1"), qs.Call("width_bucket", (qs.Ident("op")).Cast(qs.TypeNamed("float8")), (qs.Array(qs.LiteralInt(0), qs.LiteralNumeric("5.5"), qs.LiteralNumeric("9.99"))).Cast(qs.TypeArray(qs.TypeNamed("float8")))).As("wb_f2"), qs.Call("width_bucket", (qs.Ident("op")).Cast(qs.TypeNamed("float8")), (qs.Array(qs.LiteralInt(-6), qs.LiteralInt(-5), qs.LiteralNumeric("2.0"))).Cast(qs.TypeArray(qs.TypeNamed("float8")))).As("wb_f3")).FromExpr(qs.Subquery(qs.ValuesExpr(qs.LiteralNumeric("-5.2")).RowExpr(qs.LiteralNumeric("-0.0000000001")).RowExpr(qs.LiteralNumeric("0.000000000001")).RowExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralNumeric("1.99999999999999")).RowExpr(qs.LiteralInt(2)).RowExpr(qs.LiteralNumeric("2.00000000000001")).RowExpr(qs.LiteralInt(3)).RowExpr(qs.LiteralInt(4)).RowExpr(qs.LiteralNumeric("4.5")).RowExpr(qs.LiteralInt(5)).RowExpr(qs.LiteralNumeric("5.5")).RowExpr(qs.LiteralInt(6)).RowExpr(qs.LiteralInt(7)).RowExpr(qs.LiteralInt(8)).RowExpr(qs.LiteralInt(9)).RowExpr(qs.LiteralNumeric("9.99999999999999")).RowExpr(qs.LiteralInt(10)).RowExpr(qs.LiteralNumeric("10.0000000000001")), "v", "op"))
@@ -525,10 +525,10 @@ func build01439() qs.Statement {
 	return qs.Select(qs.Operator((qs.LiteralString("f")).Cast(qs.TypeNamed("bool")), "<", (qs.LiteralString("t")).Cast(qs.TypeNamed("bool"))).As("true"))
 }
 func build01447() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("booltbl1")).Columns("f1").ValuesExpr((qs.LiteralString("True")).Cast(qs.TypeNamed("bool")))
+	return qs.InsertIntoTable(qs.Table("booltbl1")).Columns("f1").Values(qs.Write((qs.LiteralString("True")).Cast(qs.TypeNamed("bool"))))
 }
 func build01455() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("booltbl2")).Columns("f1").ValuesExpr((qs.LiteralString("f")).Cast(qs.TypeNamed("bool")))
+	return qs.InsertIntoTable(qs.Table("booltbl2")).Columns("f1").Values(qs.Write((qs.LiteralString("f")).Cast(qs.TypeNamed("bool"))))
 }
 func build01463() qs.Statement {
 	return qs.Select(qs.Star("booltbl1"), qs.Star("booltbl2")).FromExpr(qs.Table("booltbl1"), qs.Table("booltbl2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("booltbl2", "f1"), "=", qs.Ident("booltbl1", "f1"))), qs.AsCondition(qs.Operator(qs.Ident("booltbl1", "f1"), "=", (qs.LiteralString("false")).Cast(qs.TypeNamed("bool"))))).Expr()))
@@ -543,7 +543,7 @@ func build01487() qs.Statement {
 	return qs.Select(qs.Or(qs.AsCondition(qs.Ident("isfalse")), qs.AsCondition(qs.Ident("isnul")), qs.AsCondition(qs.Ident("istrue"))).Expr()).FromExpr(qs.Table("booltbl4"))
 }
 func build01495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("box_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("((-8, 2), (-2, -10))"))
+	return qs.InsertIntoTable(qs.Table("box_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("((-8, 2), (-2, -10))")))
 }
 func build01503() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("box_tbl")) }
 func build01511() qs.Statement {
@@ -595,7 +595,7 @@ func build01631() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("brin_test_bloom")).From(qs.Select(qs.Operator(qs.Ident("x"), "/", qs.LiteralInt(100)), qs.Operator(qs.Ident("x"), "%", qs.LiteralInt(100))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(10000))).As("x", "x")))
 }
 func build01639() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("public.brintest_multi")).Columns("float4col").ValuesExpr((qs.LiteralString("nan")).Cast(qs.TypeFloat4))
+	return qs.InsertIntoTable(qs.Table("public.brintest_multi")).Columns("float4col").Values(qs.Write((qs.LiteralString("nan")).Cast(qs.TypeFloat4)))
 }
 func build01647() qs.Statement {
 	return qs.Select(qs.Call("brin_desummarize_range", qs.LiteralString("brinidx_multi"), qs.LiteralInt(-1)))
@@ -658,10 +658,10 @@ func build01799() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("btree_tall_tbl")).From(qs.Select(qs.Ident("g"), qs.NullLiteral()).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(50), qs.LiteralInt(60))).As("g")))
 }
 func build01807() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("case_tbl")).ValuesExpr(qs.LiteralInt(1), qs.LiteralNumeric("10.1"))
+	return qs.InsertIntoTable(qs.Table("case_tbl")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralNumeric("10.1")))
 }
 func build01815() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("case2_tbl")).ValuesExpr(qs.LiteralInt(1), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("case2_tbl")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.NullLiteral()))
 }
 func build01823() qs.Statement {
 	return qs.Select((qs.Case().When(qs.AsCondition(qs.Operator(qs.LiteralInt(1), "=", qs.LiteralInt(0))), qs.Operator(qs.LiteralInt(1), "/", qs.LiteralInt(0))).When(qs.AsCondition(qs.Operator(qs.LiteralInt(1), "=", qs.LiteralInt(1))), qs.LiteralInt(1)).Else(qs.Operator(qs.LiteralInt(2), "/", qs.LiteralInt(0)))).End())
@@ -676,7 +676,7 @@ func build01847() qs.Statement {
 	return qs.Select((qs.CaseOf(qs.Call("volfoo", qs.LiteralString("bar"))).WhenValue((qs.LiteralString("foo")).Cast(qs.TypeNamed("foodomain")), qs.LiteralString("is foo")).Else(qs.LiteralString("is not foo"))).End())
 }
 func build01855() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("char_tbl")).Columns("f1").ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("char_tbl")).Columns("f1").Values(qs.Write(qs.LiteralInt(2)))
 }
 func build01863() qs.Statement {
 	return qs.Select(qs.Star("c")).FromExpr(qs.Table("char_tbl").As("c")).Where(qs.AsCondition(qs.Operator(qs.Ident("c", "f1"), "<", qs.LiteralString("a"))))
@@ -688,7 +688,7 @@ func build01879() qs.Statement {
 	return qs.Select(((qs.LiteralString("\\377")).Cast(qs.TypeNamed("text"))).Cast(qs.TypeNamed("char")))
 }
 func build01887() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("circle_tbl")).ValuesExpr(qs.LiteralString("<(3,5),0>"))
+	return qs.InsertIntoTable(qs.Table("circle_tbl")).Values(qs.Write(qs.LiteralString("<(3,5),0>")))
 }
 func build01895() qs.Statement {
 	return qs.Select(qs.Call("center", qs.Ident("f1")).As("center")).FromExpr(qs.Table("circle_tbl"))
@@ -697,29 +697,29 @@ func build01903() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("clstr_tst_s")).Columns("b").From(qs.Select(qs.Ident("b")).FromExpr(qs.Table("clstr_tst_s")))
 }
 func build01911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").ValuesExpr(qs.LiteralInt(3), qs.LiteralString("tres"))
+	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("tres")))
 }
 func build01919() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").ValuesExpr(qs.LiteralInt(27), qs.LiteralString("veintisiete"))
+	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").Values(qs.Write(qs.LiteralInt(27)), qs.Write(qs.LiteralString("veintisiete")))
 }
 func build01927() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").ValuesExpr(qs.LiteralInt(24), qs.LiteralString("veinticuatro"))
+	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").Values(qs.Write(qs.LiteralInt(24)), qs.Write(qs.LiteralString("veinticuatro")))
 }
 func build01935() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").ValuesExpr(qs.LiteralInt(7), qs.LiteralString("siete"))
+	return qs.InsertIntoTable(qs.Table("clstr_tst")).Columns("b", "c").Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("siete")))
 }
 func build01943() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("clstr_tst_inh")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(100), qs.LiteralString("in child table"))
+	return qs.InsertIntoTable(qs.Table("clstr_tst_inh")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(100)), qs.Write(qs.LiteralString("in child table")))
 }
 func build01951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("clstr_1")).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("clstr_1")).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build01959() qs.Statement { return qs.DeleteFromTable(qs.Table("clstr_2")) }
 func build01967() qs.Statement {
 	return qs.UnionAll(qs.UnionAll(qs.Select(qs.Star()).FromExpr(qs.Table("clstr_1")), qs.Select(qs.Star()).FromExpr(qs.Table("clstr_2"))), qs.Select(qs.Star()).FromExpr(qs.Table("clstr_3")))
 }
 func build01975() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("clustertest")).ValuesExpr(qs.LiteralInt(40))
+	return qs.InsertIntoTable(qs.Table("clustertest")).Values(qs.Write(qs.LiteralInt(40)))
 }
 func build01983() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("clustertest")) }
 func build01991() qs.Statement {
@@ -783,7 +783,7 @@ func build02143() qs.Statement {
 	return qs.Select(qs.Operator(qs.LiteralString("Goldmann"), "<", (qs.LiteralString("Götz")).Collate("de-x-icu")), qs.Operator(qs.LiteralString("Goldmann"), ">", (qs.LiteralString("Götz")).Collate("testcoll_de_phonebook")))
 }
 func build02151() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test6")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("zyäbc"))
+	return qs.InsertIntoTable(qs.Table("test6")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("zyäbc")))
 }
 func build02159() qs.Statement {
 	return qs.Select(qs.Call("replace", (qs.Ident("b")).Collate("ctest_nondet"), qs.LiteralString("äb"), qs.LiteralString("X"))).FromExpr(qs.Table("test6"))
@@ -843,7 +843,7 @@ func build02303() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Subquery(qs.IntersectAll(qs.Select(qs.Ident("x")).FromExpr(qs.Table("pushdown_ci")), qs.Select(qs.Ident("x")).FromExpr(qs.Table("pushdown_ci2"))), "s")).Where(qs.AsCondition(qs.Operator(qs.Ident("x"), "=", (qs.LiteralString("abc")).Collate("case_sensitive"))))
 }
 func build02311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test2bpci")).ValuesExpr(qs.LiteralString("ABC")).ValuesExpr(qs.LiteralString("ghi"))
+	return qs.InsertIntoTable(qs.Table("test2bpci")).Values(qs.Write(qs.LiteralString("ABC"))).Values(qs.Write(qs.LiteralString("ghi")))
 }
 func build02319() qs.Statement {
 	return qs.Union(qs.Select(qs.Ident("x")).FromExpr(qs.Table("test1bpci")), qs.Select(qs.Ident("x")).FromExpr(qs.Table("test2bpci"))).OrderBy((qs.Ident("x")).Asc())
@@ -855,7 +855,7 @@ func build02335() qs.Statement {
 	return qs.Select(qs.Ident("x")).FromExpr(qs.Table("test4c")).Where(qs.AsCondition((qs.Ident("x")).LikeExpr((qs.LiteralString("ABC")).Collate("case_insensitive")).Expr()))
 }
 func build02343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("outer_text")).ValuesExpr(qs.LiteralString("a"), qs.LiteralString("a"))
+	return qs.InsertIntoTable(qs.Table("outer_text")).Values(qs.Write(qs.LiteralString("a")), qs.Write(qs.LiteralString("a")))
 }
 func build02351() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("test4")).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", (qs.LiteralString("cote")).Collate("ignore_accents"))))
@@ -871,17 +871,17 @@ func build02375() qs.Statement {
 }
 func build02383() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("test12pk")) }
 func build02391() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test12fk")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("abc")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("ABC"))
+	return qs.InsertIntoTable(qs.Table("test12fk")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("abc"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("ABC")))
 }
 func build02399() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test21")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("ABC"))
+	return qs.InsertIntoTable(qs.Table("test21")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("ABC")))
 }
 func build02407() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test23")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("def"))
+	return qs.InsertIntoTable(qs.Table("test23")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("def")))
 }
 func build02415() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("test30_1")) }
 func build02423() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test33")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("DEF"))
+	return qs.InsertIntoTable(qs.Table("test33")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("DEF")))
 }
 func build02431() qs.Statement {
 	return qs.Select((qs.Ident("c")).Collate("C"), qs.Call("count", qs.Ident("c"))).FromExpr(qs.Table("pagg_tab3")).GroupByExpr((qs.Ident("c")).Collate("C")).OrderBy((qs.LiteralInt(1)).Asc())
@@ -974,7 +974,7 @@ func build02663() qs.Statement {
 	return qs.Select(qs.Ident("a"), qs.Ident("b")).FromExpr(qs.Table("collate_test1")).OrderBy((qs.Ident("a")).Asc(), (qs.Call("vc", qs.Ident("b"))).Asc())
 }
 func build02671() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("collate_test21")).ValuesExpr(qs.LiteralString("baz"))
+	return qs.InsertIntoTable(qs.Table("collate_test21")).Values(qs.Write(qs.LiteralString("baz")))
 }
 func build02679() qs.Statement {
 	return qs.Select(qs.CollationFor((qs.LiteralString("foo")).Cast(qs.TypeNamed("text"))))
@@ -1037,20 +1037,20 @@ func build02831() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("combocidtest")).From(qs.Select(qs.LiteralInt(1)).LimitExpr(qs.LiteralInt(0)))
 }
 func build02839() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("combocidtest")).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("combocidtest")).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build02847() qs.Statement { return qs.DeleteFromTable(qs.Table("combocidtest")) }
 func build02855() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("combocidtest")).From(qs.Select(qs.LiteralInt(1)).LimitExpr(qs.LiteralInt(0)))
 }
 func build02863() qs.Statement {
-	return qs.UpdateTable(qs.Table("combocidtest")).Set(qs.Assign(qs.Ident("foobar"), qs.Operator(qs.Ident("foobar"), "+", qs.LiteralInt(10))))
+	return qs.UpdateTable(qs.Table("combocidtest")).Set(qs.Assign(qs.Ident("foobar"), qs.Write(qs.Operator(qs.Ident("foobar"), "+", qs.LiteralInt(10)))))
 }
 func build02871() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("testcase")).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(1)))).Lock(qs.ForUpdate())
 }
 func build02879() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("cmdata1")).ValuesExpr(qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(1004)))
+	return qs.InsertIntoTable(qs.Table("cmdata1")).Values(qs.Write(qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(1004))))
 }
 func build02887() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("cmmove3")).From(qs.Select(qs.Star()).FromExpr(qs.Table("cmdata1")))
@@ -1062,7 +1062,7 @@ func build02903() qs.Statement {
 	return qs.Select(qs.Call("pg_column_compression", qs.Ident("x"))).FromExpr(qs.Table("compressmv"))
 }
 func build02911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("cmpart")).ValuesExpr(qs.Call("repeat", qs.LiteralString("123456789"), qs.LiteralInt(4004)))
+	return qs.InsertIntoTable(qs.Table("cmpart")).Values(qs.Write(qs.Call("repeat", qs.LiteralString("123456789"), qs.LiteralInt(4004))))
 }
 func build02919() qs.Statement {
 	return qs.Select(qs.Call("length", qs.Ident("f1"))).FromExpr(qs.Table("cmmove1"))
@@ -1074,68 +1074,68 @@ func build02935() qs.Statement {
 	return qs.Select(qs.Call("test_pglz_decompress", (qs.LiteralString("\\x010300")).Cast(qs.TypeNamed("bytea")), qs.LiteralInt(1024), qs.LiteralBool(true)))
 }
 func build02943() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("defaultexpr_tbl")).Columns("i1").ValuesExpr(qs.LiteralInt(-3))
+	return qs.InsertIntoTable(qs.Table("defaultexpr_tbl")).Columns("i1").Values(qs.Write(qs.LiteralInt(-3)))
 }
 func build02951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("check_tbl")).ValuesExpr(qs.LiteralInt(6))
+	return qs.InsertIntoTable(qs.Table("check_tbl")).Values(qs.Write(qs.LiteralInt(6)))
 }
 func build02959() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("ne_check_tbl")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("ne_check_tbl")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build02967() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("check2_tbl")) }
 func build02975() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insert_tbl")).ValuesExpr(qs.LiteralInt(5), qs.LiteralString("check failed"), qs.LiteralInt(-5))
+	return qs.InsertIntoTable(qs.Table("insert_tbl")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("check failed")), qs.Write(qs.LiteralInt(-5)))
 }
 func build02983() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("insert_tbl")) }
 func build02991() qs.Statement {
 	return qs.Select(qs.Star(), ((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).FromExpr(qs.Table("sys_col_check_tbl"))
 }
 func build02999() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atacc2")).Columns("test").ValuesExpr(qs.LiteralInt(-3))
+	return qs.InsertIntoTable(qs.Table("atacc2")).Columns("test").Values(qs.Write(qs.LiteralInt(-3)))
 }
 func build03007() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("insert_tbl")).Columns("y").From(qs.Select(qs.Ident("yd")).FromExpr(qs.Table("tmp")))
 }
 func build03015() qs.Statement {
-	return qs.UpdateTable(qs.Table("insert_tbl")).Set(qs.Assign(qs.Ident("x"), qs.PrefixOperator("-", qs.Ident("z"))), qs.Assign(qs.Ident("z"), qs.PrefixOperator("-", qs.Ident("x"))))
+	return qs.UpdateTable(qs.Table("insert_tbl")).Set(qs.Assign(qs.Ident("x"), qs.Write(qs.PrefixOperator("-", qs.Ident("z")))), qs.Assign(qs.Ident("z"), qs.Write(qs.PrefixOperator("-", qs.Ident("x")))))
 }
 func build03023() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("primary_tbl")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("three"))
+	return qs.InsertIntoTable(qs.Table("primary_tbl")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("three")))
 }
 func build03031() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("primary_tbl")).ValuesExpr(qs.LiteralInt(5), qs.LiteralString("one"))
+	return qs.InsertIntoTable(qs.Table("primary_tbl")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("one")))
 }
 func build03039() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("unique_tbl")).Columns("t").ValuesExpr(qs.LiteralString("six"))
+	return qs.InsertIntoTable(qs.Table("unique_tbl")).Columns("t").Values(qs.Write(qs.LiteralString("six")))
 }
 func build03047() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("unique_tbl")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("three"))
+	return qs.InsertIntoTable(qs.Table("unique_tbl")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("three")))
 }
 func build03055() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("unique_tbl")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("two"))
+	return qs.InsertIntoTable(qs.Table("unique_tbl")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("two")))
 }
 func build03063() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("unique_tbl")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("tree"))
+	return qs.InsertIntoTable(qs.Table("unique_tbl")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("tree")))
 }
 func build03071() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("unique_tbl")) }
 func build03079() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("unique_tbl")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("Three"))
+	return qs.InsertIntoTable(qs.Table("unique_tbl")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("Three")))
 }
 func build03087() qs.Statement {
 	return qs.Select(qs.Ident("conname"), qs.Ident("conparentid"), qs.Ident("conislocal"), qs.Ident("coninhcount")).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition((qs.Ident("conname")).InExpr(qs.LiteralString("tp_pkey"), qs.LiteralString("tp_b_a_key")).Expr())).OrderBy((qs.Ident("conname")).Desc())
 }
 func build03095() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("unique_tbl")) }
 func build03103() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("circles")).ValuesExpr(qs.LiteralString("<(20,20), 10>"), qs.LiteralString("<(10,10), 5>"))
+	return qs.InsertIntoTable(qs.Table("circles")).Values(qs.Write(qs.LiteralString("<(20,20), 10>")), qs.Write(qs.LiteralString("<(10,10), 5>")))
 }
 func build03111() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("deferred_excl")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("deferred_excl")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(1)))
 }
 func build03119() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("notnull_tbl1")).ValuesExpr(qs.NullLiteral(), qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(300), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("notnull_tbl1")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(300)), qs.Write(qs.LiteralInt(3)))
 }
 func build03127() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("utf8_verification_inputs")).ValuesExpr(qs.LiteralString("\\x66006f"), qs.LiteralString("NUL byte")).ValuesExpr(qs.LiteralString("\\xaf"), qs.LiteralString("bare continuation")).ValuesExpr(qs.LiteralString("\\xc5"), qs.LiteralString("missing second byte in 2-byte char")).ValuesExpr(qs.LiteralString("\\xc080"), qs.LiteralString("smallest 2-byte overlong")).ValuesExpr(qs.LiteralString("\\xc1bf"), qs.LiteralString("largest 2-byte overlong")).ValuesExpr(qs.LiteralString("\\xc280"), qs.LiteralString("next 2-byte after overlongs")).ValuesExpr(qs.LiteralString("\\xdfbf"), qs.LiteralString("largest 2-byte")).ValuesExpr(qs.LiteralString("\\xe9af"), qs.LiteralString("missing third byte in 3-byte char")).ValuesExpr(qs.LiteralString("\\xe08080"), qs.LiteralString("smallest 3-byte overlong")).ValuesExpr(qs.LiteralString("\\xe09fbf"), qs.LiteralString("largest 3-byte overlong")).ValuesExpr(qs.LiteralString("\\xe0a080"), qs.LiteralString("next 3-byte after overlong")).ValuesExpr(qs.LiteralString("\\xed9fbf"), qs.LiteralString("last before surrogates")).ValuesExpr(qs.LiteralString("\\xeda080"), qs.LiteralString("smallest surrogate")).ValuesExpr(qs.LiteralString("\\xedbfbf"), qs.LiteralString("largest surrogate")).ValuesExpr(qs.LiteralString("\\xee8080"), qs.LiteralString("next after surrogates")).ValuesExpr(qs.LiteralString("\\xefbfbf"), qs.LiteralString("largest 3-byte")).ValuesExpr(qs.LiteralString("\\xf1afbf"), qs.LiteralString("missing fourth byte in 4-byte char")).ValuesExpr(qs.LiteralString("\\xf0808080"), qs.LiteralString("smallest 4-byte overlong")).ValuesExpr(qs.LiteralString("\\xf08fbfbf"), qs.LiteralString("largest 4-byte overlong")).ValuesExpr(qs.LiteralString("\\xf0908080"), qs.LiteralString("next 4-byte after overlong")).ValuesExpr(qs.LiteralString("\\xf48fbfbf"), qs.LiteralString("largest 4-byte")).ValuesExpr(qs.LiteralString("\\xf4908080"), qs.LiteralString("smallest too large")).ValuesExpr(qs.LiteralString("\\xfa9a9a8a8a"), qs.LiteralString("5-byte"))
+	return qs.InsertIntoTable(qs.Table("utf8_verification_inputs")).Values(qs.Write(qs.LiteralString("\\x66006f")), qs.Write(qs.LiteralString("NUL byte"))).Values(qs.Write(qs.LiteralString("\\xaf")), qs.Write(qs.LiteralString("bare continuation"))).Values(qs.Write(qs.LiteralString("\\xc5")), qs.Write(qs.LiteralString("missing second byte in 2-byte char"))).Values(qs.Write(qs.LiteralString("\\xc080")), qs.Write(qs.LiteralString("smallest 2-byte overlong"))).Values(qs.Write(qs.LiteralString("\\xc1bf")), qs.Write(qs.LiteralString("largest 2-byte overlong"))).Values(qs.Write(qs.LiteralString("\\xc280")), qs.Write(qs.LiteralString("next 2-byte after overlongs"))).Values(qs.Write(qs.LiteralString("\\xdfbf")), qs.Write(qs.LiteralString("largest 2-byte"))).Values(qs.Write(qs.LiteralString("\\xe9af")), qs.Write(qs.LiteralString("missing third byte in 3-byte char"))).Values(qs.Write(qs.LiteralString("\\xe08080")), qs.Write(qs.LiteralString("smallest 3-byte overlong"))).Values(qs.Write(qs.LiteralString("\\xe09fbf")), qs.Write(qs.LiteralString("largest 3-byte overlong"))).Values(qs.Write(qs.LiteralString("\\xe0a080")), qs.Write(qs.LiteralString("next 3-byte after overlong"))).Values(qs.Write(qs.LiteralString("\\xed9fbf")), qs.Write(qs.LiteralString("last before surrogates"))).Values(qs.Write(qs.LiteralString("\\xeda080")), qs.Write(qs.LiteralString("smallest surrogate"))).Values(qs.Write(qs.LiteralString("\\xedbfbf")), qs.Write(qs.LiteralString("largest surrogate"))).Values(qs.Write(qs.LiteralString("\\xee8080")), qs.Write(qs.LiteralString("next after surrogates"))).Values(qs.Write(qs.LiteralString("\\xefbfbf")), qs.Write(qs.LiteralString("largest 3-byte"))).Values(qs.Write(qs.LiteralString("\\xf1afbf")), qs.Write(qs.LiteralString("missing fourth byte in 4-byte char"))).Values(qs.Write(qs.LiteralString("\\xf0808080")), qs.Write(qs.LiteralString("smallest 4-byte overlong"))).Values(qs.Write(qs.LiteralString("\\xf08fbfbf")), qs.Write(qs.LiteralString("largest 4-byte overlong"))).Values(qs.Write(qs.LiteralString("\\xf0908080")), qs.Write(qs.LiteralString("next 4-byte after overlong"))).Values(qs.Write(qs.LiteralString("\\xf48fbfbf")), qs.Write(qs.LiteralString("largest 4-byte"))).Values(qs.Write(qs.LiteralString("\\xf4908080")), qs.Write(qs.LiteralString("smallest too large"))).Values(qs.Write(qs.LiteralString("\\xfa9a9a8a8a")), qs.Write(qs.LiteralString("5-byte")))
 }
 func build03135() qs.Statement {
 	return qs.Select(qs.Ident("description"), qs.Ident("inbytes"), (qs.Call("test_conv", qs.Ident("inbytes"), qs.LiteralString("utf8"), qs.LiteralString("euc_jis_2004"))).Fields()).FromExpr(qs.Table("utf8_inputs"))
@@ -1144,13 +1144,13 @@ func build03143() qs.Statement {
 	return qs.Select(qs.Ident("description"), qs.Ident("inbytes"), (qs.Call("test_conv", qs.Ident("inbytes"), qs.LiteralString("euc_jis_2004"), qs.LiteralString("utf8"))).Fields()).FromExpr(qs.Table("euc_jis_2004_inputs"))
 }
 func build03151() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("iso8859_5_inputs")).ValuesExpr(qs.LiteralString("\\x666f6f"), qs.LiteralString("valid, pure ASCII")).ValuesExpr(qs.LiteralString("\\xe4dede"), qs.LiteralString("valid")).ValuesExpr(qs.LiteralString("\\x00"), qs.LiteralString("invalid, NUL byte")).ValuesExpr(qs.LiteralString("\\xe400dede"), qs.LiteralString("invalid, NUL byte")).ValuesExpr(qs.LiteralString("\\xe4dede00"), qs.LiteralString("invalid, NUL byte"))
+	return qs.InsertIntoTable(qs.Table("iso8859_5_inputs")).Values(qs.Write(qs.LiteralString("\\x666f6f")), qs.Write(qs.LiteralString("valid, pure ASCII"))).Values(qs.Write(qs.LiteralString("\\xe4dede")), qs.Write(qs.LiteralString("valid"))).Values(qs.Write(qs.LiteralString("\\x00")), qs.Write(qs.LiteralString("invalid, NUL byte"))).Values(qs.Write(qs.LiteralString("\\xe400dede")), qs.Write(qs.LiteralString("invalid, NUL byte"))).Values(qs.Write(qs.LiteralString("\\xe4dede00")), qs.Write(qs.LiteralString("invalid, NUL byte")))
 }
 func build03159() qs.Statement {
 	return qs.Select(qs.Ident("description"), qs.Ident("inbytes"), (qs.Call("test_conv", qs.Ident("inbytes"), qs.LiteralString("big5"), qs.LiteralString("mule_internal"))).Fields()).FromExpr(qs.Table("big5_inputs"))
 }
 func build03167() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("copytest")).ValuesExpr(qs.LiteralString("DOS"), qs.LiteralString("abc\r\ndef"), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("copytest")).Values(qs.Write(qs.LiteralString("DOS")), qs.Write(qs.LiteralString("abc\r\ndef")), qs.Write(qs.LiteralInt(1)))
 }
 func build03175() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("parted_copytest")).From(qs.Select(qs.Ident("x"), qs.LiteralInt(1), qs.LiteralString("One")).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(1000))).As("x")))
@@ -1165,11 +1165,11 @@ func build03207() qs.Statement {
 }
 func build03215() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("check_ign_err")) }
 func build03223() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("copydml_test")).Columns("t").ValuesExpr(qs.LiteralString("a"))
+	return qs.InsertIntoTable(qs.Table("copydml_test")).Columns("t").Values(qs.Write(qs.LiteralString("a")))
 }
 func build03231() qs.Statement { return qs.DeleteFromTable(qs.Table("copydml_test")) }
 func build03239() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test2")).Columns("t").ValuesExpr(qs.LiteralString("A"))
+	return qs.InsertIntoTable(qs.Table("test2")).Columns("t").Values(qs.Write(qs.LiteralString("A")))
 }
 func build03247() qs.Statement { return qs.Select(qs.LiteralInt(1)) }
 func build03255() qs.Statement {
@@ -1252,16 +1252,16 @@ func build03479() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("tenk1")).Where(qs.AsCondition(qs.Operator(qs.Ident("stringu1"), "=", qs.LiteralString("TVAAAA"))))
 }
 func build03487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("unique_tbl")).Columns("t").ValuesExpr(qs.LiteralString("seven"))
+	return qs.InsertIntoTable(qs.Table("unique_tbl")).Columns("t").Values(qs.Write(qs.LiteralString("seven")))
 }
 func build03495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("func_index_heap")).ValuesExpr(qs.LiteralString("ABCD"), qs.LiteralString("EF"))
+	return qs.InsertIntoTable(qs.Table("func_index_heap")).Values(qs.Write(qs.LiteralString("ABCD")), qs.Write(qs.LiteralString("EF")))
 }
 func build03503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("covering_index_heap")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralString("AAA"))
+	return qs.InsertIntoTable(qs.Table("covering_index_heap")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("AAA")))
 }
 func build03511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("concur_temp")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("foo")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("bar"))
+	return qs.InsertIntoTable(qs.Table("concur_temp")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("foo"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("bar")))
 }
 func build03519() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("onek_with_null")).Where(qs.AsCondition(qs.And(qs.AsCondition((qs.Ident("unique1")).IsNull().Expr()), qs.AsCondition((qs.Ident("unique2")).IsNotNull().Expr())).Expr()))
@@ -1399,25 +1399,25 @@ func build03871() qs.Statement {
 	return qs.Explain(qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("radix_text_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("t"), ">", qs.LiteralString("Worth                         St  "))))).Costs(false)
 }
 func build03879() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("a_star")).Columns("class", "a").ValuesExpr(qs.LiteralString("a"), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("a_star")).Columns("class", "a").Values(qs.Write(qs.LiteralString("a")), qs.Write(qs.LiteralInt(1)))
 }
 func build03887() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("c_star")).Columns("class", "a").ValuesExpr(qs.LiteralString("c"), qs.LiteralInt(6))
+	return qs.InsertIntoTable(qs.Table("c_star")).Columns("class", "a").Values(qs.Write(qs.LiteralString("c")), qs.Write(qs.LiteralInt(6)))
 }
 func build03895() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("d_star")).Columns("class", "a", "b").ValuesExpr(qs.LiteralString("d"), qs.LiteralInt(11), (qs.LiteralString("fumble")).Cast(qs.TypeNamed("text")))
+	return qs.InsertIntoTable(qs.Table("d_star")).Columns("class", "a", "b").Values(qs.Write(qs.LiteralString("d")), qs.Write(qs.LiteralInt(11)), qs.Write((qs.LiteralString("fumble")).Cast(qs.TypeNamed("text"))))
 }
 func build03903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("d_star")).Columns("class", "c").ValuesExpr(qs.LiteralString("d"), (qs.LiteralString("hi jolly")).Cast(qs.TypeNamed("name")))
+	return qs.InsertIntoTable(qs.Table("d_star")).Columns("class", "c").Values(qs.Write(qs.LiteralString("d")), qs.Write((qs.LiteralString("hi jolly")).Cast(qs.TypeNamed("name"))))
 }
 func build03911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("e_star")).Columns("class", "c").ValuesExpr(qs.LiteralString("e"), (qs.LiteralString("hi elisa")).Cast(qs.TypeNamed("name")))
+	return qs.InsertIntoTable(qs.Table("e_star")).Columns("class", "c").Values(qs.Write(qs.LiteralString("e")), qs.Write((qs.LiteralString("hi elisa")).Cast(qs.TypeNamed("name"))))
 }
 func build03919() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("f_star")).Columns("class", "a", "e").ValuesExpr(qs.LiteralString("f"), qs.LiteralInt(25), (qs.LiteralString("-9")).Cast(qs.TypeNamed("int2")))
+	return qs.InsertIntoTable(qs.Table("f_star")).Columns("class", "a", "e").Values(qs.Write(qs.LiteralString("f")), qs.Write(qs.LiteralInt(25)), qs.Write((qs.LiteralString("-9")).Cast(qs.TypeNamed("int2"))))
 }
 func build03927() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("f_star")).Columns("class", "f").ValuesExpr(qs.LiteralString("f"), (qs.LiteralString("(11111111,33333333),(22222222,44444444)")).Cast(qs.TypeNamed("polygon")))
+	return qs.InsertIntoTable(qs.Table("f_star")).Columns("class", "f").Values(qs.Write(qs.LiteralString("f")), qs.Write((qs.LiteralString("(11111111,33333333),(22222222,44444444)")).Cast(qs.TypeNamed("polygon"))))
 }
 func build03935() qs.Statement {
 	return qs.Select(qs.Call("sum", qs.Ident("a"))).FromExpr(qs.Table("a_star"))
@@ -1438,10 +1438,10 @@ func build03991() qs.Statement {
 	return qs.Select(qs.Ident("conname"), qs.Ident("conislocal"), qs.Ident("coninhcount")).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition(qs.Operator(qs.Ident("conrelid"), "=", (qs.LiteralString("part_b")).Cast(qs.TypeNamed("regclass"))))).OrderBy((qs.Ident("coninhcount")).Desc(), (qs.Ident("conname")).Asc())
 }
 func build03999() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("defcheck_def")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("defcheck_def")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(0)))
 }
 func build04007() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inhg")).ValuesExpr(qs.LiteralString("foo"))
+	return qs.InsertIntoTable(qs.Table("inhg")).Values(qs.Write(qs.LiteralString("foo")))
 }
 func build04015() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("test_like_id_2")) }
 func build04023() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("test_like_gen_3")) }
@@ -1456,7 +1456,7 @@ func build04055() qs.Statement {
 	return qs.Select(qs.Call("format_type", (qs.LiteralString("bpchar")).Cast(qs.TypeNamed("regtype")), qs.LiteralInt(-1)))
 }
 func build04063() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("city")).ValuesExpr(qs.LiteralString("Podunk"), qs.LiteralString("(1,2),(3,4)"), qs.LiteralString("100,127,1000")).ValuesExpr(qs.LiteralString("Gotham"), qs.LiteralString("(1000,34),(1100,334)"), qs.LiteralString("123456,127,-1000,6789"))
+	return qs.InsertIntoTable(qs.Table("city")).Values(qs.Write(qs.LiteralString("Podunk")), qs.Write(qs.LiteralString("(1,2),(3,4)")), qs.Write(qs.LiteralString("100,127,1000"))).Values(qs.Write(qs.LiteralString("Gotham")), qs.Write(qs.LiteralString("(1000,34),(1100,334)")), qs.Write(qs.LiteralString("123456,127,-1000,6789")))
 }
 func build04071() qs.Statement {
 	return qs.Select(qs.Ident("ih", "name"), qs.Ident("ih", "thepath"), qs.Call("interpt_pp", qs.Ident("ih", "thepath"), qs.Ident("r", "thepath")).As("exit")).FromExpr(qs.Table("ihighway").As("ih"), qs.Table("ramp").As("r")).Where(qs.AsCondition(qs.Operator(qs.Ident("ih", "thepath"), "?#", qs.Ident("r", "thepath"))))
@@ -1534,10 +1534,10 @@ func build04279() qs.Statement {
 	return qs.Select(qs.Ident("viewname")).FromExpr(qs.Table("pg_views")).Where(qs.AsCondition(qs.Operator(qs.Ident("viewname"), "=", qs.LiteralString("tt27v"))))
 }
 func build04287() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("date_tbl")).ValuesExpr(qs.LiteralString("1997-02-28"))
+	return qs.InsertIntoTable(qs.Table("date_tbl")).Values(qs.Write(qs.LiteralString("1997-02-28")))
 }
 func build04295() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("date_tbl")).ValuesExpr(qs.LiteralString("2039-04-09"))
+	return qs.InsertIntoTable(qs.Table("date_tbl")).Values(qs.Write(qs.LiteralString("2039-04-09")))
 }
 func build04303() qs.Statement {
 	return qs.Select((qs.LiteralString("1999-01-18")).Cast(qs.TypeNamed("date")))
@@ -1641,19 +1641,19 @@ func build04575() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("delete_test").As("dt")).Where(qs.AsCondition(qs.Operator(qs.Ident("delete_test", "a"), ">", qs.LiteralInt(25))))
 }
 func build04583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("basictest")).ValuesExpr(qs.LiteralString("88"), qs.LiteralString("haha"), qs.LiteralString("short"), qs.LiteralString("123.12"))
+	return qs.InsertIntoTable(qs.Table("basictest")).Values(qs.Write(qs.LiteralString("88")), qs.Write(qs.LiteralString("haha")), qs.Write(qs.LiteralString("short")), qs.Write(qs.LiteralString("123.12")))
 }
 func build04591() qs.Statement {
 	return qs.Select(qs.Call("pg_input_is_valid", qs.LiteralString("junk"), qs.LiteralString("positiveint")))
 }
 func build04599() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("domarrtest")).ValuesExpr(qs.LiteralString("{{2,2},{2,2}}"), qs.LiteralString("{{\"a\",\"b\"}}"))
+	return qs.InsertIntoTable(qs.Table("domarrtest")).Values(qs.Write(qs.LiteralString("{{2,2},{2,2}}")), qs.Write(qs.LiteralString("{{\"a\",\"b\"}}")))
 }
 func build04607() qs.Statement {
 	return qs.Select(qs.Call("array_dims", qs.Ident("testint4arr")), qs.Call("array_dims", qs.Ident("testchar4arr"))).FromExpr(qs.Table("domarrtest"))
 }
 func build04615() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("dcomptable")).ValuesExpr((qs.Row(qs.LiteralInt(1), qs.LiteralInt(2)).Expr()).Cast(qs.TypeNamed("dcomptype")))
+	return qs.InsertIntoTable(qs.Table("dcomptable")).Values(qs.Write((qs.Row(qs.LiteralInt(1), qs.LiteralInt(2)).Expr()).Cast(qs.TypeNamed("dcomptype"))))
 }
 func build04623() qs.Statement {
 	return qs.Select((qs.Row(qs.LiteralInt(2), qs.LiteralInt(1)).Expr()).Cast(qs.TypeNamed("dcomptype")))
@@ -1666,46 +1666,46 @@ func build04647() qs.Statement {
 	return qs.Select((qs.Ident("d1")).Index(qs.LiteralInt(2)), ((qs.Ident("d1")).Index(qs.LiteralInt(1))).Field("r"), ((qs.Ident("d1")).Index(qs.LiteralInt(1))).Field("i")).FromExpr(qs.Table("dcomptable"))
 }
 func build04655() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("dcomptable")).Targets((qs.Ident("d1").Index(qs.LiteralInt(1))).Field("r")).ValuesExpr(qs.LiteralInt(99))
+	return qs.InsertIntoTable(qs.Table("dcomptable")).Targets((qs.Ident("d1").Index(qs.LiteralInt(1))).Field("r")).Values(qs.Write(qs.LiteralInt(99)))
 }
 func build04663() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pitable")).ValuesExpr(qs.Array(qs.LiteralInt(42)))
+	return qs.InsertIntoTable(qs.Table("pitable")).Values(qs.Write(qs.Array(qs.LiteralInt(42))))
 }
 func build04671() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("vc4table")) }
 func build04679() qs.Statement {
 	return qs.Select(qs.Call("pg_typeof", (((qs.Ident("f1")).Index(qs.LiteralInt(1))).Parenthesized()).Index(qs.LiteralInt(1)))).FromExpr(qs.Table("dposintatable"))
 }
 func build04687() qs.Statement {
-	return qs.UpdateTable(qs.Table("dcomptable")).Set(qs.Assign((qs.Ident("f1").Index(qs.LiteralInt(1))).Field("cf1"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("dcomptable")).Set(qs.Assign((qs.Ident("f1").Index(qs.LiteralInt(1))).Field("cf1"), qs.Write(qs.LiteralInt(1))))
 }
 func build04695() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("nulltest")).ValuesExpr(qs.NullLiteral(), qs.LiteralString("b"), qs.LiteralString("c"), qs.LiteralString("d"), qs.LiteralString("d"))
+	return qs.InsertIntoTable(qs.Table("nulltest")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralString("b")), qs.Write(qs.LiteralString("c")), qs.Write(qs.LiteralString("d")), qs.Write(qs.LiteralString("d")))
 }
 func build04703() qs.Statement {
 	return qs.Select((qs.Ident("col4")).Cast(qs.TypeNamed("dnotnull"))).FromExpr(qs.Table("nulltest"))
 }
 func build04711() qs.Statement {
-	return qs.UpdateTable(qs.Table("domnotnull")).Set(qs.Assign(qs.Ident("col1"), qs.LiteralInt(5)))
+	return qs.UpdateTable(qs.Table("domnotnull")).Set(qs.Assign(qs.Ident("col1"), qs.Write(qs.LiteralInt(5))))
 }
 func build04719() qs.Statement { return qs.InsertIntoTable(qs.Table("domdeftest")).DefaultValues() }
 func build04727() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("domcontest")).ValuesExpr(qs.LiteralInt(-5))
+	return qs.InsertIntoTable(qs.Table("domcontest")).Values(qs.Write(qs.LiteralInt(-5)))
 }
 func build04735() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("contypid"), "=", (qs.LiteralString("connotnull")).Cast(qs.TypeNamed("regtype")))), qs.AsCondition(qs.Operator(qs.Ident("contype"), "=", qs.LiteralString("n")))).Expr()))
 }
 func build04743() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("domtab")).Columns("col1").ValuesExpr(qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("domtab")).Columns("col1").Values(qs.Write(qs.LiteralInt(5)))
 }
 func build04751() qs.Statement {
 	return qs.Select((qs.LiteralString("y1234")).Cast(qs.TypeNamed("dtop")))
 }
 func build04759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("dtest")).ValuesExpr(qs.LiteralString("yz23"))
+	return qs.InsertIntoTable(qs.Table("dtest")).Values(qs.Write(qs.LiteralString("yz23")))
 }
 func build04767() qs.Statement { return qs.Select(qs.Call("doubledecrement", qs.LiteralInt(0))) }
 func build04775() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("ddtest2")).ValuesExpr(qs.LiteralString("(-1,3]"))
+	return qs.InsertIntoTable(qs.Table("ddtest2")).Values(qs.Write(qs.LiteralString("(-1,3]")))
 }
 func build04783() qs.Statement {
 	return qs.Select(qs.Call("array_elem_check", qs.LiteralNumeric("121.00")))
@@ -1729,7 +1729,7 @@ func build04847() qs.Statement {
 	return qs.Select(qs.Call("test_mblen_func", qs.LiteralString("pg_mblen_unbounded"), qs.LiteralString("UTF8"), qs.Ident("truncated_with_nul"), qs.LiteralInt(3))).FromExpr(qs.Table("regress_encoding"))
 }
 func build04855() qs.Statement {
-	return qs.UpdateTable(qs.Table("toast_3b_utf8")).Set(qs.Assign(qs.Ident("c"), qs.Operator(qs.Ident("c"), "||", qs.Call("test_bytea_to_text", qs.LiteralString("\\xe280")))))
+	return qs.UpdateTable(qs.Table("toast_3b_utf8")).Set(qs.Assign(qs.Ident("c"), qs.Write(qs.Operator(qs.Ident("c"), "||", qs.Call("test_bytea_to_text", qs.LiteralString("\\xe280"))))))
 }
 func build04863() qs.Statement {
 	return qs.Select(qs.Call("ascii", qs.Call("test_bytea_to_text", qs.LiteralString("\\xf0"))))
@@ -1756,7 +1756,7 @@ func build04919() qs.Statement {
 	return qs.Select(qs.Call("enum_range", (qs.NullLiteral()).Cast(qs.TypeNamed("rainbow"))))
 }
 func build04927() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("enumtest_parent")).ValuesExpr(qs.LiteralString("red"))
+	return qs.InsertIntoTable(qs.Table("enumtest_parent")).Values(qs.Write(qs.LiteralString("red")))
 }
 func build04935() qs.Statement {
 	return qs.Select(qs.Call("enum_range", (qs.NullLiteral()).Cast(qs.TypeNamed("bogus"))))
@@ -1793,7 +1793,7 @@ func build05023() qs.Statement {
 	return qs.Explain(qs.Select((qs.Call("sum", qs.Ident("unique1"))).OverNamed("w1"), (qs.Call("sum", qs.Ident("unique2"))).Over(qs.Window().Base("w1").OrderBy((qs.Ident("hundred")).Asc()).Range(qs.UnboundedPreceding())), (qs.Call("sum", qs.Ident("tenthous"))).Over(qs.Window().Base("w1").OrderBy((qs.Ident("hundred")).Asc()).Rows(qs.PrecedingExpr(qs.LiteralInt(10))))).FromExpr(qs.Table("tenk1")).Window("w1", qs.Window().PartitionBy(qs.Ident("ten")).Range(qs.UnboundedPreceding()))).Verbose(true)
 }
 func build05031() qs.Statement {
-	return qs.Explain(qs.Select(qs.Ident("unique1")).FromExpr(qs.Table("tenk1")).Where(qs.AsCondition(qs.Operator(qs.Ident("thousand"), "=", qs.Param[any]("qs-postgres-corpus-5031-param-1"))))).GenericPlan(true)
+	return qs.Explain(qs.Select(qs.Ident("unique1")).FromExpr(qs.Table("tenk1")).Where(qs.AsCondition(qs.Operator(qs.Ident("thousand"), "=", qs.Param("qs-postgres-corpus-5031-param-1"))))).GenericPlan(true)
 }
 func build05039() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("int8_tbl").As("i8"))).Memory(true).Summary(true).Format(qs.ExplainYAML)
@@ -1829,13 +1829,13 @@ func build05119() qs.Statement {
 	return qs.Select(qs.Ident("a"), (qs.Ident("a")).InExpr((qs.NullLiteral()).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(1)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(2)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(3)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(4)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(5)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(6)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(7)).Cast(qs.TypeNamed("myint"))).Expr().As("not_hashed"), (qs.Ident("a")).InExpr((qs.NullLiteral()).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(1)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(2)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(3)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(4)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(5)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(6)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(7)).Cast(qs.TypeNamed("myint")), (qs.LiteralInt(8)).Cast(qs.TypeNamed("myint"))).Expr().As("hashed")).FromExpr(qs.Table("inttest"))
 }
 func build05127() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).ValuesExpr(qs.LiteralInt(5)).ValuesExpr(qs.LiteralInt(6))
+	return qs.InsertIntoTable(qs.Table("t")).Values(qs.Write(qs.LiteralInt(5))).Values(qs.Write(qs.LiteralInt(6)))
 }
 func build05135() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).ValuesExpr(qs.LiteralInt(21)).ValuesExpr(qs.LiteralInt(22))
+	return qs.InsertIntoTable(qs.Table("t")).Values(qs.Write(qs.LiteralInt(21))).Values(qs.Write(qs.LiteralInt(22)))
 }
 func build05143() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).ValuesExpr(qs.LiteralInt(3)).ValuesExpr(qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("t")).Values(qs.Write(qs.LiteralInt(3))).Values(qs.Write(qs.LiteralInt(4)))
 }
 func build05151() qs.Statement { return qs.Select(qs.Call("comp")) }
 func build05159() qs.Statement { return qs.Select(qs.Call("comp")) }
@@ -1846,32 +1846,32 @@ func build05175() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("t")).Where(qs.AsCondition(qs.Operator(qs.Ident("c_bigint"), ">", qs.LiteralInt(-1)))).OrderBy((qs.Ident("c_bigint")).Asc(), (qs.Ident("c_text")).Asc(), (qs.Ident("pk")).Asc()).LimitExpr(qs.LiteralInt(10))).Verbose(true).Costs(false)
 }
 func build05183() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).ValuesExpr(qs.LiteralInt(3)).ValuesExpr(qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("t")).Values(qs.Write(qs.LiteralInt(3))).Values(qs.Write(qs.LiteralInt(4)))
 }
 func build05191() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)))
 }
 func build05199() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)))
 }
 func build05207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.NullLiteral()))
 }
 func build05215() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("t")).Columns("a", "b", "c").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.NullLiteral()))
 }
 func build05223() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("leader")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("leader")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)))
 }
 func build05231() qs.Statement { return qs.InsertIntoTable(qs.Table("t")).DefaultValues() }
 func build05239() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("float4_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("1004.30   "))
+	return qs.InsertIntoTable(qs.Table("float4_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("1004.30   ")))
 }
 func build05247() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("float4_tbl")).Columns("f1").ValuesExpr((qs.LiteralString("10e70")).Cast(qs.TypeNamed("float8")))
+	return qs.InsertIntoTable(qs.Table("float4_tbl")).Columns("f1").Values(qs.Write((qs.LiteralString("10e70")).Cast(qs.TypeNamed("float8"))))
 }
 func build05255() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("float4_tbl")).Columns("f1").ValuesExpr(qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("float4_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("")))
 }
 func build05263() qs.Statement {
 	return qs.Select(qs.Call("pg_input_is_valid", qs.LiteralString("34.5"), qs.LiteralString("float4")))
@@ -1886,7 +1886,7 @@ func build05287() qs.Statement {
 	return qs.Select(qs.Star("f")).FromExpr(qs.Table("float4_tbl").As("f")).Where(qs.AsCondition(qs.Operator(qs.Ident("f", "f1"), "<=", qs.LiteralString("1004.3"))))
 }
 func build05295() qs.Statement {
-	return qs.UpdateTable(qs.Table("float4_tbl")).Set(qs.Assign(qs.Ident("f1"), qs.Operator(qs.Ident("float4_tbl", "f1"), "*", qs.LiteralString("-1")))).Where(qs.AsCondition(qs.Operator(qs.Ident("float4_tbl", "f1"), ">", qs.LiteralString("0.0"))))
+	return qs.UpdateTable(qs.Table("float4_tbl")).Set(qs.Assign(qs.Ident("f1"), qs.Write(qs.Operator(qs.Ident("float4_tbl", "f1"), "*", qs.LiteralString("-1"))))).Where(qs.AsCondition(qs.Operator(qs.Ident("float4_tbl", "f1"), ">", qs.LiteralString("0.0"))))
 }
 func build05303() qs.Statement {
 	return qs.Select(((qs.LiteralString("-2147483648.5")).Cast(qs.TypeNamed("float4"))).Cast(qs.TypeNamed("int4")))
@@ -1904,7 +1904,7 @@ func build05335() qs.Statement {
 	return qs.Select((qs.LiteralString("10e-400")).Cast(qs.TypeNamed("float8")))
 }
 func build05343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("float8_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("5.   0"))
+	return qs.InsertIntoTable(qs.Table("float8_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("5.   0")))
 }
 func build05351() qs.Statement {
 	return qs.Select((qs.LiteralString("nan")).Cast(qs.TypeNamed("float8")))
@@ -1952,7 +1952,7 @@ func build05463() qs.Statement {
 	return qs.Select(qs.Call("gamma", (qs.LiteralString("-1")).Cast(qs.TypeNamed("float8"))))
 }
 func build05471() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("float8_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("-10e400"))
+	return qs.InsertIntoTable(qs.Table("float8_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("-10e400")))
 }
 func build05479() qs.Statement {
 	return qs.Select(((qs.LiteralString("2147483647.4")).Cast(qs.TypeNamed("float8"))).Cast(qs.TypeNamed("int4")))
@@ -1977,54 +1977,54 @@ func build05527() qs.Statement {
 }
 func build05535() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("fktable")) }
 func build05543() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.NullLiteral(), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralInt(1)))
 }
 func build05551() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pktable")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(3), qs.LiteralString("Test1-2"))
+	return qs.InsertIntoTable(qs.Table("pktable")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("Test1-2")))
 }
 func build05559() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(6), qs.LiteralInt(12))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(12)))
 }
 func build05567() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("fktable")) }
 func build05575() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("fktable")) }
 func build05583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(4)))
 }
 func build05591() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(1), qs.NullLiteral(), qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralInt(4)))
 }
 func build05599() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pktable")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("Test1"))
+	return qs.InsertIntoTable(qs.Table("pktable")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("Test1")))
 }
 func build05607() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.NullLiteral(), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralInt(1)))
 }
 func build05615() qs.Statement {
-	return qs.UpdateTable(qs.Table("pktable")).Set(qs.Assign(qs.Ident("ptest1"), qs.LiteralInt(0))).Where(qs.AsCondition(qs.Operator(qs.Ident("ptest1"), "=", qs.LiteralInt(4))))
+	return qs.UpdateTable(qs.Table("pktable")).Set(qs.Assign(qs.Ident("ptest1"), qs.Write(qs.LiteralInt(0)))).Where(qs.AsCondition(qs.Operator(qs.Ident("ptest1"), "=", qs.LiteralInt(4))))
 }
 func build05623() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pktable")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3), qs.LiteralString("test1"))
+	return qs.InsertIntoTable(qs.Table("pktable")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("test1")))
 }
 func build05631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.NullLiteral(), qs.LiteralInt(3), qs.LiteralInt(4), qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5)))
 }
 func build05639() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("fktable")) }
 func build05647() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pktable")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3), qs.LiteralString("test1"))
+	return qs.InsertIntoTable(qs.Table("pktable")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("test1")))
 }
 func build05655() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.NullLiteral(), qs.LiteralInt(3), qs.LiteralInt(4), qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5)))
 }
 func build05663() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("pktable")) }
 func build05671() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pktable")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(4), qs.LiteralInt(5), qs.LiteralString("test4"))
+	return qs.InsertIntoTable(qs.Table("pktable")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("test4")))
 }
 func build05679() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("fktable")) }
 func build05687() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("pktable")).Where(qs.AsCondition(qs.Operator(qs.Ident("ptest2"), "=", qs.LiteralInt(5))))
 }
 func build05695() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(1)))
 }
 func build05703() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("fktable")) }
 func build05711() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("pktable")) }
@@ -2032,58 +2032,58 @@ func build05719() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("pktable")).Where(qs.AsCondition(qs.Or(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(2)))).Expr()))
 }
 func build05727() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(42))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(42)))
 }
 func build05735() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).Columns("ftest1").ValuesExpr(qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("fktable")).Columns("ftest1").Values(qs.Write(qs.LiteralInt(3)))
 }
 func build05743() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).Columns("ftest1", "ftest2").ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("fktable")).Columns("ftest1", "ftest2").Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(1)))
 }
 func build05751() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pktable")).Columns("base1", "ptest1", "base2", "ptest2").ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(1), qs.LiteralInt(1), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("pktable")).Columns("base1", "ptest1", "base2", "ptest2").Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)))
 }
 func build05759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(10))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(10)))
 }
 func build05767() qs.Statement {
 	return qs.Select(qs.Ident("conname"), (qs.Ident("tgrelid")).Cast(qs.TypeNamed("regclass")).As("tgrel"), qs.Call("regexp_replace", qs.Ident("tgname"), qs.LiteralString("[0-9]+"), qs.LiteralString("N")).As("tgname"), qs.Ident("tgtype"), qs.Ident("tgdeferrable"), qs.Ident("tginitdeferred")).FromExpr(qs.InnerJoin(qs.Table("pg_trigger").As("t"), qs.Table("pg_constraint").As("c")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tgconstraint"), "=", qs.Ident("c", "oid"))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("conrelid"), "=", (qs.LiteralString("fktable")).Cast(qs.TypeNamed("regclass")))), qs.AsCondition(qs.Operator(qs.Ident("conname"), "=", qs.LiteralString("fktable_fk_fkey")))).Expr())).OrderBy((qs.Ident("tgrelid")).Asc(), (qs.Ident("tgtype")).Asc())
 }
 func build05775() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(20)))
 }
 func build05783() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("fktable")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(20)))
 }
 func build05791() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("tasks")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(3), qs.LiteralInt(3), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("tasks")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(3)))
 }
 func build05799() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("users")).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(2))))
 }
 func build05807() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("defc")).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("defc")).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build05815() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pp")).ValuesExpr(qs.LiteralInt(12))
+	return qs.InsertIntoTable(qs.Table("pp")).Values(qs.Write(qs.LiteralInt(12)))
 }
 func build05823() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pp")).ValuesExpr(qs.LiteralInt(11))
+	return qs.InsertIntoTable(qs.Table("pp")).Values(qs.Write(qs.LiteralInt(11)))
 }
 func build05831() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pktable2")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3), qs.LiteralInt(4), qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("pktable2")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5)))
 }
 func build05839() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fktable2")).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("fktable2")).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build05847() qs.Statement {
-	return qs.UpdateTable(qs.Table("pktable2")).Set(qs.Assign(qs.Ident("a"), qs.LiteralString("0"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("-0"))))
+	return qs.UpdateTable(qs.Table("pktable2")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralString("0")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("-0"))))
 }
 func build05855() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fk_partitioned_fk_3")).Columns("a", "b").ValuesExpr(qs.LiteralInt(2500), qs.LiteralInt(2502))
+	return qs.InsertIntoTable(qs.Table("fk_partitioned_fk_3")).Columns("a", "b").Values(qs.Write(qs.LiteralInt(2500)), qs.Write(qs.LiteralInt(2502)))
 }
 func build05863() qs.Statement {
-	return qs.UpdateTable(qs.Table("fk_partitioned_fk")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(2501))))
+	return qs.UpdateTable(qs.Table("fk_partitioned_fk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1))))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(2501))))
 }
 func build05871() qs.Statement {
 	return qs.Select(qs.Ident("conname"), (qs.Ident("tgrelid")).Cast(qs.TypeNamed("regclass")).As("tgrel"), qs.Call("regexp_replace", qs.Ident("tgname"), qs.LiteralString("[0-9]+"), qs.LiteralString("N")).As("tgname"), qs.Ident("tgtype")).FromExpr(qs.InnerJoin(qs.Table("pg_trigger").As("t"), qs.Table("pg_constraint").As("c")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tgconstraint"), "=", qs.Ident("c", "oid"))))).Where(qs.AsCondition((qs.Ident("tgrelid")).InQuery(qs.UnionAll(qs.Select(qs.Ident("relid")).FromExpr(qs.TableFunc(qs.Call("pg_partition_tree", (qs.LiteralString("fk_partitioned_fk")).Cast(qs.TypeNamed("regclass"))))), qs.Select((qs.LiteralString("fk_notpartitioned_pk")).Cast(qs.TypeNamed("regclass"))))).Expr())).OrderBy((qs.Ident("tgrelid")).Asc(), (qs.Ident("tgtype")).Asc())
@@ -2092,30 +2092,30 @@ func build05879() qs.Statement {
 	return qs.Select(qs.Ident("conname"), qs.Ident("convalidated"), (qs.Ident("conrelid")).Cast(qs.TypeNamed("regclass"))).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition((((qs.Ident("conrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).LikeExpr(qs.LiteralString("fk_partitioned_fk%")).Expr())).OrderBy(((qs.Ident("conname")).Collate("C")).Asc())
 }
 func build05887() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fk_partitioned_fk_3")).Columns("a", "b").ValuesExpr(qs.LiteralInt(2502), qs.LiteralInt(2503))
+	return qs.InsertIntoTable(qs.Table("fk_partitioned_fk_3")).Columns("a", "b").Values(qs.Write(qs.LiteralInt(2502)), qs.Write(qs.LiteralInt(2503)))
 }
 func build05895() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("a"), qs.Ident("b")).FromExpr(qs.Table("fk_partitioned_fk")).Where(qs.AsCondition((qs.Ident("b")).IsNull().Expr())).OrderBy((qs.Ident("a")).Asc())
 }
 func build05903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fk_partitioned_fk_3")).Columns("a", "b").ValuesExpr(qs.LiteralInt(2502), qs.LiteralInt(2503))
+	return qs.InsertIntoTable(qs.Table("fk_partitioned_fk_3")).Columns("a", "b").Values(qs.Write(qs.LiteralInt(2502)), qs.Write(qs.LiteralInt(2503)))
 }
 func build05911() qs.Statement { return qs.DeleteFromTable(qs.Table("fk_notpartitioned_pk")) }
 func build05919() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("fk_notpartitioned_pk")).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralInt(142857))))
 }
 func build05927() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parted_self_fk")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("parted_self_fk")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5)))
 }
 func build05935() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fkpart1.fk_part")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("fkpart1.fk_part")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build05943() qs.Statement { return qs.DeleteFromTable(qs.Table("fkpart3.pkey")) }
 func build05951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pk")).ValuesExpr(qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(1000)).ValuesExpr(qs.LiteralInt(2000)).ValuesExpr(qs.LiteralInt(3000)).ValuesExpr(qs.LiteralInt(4000)).ValuesExpr(qs.LiteralInt(4500))
+	return qs.InsertIntoTable(qs.Table("pk")).Values(qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(1000))).Values(qs.Write(qs.LiteralInt(2000))).Values(qs.Write(qs.LiteralInt(3000))).Values(qs.Write(qs.LiteralInt(4000))).Values(qs.Write(qs.LiteralInt(4500)))
 }
 func build05959() qs.Statement {
-	return qs.UpdateTable(qs.Table("pk")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(2))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("pk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(2)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build05967() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("pk")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(2))))
@@ -2124,12 +2124,12 @@ func build05975() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("pk")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(4002))))
 }
 func build05983() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fk")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("fk")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build05991() qs.Statement { return qs.DeleteFromTable(qs.Table("pt")) }
 func build05999() qs.Statement { return qs.DeleteFromTable(qs.Table("pt")) }
 func build06007() qs.Statement {
-	return qs.UpdateTable(qs.Table("pk")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(20)))
+	return qs.UpdateTable(qs.Table("pk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(20))))
 }
 func build06015() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Star()).FromExpr(qs.Table("fk"))
@@ -2139,23 +2139,23 @@ func build06023() qs.Statement {
 }
 func build06031() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("fkpart9.pk")) }
 func build06039() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fkpart10.tbl1")).ValuesExpr(qs.LiteralInt(0)).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("fkpart10.tbl1")).Values(qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build06047() qs.Statement {
-	return qs.UpdateTable(qs.Table("fkpart10.tbl3")).Set(qs.Assign(qs.Ident("f1"), qs.Operator(qs.Ident("f1"), "*", qs.LiteralInt(-1))))
+	return qs.UpdateTable(qs.Table("fkpart10.tbl3")).Set(qs.Assign(qs.Ident("f1"), qs.Write(qs.Operator(qs.Ident("f1"), "*", qs.LiteralInt(-1)))))
 }
 func build06055() qs.Statement {
-	return qs.UpdateTable(qs.Table("fkpart10.tbl3")).Set(qs.Assign(qs.Ident("f1"), qs.Operator(qs.Ident("f1"), "*", qs.LiteralInt(-3))))
+	return qs.UpdateTable(qs.Table("fkpart10.tbl3")).Set(qs.Assign(qs.Ident("f1"), qs.Write(qs.Operator(qs.Ident("f1"), "*", qs.LiteralInt(-3)))))
 }
 func build06063() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("pg_catalog", "regclass")), qs.Star()).FromExpr(qs.Table("fkpart11.fk_another"))
 }
 func build06071() qs.Statement {
-	return qs.UpdateTable(qs.Table("fkpart11.pk")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("fkpart11.pk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1))))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build06079() qs.Statement { return qs.DeleteFromTable(qs.Table("fk_p")) }
 func build06087() qs.Statement {
-	return (qs.UpdateTable(qs.Table("fkpart13_t1")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(2))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))).With(qs.CTE("cte", qs.UpdateTable(qs.Table("fkpart13_t2_p1")).Set(qs.Assign(qs.Ident("part_id"), qs.Ident("part_id")))))
+	return (qs.UpdateTable(qs.Table("fkpart13_t1")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(2)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))).With(qs.CTE("cte", qs.UpdateTable(qs.Table("fkpart13_t2_p1")).Set(qs.Assign(qs.Ident("part_id"), qs.Write(qs.Ident("part_id"))))))
 }
 func build06095() qs.Statement {
 	return qs.Select(qs.Ident("a", "id"), qs.Ident("a", "keywords"), qs.Ident("a", "title"), qs.Ident("a", "body"), qs.Ident("a", "created")).FromExpr(qs.InnerJoin(qs.Table("articles").As("a"), qs.Table("articles_in_category").As("aic")).On(qs.AsCondition(qs.Operator(qs.Ident("a", "id"), "=", qs.Ident("aic", "article_id"))))).Where(qs.AsCondition((qs.Ident("aic", "category_id")).InExpr(qs.LiteralInt(14), qs.LiteralInt(62), qs.LiteralInt(70), qs.LiteralInt(53), qs.LiteralInt(138)).Expr())).GroupByExpr(qs.Ident("aic", "article_id"), qs.Ident("aic", "category_id"))
@@ -2164,23 +2164,23 @@ func build06103() qs.Statement {
 	return qs.Select(qs.Ident("id"), qs.Ident("keywords"), qs.Ident("title"), qs.Ident("body"), qs.Ident("created")).FromExpr(qs.Table("articles")).GroupByExpr(qs.Ident("body"))
 }
 func build06111() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest1")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("gtest1")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build06119() qs.Statement {
 	return qs.Select(qs.Ident("gtest1")).FromExpr(qs.Table("gtest1")).OrderBy((qs.Ident("a")).Asc())
 }
 func build06127() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest1")).ValuesExpr(qs.LiteralInt(2000000000))
+	return qs.InsertIntoTable(qs.Table("gtest1")).Values(qs.Write(qs.LiteralInt(2000000000)))
 }
 func build06135() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("gtest1")).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralInt(2))))
 }
 func build06143() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("gtest1v")) }
 func build06151() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest1v")).ValuesExpr(qs.LiteralInt(8), qs.Default()).ValuesExpr(qs.LiteralInt(9), qs.Default())
+	return qs.InsertIntoTable(qs.Table("gtest1v")).Values(qs.Write(qs.LiteralInt(8)), qs.Default()).Values(qs.Write(qs.LiteralInt(9)), qs.Default())
 }
 func build06159() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtestx")).Columns("a", "x").ValuesExpr(qs.LiteralInt(11), qs.LiteralInt(22))
+	return qs.InsertIntoTable(qs.Table("gtestx")).Columns("a", "x").Values(qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralInt(22)))
 }
 func build06167() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtest3")).OrderBy((qs.Ident("a")).Asc())
@@ -2189,16 +2189,16 @@ func build06175() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtest1")).OrderBy((qs.Ident("a")).Asc())
 }
 func build06183() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest4")).ValuesExpr(qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(6))
+	return qs.InsertIntoTable(qs.Table("gtest4")).Values(qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(6)))
 }
 func build06191() qs.Statement {
 	return qs.Select(qs.Ident("a"), qs.Ident("c")).FromExpr(qs.Table("gtest11"))
 }
 func build06199() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest20b")).Columns("a").ValuesExpr(qs.LiteralInt(10))
+	return qs.InsertIntoTable(qs.Table("gtest20b")).Columns("a").Values(qs.Write(qs.LiteralInt(10)))
 }
 func build06207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest21b")).Columns("a").ValuesExpr(qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("gtest21b")).Columns("a").Values(qs.Write(qs.LiteralInt(0)))
 }
 func build06215() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtest22c")).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralInt(4))))
@@ -2207,29 +2207,29 @@ func build06223() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtest22c")).Where(qs.AsCondition(qs.Operator(qs.Operator(qs.Ident("b"), "*", qs.LiteralInt(3)), "=", qs.LiteralInt(12))))
 }
 func build06231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest23q")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("gtest23q")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(5)))
 }
 func build06239() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest_parent")).Columns("f1", "f2").ValuesExpr(qs.LiteralString("2016-07-15"), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("gtest_parent")).Columns("f1", "f2").Values(qs.Write(qs.LiteralString("2016-07-15")), qs.Write(qs.LiteralInt(2)))
 }
 func build06247() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Star()).FromExpr(qs.Table("gtest_parent")).OrderBy((qs.LiteralInt(1)).Asc(), (qs.LiteralInt(2)).Asc(), (qs.LiteralInt(3)).Asc())
 }
 func build06255() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest29")).Columns("a").ValuesExpr(qs.LiteralInt(3)).ValuesExpr(qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("gtest29")).Columns("a").Values(qs.Write(qs.LiteralInt(3))).Values(qs.Write(qs.LiteralInt(4)))
 }
 func build06263() qs.Statement {
-	return qs.UpdateTable(qs.Table("gtest26")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "*", qs.LiteralInt(-2))))
+	return qs.UpdateTable(qs.Table("gtest26")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "*", qs.LiteralInt(-2)))))
 }
 func build06271() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtest26")).OrderBy((qs.Ident("a")).Asc())
 }
 func build06279() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("gtest_rule")) }
 func build06287() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest1")).ValuesExpr(qs.LiteralInt(3), qs.Default()).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(44))
+	return qs.InsertIntoTable(qs.Table("gtest1")).Values(qs.Write(qs.LiteralInt(3)), qs.Default()).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(44)))
 }
 func build06295() qs.Statement {
-	return qs.UpdateTable(qs.Table("gtest1")).Set(qs.Assign(qs.Ident("b"), qs.LiteralInt(11))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("gtest1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralInt(11)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build06303() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtestx"), qs.Table("gtest1")).Where(qs.AsCondition(qs.Operator(qs.Ident("gtestx", "y"), "=", qs.Ident("gtest1", "a"))))
@@ -2238,7 +2238,7 @@ func build06311() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtestm")).OrderBy((qs.Ident("id")).Asc())
 }
 func build06319() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest1v")).ValuesExpr(qs.LiteralInt(6), qs.Default()).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(77))
+	return qs.InsertIntoTable(qs.Table("gtest1v")).Values(qs.Write(qs.LiteralInt(6)), qs.Default()).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(77)))
 }
 func build06327() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("gtest1_1")) }
 func build06335() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("gtestc")) }
@@ -2250,29 +2250,29 @@ func build06359() qs.Statement {
 	return qs.Select(qs.Ident("a"), qs.Ident("b")).FromExpr(qs.Table("gtest11"))
 }
 func build06367() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest20b")).Columns("a").ValuesExpr(qs.LiteralInt(30))
+	return qs.InsertIntoTable(qs.Table("gtest20b")).Columns("a").Values(qs.Write(qs.LiteralInt(30)))
 }
 func build06375() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest21b")).Columns("a").ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("gtest21b")).Columns("a").Values(qs.Write(qs.LiteralInt(1)))
 }
 func build06383() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest21d")).Columns("a").ValuesExpr(qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("gtest21d")).Columns("a").Values(qs.Write(qs.LiteralInt(20)))
 }
 func build06391() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtestnn_parent")).OrderBy((qs.Ident("f1")).Asc(), (qs.Ident("f2")).Asc(), (qs.Ident("f3")).Asc())
 }
 func build06399() qs.Statement {
-	return qs.UpdateTable(qs.Table("gtest_parent")).Set(qs.Assign(qs.Ident("f1"), qs.Operator(qs.Ident("f1"), "+", qs.LiteralInt(60)))).Where(qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("gtest_parent")).Set(qs.Assign(qs.Ident("f1"), qs.Write(qs.Operator(qs.Ident("f1"), "+", qs.LiteralInt(60))))).Where(qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.LiteralInt(1))))
 }
 func build06407() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("gtest27")) }
 func build06415() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest29")).Columns("a", "b").ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(66))
+	return qs.InsertIntoTable(qs.Table("gtest29")).Columns("a", "b").Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(66)))
 }
 func build06423() qs.Statement {
-	return qs.UpdateTable(qs.Table("gtest26")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(0))))
+	return qs.UpdateTable(qs.Table("gtest26")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(0))))
 }
 func build06431() qs.Statement {
-	return qs.UpdateTable(qs.Table("gtest_rule")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(10)))
+	return qs.UpdateTable(qs.Table("gtest_rule")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(10))))
 }
 func build06439() qs.Statement {
 	return qs.Select((qs.Call("sum", qs.Ident("t2", "b"))).Over(qs.Window().PartitionBy(qs.Ident("t2", "a")).Range(qs.UnboundedPreceding())), (qs.Call("sum", qs.Ident("t2", "c"))).Over(qs.Window().PartitionBy(qs.Ident("t2", "a")).Range(qs.UnboundedPreceding())), (qs.Call("sum", qs.Ident("t2", "d"))).Over(qs.Window().PartitionBy(qs.Ident("t2", "a")).Range(qs.UnboundedPreceding()))).FromExpr(qs.LeftJoin(qs.Table("gtest32").As("t1"), qs.Table("gtest32").As("t2")).On(qs.AsCondition(qs.Operator(qs.Ident("t1", "a"), "=", qs.Ident("t2", "a"))))).OrderBy((qs.Ident("t1", "a")).Asc())
@@ -2281,7 +2281,7 @@ func build06447() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("gtest32").As("t")).GroupByExpr(qs.GroupingSets(qs.Ident("a"), qs.Ident("b"), qs.Ident("c"), qs.Ident("d"), qs.Ident("e"))).Having(qs.AsCondition(qs.Operator(qs.Ident("c"), "=", qs.LiteralInt(20))))
 }
 func build06455() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("gtest34p")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(7)).OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Assign(qs.Ident("a"), qs.Ident("excluded", "c")))).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("gtest34p")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(7))).OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Assign(qs.Ident("a"), qs.Write(qs.Ident("excluded", "c"))))).Returning(qs.Star())
 }
 func build06463() qs.Statement {
 	return qs.Select(qs.Call("center", qs.Ident("f1")).As("center")).FromExpr(qs.Table("box_tbl"))
@@ -2478,16 +2478,16 @@ func build06983() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("hash_i4_heap")).Where(qs.AsCondition(qs.Operator(qs.Ident("seqno"), "=", qs.LiteralInt(9999))))).Costs(false)
 }
 func build06991() qs.Statement {
-	return qs.UpdateTable(qs.Table("hash_name_heap")).Set(qs.Assign(qs.Ident("seqno"), qs.LiteralInt(20000))).Where(qs.AsCondition(qs.Operator(qs.Ident("hash_name_heap", "random"), "=", (qs.LiteralString("76652222")).Cast(qs.TypeNamed("name")))))
+	return qs.UpdateTable(qs.Table("hash_name_heap")).Set(qs.Assign(qs.Ident("seqno"), qs.Write(qs.LiteralInt(20000)))).Where(qs.AsCondition(qs.Operator(qs.Ident("hash_name_heap", "random"), "=", (qs.LiteralString("76652222")).Cast(qs.TypeNamed("name")))))
 }
 func build06999() qs.Statement {
-	return qs.UpdateTable(qs.Table("hash_f8_heap")).Set(qs.Assign(qs.Ident("seqno"), qs.LiteralInt(20000))).Where(qs.AsCondition(qs.Operator(qs.Ident("hash_f8_heap", "random"), "=", (qs.LiteralString("488912369")).Cast(qs.TypeNamed("float8")))))
+	return qs.UpdateTable(qs.Table("hash_f8_heap")).Set(qs.Assign(qs.Ident("seqno"), qs.Write(qs.LiteralInt(20000)))).Where(qs.AsCondition(qs.Operator(qs.Ident("hash_f8_heap", "random"), "=", (qs.LiteralString("488912369")).Cast(qs.TypeNamed("float8")))))
 }
 func build07007() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("hash_cleanup_heap")).From(qs.Select(qs.LiteralInt(1)).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(1000))).As("i")))
 }
 func build07015() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("hash_heap_float4")).ValuesExpr(qs.LiteralNumeric("1.1"), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("hash_heap_float4")).Values(qs.Write(qs.LiteralNumeric("1.1")), qs.Write(qs.LiteralInt(1)))
 }
 func build07023() qs.Statement {
 	return qs.Select(qs.Call("satisfies_hash_partition", (qs.LiteralString("mchash")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(4), qs.NullLiteral(), qs.NullLiteral()))
@@ -2632,37 +2632,37 @@ func build07407() qs.Statement {
 }
 func build07415() qs.Statement { return qs.InsertIntoTable(qs.Table("itest4")).DefaultValues() }
 func build07423() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("itest5")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("b")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("c"))
+	return qs.InsertIntoTable(qs.Table("itest5")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("b"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("c")))
 }
 func build07431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("itest5")).ValuesExpr(qs.Default(), qs.LiteralString("hh")).ValuesExpr(qs.Default(), qs.LiteralString("ii")).OverridingSystemValue()
+	return qs.InsertIntoTable(qs.Table("itest5")).Values(qs.Default(), qs.Write(qs.LiteralString("hh"))).Values(qs.Default(), qs.Write(qs.LiteralString("ii"))).OverridingSystemValue()
 }
 func build07439() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("itest3")).ValuesExpr(qs.Default(), qs.LiteralString("b")).ValuesExpr(qs.Default(), qs.LiteralString("c"))
+	return qs.InsertIntoTable(qs.Table("itest3")).Values(qs.Default(), qs.Write(qs.LiteralString("b"))).Values(qs.Default(), qs.Write(qs.LiteralString("c")))
 }
 func build07447() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("itest2")).ValuesExpr(qs.LiteralInt(30), qs.LiteralString("xyz")).OverridingUserValue()
+	return qs.InsertIntoTable(qs.Table("itest2")).Values(qs.Write(qs.LiteralInt(30)), qs.Write(qs.LiteralString("xyz"))).OverridingUserValue()
 }
 func build07455() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("itest9")).OrderBy((qs.Ident("c")).Asc())
 }
 func build07463() qs.Statement { return qs.InsertIntoTable(qs.Table("itestv10")).DefaultValues() }
 func build07471() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("itestv11")).ValuesExpr(qs.LiteralInt(10), qs.LiteralString("xyz"))
+	return qs.InsertIntoTable(qs.Table("itestv11")).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralString("xyz")))
 }
 func build07479() qs.Statement { return qs.InsertIntoTable(qs.Table("itest6")).DefaultValues() }
 func build07487() qs.Statement { return qs.InsertIntoTable(qs.Table("itest8")).DefaultValues() }
 func build07495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pitest1")).Columns("f1", "f2").ValuesExpr(qs.LiteralString("2016-08-4"), qs.LiteralString("from pitest1"))
+	return qs.InsertIntoTable(qs.Table("pitest1")).Columns("f1", "f2").Values(qs.Write(qs.LiteralString("2016-08-4")), qs.Write(qs.LiteralString("from pitest1")))
 }
 func build07503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pitest2_p1")).Columns("f1", "f2").ValuesExpr(qs.LiteralString("2016-07-3"), qs.LiteralString("from pitest2_p1"))
+	return qs.InsertIntoTable(qs.Table("pitest2_p1")).Columns("f1", "f2").Values(qs.Write(qs.LiteralString("2016-07-3")), qs.Write(qs.LiteralString("from pitest2_p1")))
 }
 func build07511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pitest2_p2")).Columns("f1", "f2", "f3").ValuesExpr(qs.LiteralString("2016-08-6"), qs.LiteralString("from pitest2_p2"), qs.LiteralInt(300))
+	return qs.InsertIntoTable(qs.Table("pitest2_p2")).Columns("f1", "f2", "f3").Values(qs.Write(qs.LiteralString("2016-08-6")), qs.Write(qs.LiteralString("from pitest2_p2")), qs.Write(qs.LiteralInt(300)))
 }
 func build07519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pitest3_p1")).ValuesExpr(qs.LiteralString("2016-07-3"), qs.LiteralString("from pitest3_p1"), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("pitest3_p1")).Values(qs.Write(qs.LiteralString("2016-07-3")), qs.Write(qs.LiteralString("from pitest3_p1")), qs.Write(qs.LiteralInt(2)))
 }
 func build07527() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("f1"), qs.Ident("f2"), qs.Ident("f3")).FromExpr(qs.Table("pitest3"))
@@ -2730,7 +2730,7 @@ func build07703() qs.Statement {
 	return qs.Select((qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass")), (qs.Ident("indrelid")).Cast(qs.TypeNamed("regclass")), (qs.Ident("inhparent")).Cast(qs.TypeNamed("regclass"))).FromExpr(qs.LeftJoin(qs.Table("pg_index").As("idx"), qs.Table("pg_inherits").As("inh")).On(qs.AsCondition(qs.Operator(qs.Ident("idx", "indexrelid"), "=", qs.Ident("inh", "inhrelid"))))).Where(qs.AsCondition((((qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).LikeExpr(qs.LiteralString("idxpart%")).Expr())).OrderBy(((((qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).Collate("C")).Asc())
 }
 func build07711() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("idxpart11")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("idxpart11")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(0)))
 }
 func build07719() qs.Statement {
 	return qs.Select(qs.Ident("relname"), qs.Ident("indisvalid")).FromExpr(qs.InnerJoin(qs.Table("pg_class"), qs.Table("pg_index")).On(qs.AsCondition(qs.Operator(qs.Ident("indexrelid"), "=", qs.Ident("oid"))))).Where(qs.AsCondition((qs.Ident("relname")).LikeExpr(qs.LiteralString("idxpart%")).Expr())).OrderBy((qs.Ident("relname")).Asc())
@@ -2745,25 +2745,25 @@ func build07743() qs.Statement {
 	return qs.Select((qs.Ident("indrelid")).Cast(qs.TypeNamed("regclass")), (qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass")), (qs.Ident("inhparent")).Cast(qs.TypeNamed("regclass")), qs.Ident("indisvalid"), qs.Ident("conname"), qs.Ident("conislocal"), qs.Ident("coninhcount"), qs.Ident("connoinherit"), qs.Ident("convalidated")).FromExpr(qs.LeftJoin(qs.LeftJoin(qs.Table("pg_index").As("idx"), qs.Table("pg_inherits").As("inh")).On(qs.AsCondition(qs.Operator(qs.Ident("idx", "indexrelid"), "=", qs.Ident("inh", "inhrelid")))), qs.Table("pg_constraint").As("con")).On(qs.AsCondition(qs.Operator(qs.Ident("idx", "indexrelid"), "=", qs.Ident("con", "conindid"))))).Where(qs.AsCondition((((qs.Ident("indrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).LikeExpr(qs.LiteralString("idxpart%")).Expr())).OrderBy(((((qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).Collate("C")).Asc())
 }
 func build07751() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("idxpart")).ValuesExpr(qs.LiteralInt(857142), qs.LiteralString("six"))
+	return qs.InsertIntoTable(qs.Table("idxpart")).Values(qs.Write(qs.LiteralInt(857142)), qs.Write(qs.LiteralString("six")))
 }
 func build07759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("covidxpart")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("covidxpart")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(1)))
 }
 func build07767() qs.Statement {
 	return qs.Select((qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass")), qs.Ident("indisvalid"), qs.Ident("indisreplident"), (qs.Ident("indrelid")).Cast(qs.TypeNamed("regclass")), (qs.Ident("inhparent")).Cast(qs.TypeNamed("regclass"))).FromExpr(qs.LeftJoin(qs.Table("pg_index").As("idx"), qs.Table("pg_inherits").As("inh")).On(qs.AsCondition(qs.Operator(qs.Ident("idx", "indexrelid"), "=", qs.Ident("inh", "inhrelid"))))).Where(qs.AsCondition((((qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).LikeExpr(qs.LiteralString("parted_replica%")).Expr())).OrderBy(((((qs.Ident("indexrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).Collate("C")).Asc())
 }
 func build07775() qs.Statement {
-	return qs.UpdateTable(qs.Table("indtoasttest")).Set(qs.Assign(qs.Ident("cnt"), qs.Operator(qs.Ident("cnt"), "+", qs.LiteralInt(1))), qs.Assign(qs.Ident("f1"), qs.Operator(qs.Ident("f1"), "||", qs.LiteralString("")))).Returning(qs.Call("substring", (qs.Ident("indtoasttest")).Cast(qs.TypeNamed("text")), qs.LiteralInt(1), qs.LiteralInt(200)))
+	return qs.UpdateTable(qs.Table("indtoasttest")).Set(qs.Assign(qs.Ident("cnt"), qs.Write(qs.Operator(qs.Ident("cnt"), "+", qs.LiteralInt(1)))), qs.Assign(qs.Ident("f1"), qs.Write(qs.Operator(qs.Ident("f1"), "||", qs.LiteralString(""))))).Returning(qs.Call("substring", (qs.Ident("indtoasttest")).Cast(qs.TypeNamed("text")), qs.LiteralInt(1), qs.LiteralInt(200)))
 }
 func build07783() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("indtoasttest")).Columns("descr", "f1", "f2").ValuesExpr(qs.LiteralString("one-toasted,one-null, via indirect"), qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(30000)), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("indtoasttest")).Columns("descr", "f1", "f2").Values(qs.Write(qs.LiteralString("one-toasted,one-null, via indirect")), qs.Write(qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(30000))), qs.Write(qs.NullLiteral()))
 }
 func build07791() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inet_tbl")).Columns("c", "i").ValuesExpr(qs.LiteralString("192.168.1"), qs.LiteralString("192.168.1.255/25"))
+	return qs.InsertIntoTable(qs.Table("inet_tbl")).Columns("c", "i").Values(qs.Write(qs.LiteralString("192.168.1")), qs.Write(qs.LiteralString("192.168.1.255/25")))
 }
 func build07799() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inet_tbl")).Columns("c", "i").ValuesExpr(qs.LiteralString("10"), qs.LiteralString("9.1.2.3/8"))
+	return qs.InsertIntoTable(qs.Table("inet_tbl")).Columns("c", "i").Values(qs.Write(qs.LiteralString("10")), qs.Write(qs.LiteralString("9.1.2.3/8")))
 }
 func build07807() qs.Statement {
 	return qs.Select(qs.Ident("c").As("cidr"), qs.Ident("i").As("inet")).FromExpr(qs.Table("inet_tbl"))
@@ -2799,13 +2799,13 @@ func build07887() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("pg_input_error_info", qs.LiteralString("1234"), qs.LiteralString("inet"))))
 }
 func build07895() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("b")).Columns("aa").ValuesExpr(qs.LiteralString("bbb"))
+	return qs.InsertIntoTable(qs.Table("b")).Columns("aa").Values(qs.Write(qs.LiteralString("bbb")))
 }
 func build07903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("c")).Columns("aa").ValuesExpr(qs.LiteralString("ccccc"))
+	return qs.InsertIntoTable(qs.Table("c")).Columns("aa").Values(qs.Write(qs.LiteralString("ccccc")))
 }
 func build07911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("d")).Columns("aa").ValuesExpr(qs.LiteralString("ddddddd"))
+	return qs.InsertIntoTable(qs.Table("d")).Columns("aa").Values(qs.Write(qs.LiteralString("ddddddd")))
 }
 func build07919() qs.Statement {
 	return qs.Select(qs.Ident("relname"), qs.Star("c")).FromExpr(qs.Table("c").Only(), qs.Table("pg_class")).Where(qs.AsCondition(qs.Operator(qs.Ident("c", "tableoid"), "=", qs.Ident("pg_class", "oid"))))
@@ -2817,7 +2817,7 @@ func build07935() qs.Statement {
 	return qs.Select(qs.Ident("relname"), qs.Star("a")).FromExpr(qs.Table("a"), qs.Table("pg_class")).Where(qs.AsCondition(qs.Operator(qs.Ident("a", "tableoid"), "=", qs.Ident("pg_class", "oid"))))
 }
 func build07943() qs.Statement {
-	return qs.UpdateTable(qs.Table("a")).Set(qs.Assign(qs.Ident("aa"), qs.LiteralString("new")))
+	return qs.UpdateTable(qs.Table("a")).Set(qs.Assign(qs.Ident("aa"), qs.Write(qs.LiteralString("new"))))
 }
 func build07951() qs.Statement {
 	return qs.Select(qs.Ident("relname"), qs.Star("c")).FromExpr(qs.Table("c").Only(), qs.Table("pg_class")).Where(qs.AsCondition(qs.Operator(qs.Ident("c", "tableoid"), "=", qs.Ident("pg_class", "oid"))))
@@ -2826,19 +2826,19 @@ func build07959() qs.Statement {
 	return qs.Select(qs.Ident("relname"), qs.Star("b")).FromExpr(qs.Table("b").Only(), qs.Table("pg_class")).Where(qs.AsCondition(qs.Operator(qs.Ident("b", "tableoid"), "=", qs.Ident("pg_class", "oid"))))
 }
 func build07967() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("some_tab_child")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("some_tab_child")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)))
 }
 func build07975() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("foo2")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("foo2")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)))
 }
 func build07983() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("bar2")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(3), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("bar2")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(3)))
 }
 func build07991() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parted_tab")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("a")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("a")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("a"))
+	return qs.InsertIntoTable(qs.Table("parted_tab")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("a"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("a"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("a")))
 }
 func build07999() qs.Statement {
-	return qs.UpdateTable(qs.Table("mlparted_tab").As("mlp")).Set(qs.Assign(qs.Ident("c"), qs.LiteralString("xxx"))).FromExpr(qs.Subquery(qs.UnionAll(qs.Select(qs.Ident("a")).FromExpr(qs.Table("some_tab")), qs.Select(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1))).FromExpr(qs.Table("some_tab"))), "ss", "a")).Where(qs.AsCondition(qs.Or(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("mlp", "a"), "=", qs.Ident("ss", "a"))), qs.AsCondition(qs.Operator(qs.Ident("mlp", "b"), "=", qs.LiteralString("b")))).Expr()), qs.AsCondition(qs.Operator(qs.Ident("mlp", "a"), "=", qs.LiteralInt(3)))).Expr()))
+	return qs.UpdateTable(qs.Table("mlparted_tab").As("mlp")).Set(qs.Assign(qs.Ident("c"), qs.Write(qs.LiteralString("xxx")))).FromExpr(qs.Subquery(qs.UnionAll(qs.Select(qs.Ident("a")).FromExpr(qs.Table("some_tab")), qs.Select(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1))).FromExpr(qs.Table("some_tab"))), "ss", "a")).Where(qs.AsCondition(qs.Or(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("mlp", "a"), "=", qs.Ident("ss", "a"))), qs.AsCondition(qs.Operator(qs.Ident("mlp", "b"), "=", qs.LiteralString("b")))).Expr()), qs.AsCondition(qs.Operator(qs.Ident("mlp", "a"), "=", qs.LiteralInt(3)))).Expr()))
 }
 func build08007() qs.Statement {
 	return qs.Explain(qs.Select((((qs.Row(qs.Ident("i"), qs.Ident("b")).Expr()).Cast(qs.TypeNamed("more_derived"))).Cast(qs.TypeNamed("derived"))).Cast(qs.TypeNamed("base"))).FromExpr(qs.Table("more_derived"))).Verbose(true).Costs(false)
@@ -2850,10 +2850,10 @@ func build08023() qs.Statement {
 	return qs.Select(qs.Ident("pc", "relname"), qs.Ident("pgc", "conname"), qs.Ident("pgc", "contype"), qs.Ident("pgc", "conislocal"), qs.Ident("pgc", "coninhcount"), qs.Call("pg_get_expr", qs.Ident("pgc", "conbin"), qs.Ident("pc", "oid")).As("consrc")).FromExpr(qs.InnerJoin(qs.Table("pg_class").As("pc"), qs.Table("pg_constraint").As("pgc")).On(qs.AsCondition(qs.Operator(qs.Ident("pgc", "conrelid"), "=", qs.Ident("pc", "oid"))))).Where(qs.AsCondition((qs.Ident("pc", "relname")).InExpr(qs.LiteralString("ac"), qs.LiteralString("bc"), qs.LiteralString("cc")).Expr())).OrderBy((qs.LiteralInt(1)).Asc(), (qs.LiteralInt(2)).Asc())
 }
 func build08031() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inh_fk_2")).ValuesExpr(qs.LiteralInt(11), qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(22), qs.LiteralInt(2)).ValuesExpr(qs.LiteralInt(33), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("inh_fk_2")).Values(qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(22)), qs.Write(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralInt(33)), qs.Write(qs.LiteralInt(3)))
 }
 func build08039() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("invalid_check_con_child")).ValuesExpr(qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("invalid_check_con_child")).Values(qs.Write(qs.LiteralInt(0)))
 }
 func build08047() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.InnerJoin(qs.Table("patest0"), qs.Subquery(qs.Select(qs.Ident("f1")).FromExpr(qs.Table("int4_tbl")).LimitExpr(qs.LiteralInt(1)), "ss")).On(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.Ident("f1")))))
@@ -2871,7 +2871,7 @@ func build08079() qs.Statement {
 	return qs.UpdateTable(qs.Table("inhpar").As("i")).Set(qs.AssignRowFrom([]qs.Expr{qs.Ident("f1"), qs.Ident("f2")}, qs.Select(qs.Ident("i", "f1"), qs.Operator(qs.Ident("i", "f2"), "||", qs.LiteralString("-"))).FromExpr(qs.Table("int4_tbl")).LimitExpr(qs.LiteralInt(1))))
 }
 func build08087() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("cnullchild")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("cnullchild")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build08095() qs.Statement {
 	return qs.Select((qs.Ident("conrelid")).Cast(qs.TypeNamed("regclass")), qs.Ident("conname"), qs.Ident("contype"), qs.Ident("coninhcount"), qs.Ident("conislocal")).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("contype"), "=", qs.LiteralString("n"))), qs.AsCondition((((qs.Ident("conrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).InExpr(qs.LiteralString("inh_parent"), qs.LiteralString("inh_child1"), qs.LiteralString("inh_child2"), qs.LiteralString("inh_child3")).Expr())).Expr())).OrderBy((qs.LiteralInt(2)).Asc(), (qs.LiteralInt(1)).Asc())
@@ -2880,7 +2880,7 @@ func build08103() qs.Statement {
 	return qs.Select((qs.Ident("conrelid")).Cast(qs.TypeNamed("regclass")), qs.Ident("conname"), qs.Ident("coninhcount"), qs.Ident("conislocal"), qs.Ident("connoinherit")).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("contype"), "=", qs.LiteralString("n"))), qs.AsCondition((((qs.Ident("conrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).InExpr(qs.LiteralString("inh_nn1"), qs.LiteralString("inh_nn2"), qs.LiteralString("inh_nn3"), qs.LiteralString("inh_nn4")).Expr())).Expr())).OrderBy((qs.LiteralInt(2)).Asc(), (qs.LiteralInt(1)).Asc())
 }
 func build08111() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inh_temp_child")).ValuesExpr(qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("inh_temp_child")).Values(qs.Write(qs.LiteralInt(3)))
 }
 func build08119() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("list_parted")).Where(qs.AsCondition(qs.Or(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("ab"))), qs.AsCondition((qs.Ident("a")).InExpr(qs.NullLiteral(), qs.LiteralString("cd")).Expr())).Expr()))).Costs(false)
@@ -2904,143 +2904,143 @@ func build08167() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("p2", "a"), qs.Ident("p1", "c")).FromExpr(qs.InnerJoin(qs.Table("permtest_parent").As("p1"), qs.Table("permtest_parent").As("p2")).On(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("p1", "a"), "=", qs.Ident("p2", "a"))), qs.AsCondition(qs.Operator(qs.Call("left", qs.Ident("p1", "c"), qs.LiteralInt(3)), "~", qs.LiteralString("a1$")))).Expr())))).Costs(false)
 }
 func build08175() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("errtst_parent")).Columns("partid", "shdata", "data").ValuesExpr(qs.LiteralString("10"), qs.LiteralString("1"), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("errtst_parent")).Columns("partid", "shdata", "data").Values(qs.Write(qs.LiteralString("10")), qs.Write(qs.LiteralString("1")), qs.Write(qs.NullLiteral()))
 }
 func build08183() qs.Statement {
-	return qs.UpdateTable(qs.Table("errtst_parent")).Set(qs.Assign(qs.Ident("data"), qs.Operator(qs.Ident("data"), "+", qs.LiteralInt(10)))).Where(qs.AsCondition(qs.Operator(qs.Ident("partid"), "=", qs.LiteralInt(0))))
+	return qs.UpdateTable(qs.Table("errtst_parent")).Set(qs.Assign(qs.Ident("data"), qs.Write(qs.Operator(qs.Ident("data"), "+", qs.LiteralInt(10))))).Where(qs.AsCondition(qs.Operator(qs.Ident("partid"), "=", qs.LiteralInt(0))))
 }
 func build08191() qs.Statement {
-	return qs.UpdateTable(qs.Table("errtst_child_reorder")).Set(qs.Assign(qs.Ident("partid"), qs.Operator(qs.Ident("partid"), "+", qs.LiteralInt(10)))).Where(qs.AsCondition(qs.Operator(qs.Ident("partid"), "=", qs.LiteralInt(20))))
+	return qs.UpdateTable(qs.Table("errtst_child_reorder")).Set(qs.Assign(qs.Ident("partid"), qs.Write(qs.Operator(qs.Ident("partid"), "+", qs.LiteralInt(10))))).Where(qs.AsCondition(qs.Operator(qs.Ident("partid"), "=", qs.LiteralInt(20))))
 }
 func build08199() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("tuplesest_parted")).From(qs.Select(qs.Operator(qs.Ident("i"), "%", qs.LiteralInt(200)), qs.Operator(qs.Ident("i"), "%", qs.LiteralInt(300)), qs.Operator(qs.Ident("i"), "%", qs.LiteralInt(400))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(1000))).As("i")))
 }
 func build08207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inserttest")).ValuesExpr(qs.Default(), qs.LiteralInt(7))
+	return qs.InsertIntoTable(qs.Table("inserttest")).Values(qs.Default(), qs.Write(qs.LiteralInt(7)))
 }
 func build08215() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("inserttest")) }
 func build08223() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inserttest")).Targets(qs.Ident("f2").Index(qs.LiteralInt(1)), qs.Ident("f2").Index(qs.LiteralInt(2))).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("inserttest")).Targets(qs.Ident("f2").Index(qs.LiteralInt(1)), qs.Ident("f2").Index(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)))
 }
 func build08231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inserttest")).Targets((qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(1)), (qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(2))).ValuesExpr(qs.LiteralString("foo"), qs.LiteralString("bar"))
+	return qs.InsertIntoTable(qs.Table("inserttest")).Targets((qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(1)), (qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralString("foo")), qs.Write(qs.LiteralString("bar")))
 }
 func build08239() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inserttest")).Targets((qs.Ident("f4").Index(qs.LiteralInt(1))).Field("if1"), (qs.Ident("f4").Index(qs.LiteralInt(1))).Field("if2").Index(qs.LiteralInt(2))).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("fool")).ValuesExpr(qs.Ident("new", "f1"), qs.Ident("new", "f2"))
+	return qs.InsertIntoTable(qs.Table("inserttest")).Targets((qs.Ident("f4").Index(qs.LiteralInt(1))).Field("if1"), (qs.Ident("f4").Index(qs.LiteralInt(1))).Field("if2").Index(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("fool"))).Values(qs.Write(qs.Ident("new", "f1")), qs.Write(qs.Ident("new", "f2")))
 }
 func build08247() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("inserttesta")).Targets(qs.Ident("f2").Index(qs.LiteralInt(1)), qs.Ident("f2").Index(qs.LiteralInt(2))).From(qs.Select(qs.LiteralInt(0), qs.LiteralInt(8)))
 }
 func build08255() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inserttestb")).Targets((qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(1)), (qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(2))).ValuesExpr(qs.LiteralString("foo"), qs.LiteralString("bar"))
+	return qs.InsertIntoTable(qs.Table("inserttestb")).Targets((qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(1)), (qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralString("foo")), qs.Write(qs.LiteralString("bar")))
 }
 func build08263() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("inserttestb")).Targets((qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(1)), (qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(2))).ValuesExpr(qs.Ident("new", "f1"), qs.Ident("new", "f2"))
+	return qs.InsertIntoTable(qs.Table("inserttestb")).Targets((qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(1)), (qs.Ident("f3")).Field("if2").Index(qs.LiteralInt(2))).Values(qs.Write(qs.Ident("new", "f1")), qs.Write(qs.Ident("new", "f2")))
 }
 func build08271() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("part1")).ValuesExpr(qs.LiteralString("a"), qs.LiteralInt(11))
+	return qs.InsertIntoTable(qs.Table("part1")).Values(qs.Write(qs.LiteralString("a")), qs.Write(qs.LiteralInt(11)))
 }
 func build08279() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("part_aa_bb")).ValuesExpr(qs.LiteralString("cc"), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("part_aa_bb")).Values(qs.Write(qs.LiteralString("cc")), qs.Write(qs.LiteralInt(1)))
 }
 func build08287() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("part_ee_ff1")).ValuesExpr(qs.LiteralString("EE"), qs.LiteralInt(11))
+	return qs.InsertIntoTable(qs.Table("part_ee_ff1")).Values(qs.Write(qs.LiteralString("EE")), qs.Write(qs.LiteralInt(11)))
 }
 func build08295() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("list_parted")).ValuesExpr(qs.LiteralString("ab"), qs.LiteralInt(21))
+	return qs.InsertIntoTable(qs.Table("list_parted")).Values(qs.Write(qs.LiteralString("ab")), qs.Write(qs.LiteralInt(21)))
 }
 func build08303() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("range_parted")).ValuesExpr(qs.LiteralString("b"), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("range_parted")).Values(qs.Write(qs.LiteralString("b")), qs.Write(qs.LiteralInt(1)))
 }
 func build08311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("range_parted")).ValuesExpr(qs.LiteralString("b"), qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("range_parted")).Values(qs.Write(qs.LiteralString("b")), qs.Write(qs.LiteralInt(20)))
 }
 func build08319() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Star()).FromExpr(qs.Table("list_parted"))
 }
 func build08327() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("hpart0")).ValuesExpr(qs.LiteralInt(11))
+	return qs.InsertIntoTable(qs.Table("hpart0")).Values(qs.Write(qs.LiteralInt(11)))
 }
 func build08335() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mlparted")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("mlparted")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)))
 }
 func build08343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mlparted5")).Columns("a", "b", "c").ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(40), qs.LiteralString("a"))
+	return qs.InsertIntoTable(qs.Table("mlparted5")).Columns("a", "b", "c").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(40)), qs.Write(qs.LiteralString("a")))
 }
 func build08351() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Star()).FromExpr(qs.Table("mlparted_def"))
 }
 func build08359() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mlparted")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(40), qs.LiteralString("a"), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("mlparted")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(40)), qs.Write(qs.LiteralString("a")), qs.Write(qs.LiteralInt(1)))
 }
 func build08367() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mcrparted")).ValuesExpr(qs.NullLiteral(), qs.NullLiteral(), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("mcrparted")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.NullLiteral()), qs.Write(qs.NullLiteral()))
 }
 func build08375() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mcrparted1")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(1), qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("mcrparted1")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(0)))
 }
 func build08383() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mcrparted5")).ValuesExpr(qs.LiteralInt(30), qs.LiteralInt(21), qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("mcrparted5")).Values(qs.Write(qs.LiteralInt(30)), qs.Write(qs.LiteralInt(21)), qs.Write(qs.LiteralInt(20)))
 }
 func build08391() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mcrparted")).ValuesExpr(qs.LiteralString("aaa"), qs.LiteralInt(0)).ValuesExpr(qs.LiteralString("b"), qs.LiteralInt(0)).ValuesExpr(qs.LiteralString("bz"), qs.LiteralInt(10)).ValuesExpr(qs.LiteralString("c"), qs.LiteralInt(-10)).ValuesExpr(qs.LiteralString("comm"), qs.LiteralInt(-10)).ValuesExpr(qs.LiteralString("common"), qs.LiteralInt(-10)).ValuesExpr(qs.LiteralString("common"), qs.LiteralInt(0)).ValuesExpr(qs.LiteralString("common"), qs.LiteralInt(10)).ValuesExpr(qs.LiteralString("commons"), qs.LiteralInt(0)).ValuesExpr(qs.LiteralString("d"), qs.LiteralInt(-10)).ValuesExpr(qs.LiteralString("e"), qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("mcrparted")).Values(qs.Write(qs.LiteralString("aaa")), qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralString("b")), qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralString("bz")), qs.Write(qs.LiteralInt(10))).Values(qs.Write(qs.LiteralString("c")), qs.Write(qs.LiteralInt(-10))).Values(qs.Write(qs.LiteralString("comm")), qs.Write(qs.LiteralInt(-10))).Values(qs.Write(qs.LiteralString("common")), qs.Write(qs.LiteralInt(-10))).Values(qs.Write(qs.LiteralString("common")), qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralString("common")), qs.Write(qs.LiteralInt(10))).Values(qs.Write(qs.LiteralString("commons")), qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralString("d")), qs.Write(qs.LiteralInt(-10))).Values(qs.Write(qs.LiteralString("e")), qs.Write(qs.LiteralInt(0)))
 }
 func build08399() qs.Statement {
-	return qs.Explain(qs.InsertIntoTable(qs.Table("insertconflicttest")).ValuesExpr(qs.LiteralInt(0), qs.LiteralString("Crowberry")).OnConflict((qs.ConflictColumns("fruit", "key", "fruit", "key")).DoNothing())).Costs(false)
+	return qs.Explain(qs.InsertIntoTable(qs.Table("insertconflicttest")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("Crowberry"))).OnConflict((qs.ConflictColumns("fruit", "key", "fruit", "key")).DoNothing())).Costs(false)
 }
 func build08407() qs.Statement {
-	return qs.Explain(qs.InsertIntoTable(qs.Table("insertconflicttest")).ValuesExpr(qs.LiteralInt(0), qs.LiteralString("Crowberry")).OnConflict((qs.ConflictIndex(qs.IndexColumn("fruit"), qs.IndexColumn("key"), qs.IndexColumn("fruit").OpClass("text_pattern_ops"), qs.IndexColumn("key"))).DoNothing())).Costs(false)
+	return qs.Explain(qs.InsertIntoTable(qs.Table("insertconflicttest")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("Crowberry"))).OnConflict((qs.ConflictIndex(qs.IndexColumn("fruit"), qs.IndexColumn("key"), qs.IndexColumn("fruit").OpClass("text_pattern_ops"), qs.IndexColumn("key"))).DoNothing())).Costs(false)
 }
 func build08423() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insertconflicttest")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("Mango")).OnConflict(qs.ConflictColumns("fruit", "key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Ident("excluded", "fruit"))))
+	return qs.InsertIntoTable(qs.Table("insertconflicttest")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("Mango"))).OnConflict(qs.ConflictColumns("fruit", "key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Write(qs.Ident("excluded", "fruit")))))
 }
 func build08431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insertconflicttest")).ValuesExpr(qs.LiteralInt(8), qs.LiteralString("Lime")).OnConflict(qs.ConflictColumns("fruit", "key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Ident("excluded", "fruit"))))
+	return qs.InsertIntoTable(qs.Table("insertconflicttest")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("Lime"))).OnConflict(qs.ConflictColumns("fruit", "key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Write(qs.Ident("excluded", "fruit")))))
 }
 func build08439() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insertconflicttest")).ValuesExpr(qs.LiteralInt(16), qs.LiteralString("Melon")).OnConflict(qs.ConflictColumns("key", "key", "key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Ident("excluded", "fruit"))))
+	return qs.InsertIntoTable(qs.Table("insertconflicttest")).Values(qs.Write(qs.LiteralInt(16)), qs.Write(qs.LiteralString("Melon"))).OnConflict(qs.ConflictColumns("key", "key", "key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Write(qs.Ident("excluded", "fruit")))))
 }
 func build08447() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insertconflicttest")).ValuesExpr(qs.LiteralInt(25), qs.LiteralString("Peach")).OnConflict(qs.ConflictIndex(qs.IndexExpr(qs.Call("lower", qs.Ident("fruit"))), qs.IndexColumn("key")).DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Ident("excluded", "fruit"))))
+	return qs.InsertIntoTable(qs.Table("insertconflicttest")).Values(qs.Write(qs.LiteralInt(25)), qs.Write(qs.LiteralString("Peach"))).OnConflict(qs.ConflictIndex(qs.IndexExpr(qs.Call("lower", qs.Ident("fruit"))), qs.IndexColumn("key")).DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Write(qs.Ident("excluded", "fruit")))))
 }
 func build08455() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insertconflicttest")).ValuesExpr(qs.LiteralInt(23), qs.LiteralString("Blackberry")).OnConflict(qs.ConflictColumns("key").TargetWhere(qs.AsCondition((qs.Ident("fruit")).LikeExpr(qs.LiteralString("%berry")).Expr())).DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Ident("excluded", "fruit"))))
+	return qs.InsertIntoTable(qs.Table("insertconflicttest")).Values(qs.Write(qs.LiteralInt(23)), qs.Write(qs.LiteralString("Blackberry"))).OnConflict(qs.ConflictColumns("key").TargetWhere(qs.AsCondition((qs.Ident("fruit")).LikeExpr(qs.LiteralString("%berry")).Expr())).DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Write(qs.Ident("excluded", "fruit")))))
 }
 func build08463() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insertconflicttest").As("i")).ValuesExpr(qs.LiteralInt(23), qs.LiteralString("Jackfruit")).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Ident("excluded", "fruit"))).Where(qs.AsCondition(qs.Operator(qs.Star("i"), "=", qs.Star("excluded"))))).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("insertconflicttest").As("i")).Values(qs.Write(qs.LiteralInt(23)), qs.Write(qs.LiteralString("Jackfruit"))).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("fruit"), qs.Write(qs.Ident("excluded", "fruit")))).Where(qs.AsCondition(qs.Operator(qs.Star("i"), "=", qs.Star("excluded"))))).Returning(qs.Star())
 }
 func build08471() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("insertconflict")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).OnConflict((qs.ConflictColumns("b").TargetWhere(qs.AsCondition(qs.Operator(qs.Coalesce(qs.Ident("a"), qs.LiteralInt(1)), ">", qs.LiteralInt(1))))).DoNothing())
+	return qs.InsertIntoTable(qs.Table("insertconflict")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2))).OnConflict((qs.ConflictColumns("b").TargetWhere(qs.AsCondition(qs.Operator(qs.Coalesce(qs.Ident("a"), qs.LiteralInt(1)), ">", qs.LiteralInt(1))))).DoNothing())
 }
 func build08479() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("cities")).ValuesExpr(qs.LiteralString("Mariposa"), qs.LiteralInt(1200), qs.LiteralInt(1953))
+	return qs.InsertIntoTable(qs.Table("cities")).Values(qs.Write(qs.LiteralString("Mariposa")), qs.Write(qs.LiteralInt(1200)), qs.Write(qs.LiteralInt(1953)))
 }
 func build08487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("cities")).ValuesExpr(qs.LiteralString("Las Vegas"), qs.LiteralNumeric("5.83E+5"), qs.LiteralInt(2001)).OnConflict(qs.ConflictColumns("name").DoUpdate(qs.Assign(qs.Ident("population"), qs.Ident("excluded", "population")), qs.Assign(qs.Ident("altitude"), qs.Ident("excluded", "altitude"))))
+	return qs.InsertIntoTable(qs.Table("cities")).Values(qs.Write(qs.LiteralString("Las Vegas")), qs.Write(qs.LiteralNumeric("5.83E+5")), qs.Write(qs.LiteralInt(2001))).OnConflict(qs.ConflictColumns("name").DoUpdate(qs.Assign(qs.Ident("population"), qs.Write(qs.Ident("excluded", "population"))), qs.Assign(qs.Ident("altitude"), qs.Write(qs.Ident("excluded", "altitude")))))
 }
 func build08495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("excluded")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("2")).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("data"), qs.Ident("excluded", "data")))).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("excluded")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("2"))).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("data"), qs.Write(qs.Ident("excluded", "data"))))).Returning(qs.Star())
 }
 func build08503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("dropcol")).Columns("key", "keep1", "keep2").ValuesExpr(qs.LiteralInt(1), qs.LiteralString("5"), qs.LiteralInt(5)).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("keep1"), qs.Ident("dropcol", "keep1")), qs.Assign(qs.Ident("keep2"), qs.Ident("dropcol", "keep2")))).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("dropcol")).Columns("key", "keep1", "keep2").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("5")), qs.Write(qs.LiteralInt(5))).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("keep1"), qs.Write(qs.Ident("dropcol", "keep1"))), qs.Assign(qs.Ident("keep2"), qs.Write(qs.Ident("dropcol", "keep2"))))).Returning(qs.Star())
 }
 func build08511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("selfconflict")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2)).OnConflict((qs.AnyConflict()).DoNothing())
+	return qs.InsertIntoTable(qs.Table("selfconflict")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2))).OnConflict((qs.AnyConflict()).DoNothing())
 }
 func build08519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parted_conflict_test")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("a")).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Ident("excluded", "b"))))
+	return qs.InsertIntoTable(qs.Table("parted_conflict_test")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("a"))).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("excluded", "b")))))
 }
 func build08527() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("parted_conflict_test")).OrderBy((qs.Ident("a")).Asc())
 }
 func build08535() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parted_conflict_test")).Columns("a", "b").ValuesExpr(qs.LiteralInt(1), qs.LiteralString("b")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("c")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("b")).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Ident("excluded", "b"))).Where(qs.AsCondition(qs.Operator(qs.Ident("excluded", "b"), "=", qs.LiteralString("b")))))
+	return qs.InsertIntoTable(qs.Table("parted_conflict_test")).Columns("a", "b").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("b"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("c"))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("b"))).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("excluded", "b")))).Where(qs.AsCondition(qs.Operator(qs.Ident("excluded", "b"), "=", qs.LiteralString("b")))))
 }
 func build08543() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("parted_conflict")).OrderBy((qs.Ident("a")).Asc())
 }
 func build08551() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("int2_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("4 444"))
+	return qs.InsertIntoTable(qs.Table("int2_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("4 444")))
 }
 func build08559() qs.Statement {
 	return qs.Select(qs.Call("pg_input_is_valid", qs.LiteralString(" 1 3  5 "), qs.LiteralString("int2vector")))
@@ -3065,7 +3065,7 @@ func build08615() qs.Statement {
 	return qs.Select((qs.LiteralString("1_2_3")).Cast(qs.TypeNamed("int2")))
 }
 func build08623() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("int4_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("1000000000000"))
+	return qs.InsertIntoTable(qs.Table("int4_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("1000000000000")))
 }
 func build08631() qs.Statement {
 	return qs.Select(qs.Call("pg_input_is_valid", qs.LiteralString("34"), qs.LiteralString("int4")))
@@ -3104,7 +3104,7 @@ func build08719() qs.Statement {
 	return qs.Select((qs.LiteralString("0b_10_0101")).Cast(qs.TypeNamed("int4")))
 }
 func build08727() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("int8_tbl")).Columns("q1").ValuesExpr(qs.LiteralString("- 123"))
+	return qs.InsertIntoTable(qs.Table("int8_tbl")).Columns("q1").Values(qs.Write(qs.LiteralString("- 123")))
 }
 func build08735() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("int8_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("q2"), "=", qs.LiteralNumeric("4567890123456789"))))
@@ -3173,10 +3173,10 @@ func build08903() qs.Statement {
 	return qs.Select((qs.LiteralString("1.5 months")).Cast(qs.TypeInterval).As("One month 15 days"))
 }
 func build08911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("interval_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("@ 3 months"))
+	return qs.InsertIntoTable(qs.Table("interval_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("@ 3 months")))
 }
 func build08919() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("interval_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("badly formatted interval"))
+	return qs.InsertIntoTable(qs.Table("interval_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("badly formatted interval")))
 }
 func build08927() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("interval_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("interval_tbl", "f1"), "<>", (qs.LiteralString("@ 10 days")).Cast(qs.TypeInterval))))
@@ -3185,7 +3185,7 @@ func build08935() qs.Statement {
 	return qs.Select(qs.PrefixOperator("-", (qs.LiteralString("-2147483648 months")).Cast(qs.TypeInterval)))
 }
 func build08943() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("interval_tbl_of")).Columns("f1").ValuesExpr(qs.LiteralString("2147483648 days"))
+	return qs.InsertIntoTable(qs.Table("interval_tbl_of")).Columns("f1").Values(qs.Write(qs.LiteralString("2147483648 days")))
 }
 func build08951() qs.Statement {
 	return qs.Select(qs.Operator(qs.Ident("f1"), "-", qs.Ident("f1"))).FromExpr(qs.Table("interval_tbl_of"))
@@ -3296,7 +3296,7 @@ func build09239() qs.Statement {
 	return qs.Select(qs.Extract(qs.PartCentury, (qs.LiteralString("-99 y")).Cast(qs.TypeInterval)))
 }
 func build09247() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("infinite_interval_tbl")).ValuesExpr(qs.LiteralString("infinity")).ValuesExpr(qs.LiteralString("-infinity")).ValuesExpr(qs.LiteralString("1 year 2 days 3 hours"))
+	return qs.InsertIntoTable(qs.Table("infinite_interval_tbl")).Values(qs.Write(qs.LiteralString("infinity"))).Values(qs.Write(qs.LiteralString("-infinity"))).Values(qs.Write(qs.LiteralString("1 year 2 days 3 hours")))
 }
 func build09255() qs.Statement {
 	return qs.Select(qs.Ident("t").As("timestamp"), qs.Ident("i").As("interval"), qs.Call("eval", qs.Call("format", qs.LiteralString("timestamp %L + interval %L"), qs.Ident("t"), qs.Ident("i"))).As("plus"), qs.Call("eval", qs.Call("format", qs.LiteralString("timestamp %L - interval %L"), qs.Ident("t"), qs.Ident("i"))).As("minus")).FromExpr(qs.Subquery(qs.ValuesExpr((qs.LiteralString("-infinity")).Cast(qs.TypeTimestamp)).RowExpr((qs.LiteralString("1995-08-06 12:30:15")).Cast(qs.TypeTimestamp)).RowExpr((qs.LiteralString("infinity")).Cast(qs.TypeTimestamp)), "t1", "t"), qs.Subquery(qs.ValuesExpr((qs.LiteralString("-infinity")).Cast(qs.TypeInterval)).RowExpr((qs.LiteralString("infinity")).Cast(qs.TypeInterval)), "t2", "i"))
@@ -3323,10 +3323,10 @@ func build09311() qs.Statement {
 	return qs.Select((qs.LiteralString("yesterday")).Cast(qs.TypeInterval))
 }
 func build09319() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("j1_tbl")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(0), qs.LiteralString("five"))
+	return qs.InsertIntoTable(qs.Table("j1_tbl")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("five")))
 }
 func build09327() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("j2_tbl")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("j2_tbl")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)))
 }
 func build09335() qs.Statement { return qs.InsertIntoTable(qs.Table("onerow")).DefaultValues() }
 func build09343() qs.Statement {
@@ -3345,13 +3345,13 @@ func build09375() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.LeftJoin(qs.Table("j1_tbl"), qs.Table("j2_tbl")).Using("i")).Where(qs.AsCondition(qs.Operator(qs.Ident("k"), "=", qs.LiteralInt(1))))
 }
 func build09383() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t3")).ValuesExpr(qs.LiteralString("cc"), qs.LiteralInt(23))
+	return qs.InsertIntoTable(qs.Table("t3")).Values(qs.Write(qs.LiteralString("cc")), qs.Write(qs.LiteralInt(23)))
 }
 func build09391() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.NaturalFullJoin(qs.Subquery(qs.Select(qs.Ident("name"), qs.Ident("n").As("s2_n"), qs.LiteralInt(2).As("s2_2")).FromExpr(qs.Table("t2")), "s2"), qs.Subquery(qs.Select(qs.Ident("name"), qs.Ident("n").As("s3_n"), qs.LiteralInt(3).As("s3_2")).FromExpr(qs.Table("t3")), "s3")))
 }
 func build09399() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("x")).ValuesExpr(qs.LiteralInt(3), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("x")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.NullLiteral()))
 }
 func build09407() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("y")) }
 func build09415() qs.Statement {
@@ -3370,7 +3370,7 @@ func build09447() qs.Statement {
 	return qs.Explain(qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.LeftJoin(qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.Table("tenk1").As("x")).OrderBy((qs.Ident("x", "thousand")).Asc(), (qs.Ident("x", "twothousand")).Asc(), (qs.Ident("x", "fivethous")).Asc()), "x"), qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.Table("tenk1").As("y")).OrderBy((qs.Ident("y", "unique2")).Asc()), "y")).On(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("x", "thousand"), "=", qs.Ident("y", "unique2"))), qs.AsCondition(qs.Operator(qs.Ident("x", "twothousand"), "=", qs.Ident("y", "hundred"))), qs.AsCondition(qs.Operator(qs.Ident("x", "fivethous"), "=", qs.Ident("y", "unique2")))).Expr())))).Costs(false)
 }
 func build09455() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t3")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("t3")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(20)))
 }
 func build09463() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("t3")).UsingExpr(qs.Table("t3").As("t3_other")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t3", "x"), "=", qs.Ident("t3_other", "x"))), qs.AsCondition(qs.Operator(qs.Ident("t3", "y"), "=", qs.Ident("t3_other", "y")))).Expr()))
@@ -3388,10 +3388,10 @@ func build09495() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star("a")).FromExpr(qs.Table("tenk1").As("a")).Where(qs.AsCondition(qs.Not(qs.AsCondition(qs.Exists(qs.Select(qs.LiteralInt(1)).FromExpr(qs.Table("tenk1").As("b")).Where(qs.AsCondition(qs.Operator(qs.Ident("a", "unique1"), "=", qs.Ident("b", "unique2"))))).Expr())).Expr()))).Costs(false)
 }
 func build09503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("tt5")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(11))
+	return qs.InsertIntoTable(qs.Table("tt5")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(11)))
 }
 func build09511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("yy")).ValuesExpr(qs.LiteralInt(101), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("yy")).Values(qs.Write(qs.LiteralInt(101)), qs.Write(qs.LiteralInt(1)))
 }
 func build09519() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.LeftJoin(qs.LeftJoin(qs.Table("zt2"), qs.Table("zt3")).On(qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.Ident("f3")))), qs.Table("zv1")).On(qs.AsCondition(qs.Operator(qs.Ident("f3"), "=", qs.Ident("f1"))))).Where(qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.LiteralInt(53))))
@@ -3400,10 +3400,10 @@ func build09527() qs.Statement {
 	return qs.Select(qs.Ident("t1", "q2"), qs.Call("count", qs.Star("t2"))).FromExpr(qs.LeftJoin(qs.Table("int8_tbl").As("t1"), qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.Table("int8_tbl")).OffsetExpr(qs.LiteralInt(0)), "t2")).On(qs.AsCondition(qs.Operator(qs.Ident("t1", "q2"), "=", qs.Ident("t2", "q1"))))).GroupByExpr(qs.Ident("t1", "q2")).OrderBy((qs.LiteralInt(1)).Asc())
 }
 func build09535() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("c")).Columns("name", "a").ValuesExpr(qs.LiteralString("C"), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("c")).Columns("name", "a").Values(qs.Write(qs.LiteralString("C")), qs.Write(qs.NullLiteral()))
 }
 func build09543() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("nt1")).ValuesExpr(qs.LiteralInt(3), qs.LiteralBool(false), qs.LiteralBool(false))
+	return qs.InsertIntoTable(qs.Table("nt1")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralBool(false)), qs.Write(qs.LiteralBool(false)))
 }
 func build09551() qs.Statement {
 	return qs.Select(qs.Ident("nt3", "id")).FromExpr(qs.LeftJoin(qs.Table("nt3").As("nt3"), qs.Subquery(qs.Select(qs.Star("nt2"), qs.And(qs.AsCondition(qs.Ident("nt2", "b1")), qs.AsCondition(qs.Ident("ss1", "a3"))).Expr().As("b3")).FromExpr(qs.LeftJoin(qs.Table("nt2").As("nt2"), qs.Subquery(qs.Select(qs.Star("nt1"), (qs.Ident("nt1", "id")).IsNotNull().Expr().As("a3")).FromExpr(qs.Table("nt1")), "ss1")).On(qs.AsCondition(qs.Operator(qs.Ident("ss1", "id"), "=", qs.Ident("nt2", "nt1_id"))))), "ss2")).On(qs.AsCondition(qs.Operator(qs.Ident("ss2", "id"), "=", qs.Ident("nt3", "nt2_id"))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("nt3", "id"), "=", qs.LiteralInt(1))), qs.AsCondition(qs.Ident("ss2", "b3"))).Expr()))
@@ -3449,7 +3449,7 @@ func build09663() qs.Statement {
 	return qs.Select(qs.Ident("a", "unique1"), qs.Ident("b", "unique2")).FromExpr(qs.FullJoin(qs.Table("onek").As("a"), qs.Table("onek").As("b")).On(qs.AsCondition(qs.Operator(qs.Ident("a", "unique1"), "=", qs.Ident("b", "unique2"))))).Where(qs.AsCondition(qs.Operator(qs.Ident("a", "unique1"), "=", qs.LiteralInt(42))))
 }
 func build09671() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("b")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(0)).ValuesExpr(qs.LiteralInt(1), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("b")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.NullLiteral()))
 }
 func build09679() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("id")).FromExpr(qs.Table("a")).Where(qs.AsCondition((qs.Ident("id")).InQuery(qs.Select(qs.Ident("b", "id")).FromExpr(qs.LeftJoin(qs.Table("b"), qs.Table("c")).On(qs.AsCondition(qs.Operator(qs.Ident("b", "id"), "=", qs.Ident("c", "id")))))).Expr()))).Costs(false)
@@ -3467,7 +3467,7 @@ func build09711() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("c", "id"), qs.Ident("ss", "a")).FromExpr(qs.LeftJoin(qs.Table("c"), qs.Subquery(qs.Select(qs.Ident("d", "a")).FromExpr(qs.Table("onerow"), qs.LeftJoin(qs.Table("d"), qs.Table("b")).On(qs.AsCondition(qs.Operator(qs.Ident("d", "a"), "=", qs.Ident("b", "id"))))), "ss")).On(qs.AsCondition(qs.Operator(qs.Ident("c", "id"), "=", qs.Ident("ss", "a")))))).Costs(false)
 }
 func build09719() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("child")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(100)).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(400))
+	return qs.InsertIntoTable(qs.Table("child")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(100))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(400)))
 }
 func build09727() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star("p")).FromExpr(qs.InnerJoin(qs.LeftJoin(qs.Table("parent").As("p"), qs.Table("child").As("c")).On(qs.AsCondition(qs.Operator(qs.Ident("p", "k"), "=", qs.Ident("c", "k")))), qs.Table("parent").As("x")).On(qs.AsCondition(qs.Operator(qs.Ident("p", "k"), "=", qs.Ident("x", "k"))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("p", "k"), "=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("p", "k"), "=", qs.LiteralInt(2)))).Expr()))).Costs(false)
@@ -3476,7 +3476,7 @@ func build09735() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("q2")).FromExpr(qs.RightJoin(qs.Subquery(qs.Select(qs.Ident("q2"), (qs.LiteralString("constant")).Cast(qs.TypeNamed("text")).As("x")).FromExpr(qs.LeftJoin(qs.Table("int8_tbl"), qs.Table("innertab")).On(qs.AsCondition(qs.Operator(qs.Ident("q2"), "=", qs.Ident("id"))))), "ss"), qs.Table("int4_tbl")).On(qs.AsCondition(qs.NullLiteral()))).Where(qs.AsCondition(qs.Operator(qs.Ident("x"), ">=", qs.Ident("x"))))).Verbose(true).Costs(false)
 }
 func build09743() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("items")).ValuesExpr(qs.LiteralString("item1"), qs.LiteralString("alice"))
+	return qs.InsertIntoTable(qs.Table("items")).Values(qs.Write(qs.LiteralString("item1")), qs.Write(qs.LiteralString("alice")))
 }
 func build09751() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("t").As("t1"), qs.Table("t").As("t2")).Where(qs.AsCondition(qs.Exists(qs.Select(qs.LiteralInt(1)).FromExpr(qs.Table("t").As("t3")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t1", "a"), "=", qs.Ident("t3", "a"))), qs.AsCondition(qs.Operator(qs.Ident("t2", "b"), "=", qs.Ident("t3", "b"))), qs.AsCondition(qs.Operator(qs.Ident("t3", "a"), "=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("t3", "b"), "=", qs.LiteralInt(2)))).Expr()))).Expr()))
@@ -3512,7 +3512,7 @@ func build09831() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.LeftJoin(qs.InnerJoin(qs.Table("emp1").As("t1"), qs.Table("emp1").As("t2")).On(qs.AsCondition(qs.Operator(qs.Ident("t1", "id"), "=", qs.Ident("t2", "id")))), qs.Lateral(qs.Subquery(qs.Select(qs.Ident("t1", "id").As("t1id"), qs.Star()).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(1))).As("t3")), "s"))).On(qs.AsCondition(qs.LiteralBool(true))))).Verbose(true).Costs(false)
 }
 func build09839() qs.Statement {
-	return (qs.UpdateTable(qs.Table("emp1")).Set(qs.Assign(qs.Ident("code"), qs.Operator(qs.Ident("t1", "code"), "+", qs.LiteralInt(1)))).FromExpr(qs.Table("t1")).Where(qs.AsCondition(qs.Operator(qs.Ident("t1", "id"), "=", qs.Ident("emp1", "id")))).Returning(qs.Ident("emp1", "id"), qs.Ident("emp1", "code"), qs.Ident("t1", "code"))).With(qs.CTE("t1", qs.Select(qs.Star()).FromExpr(qs.Table("emp1"))))
+	return (qs.UpdateTable(qs.Table("emp1")).Set(qs.Assign(qs.Ident("code"), qs.Write(qs.Operator(qs.Ident("t1", "code"), "+", qs.LiteralInt(1))))).FromExpr(qs.Table("t1")).Where(qs.AsCondition(qs.Operator(qs.Ident("t1", "id"), "=", qs.Ident("emp1", "id")))).Returning(qs.Ident("emp1", "id"), qs.Ident("emp1", "code"), qs.Ident("t1", "code"))).With(qs.CTE("t1", qs.Select(qs.Star()).FromExpr(qs.Table("emp1"))))
 }
 func build09847() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("emp1").As("t1")).Where(qs.AsCondition(qs.Exists(qs.Select(qs.Star()).FromExpr(qs.Table("emp1").As("t2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t2", "id"), "=", qs.Ident("t1", "code"))), qs.AsCondition(qs.Operator(qs.Ident("t2", "code"), ">", qs.LiteralInt(0)))).Expr()))).Expr()))).Costs(false)
@@ -3548,13 +3548,13 @@ func build09927() qs.Statement {
 	return qs.Select(qs.Ident("f1"), qs.Ident("g")).FromExpr(qs.CrossJoin(qs.Table("int4_tbl").As("a"), qs.Subquery(qs.Select(qs.Ident("f1").As("g")), "ss")))
 }
 func build09935() qs.Statement {
-	return qs.UpdateTable(qs.Table("xx1")).Set(qs.Assign(qs.Ident("x2"), qs.Ident("f1"))).FromExpr(qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.Table("int4_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("f1"), "=", qs.Ident("xx1", "x1")))), "ss"))
+	return qs.UpdateTable(qs.Table("xx1")).Set(qs.Assign(qs.Ident("x2"), qs.Write(qs.Ident("f1")))).FromExpr(qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.Table("int4_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("f1"), "=", qs.Ident("xx1", "x1")))), "ss"))
 }
 func build09943() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("t1", "b"), qs.Ident("ss", "phv")).FromExpr(qs.LeftJoin(qs.Table("join_ut1").As("t1"), qs.Lateral(qs.Subquery(qs.Select(qs.Ident("t2", "a").As("t2a"), qs.Ident("t3", "a").As("t3a"), qs.Least(qs.Ident("t1", "a"), qs.Ident("t2", "a"), qs.Ident("t3", "a")).As("phv")).FromExpr(qs.InnerJoin(qs.Table("join_pt1").As("t2"), qs.Table("join_ut1").As("t3")).On(qs.AsCondition(qs.Operator(qs.Ident("t2", "a"), "=", qs.Ident("t3", "b"))))), "ss"))).On(qs.AsCondition(qs.Operator(qs.Ident("t1", "a"), "=", qs.Ident("ss", "t2a"))))).OrderBy((qs.Ident("t1", "a")).Asc())).Verbose(true).Costs(false)
 }
 func build09951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("j1")).ValuesExpr(qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(2)).ValuesExpr(qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("j1")).Values(qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralInt(3)))
 }
 func build09959() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.FullJoin(qs.Table("j1"), qs.Table("j2")).On(qs.AsCondition(qs.Operator(qs.Ident("j1", "id"), "=", qs.Ident("j2", "id")))))).Verbose(true).Costs(false)
@@ -3599,10 +3599,10 @@ func build10063() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.FullJoin(qs.Table("simple").As("r"), qs.Table("simple").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("r", "id"), "=", qs.Operator(qs.LiteralInt(0), "-", qs.Ident("s", "id"))))))
 }
 func build10071() qs.Statement {
-	return qs.UpdateTable(qs.Table("hjtest_matchbits_t2")).Set(qs.Assign(qs.Ident("id"), qs.LiteralInt(2)))
+	return qs.UpdateTable(qs.Table("hjtest_matchbits_t2")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralInt(2))))
 }
 func build10079() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("hjtest_2")).Columns("a", "id", "b", "c").ValuesExpr(qs.LiteralBool(true), qs.LiteralInt(3), qs.LiteralString("another"), qs.LiteralInt(7))
+	return qs.InsertIntoTable(qs.Table("hjtest_2")).Columns("a", "id", "b", "c").Values(qs.Write(qs.LiteralBool(true)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("another")), qs.Write(qs.LiteralInt(7)))
 }
 func build10087() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("i8", "q2"), qs.Star("ss")).FromExpr(qs.Table("int8_tbl").As("i8"), qs.Lateral(qs.Subquery(qs.Select(qs.Ident("t1", "fivethous"), qs.Ident("i4", "f1")).FromExpr(qs.InnerJoin(qs.Table("tenk1").As("t1"), qs.Table("int4_tbl").As("i4")).On(qs.AsCondition(qs.Operator(qs.Ident("t1", "fivethous"), "=", qs.Operator(qs.Ident("i4", "f1"), "+", qs.Ident("i8", "q2")))))).OrderBy((qs.LiteralInt(1)).Asc(), (qs.LiteralInt(2)).Asc()), "ss")))).Costs(false)
@@ -3725,7 +3725,7 @@ func build10423() qs.Statement {
 }
 func build10431() qs.Statement { return qs.Select(qs.Call("json_build_array")) }
 func build10439() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("foo")).ValuesExpr(qs.LiteralInt(847002), qs.LiteralString("t16"), qs.LiteralString("GE1043"))
+	return qs.InsertIntoTable(qs.Table("foo")).Values(qs.Write(qs.LiteralInt(847002)), qs.Write(qs.LiteralString("t16")), qs.Write(qs.LiteralString("GE1043")))
 }
 func build10447() qs.Statement {
 	return qs.Select(qs.Call("pg_catalog.json_object", qs.LiteralString("{a,1,b,2,3,NULL,\"d e f\",\"a b c\"}")))
@@ -4091,38 +4091,38 @@ func build11423() qs.Statement {
 	return qs.Select(((qs.LiteralString("[1, \"2\", null]")).Cast(qs.TypeNamed("jsonb"))).SliceTo(qs.LiteralInt(2)))
 }
 func build11431() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")), qs.LiteralString("\"test\"")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")), qs.Write(qs.LiteralString("\"test\""))))
 }
 func build11439() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("test_jsonb_subscript")).Where(qs.AsCondition(qs.Operator((qs.Ident("test_json")).Index(qs.LiteralString("key")), "=", qs.LiteralString("\"wrong_value\""))))
 }
 func build11447() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralInt(0)), qs.LiteralString("1")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralInt(0)), qs.Write(qs.LiteralString("1"))))
 }
 func build11455() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralInt(-8)), qs.LiteralString("1")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralInt(-8)), qs.Write(qs.LiteralString("1"))))
 }
 func build11463() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(0)).Index(qs.LiteralString("b")).Index(qs.LiteralInt(0)).Index(qs.LiteralString("c")), qs.LiteralString("1")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(0)).Index(qs.LiteralString("b")).Index(qs.LiteralInt(0)).Index(qs.LiteralString("c")), qs.Write(qs.LiteralString("1"))))
 }
 func build11471() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(0)), qs.LiteralString("2")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(0)), qs.Write(qs.LiteralString("2"))))
 }
 func build11479() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralInt(0)).Index(qs.LiteralString("a")), qs.LiteralString("1")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralInt(0)).Index(qs.LiteralString("a")), qs.Write(qs.LiteralString("1"))))
 }
 func build11487() qs.Statement { return qs.DeleteFromTable(qs.Table("test_jsonb_subscript")) }
 func build11495() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(10)).Index(qs.LiteralInt(10)), qs.LiteralString("1")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(10)).Index(qs.LiteralInt(10)), qs.Write(qs.LiteralString("1"))))
 }
 func build11503() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(1)).Index(qs.LiteralString("c")).Index(qs.LiteralInt(2)), qs.LiteralString("1")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(1)).Index(qs.LiteralString("c")).Index(qs.LiteralInt(2)), qs.Write(qs.LiteralString("1"))))
 }
 func build11511() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(0)).Index(qs.LiteralInt(0)), qs.LiteralString("1")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.LiteralString("a")).Index(qs.LiteralInt(0)).Index(qs.LiteralInt(0)), qs.Write(qs.LiteralString("1"))))
 }
 func build11519() qs.Statement {
-	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.Ident("id")), qs.LiteralString("\"baz\"")))
+	return qs.UpdateTable(qs.Table("test_jsonb_subscript")).Set(qs.Assign(qs.Ident("test_json").Index(qs.Ident("id")), qs.Write(qs.LiteralString("\"baz\""))))
 }
 func build11527() qs.Statement {
 	return qs.Select(qs.Call("jsonb_to_tsvector", qs.LiteralString("english"), (qs.LiteralString("{\"a\": \"aaa in bbb\", \"b\": 123, \"c\": 456, \"d\": true, \"f\": false, \"g\": null}")).Cast(qs.TypeNamed("jsonb")), qs.LiteralString("\"key\"")))
@@ -4592,13 +4592,13 @@ func build12775() qs.Statement {
 	return qs.Select(qs.Ident("thousand")).FromExpr(qs.Table("onek")).Where(qs.AsCondition(qs.Operator(qs.Ident("thousand"), "<", qs.LiteralInt(995)))).OrderBy((qs.Ident("thousand")).Asc()).FetchExpr(qs.Operator(qs.NullLiteral(), "+", qs.LiteralInt(1)), qs.WithTies)
 }
 func build12783() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("line_tbl")).ValuesExpr(qs.LiteralString("[-1e6,2e2,3e5, -4e1]"))
+	return qs.InsertIntoTable(qs.Table("line_tbl")).Values(qs.Write(qs.LiteralString("[-1e6,2e2,3e5, -4e1]")))
 }
 func build12791() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("line_tbl")).ValuesExpr(qs.LiteralString("{0,0,1"))
+	return qs.InsertIntoTable(qs.Table("line_tbl")).Values(qs.Write(qs.LiteralString("{0,0,1")))
 }
 func build12799() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("line_tbl")).ValuesExpr(qs.Call("line", (qs.LiteralString("(1,0)")).Cast(qs.TypeNamed("point")), (qs.LiteralString("(1,0)")).Cast(qs.TypeNamed("point"))))
+	return qs.InsertIntoTable(qs.Table("line_tbl")).Values(qs.Write(qs.Call("line", (qs.LiteralString("(1,0)")).Cast(qs.TypeNamed("point")), (qs.LiteralString("(1,0)")).Cast(qs.TypeNamed("point")))))
 }
 func build12807() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("pg_input_error_info", qs.LiteralString("{1, 1, a}"), qs.LiteralString("line"))))
@@ -4610,16 +4610,16 @@ func build12823() qs.Statement {
 	return qs.Select(qs.Ident("relname")).FromExpr(qs.Table("pg_locks").As("l"), qs.Table("pg_class").As("c")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("l", "relation"), "=", qs.Ident("c", "oid"))), qs.AsCondition((qs.Ident("relname")).LikeExpr(qs.LiteralString("%lock_%")).Expr()), qs.AsCondition(qs.Operator(qs.Ident("mode"), "=", qs.LiteralString("ExclusiveLock")))).Expr())).OrderBy((qs.Ident("relname")).Asc())
 }
 func build12831() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("lseg_tbl")).ValuesExpr(qs.LiteralString("(0,0),(6,6)"))
+	return qs.InsertIntoTable(qs.Table("lseg_tbl")).Values(qs.Write(qs.LiteralString("(0,0),(6,6)")))
 }
 func build12839() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("lseg_tbl")).ValuesExpr(qs.LiteralString("[1,2,3, 4"))
+	return qs.InsertIntoTable(qs.Table("lseg_tbl")).Values(qs.Write(qs.LiteralString("[1,2,3, 4")))
 }
 func build12847() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("macaddr_data")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("08002b:010203"))
+	return qs.InsertIntoTable(qs.Table("macaddr_data")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("08002b:010203")))
 }
 func build12855() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("macaddr_data")).ValuesExpr(qs.LiteralInt(11), qs.LiteralString("08:00:2b:01:02:02"))
+	return qs.InsertIntoTable(qs.Table("macaddr_data")).Values(qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralString("08:00:2b:01:02:02")))
 }
 func build12863() qs.Statement {
 	return qs.Select(qs.Operator(qs.Ident("b"), ">", qs.LiteralString("08:00:2b:01:02:03"))).FromExpr(qs.Table("macaddr_data")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
@@ -4637,10 +4637,10 @@ func build12895() qs.Statement {
 	return qs.Select((qs.LiteralString("08:00:2b:01.02:03:04:05")).Cast(qs.TypeNamed("macaddr8")))
 }
 func build12903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("macaddr8_data")).ValuesExpr(qs.LiteralInt(7), qs.LiteralString("08002b010203"))
+	return qs.InsertIntoTable(qs.Table("macaddr8_data")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("08002b010203")))
 }
 func build12911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("macaddr8_data")).ValuesExpr(qs.LiteralInt(15), qs.LiteralString("08:00:2b:01:02:03:04:05"))
+	return qs.InsertIntoTable(qs.Table("macaddr8_data")).Values(qs.Write(qs.LiteralInt(15)), qs.Write(qs.LiteralString("08:00:2b:01:02:03:04:05")))
 }
 func build12919() qs.Statement {
 	return qs.Select(qs.Ident("a"), qs.Ident("b"), qs.Call("trunc", qs.Ident("b"))).FromExpr(qs.Table("macaddr8_data")).OrderBy((qs.LiteralInt(2)).Asc(), (qs.LiteralInt(1)).Asc())
@@ -4671,10 +4671,10 @@ func build12991() qs.Statement {
 	return qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3))
 }
 func build12999() qs.Statement {
-	return qs.UpdateTable(qs.Table("mvtest_boxes")).Set(qs.Assign(qs.Ident("b"), qs.LiteralString("(2,2),(1,1)"))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(2))))
+	return qs.UpdateTable(qs.Table("mvtest_boxes")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("(2,2),(1,1)")))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(2))))
 }
 func build13007() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mvtest_v")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("mvtest_v")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)))
 }
 func build13015() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("mv_unspecified_types"))
@@ -4701,22 +4701,22 @@ func build13071() qs.Statement {
 	return qs.Select(qs.Call("explain_memoize", qs.LiteralString("\nSELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1\nINNER JOIN tenk1 t2 ON t1.unique1 = t2.thousand\nWHERE t2.unique1 < 1200;"), qs.LiteralBool(true)))
 }
 func build13079() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("prt")).ValuesExpr(qs.LiteralInt(0)).ValuesExpr(qs.LiteralInt(0)).ValuesExpr(qs.LiteralInt(0)).ValuesExpr(qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("prt")).Values(qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralInt(0))).Values(qs.Write(qs.LiteralInt(0)))
 }
 func build13087() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("target")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(10))
+	return qs.InsertIntoTable(qs.Table("target")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(10)))
 }
 func build13095() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("mv").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().ThenInsertDefault())
 }
 func build13103() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.LiteralInt(0))))
+	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Write(qs.LiteralInt(0)))))
 }
 func build13111() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenDelete())
 }
 func build13119() qs.Statement {
-	return qs.Explain(qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.LiteralInt(4), qs.NullLiteral()))).Costs(false)
+	return qs.Explain(qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.LiteralInt(4)), qs.Write(qs.NullLiteral())))).Costs(false)
 }
 func build13127() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenDelete())
@@ -4725,19 +4725,19 @@ func build13135() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("target")).OrderBy((qs.Ident("tid")).Asc())
 }
 func build13143() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.LiteralInt(4), qs.NullLiteral()))
+	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.LiteralInt(4)), qs.Write(qs.NullLiteral())))
 }
 func build13151() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.LiteralInt(0))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.LiteralInt(4), qs.LiteralInt(4)))
+	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Write(qs.LiteralInt(0)))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(4))))
 }
 func build13159() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Ident("s", "sid"), qs.Ident("s", "delta")))
+	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.Ident("s", "sid")), qs.Write(qs.Ident("s", "delta"))))
 }
 func build13167() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Operator(qs.Ident("t", "balance"), "+", qs.Ident("s", "delta")))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Ident("s", "sid"), qs.Ident("s", "delta")))
+	return qs.MergeIntoTable(qs.Table("target").As("t")).Using(qs.Table("source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Write(qs.Operator(qs.Ident("t", "balance"), "+", qs.Ident("s", "delta"))))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.Ident("s", "sid")), qs.Write(qs.Ident("s", "delta"))))
 }
 func build13175() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("wq_target").As("t")).Using(qs.Table("wq_source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().And(qs.AsCondition(qs.Operator(qs.Ident("s", "balance"), "<>", qs.LiteralInt(100)))).ThenInsertValues([]string{"tid"}, qs.Ident("s", "sid")))
+	return qs.MergeIntoTable(qs.Table("wq_target").As("t")).Using(qs.Table("wq_source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedByTarget().And(qs.AsCondition(qs.Operator(qs.Ident("s", "balance"), "<>", qs.LiteralInt(100)))).ThenInsertValues([]string{"tid"}, qs.Write(qs.Ident("s", "sid"))))
 }
 func build13183() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("wq_target").As("t")).Using(qs.Table("wq_source").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.NotMatchedBySource().And(qs.AsCondition(qs.Operator(qs.Ident("s", "balance"), "=", qs.LiteralInt(100)))).ThenDelete())
@@ -4754,10 +4754,10 @@ func build13223() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("target")).OrderBy((qs.Ident("tid")).Asc())
 }
 func build13231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("sq_source")).Columns("sid", "delta").ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(10)).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(20)).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(40))
+	return qs.InsertIntoTable(qs.Table("sq_source")).Columns("sid", "delta").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(10))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(20))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(40)))
 }
 func build13239() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("sq_target").As("t")).Using(qs.Table("v")).On(qs.AsCondition(qs.Operator(qs.Ident("tid"), "=", qs.Ident("sid")))).When(qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("tid"), ">=", qs.LiteralInt(2)))).ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Operator(qs.Ident("t", "balance"), "+", qs.Ident("delta")))), qs.NotMatchedByTarget().ThenInsertValues([]string{"balance", "tid"}, qs.Operator(qs.Ident("balance"), "+", qs.Ident("delta")), qs.Ident("sid")), qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("tid"), "<", qs.LiteralInt(2)))).ThenDelete())
+	return qs.MergeIntoTable(qs.Table("sq_target").As("t")).Using(qs.Table("v")).On(qs.AsCondition(qs.Operator(qs.Ident("tid"), "=", qs.Ident("sid")))).When(qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("tid"), ">=", qs.LiteralInt(2)))).ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Write(qs.Operator(qs.Ident("t", "balance"), "+", qs.Ident("delta"))))), qs.NotMatchedByTarget().ThenInsertValues([]string{"balance", "tid"}, qs.Write(qs.Operator(qs.Ident("balance"), "+", qs.Ident("delta"))), qs.Write(qs.Ident("sid"))), qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("tid"), "<", qs.LiteralInt(2)))).ThenDelete())
 }
 func build13247() qs.Statement { return qs.Select(qs.MergeAction()).FromExpr(qs.Table("sq_target")) }
 func build13255() qs.Statement {
@@ -4776,37 +4776,37 @@ func build13287() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("pa_target")).OrderBy((qs.Ident("tid")).Asc(), (qs.Ident("val")).Asc())
 }
 func build13295() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("pa_target").As("t")).Using(qs.Subquery(qs.Select(qs.LiteralString("2017-01-15").As("slogts"), qs.Star()).FromExpr(qs.Table("pa_source")).Where(qs.AsCondition(qs.Operator(qs.Ident("sid"), "<", qs.LiteralInt(10)))), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Operator(qs.Ident("balance"), "+", qs.Ident("delta"))), qs.Assign(qs.Ident("val"), qs.Operator(qs.Ident("val"), "||", qs.LiteralString(" updated by merge")))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, (qs.Ident("slogts")).Cast(qs.TypeTimestamp), qs.Ident("sid"), qs.Ident("delta"), qs.LiteralString("inserted by merge"))).Returning(qs.MergeAction(), qs.Ident("old"), qs.Ident("new"), qs.Star("t"))
+	return qs.MergeIntoTable(qs.Table("pa_target").As("t")).Using(qs.Subquery(qs.Select(qs.LiteralString("2017-01-15").As("slogts"), qs.Star()).FromExpr(qs.Table("pa_source")).Where(qs.AsCondition(qs.Operator(qs.Ident("sid"), "<", qs.LiteralInt(10)))), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("s", "sid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("balance"), qs.Write(qs.Operator(qs.Ident("balance"), "+", qs.Ident("delta")))), qs.Assign(qs.Ident("val"), qs.Write(qs.Operator(qs.Ident("val"), "||", qs.LiteralString(" updated by merge"))))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write((qs.Ident("slogts")).Cast(qs.TypeTimestamp)), qs.Write(qs.Ident("sid")), qs.Write(qs.Ident("delta")), qs.Write(qs.LiteralString("inserted by merge")))).Returning(qs.MergeAction(), qs.Ident("old"), qs.Ident("new"), qs.Star("t"))
 }
 func build13303() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("cj_source1")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(10), qs.LiteralInt(100))
+	return qs.InsertIntoTable(qs.Table("cj_source1")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralInt(100)))
 }
 func build13311() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("cj_target").As("t")).Using(qs.InnerJoin(qs.Table("cj_source2").As("s2"), qs.Table("cj_source1").As("s1")).On(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("sid1"), "=", qs.Ident("sid2"))), qs.AsCondition(qs.Operator(qs.Ident("scat"), "=", qs.LiteralInt(20)))).Expr()))).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("sid1")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Ident("sid2"), qs.Ident("delta"), qs.Ident("sval")), qs.Matched().ThenDelete())
+	return qs.MergeIntoTable(qs.Table("cj_target").As("t")).Using(qs.InnerJoin(qs.Table("cj_source2").As("s2"), qs.Table("cj_source1").As("s1")).On(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("sid1"), "=", qs.Ident("sid2"))), qs.AsCondition(qs.Operator(qs.Ident("scat"), "=", qs.LiteralInt(20)))).Expr()))).On(qs.AsCondition(qs.Operator(qs.Ident("t", "tid"), "=", qs.Ident("sid1")))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.Ident("sid2")), qs.Write(qs.Ident("delta")), qs.Write(qs.Ident("sval"))), qs.Matched().ThenDelete())
 }
 func build13319() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("fs_target").As("t")).Using(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(100), qs.LiteralInt(2))).As("id")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("id")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Operator(qs.Ident("b"), "+", qs.Ident("id"))), qs.Assign(qs.Ident("c"), qs.Operator(qs.LiteralString("updated "), "||", (qs.Star("id")).Cast(qs.TypeNamed("text"))))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Ident("id"), qs.LiteralInt(-1), qs.Operator(qs.LiteralString("inserted "), "||", (qs.Star("id")).Cast(qs.TypeNamed("text")))))
+	return qs.MergeIntoTable(qs.Table("fs_target").As("t")).Using(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(100), qs.LiteralInt(2))).As("id")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("id")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Ident("b"), "+", qs.Ident("id")))), qs.Assign(qs.Ident("c"), qs.Write(qs.Operator(qs.LiteralString("updated "), "||", (qs.Star("id")).Cast(qs.TypeNamed("text")))))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.Ident("id")), qs.Write(qs.LiteralInt(-1)), qs.Write(qs.Operator(qs.LiteralString("inserted "), "||", (qs.Star("id")).Cast(qs.TypeNamed("text"))))))
 }
 func build13327() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("measurement")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("2007-01-17"), qs.LiteralInt(10), qs.LiteralInt(10))
+	return qs.InsertIntoTable(qs.Table("measurement")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("2007-01-17")), qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralInt(10)))
 }
 func build13335() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("new_measurement")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("2007-01-15"), qs.LiteralInt(5), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("new_measurement")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("2007-01-15")), qs.Write(qs.LiteralInt(5)), qs.Write(qs.NullLiteral()))
 }
 func build13343() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("new_measurement").As("nm")).Using(qs.Table("measurement").As("m")).On(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("nm", "city_id"), "=", qs.Ident("m", "city_id"))), qs.AsCondition(qs.Operator(qs.Ident("nm", "logdate"), "=", qs.Ident("m", "logdate")))).Expr())).When(qs.Matched().ThenDelete())
 }
 func build13351() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("measurement").As("m")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1), (qs.LiteralString("01-18-2007")).Cast(qs.TypeNamed("date"))), "nm", "city_id", "logdate")).On(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("m", "city_id"), "=", qs.Ident("nm", "city_id"))), qs.AsCondition(qs.Operator(qs.Ident("m", "logdate"), "=", qs.Ident("nm", "logdate")))).Expr())).When(qs.NotMatchedByTarget().ThenInsertValues([]string{"city_id", "logdate", "peaktemp", "unitsales"}, qs.Operator(qs.Ident("city_id"), "-", qs.LiteralInt(1)), qs.Ident("logdate"), qs.LiteralInt(25), qs.LiteralInt(200))).Returning(qs.MergeAction(), qs.Star("m"))
+	return qs.MergeIntoTable(qs.Table("measurement").As("m")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1), (qs.LiteralString("01-18-2007")).Cast(qs.TypeNamed("date"))), "nm", "city_id", "logdate")).On(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("m", "city_id"), "=", qs.Ident("nm", "city_id"))), qs.AsCondition(qs.Operator(qs.Ident("m", "logdate"), "=", qs.Ident("nm", "logdate")))).Expr())).When(qs.NotMatchedByTarget().ThenInsertValues([]string{"city_id", "logdate", "peaktemp", "unitsales"}, qs.Write(qs.Operator(qs.Ident("city_id"), "-", qs.LiteralInt(1))), qs.Write(qs.Ident("logdate")), qs.Write(qs.LiteralInt(25)), qs.Write(qs.LiteralInt(200)))).Returning(qs.MergeAction(), qs.Star("m"))
 }
 func build13359() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("bug18634v").As("t")).Using(qs.Table("bug18634s").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("s", "a"), "=", qs.Ident("t", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Ident("s", "b"))), qs.NotMatchedBySource().ThenDelete()).Returning(qs.MergeAction(), qs.Ident("s", "c"), qs.Star("t"))
+	return qs.MergeIntoTable(qs.Table("bug18634v").As("t")).Using(qs.Table("bug18634s").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("s", "a"), "=", qs.Ident("t", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("s", "b")))), qs.NotMatchedBySource().ThenDelete()).Returning(qs.MergeAction(), qs.Ident("s", "c"), qs.Star("t"))
 }
 func build13367() qs.Statement {
-	return qs.UpdateTable(qs.Table("tmp")).Set(qs.Assign(qs.Ident("stringu1"), qs.Call("reverse_name", qs.Ident("onek", "stringu1")))).FromExpr(qs.Table("onek")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("onek", "stringu1"), "=", qs.LiteralString("JBAAAA"))), qs.AsCondition(qs.Operator(qs.Ident("onek", "stringu1"), "=", qs.Ident("tmp", "stringu1")))).Expr()))
+	return qs.UpdateTable(qs.Table("tmp")).Set(qs.Assign(qs.Ident("stringu1"), qs.Write(qs.Call("reverse_name", qs.Ident("onek", "stringu1"))))).FromExpr(qs.Table("onek")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("onek", "stringu1"), "=", qs.LiteralString("JBAAAA"))), qs.AsCondition(qs.Operator(qs.Ident("onek", "stringu1"), "=", qs.Ident("tmp", "stringu1")))).Expr()))
 }
 func build13375() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("equipment_r")).Columns("name", "hobby").ValuesExpr(qs.LiteralString("advil"), qs.LiteralString("posthacking"))
+	return qs.InsertIntoTable(qs.Table("equipment_r")).Columns("name", "hobby").Values(qs.Write(qs.LiteralString("advil")), qs.Write(qs.LiteralString("posthacking")))
 }
 func build13383() qs.Statement {
 	return qs.Select(qs.Ident("p", "name"), qs.Call("name", qs.Ident("p", "hobbies")), qs.Call("name", qs.Call("equipment", qs.Ident("p", "hobbies")))).FromExpr(qs.Table("person").Only().As("p"))
@@ -4876,7 +4876,7 @@ func build13559() qs.Statement {
 func build13567() qs.Statement { return qs.DeleteFromTable(qs.Table("money_data")) }
 func build13575() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("money_data")) }
 func build13583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("money_data")).ValuesExpr(qs.LiteralString("$123.459"))
+	return qs.InsertIntoTable(qs.Table("money_data")).Values(qs.Write(qs.LiteralString("$123.459")))
 }
 func build13591() qs.Statement {
 	return qs.Select((qs.LiteralString("-12345678901234567")).Cast(qs.TypeNamed("money")))
@@ -4924,10 +4924,10 @@ func build13703() qs.Statement {
 	return qs.Select((qs.Call("textrange", qs.LiteralString("a"), qs.LiteralString("c"))).Cast(qs.TypeNamed("textmultirange")))
 }
 func build13711() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("nummultirange_test")).ValuesExpr(qs.LiteralString("{[3,]}"))
+	return qs.InsertIntoTable(qs.Table("nummultirange_test")).Values(qs.Write(qs.LiteralString("{[3,]}")))
 }
 func build13719() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("nummultirange_test")).ValuesExpr(qs.Call("nummultirange", qs.Call("numrange", qs.LiteralNumeric("1.7"), qs.LiteralNumeric("1.7"), qs.LiteralString("[]")), qs.Call("numrange", qs.LiteralNumeric("1.9"), qs.LiteralNumeric("2.1"))))
+	return qs.InsertIntoTable(qs.Table("nummultirange_test")).Values(qs.Write(qs.Call("nummultirange", qs.Call("numrange", qs.LiteralNumeric("1.7"), qs.LiteralNumeric("1.7"), qs.LiteralString("[]")), qs.Call("numrange", qs.LiteralNumeric("1.9"), qs.LiteralNumeric("2.1")))))
 }
 func build13727() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("nummultirange_test")).Where(qs.AsCondition(qs.Operator(qs.Ident("nmr"), "<", qs.LiteralString("{}"))))
@@ -5072,10 +5072,10 @@ func build14103() qs.Statement {
 	return qs.Select(qs.Call("range_intersect_agg", qs.Ident("nmr"))).FromExpr(qs.Subquery(qs.ValuesExpr((qs.LiteralString("{}")).Cast(qs.TypeNamed("nummultirange"))), "t", "nmr"))
 }
 func build14111() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("nummultirange_test2")).ValuesExpr(qs.LiteralString("{}"))
+	return qs.InsertIntoTable(qs.Table("nummultirange_test2")).Values(qs.Write(qs.LiteralString("{}")))
 }
 func build14119() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("float8multirange_test")).ValuesExpr(qs.Call("float8multirange", qs.Call("float8range", qs.LiteralNumeric("-100.00007"), qs.LiteralString("1.111113e9"))), qs.LiteralInt(42))
+	return qs.InsertIntoTable(qs.Table("float8multirange_test")).Values(qs.Write(qs.Call("float8multirange", qs.Call("float8range", qs.LiteralNumeric("-100.00007"), qs.LiteralString("1.111113e9")))), qs.Write(qs.LiteralInt(42)))
 }
 func build14127() qs.Statement {
 	return qs.Select(qs.Call("unnest", qs.Call("multirange_of_text", qs.Call("textrange1", qs.LiteralString("a"), qs.LiteralString("b")), qs.Call("textrange1", qs.LiteralString("d"), qs.LiteralString("e")))))
@@ -5090,7 +5090,7 @@ func build14151() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("mr_outparam_succeed3", qs.Call("int4multirange", qs.Call("int4range", qs.LiteralInt(1), qs.LiteralInt(2))))))
 }
 func build14159() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("name_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR"))
+	return qs.InsertIntoTable(qs.Table("name_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR")))
 }
 func build14167() qs.Statement {
 	return qs.Select(qs.Ident("c", "f1")).FromExpr(qs.Table("name_tbl").As("c")).Where(qs.AsCondition(qs.Operator(qs.Ident("c", "f1"), "<>", qs.LiteralString("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR"))))
@@ -5104,175 +5104,175 @@ func build14199() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("test_ns_schema_1.abc"))
 }
 func build14207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(0), qs.LiteralString("0"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("0")))
 }
 func build14215() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(2), qs.LiteralString("-34338492.215397047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-34338492.215397047")))
 }
 func build14223() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(4), qs.LiteralString("7799461.4119"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("7799461.4119")))
 }
 func build14231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(6), qs.LiteralString("93901.57763026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("93901.57763026")))
 }
 func build14239() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(8), qs.LiteralString("74881"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("74881")))
 }
 func build14247() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(0), qs.LiteralString("0"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("0")))
 }
 func build14255() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralString("-34338492.215397047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-34338492.215397047")))
 }
 func build14263() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(4), qs.LiteralString("7799461.4119"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("7799461.4119")))
 }
 func build14271() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(6), qs.LiteralString("93901.57763026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("93901.57763026")))
 }
 func build14279() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(8), qs.LiteralString("74881"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("74881")))
 }
 func build14287() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(0), qs.LiteralString("-34338492.215397047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("-34338492.215397047")))
 }
 func build14295() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2), qs.LiteralString("-68676984.430794094"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-68676984.430794094")))
 }
 func build14303() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(4), qs.LiteralString("-26539030.803497047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("-26539030.803497047")))
 }
 func build14311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(6), qs.LiteralString("-34244590.637766787"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("-34244590.637766787")))
 }
 func build14319() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(8), qs.LiteralString("-34263611.215397047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("-34263611.215397047")))
 }
 func build14327() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(0), qs.LiteralString("4.31"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("4.31")))
 }
 func build14335() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(2), qs.LiteralString("-34338487.905397047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-34338487.905397047")))
 }
 func build14343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(4), qs.LiteralString("7799465.7219"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("7799465.7219")))
 }
 func build14351() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(6), qs.LiteralString("93905.88763026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("93905.88763026")))
 }
 func build14359() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(8), qs.LiteralString("74885.31"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("74885.31")))
 }
 func build14367() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(0), qs.LiteralString("7799461.4119"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("7799461.4119")))
 }
 func build14375() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(2), qs.LiteralString("-26539030.803497047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-26539030.803497047")))
 }
 func build14383() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(4), qs.LiteralString("15598922.8238"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("15598922.8238")))
 }
 func build14391() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(6), qs.LiteralString("7893362.98953026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("7893362.98953026")))
 }
 func build14399() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(8), qs.LiteralString("7874342.4119"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("7874342.4119")))
 }
 func build14407() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(0), qs.LiteralString("16397.038491"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("16397.038491")))
 }
 func build14415() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(2), qs.LiteralString("-34322095.176906047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-34322095.176906047")))
 }
 func build14423() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(4), qs.LiteralString("7815858.450391"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("7815858.450391")))
 }
 func build14431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(6), qs.LiteralString("110298.61612126"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("110298.61612126")))
 }
 func build14439() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(8), qs.LiteralString("91278.038491"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("91278.038491")))
 }
 func build14447() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(0), qs.LiteralString("93901.57763026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("93901.57763026")))
 }
 func build14455() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(2), qs.LiteralString("-34244590.637766787"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-34244590.637766787")))
 }
 func build14463() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(4), qs.LiteralString("7893362.98953026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("7893362.98953026")))
 }
 func build14471() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(6), qs.LiteralString("187803.15526052"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("187803.15526052")))
 }
 func build14479() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(8), qs.LiteralString("168782.57763026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("168782.57763026")))
 }
 func build14487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(0), qs.LiteralString("-83028485"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("-83028485")))
 }
 func build14495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(2), qs.LiteralString("-117366977.215397047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-117366977.215397047")))
 }
 func build14503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(4), qs.LiteralString("-75229023.5881"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("-75229023.5881")))
 }
 func build14511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(6), qs.LiteralString("-82934583.42236974"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("-82934583.42236974")))
 }
 func build14519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(8), qs.LiteralString("-82953604"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("-82953604")))
 }
 func build14527() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(0), qs.LiteralString("74881"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("74881")))
 }
 func build14535() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(2), qs.LiteralString("-34263611.215397047"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-34263611.215397047")))
 }
 func build14543() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(4), qs.LiteralString("7874342.4119"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("7874342.4119")))
 }
 func build14551() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(6), qs.LiteralString("168782.57763026"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("168782.57763026")))
 }
 func build14559() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(8), qs.LiteralString("149762"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("149762")))
 }
 func build14567() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(0), qs.LiteralString("-24926804.045047420"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("-24926804.045047420")))
 }
 func build14575() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(2), qs.LiteralString("-59265296.260444467"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("-59265296.260444467")))
 }
 func build14583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(4), qs.LiteralString("-17127342.633147420"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("-17127342.633147420")))
 }
 func build14591() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(6), qs.LiteralString("-24832902.467417160"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("-24832902.467417160")))
 }
 func build14599() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(8), qs.LiteralString("-24851923.045047420"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("-24851923.045047420")))
 }
 func build14607() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_sqrt")).ValuesExpr(qs.LiteralInt(0), qs.LiteralString("0"))
+	return qs.InsertIntoTable(qs.Table("num_exp_sqrt")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("0")))
 }
 func build14615() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_sqrt")).ValuesExpr(qs.LiteralInt(8), qs.LiteralString("273.64392922189960397542"))
+	return qs.InsertIntoTable(qs.Table("num_exp_sqrt")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("273.64392922189960397542")))
 }
 func build14623() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_ln")).ValuesExpr(qs.LiteralInt(6), qs.LiteralString("11.45000246622944403127"))
+	return qs.InsertIntoTable(qs.Table("num_exp_ln")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("11.45000246622944403127")))
 }
 func build14631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_log10")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("6.89206461372691743345"))
+	return qs.InsertIntoTable(qs.Table("num_exp_log10")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("6.89206461372691743345")))
 }
 func build14639() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_power_10_ln")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("224790267919917955.13261618583642653184"))
+	return qs.InsertIntoTable(qs.Table("num_exp_power_10_ln")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("224790267919917955.13261618583642653184")))
 }
 func build14647() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_data")).ValuesExpr(qs.LiteralInt(0), qs.LiteralString("0"))
+	return qs.InsertIntoTable(qs.Table("num_data")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("0")))
 }
 func build14655() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_data")).ValuesExpr(qs.LiteralInt(8), qs.LiteralString("74881"))
+	return qs.InsertIntoTable(qs.Table("num_data")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("74881")))
 }
 func build14663() qs.Statement { return qs.DeleteFromTable(qs.Table("num_result")) }
 func build14671() qs.Statement {
@@ -5304,10 +5304,10 @@ func build14743() qs.Statement {
 	return qs.Select(qs.Call("power", (qs.LiteralString("-inf")).Cast(qs.TypeNumeric), qs.LiteralString("inf")))
 }
 func build14751() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fract_only")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("0.1"))
+	return qs.InsertIntoTable(qs.Table("fract_only")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("0.1")))
 }
 func build14759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("fract_only")).ValuesExpr(qs.LiteralInt(10), qs.LiteralString("Inf"))
+	return qs.InsertIntoTable(qs.Table("fract_only")).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralString("Inf")))
 }
 func build14767() qs.Statement {
 	return qs.Select((qs.LiteralNumeric("-2147483648.4")).Cast(qs.TypeNamed("int4")))
@@ -5322,7 +5322,7 @@ func build14791() qs.Statement {
 	return qs.Select(((qs.LiteralString("Infinity")).Cast(qs.TypeNumeric)).Cast(qs.TypeNamed("int4")))
 }
 func build14799() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("ceil_floor_round")).ValuesExpr(qs.LiteralString("9.4999999"))
+	return qs.InsertIntoTable(qs.Table("ceil_floor_round")).Values(qs.Write(qs.LiteralString("9.4999999")))
 }
 func build14807() qs.Statement {
 	return qs.Select(qs.Call("round", qs.LiteralNumeric("4.5e131071"), qs.LiteralInt(-131072)))
@@ -5379,32 +5379,32 @@ func build14943() qs.Statement {
 	return qs.Select(qs.Call("to_number", qs.LiteralString("CM"), qs.LiteralString("MIRN")))
 }
 func build14951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").ValuesExpr(qs.LiteralString("555.50"))
+	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").Values(qs.Write(qs.LiteralString("555.50")))
 }
 func build14959() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").ValuesExpr(qs.LiteralString(" +inFinity "))
+	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").Values(qs.Write(qs.LiteralString(" +inFinity ")))
 }
 func build14967() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").ValuesExpr(qs.LiteralString("  -0B_1010_1011_0101_0100_1010_1001_1000_1100_1110_1011_0001_1111_0000_1010_1101_0010  "))
+	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").Values(qs.Write(qs.LiteralString("  -0B_1010_1011_0101_0100_1010_1001_1000_1100_1110_1011_0001_1111_0000_1010_1101_0010  ")))
 }
 func build14975() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").ValuesExpr(qs.LiteralString("- 1234"))
+	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").Values(qs.Write(qs.LiteralString("- 1234")))
 }
 func build14983() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").ValuesExpr(qs.LiteralString("_123"))
+	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").Values(qs.Write(qs.LiteralString("_123")))
 }
 func build14991() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").ValuesExpr(qs.LiteralString("0b1112"))
+	return qs.InsertIntoTable(qs.Table("num_input_test")).Columns("n1").Values(qs.Write(qs.LiteralString("0b1112")))
 }
 func build14999() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("num_input_test")) }
 func build15007() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("pg_input_error_info", qs.LiteralString("0x1234.567"), qs.LiteralString("numeric"))))
 }
 func build15015() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_typemod_test")).ValuesExpr(qs.LiteralInt(987654321), qs.LiteralInt(987654), qs.LiteralNumeric("987.654"), qs.LiteralNumeric("0.987654"), qs.LiteralNumeric("0.000987654"))
+	return qs.InsertIntoTable(qs.Table("num_typemod_test")).Values(qs.Write(qs.LiteralInt(987654321)), qs.Write(qs.LiteralInt(987654)), qs.Write(qs.LiteralNumeric("987.654")), qs.Write(qs.LiteralNumeric("0.987654")), qs.Write(qs.LiteralNumeric("0.000987654")))
 }
 func build15023() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_typemod_test")).Columns("millionths").ValuesExpr(qs.LiteralNumeric("0.0009995"))
+	return qs.InsertIntoTable(qs.Table("num_typemod_test")).Columns("millionths").Values(qs.Write(qs.LiteralNumeric("0.0009995")))
 }
 func build15031() qs.Statement {
 	return qs.Select(qs.Call("mod", (qs.LiteralNumeric("999999999999999999999")).Cast(qs.TypeNumeric), qs.LiteralNumeric("1000000000000000000000")))
@@ -5465,172 +5465,172 @@ func build15199() qs.Statement {
 	return qs.Select(qs.Call("pg_lsn", (qs.LiteralNumeric("18446744073709551615")).Cast(qs.TypeNumeric)))
 }
 func build15207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(1), qs.LiteralString("85243.39540024977626076239847863600785982737155858270959890014613035727868293618673807776733416230953723818527101593495895350807775607346277892835514324320448949370623441059033804864158715021903312693889518990256881059434042443507529601095150710777634743301398926463888783847290873199395304998050753365215426971278237920063435565949203678024225270616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("85243.39540024977626076239847863600785982737155858270959890014613035727868293618673807776733416230953723818527101593495895350807775607346277892835514324320448949370623441059033804864158715021903312693889518990256881059434042443507529601095150710777634743301398926463888783847290873199395304998050753365215426971278237920063435565949203678024225270616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035")))
 }
 func build15215() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(3), qs.LiteralString("-60302029489319384367663884408085757480.2322712404088283093870869198708849258097125725036189625900174440196153781995220721511009855207486224837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489319384367663884408085757480.2322712404088283093870869198708849258097125725036189625900174440196153781995220721511009855207486224837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15223() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(5), qs.LiteralString("-652755630.43456071828048833552593835051449845484289562110789582081210403487973096161149072377955192388469356112505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-652755630.43456071828048833552593835051449845484289562110789582081210403487973096161149072377955192388469356112505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(7), qs.LiteralString("-818934540071845742"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-818934540071845742")))
 }
 func build15239() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(9), qs.LiteralString("54863480.34685027005508022756223282084742813020271603840941647350440860843570182437301045468670059279379903480024743452620396345637401505220786389930600883087012615993343976556472498552535317826554614696684732913955544753638726438705858481670766245958647367500212800073774509075408148134050353551558174813940258910304990570172170811882520915334358633"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("54863480.34685027005508022756223282084742813020271603840941647350440860843570182437301045468670059279379903480024743452620396345637401505220786389930600883087012615993343976556472498552535317826554614696684732913955544753638726438705858481670766245958647367500212800073774509075408148134050353551558174813940258910304990570172170811882520915334358633")))
 }
 func build15247() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1), qs.LiteralString("170486.79080049955252152479695727201571965474311716541919780029226071455736587237347615553466832461907447637054203186991790701615551214692555785671028648640897898741246882118067609728317430043806625387779037980513762118868084887015059202190301421555269486602797852927777567694581746398790609996101506730430853942556475840126871131898407356048450541232591147357021858041662012293323494543567675306406079659294204054863522259037763051870433216859794083051717080761509518250300466106939998045710070"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("170486.79080049955252152479695727201571965474311716541919780029226071455736587237347615553466832461907447637054203186991790701615551214692555785671028648640897898741246882118067609728317430043806625387779037980513762118868084887015059202190301421555269486602797852927777567694581746398790609996101506730430853942556475840126871131898407356048450541232591147357021858041662012293323494543567675306406079659294204054863522259037763051870433216859794083051717080761509518250300466106939998045710070")))
 }
 func build15255() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(3), qs.LiteralString("-60302029489319384367663884408085672236.83687099063256754698860828386302509843815398979402006244388708674093244201278399438376682321121138429850885935540924586964982855913223221441591310211730902799041126800414795030815514254713522692405212716783388698431088814919226444677188004928663343696636297536500970117716818423689175692808344185016908913828066250587407384563498516598672584120143890364303296142744031320345312431817858545326010704685255237541162931904446804064783391570102958474141459619245240874849766946530000977144965"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489319384367663884408085672236.83687099063256754698860828386302509843815398979402006244388708674093244201278399438376682321121138429850885935540924586964982855913223221441591310211730902799041126800414795030815514254713522692405212716783388698431088814919226444677188004928663343696636297536500970117716818423689175692808344185016908913828066250587407384563498516598672584120143890364303296142744031320345312431817858545326010704685255237541162931904446804064783391570102958474141459619245240874849766946530000977144965")))
 }
 func build15263() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(5), qs.LiteralString("-652670387.03916046850422757312745971450663862747133703839829692066597367760104802542475264601221776157515632293978442027199108085723617181683235487266149426304575903892721468296143475297345699313102262188759506518376019936160961709578829069446312051432780603656651983414612264636232727512091101057374054475214114364113300402823059519499217878746766275164739724770556122895799337810694888119810524986616938847385753562624139431982468828696587199570410008890188532132652095915565323400735066310142303225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-652670387.03916046850422757312745971450663862747133703839829692066597367760104802542475264601221776157515632293978442027199108085723617181683235487266149426304575903892721468296143475297345699313102262188759506518376019936160961709578829069446312051432780603656651983414612264636232727512091101057374054475214114364113300402823059519499217878746766275164739724770556122895799337810694888119810524986616938847385753562624139431982468828696587199570410008890188532132652095915565323400735066310142303225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15271() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(7), qs.LiteralString("-818934540071760498.60459975022373923760152136399214017262844141729040109985386964272131706381326192223266583769046276181472898406504104649192224392653722107164485675679551050629376558940966195135841284978096687306110481009743118940565957556492470398904849289222365256698601073536111216152709126800604695001949246634784573028721762079936564434050796321975774729383704426321489070979168993853338252728216162346796960170352897972568238870481118474064783391570102958474141459619245240874849766946530000977144965"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-818934540071760498.60459975022373923760152136399214017262844141729040109985386964272131706381326192223266583769046276181472898406504104649192224392653722107164485675679551050629376558940966195135841284978096687306110481009743118940565957556492470398904849289222365256698601073536111216152709126800604695001949246634784573028721762079936564434050796321975774729383704426321489070979168993853338252728216162346796960170352897972568238870481118474064783391570102958474141459619245240874849766946530000977144965")))
 }
 func build15279() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(9), qs.LiteralString("54948723.74225051983134098996071145685528795757427462111901537365053896571438476055974853245403475510333627298551845046116291696445177112567064282766115207407461565363967417615506303416694032848457927390574251904212425813072768882213388082765916956736282110801611726537663292922699021333445658549608928179155685881583228490235606377831724593358583903616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("54948723.74225051983134098996071145685528795757427462111901537365053896571438476055974853245403475510333627298551845046116291696445177112567064282766115207407461565363967417615506303416694032848457927390574251904212425813072768882213388082765916956736282110801611726537663292922699021333445658549608928179155685881583228490235606377831724593358583903616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035")))
 }
 func build15287() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(1), qs.LiteralString("-994877526002806872754342148663997.64812998474240514147207095573950146764154822009863493316394610578375247334825932838513167168342610420582834742950389452212867974756590355021495169819086060202117180229196935525386766373096687306110481009743118940565957556492470398904849289222365256698601073536111216152709126800604695001949246634784573028721762079936564434050796321975774729383704426321489070979168993853338252728216162346796960170352897972568238870481118474064783391570102958474141459619245240874849766946530000977144965"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("-994877526002806872754342148663997.64812998474240514147207095573950146764154822009863493316394610578375247334825932838513167168342610420582834742950389452212867974756590355021495169819086060202117180229196935525386766373096687306110481009743118940565957556492470398904849289222365256698601073536111216152709126800604695001949246634784573028721762079936564434050796321975774729383704426321489070979168993853338252728216162346796960170352897972568238870481118474064783391570102958474141459619245240874849766946530000977144965")))
 }
 func build15295() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(3), qs.LiteralString("-60303024366845387174536638750234506721.2758014749274942132576365116182462208228193753118527959000939070820507877345194783035668195137119648748792386548310474079340204536236936213411512867171486174240518914767934028451971067161683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60303024366845387174536638750234506721.2758014749274942132576365116182462208228193753118527959000939070820507877345194783035668195137119648748792386548310474079340204536236936213411512867171486174240518914767934028451971067161683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15303() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(5), qs.LiteralString("-994877526002806872754342801504871.47809095279915423939648794226185974985600242391612965412218049794216637114648812993201775787765690351615479957141288239552036371132381627958673244764559862836085530643408020551049895730005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-994877526002806872754342801504871.47809095279915423939648794226185974985600242391612965412218049794216637114648812993201775787765690351615479957141288239552036371132381627958673244764559862836085530643408020551049895730005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(7), qs.LiteralString("-994877526002807691688882220594983.04353023451866590387054959174736129501310680280823383331007646306243540953499740615246583399296334239109936336446284803020643582102868247857009494139535009572740621288230740389545481395"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-994877526002807691688882220594983.04353023451866590387054959174736129501310680280823383331007646306243540953499740615246583399296334239109936336446284803020643582102868247857009494139535009572740621288230740389545481395")))
 }
 func build15319() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(9), qs.LiteralString("-994877526002806872754342093885760.69667996446358567630831677089993316481039076439881735980566785462673358516198695146576524119916430759085192883825888457383242076882081857926408611052522393579396644731758241837010163568445385303315267086044455246361273561294141518329233754041352632499787199926225490924591851865949646448441825186059741089695009429827829188117479084665641367"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("-994877526002806872754342093885760.69667996446358567630831677089993316481039076439881735980566785462673358516198695146576524119916430759085192883825888457383242076882081857926408611052522393579396644731758241837010163568445385303315267086044455246361273561294141518329233754041352632499787199926225490924591851865949646448441825186059741089695009429827829188117479084665641367")))
 }
 func build15327() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(1), qs.LiteralString("-60302029489319384367663884408085672236.83687099063256754698860828386302509843815398979402006244388708674093244201278399438376682321121138429850885935540924586964982855913223221441591310211730902799041126800414795030815514254713522692405212716783388698431088814919226444677188004928663343696636297536500970117716818423689175692808344185016908913828066250587407384563498516598672584120143890364303296142744031320345312431817858545326010704685255237541162931904446804064783391570102958474141459619245240874849766946530000977144965"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("-60302029489319384367663884408085672236.83687099063256754698860828386302509843815398979402006244388708674093244201278399438376682321121138429850885935540924586964982855913223221441591310211730902799041126800414795030815514254713522692405212716783388698431088814919226444677188004928663343696636297536500970117716818423689175692808344185016908913828066250587407384563498516598672584120143890364303296142744031320345312431817858545326010704685255237541162931904446804064783391570102958474141459619245240874849766946530000977144965")))
 }
 func build15335() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(3), qs.LiteralString("-120604058978638768735327768816171514960.4645424808176566187741738397417698516194251450072379251800348880392307563990441443022019710414972449675597505807363987554551692651900222855421126906435970433932913571889719978994845855323367077258946341408053951573026251685351209154467743141259617399607044800077950793001538324616896138171819510046467177021260834130168590102540438924579570947287892808562845032715007493401411940720339239705810106866471452994584812284665666"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-120604058978638768735327768816171514960.4645424808176566187741738397417698516194251450072379251800348880392307563990441443022019710414972449675597505807363987554551692651900222855421126906435970433932913571889719978994845855323367077258946341408053951573026251685351209154467743141259617399607044800077950793001538324616896138171819510046467177021260834130168590102540438924579570947287892808562845032715007493401411940720339239705810106866471452994584812284665666")))
 }
 func build15343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(5), qs.LiteralString("-60302029489319384367663884408738513110.66683195868931664491302527038538338065260819361151478340212147889934633981101279593065290940544218360883531149731823374304151252289014494378769385157204705433009477214625880056478643611622410268943757215673170753460135411513114716313801477916713433956086133878890802448531292334570886746283905390661877220497842493537338035961123751393889400517474762491881277080205381424363695095196058838349029211365212855028824622924678684631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-60302029489319384367663884408738513110.66683195868931664491302527038538338065260819361151478340212147889934633981101279593065290940544218360883531149731823374304151252289014494378769385157204705433009477214625880056478643611622410268943757215673170753460135411513114716313801477916713433956086133878890802448531292334570886746283905390661877220497842493537338035961123751393889400517474762491881277080205381424363695095196058838349029211365212855028824622924678684631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15351() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(7), qs.LiteralString("-60302029489319384368482818948157603222.2322712404088283093870869198708849258097125725036189625900174440196153781995220721511009855207486224837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-60302029489319384368482818948157603222.2322712404088283093870869198708849258097125725036189625900174440196153781995220721511009855207486224837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15359() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(9), qs.LiteralString("-60302029489319384367663884408030893999.8854209703537480818248540990234567956069965340942024890856088355839135538265116174644003927269495876835324407641642359213535695803871472434650475144516723617632059130297610134243891145006222068960999879308472500422640481972089756410157246974765071949782242392661524488959954348903412713930092273629207697480131360047867213863018127928853922173643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("-60302029489319384367663884408030893999.8854209703537480818248540990234567956069965340942024890856088355839135538265116174644003927269495876835324407641642359213535695803871472434650475144516723617632059130297610134243891145006222068960999879308472500422640481972089756410157246974765071949782242392661524488959954348903412713930092273629207697480131360047867213863018127928853922173643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15367() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(1), qs.LiteralString("5329378275943663322300488.64471790965256505869684245785528331091076155554650629138833809683459634328609777839510066435612911583108717191216693735823717997111970662575497378762952496582183738308720094529950793570383580785385569873278068217936841324404119828637880370718028782103860007754579779716996004352284614661690063919125301052941328989181561787543541920734755989452320799185700078241880935083616978140555713297241612718277766918005268951861880490889884082730841740604517529391011862694381726143520658746305661338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("5329378275943663322300488.64471790965256505869684245785528331091076155554650629138833809683459634328609777839510066435612911583108717191216693735823717997111970662575497378762952496582183738308720094529950793570383580785385569873278068217936841324404119828637880370718028782103860007754579779716996004352284614661690063919125301052941328989181561787543541920734755989452320799185700078241880935083616978140555713297241612718277766918005268951861880490889884082730841740604517529391011862694381726143520658746305661338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357")))
 }
 func build15375() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(3), qs.LiteralString("-60302029489314054989387940744763542234.98295358053252401308872309802346144227050959966671157134780970446370197110016237152333448347415674483796371931316021552756816073493808344537122580089676304958104270609762310229182150728136567294798680824019082599362332377530165818229609055765904048195574142709698758095302560470195171027219786996322461803443213101532716728918363951912367135900414238535625075942525108530051828834829820554490477645701692374399416239080329365045332525699055300921341010989742896430768506909949340276549373661076950964959025967328861569387160956730002517417236732463510495205173523163676450203614971844583064927040066684531931069310935516821795449174271052747559395296525950219449541557191520903507653089998307641491381797101485104546410643"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489314054989387940744763542234.98295358053252401308872309802346144227050959966671157134780970446370197110016237152333448347415674483796371931316021552756816073493808344537122580089676304958104270609762310229182150728136567294798680824019082599362332377530165818229609055765904048195574142709698758095302560470195171027219786996322461803443213101532716728918363951912367135900414238535625075942525108530051828834829820554490477645701692374399416239080329365045332525699055300921341010989742896430768506909949340276549373661076950964959025967328861569387160956730002517417236732463510495205173523163676450203614971844583064927040066684531931069310935516821795449174271052747559395296525950219449541557191520903507653089998307641491381797101485104546410643")))
 }
 func build15383() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(5), qs.LiteralString("5329378275943662669459614.81475694159581596077242547133292502869630735172901157043010370467618244548786897684821457816189831652076071977025794948484549600736179389638319303817478693948215387894509009504287664213474693208847025374388286162907794727810231557001266897729978691844410171412189947386181530441402903608214502713480332746271552746231631136145916685939539173054989927058122097304419584979598595477177513004218594211597809300517607260841648610322863666300637648662611916496850248528515936635845594390453288113296413254893687029540384176335735114863908372780241463999450547422213639667099644505472777149095004849805371205203850993689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("5329378275943662669459614.81475694159581596077242547133292502869630735172901157043010370467618244548786897684821457816189831652076071977025794948484549600736179389638319303817478693948215387894509009504287664213474693208847025374388286162907794727810231557001266897729978691844410171412189947386181530441402903608214502713480332746271552746231631136145916685939539173054989927058122097304419584979598595477177513004218594211597809300517607260841648610322863666300637648662611916496850248528515936635845594390453288113296413254893687029540384176335735114863908372780241463999450547422213639667099644505472777149095004849805371205203850993689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357")))
 }
 func build15391() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(7), qs.LiteralString("5329377457009123250369503.24931765987630429629836382184742348353920297283690739124220773955591340709935970062776650204659187764581615597720798385015942389765692769739983054442503547211560297249686289665792078548480268091496050883021187158502798880896590227542729659940394038802461081290690995869705131152889309663639310553909874081663091069118126221594338242710530718836025225507189149221049928936955230868771875644038572888630664890573507822342998964954667474300944699078658989010257103569231493090050659723450626338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("5329377457009123250369503.24931765987630429629836382184742348353920297283690739124220773955591340709935970062776650204659187764581615597720798385015942389765692769739983054442503547211560297249686289665792078548480268091496050883021187158502798880896590227542729659940394038802461081290690995869705131152889309663639310553909874081663091069118126221594338242710530718836025225507189149221049928936955230868771875644038572888630664890573507822342998964954667474300944699078658989010257103569231493090050659723450626338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357")))
 }
 func build15399() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(9), qs.LiteralString("5329378275943663377078725.59616792993138452386059664269485161374191901124632386474661634799161523147237015531446709484039091244606359050341194730653343894986479159670583937529516163204904273806158788218327396375034882788180783796976731912141525319602448709213495905899041406302673881364465504945113279286939663215197485367850132991968081639290297033476859158044889351836025225507189149221049928936955230868771875644038572888630664890573507822342998964954667474300944699078658989010257103569231493090050659723450626338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("5329378275943663377078725.59616792993138452386059664269485161374191901124632386474661634799161523147237015531446709484039091244606359050341194730653343894986479159670583937529516163204904273806158788218327396375034882788180783796976731912141525319602448709213495905899041406302673881364465504945113279286939663215197485367850132991968081639290297033476859158044889351836025225507189149221049928936955230868771875644038572888630664890573507822342998964954667474300944699078658989010257103569231493090050659723450626338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357")))
 }
 func build15407() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(1), qs.LiteralString("-652670387.03916046850422757312745971450663862747133703839829692066597367760104802542475264601221776157515632293978442027199108085723617181683235487266149426304575903892721468296143475297345699313102262188759506518376019936160961709578829069446312051432780603656651983414612264636232727512091101057374054475214114364113300402823059519499217878746766275164739724770556122895799337810694888119810524986616938847385753562624139431982468828696587199570410008890188532132652095915565323400735066310142303225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("-652670387.03916046850422757312745971450663862747133703839829692066597367760104802542475264601221776157515632293978442027199108085723617181683235487266149426304575903892721468296143475297345699313102262188759506518376019936160961709578829069446312051432780603656651983414612264636232727512091101057374054475214114364113300402823059519499217878746766275164739724770556122895799337810694888119810524986616938847385753562624139431982468828696587199570410008890188532132652095915565323400735066310142303225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15415() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(3), qs.LiteralString("-60302029489319384367663884408738513110.66683195868931664491302527038538338065260819361151478340212147889934633981101279593065290940544218360883531149731823374304151252289014494378769385157204705433009477214625880056478643611622410268943757215673170753460135411513114716313801477916713433956086133878890802448531292334570886746283905390661877220497842493537338035961123751393889400517474762491881277080205381424363695095196058838349029211365212855028824622924678684631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489319384367663884408738513110.66683195868931664491302527038538338065260819361151478340212147889934633981101279593065290940544218360883531149731823374304151252289014494378769385157204705433009477214625880056478643611622410268943757215673170753460135411513114716313801477916713433956086133878890802448531292334570886746283905390661877220497842493537338035961123751393889400517474762491881277080205381424363695095196058838349029211365212855028824622924678684631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15423() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(5), qs.LiteralString("-1305511260.86912143656097667105187670102899690968579124221579164162420806975946192322298144755910384776938712225011087241390006873062785578059026760203327501250049706526689818710354560323008828670011149765298051017265801991190008306172717341082925524420830693916101819757002096967047201422972812110849615680859082670783076645772990170896843113541983091562070596898134103833260687914713270783188725279639957354065711180111801123002700709263607616000614100832094145026813710081431112908410130665994676451253271560294574006261508508554207856812178219605043607074077914745225674338447810581824502012643860446309124220528435874"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-1305511260.86912143656097667105187670102899690968579124221579164162420806975946192322298144755910384776938712225011087241390006873062785578059026760203327501250049706526689818710354560323008828670011149765298051017265801991190008306172717341082925524420830693916101819757002096967047201422972812110849615680859082670783076645772990170896843113541983091562070596898134103833260687914713270783188725279639957354065711180111801123002700709263607616000614100832094145026813710081431112908410130665994676451253271560294574006261508508554207856812178219605043607074077914745225674338447810581824502012643860446309124220528435874")))
 }
 func build15431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(7), qs.LiteralString("-818934540724601372.43456071828048833552593835051449845484289562110789582081210403487973096161149072377955192388469356112505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-818934540724601372.43456071828048833552593835051449845484289562110789582081210403487973096161149072377955192388469356112505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15439() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(9), qs.LiteralString("-597892150.08771044822540810796370552966707032464017958269847934730769542644402913723848026909285133109089452632480800168074607090893991283808726990171062867538012237270000932798704781608969096508450960185964292594677356241956277714380500188870696516251767979457838109804726539408115452577436052503866633026489282425086547752714324273565900641436632912781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("-597892150.08771044822540810796370552966707032464017958269847934730769542644402913723848026909285133109089452632480800168074607090893991283808726990171062867538012237270000932798704781608969096508450960185964292594677356241956277714380500188870696516251767979457838109804726539408115452577436052503866633026489282425086547752714324273565900641436632912781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15447() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(1), qs.LiteralString("85243.44233732197133191329295927531563604777955507322414928382967007765263923984471408038635831036097817458527101593495895350807775607346277892835514324320448949370623441059033804864158715021903312693889518990256881059434042443507529601095150710777634743301398926463888783847290873199395304998050753365215426971278237920063435565949203678024225270616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("85243.44233732197133191329295927531563604777955507322414928382967007765263923984471408038635831036097817458527101593495895350807775607346277892835514324320448949370623441059033804864158715021903312693889518990256881059434042443507529601095150710777634743301398926463888783847290873199395304998050753365215426971278237920063435565949203678024225270616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035")))
 }
 func build15455() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(3), qs.LiteralString("-60302029489319384367663884408085757480.1853341682137571584926062805631087054017160819890685789064777236456590745415460695320768374693076860837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489319384367663884408085757480.1853341682137571584926062805631087054017160819890685789064777236456590745415460695320768374693076860837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15463() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(5), qs.LiteralString("-652755630.38762364608541718463145771120672223443489913059334543712856431450577465795351472116052777583325262472505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-652755630.38762364608541718463145771120672223443489913059334543712856431450577465795351472116052777583325262472505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15471() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(7), qs.LiteralString("-818934540071845741.9530629278049288491055193606922237795920035094854496163164602796260436963420239973809758519485590636"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-818934540071845741.9530629278049288491055193606922237795920035094854496163164602796260436963420239973809758519485590636")))
 }
 func build15479() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(9), qs.LiteralString("54863480.39378734225015137845671346015520435061071252892396685718794832880965812803098645730572474084523997120024743452620396345637401505220786389930600883087012615993343976556472498552535317826554614696684732913955544753638726438705858481670766245958647367500212800073774509075408148134050353551558174813940258910304990570172170811882520915334358633"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("54863480.39378734225015137845671346015520435061071252892396685718794832880965812803098645730572474084523997120024743452620396345637401505220786389930600883087012615993343976556472498552535317826554614696684732913955544753638726438705858481670766245958647367500212800073774509075408148134050353551558174813940258910304990570172170811882520915334358633")))
 }
 func build15487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(1), qs.LiteralString("-818934540071760498.60459975022373923760152136399214017262844141729040109985386964272131706381326192223266583769046276181472898406504104649192224392653722107164485675679551050629376558940966195135841284978096687306110481009743118940565957556492470398904849289222365256698601073536111216152709126800604695001949246634784573028721762079936564434050796321975774729383704426321489070979168993853338252728216162346796960170352897972568238870481118474064783391570102958474141459619245240874849766946530000977144965"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("-818934540071760498.60459975022373923760152136399214017262844141729040109985386964272131706381326192223266583769046276181472898406504104649192224392653722107164485675679551050629376558940966195135841284978096687306110481009743118940565957556492470398904849289222365256698601073536111216152709126800604695001949246634784573028721762079936564434050796321975774729383704426321489070979168993853338252728216162346796960170352897972568238870481118474064783391570102958474141459619245240874849766946530000977144965")))
 }
 func build15495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(3), qs.LiteralString("-60302029489319384368482818948157603222.2322712404088283093870869198708849258097125725036189625900174440196153781995220721511009855207486224837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489319384368482818948157603222.2322712404088283093870869198708849258097125725036189625900174440196153781995220721511009855207486224837798752903681993777275846325950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(5), qs.LiteralString("-818934540724601372.43456071828048833552593835051449845484289562110789582081210403487973096161149072377955192388469356112505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-818934540724601372.43456071828048833552593835051449845484289562110789582081210403487973096161149072377955192388469356112505543620695003436531392789029513380101663750625024853263344909355177280161504414335005574882649025508632900995595004153086358670541462762210415346958050909878501048483523600711486406055424807840429541335391538322886495085448421556770991545781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(7), qs.LiteralString("-1637869080143691484"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-1637869080143691484")))
 }
 func build15519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(9), qs.LiteralString("-818934540016982261.65314972994491977243776717915257186979728396159058352649559139156429817562698954531329940720620096519975256547379603654362598494779213610069399116912987384006656023443527501447464682173445385303315267086044455246361273561294141518329233754041352632499787199926225490924591851865949646448441825186059741089695009429827829188117479084665641367"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("-818934540016982261.65314972994491977243776717915257186979728396159058352649559139156429817562698954531329940720620096519975256547379603654362598494779213610069399116912987384006656023443527501447464682173445385303315267086044455246361273561294141518329233754041352632499787199926225490924591851865949646448441825186059741089695009429827829188117479084665641367")))
 }
 func build15527() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(1), qs.LiteralString("8497071467.03603749330791582407836434318377133169438097066269854720538319012928851657498035372443556191720308219530866834905045144302106406146277892835514324320448949370623441059033804864158715021903312693889518990256881059434042443507529601095150710777634743301398926463888783847290873199395304998050753365215426971278237920063435565949203678024225270616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("8497071467.03603749330791582407836434318377133169438097066269854720538319012928851657498035372443556191720308219530866834905045144302106406146277892835514324320448949370623441059033804864158715021903312693889518990256881059434042443507529601095150710777634743301398926463888783847290873199395304998050753365215426971278237920063435565949203678024225270616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035")))
 }
 func build15535() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(3), qs.LiteralString("-60302029489319384367663884399588771256.5916339968771732477072012126949734214868901845505193155307646111690097978112797961939995859130827784737422228762767014427842766445950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489319384367663884399588771256.5916339968771732477072012126949734214868901845505193155307646111690097978112797961939995859130827784737422228762767014427842766445950111427710563453217985216966456785944859989497422927661683538629473170704026975786513125842675604577233871570629808699803522400038975396500769162308448069085909755023233588510630417065084295051270219462289785473643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15543() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(5), qs.LiteralString("7844230593.20607652525116672615394735666141304947992676684520382624714879797087461877675155217754947572297228288498221620714146356962938009770486619898336249374975146736655090644822719838495585664994425117350974491367099004404995846913641329458537237789584653041949090121498951516476399288513593944575192159570458664608461677113504914551578443229008454218964701550932948083369656042643364608405637360180021322967144409944099438498649645368196191999692949583952927486593144959284443545794934667002661774373364219852712996869245745722896071593910890197478196462961042627387162830776094709087748993678069776845437889735782063"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("7844230593.20607652525116672615394735666141304947992676684520382624714879797087461877675155217754947572297228288498221620714146356962938009770486619898336249374975146736655090644822719838495585664994425117350974491367099004404995846913641329458537237789584653041949090121498951516476399288513593944575192159570458664608461677113504914551578443229008454218964701550932948083369656042643364608405637360180021322967144409944099438498649645368196191999692949583952927486593144959284443545794934667002661774373364219852712996869245745722896071593910890197478196462961042627387162830776094709087748993678069776845437889735782063")))
 }
 func build15551() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(7), qs.LiteralString("-818934531574859518.35936275646834493832011429282408849567717761204690035294074716714939441961175772404289860039233415598996234758590850206505669201200"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-818934531574859518.35936275646834493832011429282408849567717761204690035294074716714939441961175772404289860039233415598996234758590850206505669201200")))
 }
 func build15559() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(9), qs.LiteralString("8551849703.98748751358673528924211852802333963452553842636251612056366144128630740476125273064380199240146487881028508694029546139131732304020786389930600883087012615993343976556472498552535317826554614696684732913955544753638726438705858481670766245958647367500212800073774509075408148134050353551558174813940258910304990570172170811882520915334358633"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("8551849703.98748751358673528924211852802333963452553842636251612056366144128630740476125273064380199240146487881028508694029546139131732304020786389930600883087012615993343976556472498552535317826554614696684732913955544753638726438705858481670766245958647367500212800073774509075408148134050353551558174813940258910304990570172170811882520915334358633")))
 }
 func build15567() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(1), qs.LiteralString("54948723.74225051983134098996071145685528795757427462111901537365053896571438476055974853245403475510333627298551845046116291696445177112567064282766115207407461565363967417615506303416694032848457927390574251904212425813072768882213388082765916956736282110801611726537663292922699021333445658549608928179155685881583228490235606377831724593358583903616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("54948723.74225051983134098996071145685528795757427462111901537365053896571438476055974853245403475510333627298551845046116291696445177112567064282766115207407461565363967417615506303416694032848457927390574251904212425813072768882213388082765916956736282110801611726537663292922699021333445658549608928179155685881583228490235606377831724593358583903616295573678510929020831006146661747271783837653203039829647102027431761129518881525935216608429897041525858540380754759125150233053469999022855035")))
 }
 func build15575() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(3), qs.LiteralString("-60302029489319384367663884408030893999.8854209703537480818248540990234567956069965340942024890856088355839135538265116174644003927269495876835324407641642359213535695803871472434650475144516723617632059130297610134243891145006222068960999879308472500422640481972089756410157246974765071949782242392661524488959954348903412713930092273629207697480131360047867213863018127928853922173643946404281422516357503746700705970360169619852905053433235726497292406142332833"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("-60302029489319384367663884408030893999.8854209703537480818248540990234567956069965340942024890856088355839135538265116174644003927269495876835324407641642359213535695803871472434650475144516723617632059130297610134243891145006222068960999879308472500422640481972089756410157246974765071949782242392661524488959954348903412713930092273629207697480131360047867213863018127928853922173643946404281422516357503746700705970360169619852905053433235726497292406142332833")))
 }
 func build15583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(5), qs.LiteralString("-597892150.08771044822540810796370552966707032464017958269847934730769542644402913723848026909285133109089452632480800168074607090893991283808726990171062867538012237270000932798704781608969096508450960185964292594677356241956277714380500188870696516251767979457838109804726539408115452577436052503866633026489282425086547752714324273565900641436632912781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("-597892150.08771044822540810796370552966707032464017958269847934730769542644402913723848026909285133109089452632480800168074607090893991283808726990171062867538012237270000932798704781608969096508450960185964292594677356241956277714380500188870696516251767979457838109804726539408115452577436052503866633026489282425086547752714324273565900641436632912781035298449067051916630343957356635391594362639819978677032855590055900561501350354631803808000307050416047072513406855040715556454205065332997338225626635780147287003130754254277103928406089109802521803537038957372612837169223905290912251006321930223154562110264217937")))
 }
 func build15591() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(7), qs.LiteralString("-818934540016982261.65314972994491977243776717915257186979728396159058352649559139156429817562698954531329940720620096519975256547379603654362598494779213610069399116912987384006656023443527501447464682173445385303315267086044455246361273561294141518329233754041352632499787199926225490924591851865949646448441825186059741089695009429827829188117479084665641367"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("-818934540016982261.65314972994491977243776717915257186979728396159058352649559139156429817562698954531329940720620096519975256547379603654362598494779213610069399116912987384006656023443527501447464682173445385303315267086044455246361273561294141518329233754041352632499787199926225490924591851865949646448441825186059741089695009429827829188117479084665641367")))
 }
 func build15599() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_add")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(9), qs.LiteralString("109726960.69370054011016045512446564169485626040543207681883294700881721687140364874602090937340118558759806960049486905240792691274803010441572779861201766174025231986687953112944997105070635653109229393369465827911089507277452877411716963341532491917294735000425600147549018150816296268100707103116349627880517820609981140344341623765041830668717266"))
+	return qs.InsertIntoTable(qs.Table("num_exp_add")).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("109726960.69370054011016045512446564169485626040543207681883294700881721687140364874602090937340118558759806960049486905240792691274803010441572779861201766174025231986687953112944997105070635653109229393369465827911089507277452877411716963341532491917294735000425600147549018150816296268100707103116349627880517820609981140344341623765041830668717266")))
 }
 func build15607() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_sqrt")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("2308544622905.016172868282330339228589083058636874526727829838244942341440716909466939214393597311710652963849541394758298277969240038668406494621950956862959196896847352631445328917063551082418729435554972200530109505384839391233286173517804321019323644218483570886304028175359854335870835404627608254205407525763332087823548640923282031978903399118139052814618531713327991857575390136755426466065839913887477577516426991104516201265995293600539957187007068885368699949673989051443005684755994465547159213587471972139403333249259808344536605314911144950465968669770276463111776581675944967401948957460097365849699783091843609965345747287667911324039374314413430490112443463386381631812537639503425989372084906324702158112088898424705684574998783112519152403201231176840068666882123684602080460378627639651465436618032671756"))
+	return qs.InsertIntoTable(qs.Table("num_exp_sqrt")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("2308544622905.016172868282330339228589083058636874526727829838244942341440716909466939214393597311710652963849541394758298277969240038668406494621950956862959196896847352631445328917063551082418729435554972200530109505384839391233286173517804321019323644218483570886304028175359854335870835404627608254205407525763332087823548640923282031978903399118139052814618531713327991857575390136755426466065839913887477577516426991104516201265995293600539957187007068885368699949673989051443005684755994465547159213587471972139403333249259808344536605314911144950465968669770276463111776581675944967401948957460097365849699783091843609965345747287667911324039374314413430490112443463386381631812537639503425989372084906324702158112088898424705684574998783112519152403201231176840068666882123684602080460378627639651465436618032671756")))
 }
 func build15615() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_ln")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("75.980172429959420723484178622920965327708652620924912610122049843800380131746381968266727388919414524075492921510147435877107720844487333947572033626887969846858337336557672107987074468763307953130616555202495401302128216460637786993535376622372745654109623249396257174895352222213037880060756992073605135503615371392439827458529942230210514752764526895030759481226199720092008002458654297737883219558685499445394647863430593136350562417924068100891680398878483362058595716232013516337079804607378041880078724811071904523716775991447489914128580100888252698281559809224785596795038122963619830942475652745611551345360922016753939774272970008770647516790944335173711498988149783075646985898883858697162003144539047532603946093022417842140993960433780913606807466518632121884254341907122163281927271483110212890483"))
+	return qs.InsertIntoTable(qs.Table("num_exp_ln")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("75.980172429959420723484178622920965327708652620924912610122049843800380131746381968266727388919414524075492921510147435877107720844487333947572033626887969846858337336557672107987074468763307953130616555202495401302128216460637786993535376622372745654109623249396257174895352222213037880060756992073605135503615371392439827458529942230210514752764526895030759481226199720092008002458654297737883219558685499445394647863430593136350562417924068100891680398878483362058595716232013516337079804607378041880078724811071904523716775991447489914128580100888252698281559809224785596795038122963619830942475652745611551345360922016753939774272970008770647516790944335173711498988149783075646985898883858697162003144539047532603946093022417842140993960433780913606807466518632121884254341907122163281927271483110212890483")))
 }
 func build15623() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_log10")).ValuesExpr(qs.LiteralInt(0), qs.LiteralString("NaN"))
+	return qs.InsertIntoTable(qs.Table("num_exp_log10")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("NaN")))
 }
 func build15631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_log10")).ValuesExpr(qs.LiteralInt(8), qs.LiteralString("9.929264914121995501917993119394933531225401243275938207624866270551448544301376913376130982251708700134720886862945040266148728213253651323129942781577143957084726727561987639140151337848818195806259935747329665025823709044567138449084349729747202164413995795609659711723455165142329822773177102845804114214340046404641970845707372809306219463962664551623665322610139794354769767829380018857313559373283673392337954610346290037758389035140213224696023751541663171574697035012610534455189013755134090933979479069288110010954211669067225249755249337768792642303351914884187159646984708862430789018895140670365476746734456807215043628059581947593694929159076346249490593187993386780521089745819640214783614157516171005086731241769146397577246387886107367648843380733370112546792442909347322732196805316614555689762"))
+	return qs.InsertIntoTable(qs.Table("num_exp_log10")).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("9.929264914121995501917993119394933531225401243275938207624866270551448544301376913376130982251708700134720886862945040266148728213253651323129942781577143957084726727561987639140151337848818195806259935747329665025823709044567138449084349729747202164413995795609659711723455165142329822773177102845804114214340046404641970845707372809306219463962664551623665322610139794354769767829380018857313559373283673392337954610346290037758389035140213224696023751541663171574697035012610534455189013755134090933979479069288110010954211669067225249755249337768792642303351914884187159646984708862430789018895140670365476746734456807215043628059581947593694929159076346249490593187993386780521089745819640214783614157516171005086731241769146397577246387886107367648843380733370112546792442909347322732196805316614555689762")))
 }
 func build15639() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_exp_power_10_ln")).ValuesExpr(qs.LiteralInt(6), qs.LiteralString(".000873076977206566818052116526263730226812004454463281371489634779519089200224205946321120805055212090024554381349223642352209212670470260295303361873760972918129853308169576675500721645609379420329169271088810484607337679253503247351324049221970104335289487989027621978310506220905131150125321713385148268584530413680037620544212746920563790371941626294733473967065607791756894237438288480748407449237446113996117912144587258434808327522518688617394025018756570740098795745692805352377041347367240475846033282850136270250633825482156304826383360291164928049344226886150285595932088884965511963310715773499733217615863523253012606066583814112265708693122563204149232245895551314975524172504103194858904869273185785182598234060315036187756490539352752560361560286717869643902435677448962235275054804452967413005"))
+	return qs.InsertIntoTable(qs.Table("num_exp_power_10_ln")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString(".000873076977206566818052116526263730226812004454463281371489634779519089200224205946321120805055212090024554381349223642352209212670470260295303361873760972918129853308169576675500721645609379420329169271088810484607337679253503247351324049221970104335289487989027621978310506220905131150125321713385148268584530413680037620544212746920563790371941626294733473967065607791756894237438288480748407449237446113996117912144587258434808327522518688617394025018756570740098795745692805352377041347367240475846033282850136270250633825482156304826383360291164928049344226886150285595932088884965511963310715773499733217615863523253012606066583814112265708693122563204149232245895551314975524172504103194858904869273185785182598234060315036187756490539352752560361560286717869643902435677448962235275054804452967413005")))
 }
 func build15647() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("num_data")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("5329378275943663322215245.24931765987630429629836382184742348353920297283690739124220773955591340709935970062776650204659187764581615597720798385015942389765692769739983054442503547211560297249686289665792078548480268091496050883021187158502798880896590227542729659940394038802461081290690995869705131152889309663639310553909874081663091069118126221594338242710530718836025225507189149221049928936955230868771875644038572888630664890573507822342998964954667474300944699078658989010257103569231493090050659723450626338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357"))
+	return qs.InsertIntoTable(qs.Table("num_data")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("5329378275943663322215245.24931765987630429629836382184742348353920297283690739124220773955591340709935970062776650204659187764581615597720798385015942389765692769739983054442503547211560297249686289665792078548480268091496050883021187158502798880896590227542729659940394038802461081290690995869705131152889309663639310553909874081663091069118126221594338242710530718836025225507189149221049928936955230868771875644038572888630664890573507822342998964954667474300944699078658989010257103569231493090050659723450626338923049035040974032671138430612839043269997482582763267536489504794826476836323549796385028155416935072959933315468068930689064483178204550825728947252440604703474049780550458442808479096492346910001692358508618202898514895453589357")))
 }
 func build15655() qs.Statement {
 	return qs.Select(qs.Ident("t1", "id1"), qs.Ident("t1", "id2"), qs.Ident("t1", "result"), qs.Ident("t2", "expected")).FromExpr(qs.Table("num_result").As("t1"), qs.Table("num_exp_add").As("t2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t1", "id1"), "=", qs.Ident("t2", "id1"))), qs.AsCondition(qs.Operator(qs.Ident("t1", "id2"), "=", qs.Ident("t2", "id2"))), qs.AsCondition(qs.Operator(qs.Ident("t1", "result"), "<>", qs.Ident("t2", "expected")))).Expr()))
@@ -5680,10 +5680,10 @@ func build15799() qs.Statement {
 	return (qs.Select(qs.Row(qs.Call("pg_identify_object", qs.Ident("objects", "classid"), qs.Ident("objects", "objid"), qs.Ident("objects", "objsubid"))).Expr().As("ident"), qs.Row(qs.Call("pg_identify_object_as_address", qs.Ident("objects", "classid"), qs.Ident("objects", "objid"), qs.Ident("objects", "objsubid"))).Expr().As("addr"), qs.Call("pg_describe_object", qs.Ident("objects", "classid"), qs.Ident("objects", "objid"), qs.Ident("objects", "objsubid")).As("descr")).FromExpr(qs.Table("objects"))).With(qs.CTE("objects", qs.ValuesExpr((qs.LiteralString("pg_class")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_class")).Cast(qs.TypeNamed("regclass")), (qs.LiteralString("pg_class")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(100)).RowExpr((qs.LiteralString("pg_proc")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_type")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_cast")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_collation")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_constraint")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_conversion")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_attrdef")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_language")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_largeobject")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_operator")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_opclass")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_opfamily")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_am")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_amop")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_amproc")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_rewrite")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_trigger")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_namespace")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_statistic_ext")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_ts_parser")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_ts_dict")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_ts_template")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_ts_config")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_authid")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_auth_members")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_database")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_tablespace")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_foreign_data_wrapper")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_foreign_server")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_user_mapping")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_default_acl")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_extension")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_event_trigger")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_parameter_acl")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_policy")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_publication")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_publication_namespace")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_publication_rel")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_subscription")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0)).RowExpr((qs.LiteralString("pg_transform")).Cast(qs.TypeNamed("regclass")), qs.LiteralInt(0), qs.LiteralInt(0))).Columns("classid", "objid", "objsubid")).OrderBy((qs.Ident("objects", "classid")).Asc(), (qs.Ident("objects", "objid")).Asc(), (qs.Ident("objects", "objsubid")).Asc())
 }
 func build15807() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("oid_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("\t  15 \t  "))
+	return qs.InsertIntoTable(qs.Table("oid_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("\t  15 \t  ")))
 }
 func build15815() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("oid_tbl")).Columns("f1").ValuesExpr(qs.LiteralString(" - 500"))
+	return qs.InsertIntoTable(qs.Table("oid_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString(" - 500")))
 }
 func build15823() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("pg_input_error_info", qs.LiteralString("9999999999"), qs.LiteralString("oid"))))
@@ -5935,7 +5935,7 @@ func build16479() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("boolpart")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralBool(false))))
 }
 func build16487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("boolpart")).ValuesExpr(qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("boolpart")).Values(qs.Write(qs.NullLiteral()))
 }
 func build16495() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("boolpart")).Where(qs.AsCondition((qs.Ident("a")).IsNotUnknown().Expr()))
@@ -5962,7 +5962,7 @@ func build16551() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("like_op_noprune")).Where(qs.AsCondition((qs.Ident("a")).LikeExpr(qs.LiteralString("%BC")).Expr()))).Costs(false)
 }
 func build16559() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("hp")).ValuesExpr(qs.NullLiteral(), qs.LiteralString("xxx"), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("hp")).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.LiteralString("xxx")), qs.Write(qs.LiteralInt(3)))
 }
 func build16567() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("hp")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "<", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralString("xxx")))).Expr()))).Costs(false)
@@ -5971,13 +5971,13 @@ func build16575() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("hp")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralString("abcde")))).Expr()))).Costs(false)
 }
 func build16583() qs.Statement {
-	return qs.Select(qs.Ident("a")).FromExpr(qs.Table("ab")).Where(qs.AsCondition(qs.And(qs.AsCondition((qs.Ident("a")).BetweenExpr(qs.Param[any]("qs-postgres-corpus-16583-param-1"), qs.Param[any]("qs-postgres-corpus-16583-param-2")).Expr()), qs.AsCondition(qs.Operator(qs.Ident("b"), "<", qs.LiteralInt(3)))).Expr()))
+	return qs.Select(qs.Ident("a")).FromExpr(qs.Table("ab")).Where(qs.AsCondition(qs.And(qs.AsCondition((qs.Ident("a")).BetweenExpr(qs.Param("qs-postgres-corpus-16583-param-1"), qs.Param("qs-postgres-corpus-16583-param-2")).Expr()), qs.AsCondition(qs.Operator(qs.Ident("b"), "<", qs.LiteralInt(3)))).Expr()))
 }
 func build16591() qs.Statement {
 	return qs.Explain(qs.Execute("hp_q1", qs.LiteralString("xxx"))).Costs(false)
 }
 func build16599() qs.Statement {
-	return qs.Select(qs.Call("avg", qs.Ident("a"))).FromExpr(qs.Table("ab")).Where(qs.AsCondition(qs.And(qs.AsCondition((qs.Ident("a")).InExpr(qs.Param[any]("qs-postgres-corpus-16599-param-1"), qs.Param[any]("qs-postgres-corpus-16599-param-2"), qs.Param[any]("qs-postgres-corpus-16599-param-3")).Expr()), qs.AsCondition(qs.Operator(qs.Ident("b"), "<", qs.LiteralInt(4)))).Expr()))
+	return qs.Select(qs.Call("avg", qs.Ident("a"))).FromExpr(qs.Table("ab")).Where(qs.AsCondition(qs.And(qs.AsCondition((qs.Ident("a")).InExpr(qs.Param("qs-postgres-corpus-16599-param-1"), qs.Param("qs-postgres-corpus-16599-param-2"), qs.Param("qs-postgres-corpus-16599-param-3")).Expr()), qs.AsCondition(qs.Operator(qs.Ident("b"), "<", qs.LiteralInt(4)))).Expr()))
 }
 func build16607() qs.Statement {
 	return qs.Select(qs.Call("explain_parallel_append", qs.LiteralString("select avg(ab.a) from ab inner join lprt_a a on ab.a = a.a + 0 where a.a in(0, 0, 1)")))
@@ -5989,19 +5989,19 @@ func build16623() qs.Statement {
 	return qs.Select(qs.Call("explain_analyze", qs.LiteralString("\nupdate ab_a1 set b = 3 from ab_a2 where ab_a2.b = (select 1);")))
 }
 func build16631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("tbl1")).ValuesExpr(qs.LiteralInt(1001)).ValuesExpr(qs.LiteralInt(1010)).ValuesExpr(qs.LiteralInt(1011))
+	return qs.InsertIntoTable(qs.Table("tbl1")).Values(qs.Write(qs.LiteralInt(1001))).Values(qs.Write(qs.LiteralInt(1010))).Values(qs.Write(qs.LiteralInt(1011)))
 }
 func build16639() qs.Statement {
 	return qs.Select(qs.Ident("tbl1", "col1"), qs.Ident("tprt", "col1")).FromExpr(qs.InnerJoin(qs.Table("tbl1"), qs.Table("tprt")).On(qs.AsCondition(qs.Operator(qs.Ident("tbl1", "col1"), "<", qs.Ident("tprt", "col1"))))).OrderBy((qs.Ident("tbl1", "col1")).Asc(), (qs.Ident("tprt", "col1")).Asc())
 }
 func build16647() qs.Statement {
-	return qs.Select(qs.Star()).FromExpr(qs.Table("listp")).Where(qs.AsCondition((qs.Ident("b")).InExpr(qs.Param[any]("qs-postgres-corpus-16647-param-1"), qs.Param[any]("qs-postgres-corpus-16647-param-2")).Expr()))
+	return qs.Select(qs.Star()).FromExpr(qs.Table("listp")).Where(qs.AsCondition((qs.Ident("b")).InExpr(qs.Param("qs-postgres-corpus-16647-param-1"), qs.Param("qs-postgres-corpus-16647-param-2")).Expr()))
 }
 func build16655() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("stable_qual_pruning")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "<", qs.LocalTimestamp())))).Analyze(true).Costs(false).Summary(false).Timing(false).Buffers(false)
 }
 func build16663() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("mc3p")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(1), qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1), qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(1), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("mc3p")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)))
 }
 func build16671() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("boolp")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.Scalar(qs.Select(qs.Ident("value")).FromExpr(qs.Table("boolvalues")).Where(qs.AsCondition(qs.Not(qs.AsCondition(qs.Ident("value"))).Expr()))))))).Analyze(true).Costs(false).Summary(false).Timing(false).Buffers(false)
@@ -6016,10 +6016,10 @@ func build16695() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("pp_intrangepart")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", (qs.LiteralString("(1,2)")).Cast(qs.TypeNamed("int4range")))))).Costs(false)
 }
 func build16703() qs.Statement {
-	return qs.Explain(qs.UpdateTable(qs.Table("pp_lp")).Set(qs.Assign(qs.Ident("value"), qs.LiteralInt(10))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))).Costs(false)
+	return qs.Explain(qs.UpdateTable(qs.Table("pp_lp")).Set(qs.Assign(qs.Ident("value"), qs.Write(qs.LiteralInt(10)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))).Costs(false)
 }
 func build16711() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("q22")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("q22")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)))
 }
 func build16719() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("listp1")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(2))))).Costs(false)
@@ -6028,11 +6028,11 @@ func build16727() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("rp_prefix_test3")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), ">=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("b"), ">=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralInt(2))), qs.AsCondition(qs.Operator(qs.Ident("c"), "=", qs.LiteralInt(2))), qs.AsCondition(qs.Operator(qs.Ident("d"), ">=", qs.LiteralInt(0)))).Expr()))).Costs(false)
 }
 func build16735() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("part_abc")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("c"), qs.LiteralBool(true))
+	return qs.InsertIntoTable(qs.Table("part_abc")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("c")), qs.Write(qs.LiteralBool(true)))
 }
 func build16743() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("part_abc_view")) }
 func build16751() qs.Statement {
-	return (qs.InsertIntoTable(qs.Table("part_abc_log")).From(qs.Select(qs.Star()).FromExpr(qs.Table("t"))).Returning(qs.Star())).With(qs.CTE("t", qs.MergeIntoTable(qs.Table("part_abc_view").As("pt")).Using(qs.InnerJoin(qs.Subquery(qs.Select(qs.Operator(qs.Call("stable_one"), "+", qs.LiteralInt(1)).As("pid")), "q"), qs.Table("part_abc_2").As("pt2")).On(qs.AsCondition(qs.Operator(qs.Ident("q", "pid"), "=", qs.Ident("pt2", "a"))))).On(qs.AsCondition(qs.Operator(qs.Ident("pt", "a"), "=", qs.Operator(qs.Call("stable_one"), "+", qs.LiteralInt(2))))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.LiteralInt(1), qs.LiteralString("d"), qs.LiteralBool(false))).Returning(qs.MergeAction(), qs.Star("pt"))))
+	return (qs.InsertIntoTable(qs.Table("part_abc_log")).From(qs.Select(qs.Star()).FromExpr(qs.Table("t"))).Returning(qs.Star())).With(qs.CTE("t", qs.MergeIntoTable(qs.Table("part_abc_view").As("pt")).Using(qs.InnerJoin(qs.Subquery(qs.Select(qs.Operator(qs.Call("stable_one"), "+", qs.LiteralInt(1)).As("pid")), "q"), qs.Table("part_abc_2").As("pt2")).On(qs.AsCondition(qs.Operator(qs.Ident("q", "pid"), "=", qs.Ident("pt2", "a"))))).On(qs.AsCondition(qs.Operator(qs.Ident("pt", "a"), "=", qs.Operator(qs.Call("stable_one"), "+", qs.LiteralInt(2))))).When(qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("d")), qs.Write(qs.LiteralBool(false)))).Returning(qs.MergeAction(), qs.Star("pt"))))
 }
 func build16759() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Subquery(qs.Select((qs.Ident("a")).Cast(qs.TypeNamed("oid")).As("x"), qs.Ident("b")).FromExpr(qs.Table("phv_part")), "t")).Where(qs.AsCondition(qs.Operator((qs.Ident("x")).Cast(qs.TypeInt4), "=", qs.LiteralInt(1)))).GroupByExpr(qs.GroupingSets(qs.Ident("x"), qs.Ident("b")))
@@ -6041,16 +6041,16 @@ func build16767() qs.Statement {
 	return qs.Select(qs.Ident("rolname"), qs.Call("regexp_replace", qs.Ident("rolpassword"), qs.LiteralString("(SCRAM-SHA-256)\\$(\\d+):([a-zA-Z0-9+/=]+)\\$([a-zA-Z0-9+=/]+):([a-zA-Z0-9+/=]+)"), qs.LiteralString("\\1$\\2:<salt>$<storedkey>:<serverkey>")).As("rolpassword_masked")).FromExpr(qs.Table("pg_authid")).Where(qs.AsCondition((qs.Ident("rolname")).LikeExpr(qs.LiteralString("regress_passwd%")).Expr())).OrderBy((qs.Ident("rolname")).Asc(), (qs.Ident("rolpassword")).Asc())
 }
 func build16775() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("path_tbl")).ValuesExpr(qs.LiteralString("[ (0,0),(3,0),(4,5),(1,6) ]"))
+	return qs.InsertIntoTable(qs.Table("path_tbl")).Values(qs.Write(qs.LiteralString("[ (0,0),(3,0),(4,5),(1,6) ]")))
 }
 func build16783() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("path_tbl")).ValuesExpr(qs.LiteralString("[(,2),(3,4)]"))
+	return qs.InsertIntoTable(qs.Table("path_tbl")).Values(qs.Write(qs.LiteralString("[(,2),(3,4)]")))
 }
 func build16791() qs.Statement {
 	return qs.Select(qs.Call("pg_input_is_valid", qs.LiteralString("[(1,2),(3)]"), qs.LiteralString("path")))
 }
 func build16799() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pg_lsn_tbl")).ValuesExpr(qs.LiteralString(" 0/12345678"))
+	return qs.InsertIntoTable(qs.Table("pg_lsn_tbl")).Values(qs.Write(qs.LiteralString(" 0/12345678")))
 }
 func build16807() qs.Statement {
 	return qs.Select(qs.Operator(qs.LiteralString("0/16AE7F7"), "<", (qs.LiteralString("0/16AE7F8")).Cast(qs.TypeNamed("pg_lsn"))))
@@ -6064,52 +6064,52 @@ func build16823() qs.Statement {
 func build16831() qs.Statement { return qs.Select(qs.Call("cache_test", qs.LiteralInt(1))) }
 func build16839() qs.Statement { return qs.Select(qs.Call("cache_test_2")) }
 func build16847() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pc_list_part_def")).ValuesExpr(qs.Param[any]("qs-postgres-corpus-16847-param-1"))
+	return qs.InsertIntoTable(qs.Table("pc_list_part_def")).Values(qs.Write(qs.Param("qs-postgres-corpus-16847-param-1")))
 }
 func build16855() qs.Statement {
 	return qs.Select(qs.Ident("name"), qs.Ident("generic_plans"), qs.Ident("custom_plans")).FromExpr(qs.Table("pg_prepared_statements")).Where(qs.AsCondition(qs.Operator(qs.Ident("name"), "=", qs.LiteralString("test_mode_pp"))))
 }
 func build16863() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("room")).ValuesExpr(qs.LiteralString("003"), qs.LiteralString("Office"))
+	return qs.InsertIntoTable(qs.Table("room")).Values(qs.Write(qs.LiteralString("003")), qs.Write(qs.LiteralString("Office")))
 }
 func build16871() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("wslot")).ValuesExpr(qs.LiteralString("WS.001.1a"), qs.LiteralString("001"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("wslot")).Values(qs.Write(qs.LiteralString("WS.001.1a")), qs.Write(qs.LiteralString("001")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16879() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("wslot")).ValuesExpr(qs.LiteralString("WS.002.2a"), qs.LiteralString("002"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("wslot")).Values(qs.Write(qs.LiteralString("WS.002.2a")), qs.Write(qs.LiteralString("002")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16887() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("wslot")).ValuesExpr(qs.LiteralString("WS.003.3a"), qs.LiteralString("003"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("wslot")).Values(qs.Write(qs.LiteralString("WS.003.3a")), qs.Write(qs.LiteralString("003")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16895() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("wslot")).ValuesExpr(qs.LiteralString("WS.102.1a"), qs.LiteralString("102"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("wslot")).Values(qs.Write(qs.LiteralString("WS.102.1a")), qs.Write(qs.LiteralString("102")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("wslot")).ValuesExpr(qs.LiteralString("WS.105.2a"), qs.LiteralString("105"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("wslot")).Values(qs.Write(qs.LiteralString("WS.105.2a")), qs.Write(qs.LiteralString("105")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("wslot")).ValuesExpr(qs.LiteralString("WS.106.3a"), qs.LiteralString("106"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("wslot")).Values(qs.Write(qs.LiteralString("WS.106.3a")), qs.Write(qs.LiteralString("106")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16919() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.base.a6"), qs.LiteralString("PF0_1"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.base.a6")), qs.Write(qs.LiteralString("PF0_1")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16927() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.base.c2"), qs.LiteralString("PF0_1"), qs.LiteralString(""), qs.LiteralString("WS.003.1b"))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.base.c2")), qs.Write(qs.LiteralString("PF0_1")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("WS.003.1b")))
 }
 func build16935() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.base.ta3"), qs.LiteralString("PF0_X"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.base.ta3")), qs.Write(qs.LiteralString("PF0_X")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16943() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.base.tb5"), qs.LiteralString("PF0_X"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.base.tb5")), qs.Write(qs.LiteralString("PF0_X")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.first.a6"), qs.LiteralString("PF1_1"), qs.LiteralString(""), qs.LiteralString("WS.101.3b"))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.first.a6")), qs.Write(qs.LiteralString("PF1_1")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("WS.101.3b")))
 }
 func build16959() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.first.c2"), qs.LiteralString("PF1_1"), qs.LiteralString(""), qs.LiteralString("WS.105.1b"))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.first.c2")), qs.Write(qs.LiteralString("PF1_1")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("WS.105.1b")))
 }
 func build16967() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.first.d4"), qs.LiteralString("PF1_1"), qs.LiteralString(""), qs.LiteralString("WS.106.2b"))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.first.d4")), qs.Write(qs.LiteralString("PF1_1")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("WS.106.2b")))
 }
 func build16975() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("wslot")).Where(qs.AsCondition(qs.Operator(qs.Ident("roomno"), "=", qs.LiteralString("001")))).OrderBy((qs.Ident("slotname")).Asc())
@@ -6118,22 +6118,22 @@ func build16983() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("pslot")).Where(qs.AsCondition(qs.Operator(qs.Ident("slotname"), "~", qs.LiteralString("PS.base.a")))).OrderBy((qs.Ident("slotname")).Asc())
 }
 func build16991() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.first.ta1"), qs.LiteralString("PF1_2"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.first.ta1")), qs.Write(qs.LiteralString("PF1_2")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build16999() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pslot")).ValuesExpr(qs.LiteralString("PS.first.tb3"), qs.LiteralString("PF1_2"), qs.LiteralString(""), qs.LiteralString(""))
+	return qs.InsertIntoTable(qs.Table("pslot")).Values(qs.Write(qs.LiteralString("PS.first.tb3")), qs.Write(qs.LiteralString("PF1_2")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("")))
 }
 func build17007() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pline")).ValuesExpr(qs.LiteralString("PL.002"), qs.LiteralString("-101"), qs.LiteralString(""), qs.LiteralString("PS.base.ta2"))
+	return qs.InsertIntoTable(qs.Table("pline")).Values(qs.Write(qs.LiteralString("PL.002")), qs.Write(qs.LiteralString("-101")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("PS.base.ta2")))
 }
 func build17015() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pline")).ValuesExpr(qs.LiteralString("PL.010"), qs.LiteralString("-122"), qs.LiteralString(""), qs.LiteralString("PS.base.tb6"))
+	return qs.InsertIntoTable(qs.Table("pline")).Values(qs.Write(qs.LiteralString("PL.010")), qs.Write(qs.LiteralString("-122")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("PS.base.tb6")))
 }
 func build17023() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pline")).ValuesExpr(qs.LiteralString("PL.022"), qs.LiteralString("-367"), qs.LiteralString(""), qs.LiteralString("PS.first.tb6"))
+	return qs.InsertIntoTable(qs.Table("pline")).Values(qs.Write(qs.LiteralString("PL.022")), qs.Write(qs.LiteralString("-367")), qs.Write(qs.LiteralString("")), qs.Write(qs.LiteralString("PS.first.tb6")))
 }
 func build17031() qs.Statement {
-	return qs.UpdateTable(qs.Table("pslot")).Set(qs.Assign(qs.Ident("slotlink"), qs.LiteralString("PS.base.tb2"))).Where(qs.AsCondition(qs.Operator(qs.Ident("slotname"), "=", qs.LiteralString("PS.base.b3"))))
+	return qs.UpdateTable(qs.Table("pslot")).Set(qs.Assign(qs.Ident("slotlink"), qs.Write(qs.LiteralString("PS.base.tb2")))).Where(qs.AsCondition(qs.Operator(qs.Ident("slotname"), "=", qs.LiteralString("PS.base.b3"))))
 }
 func build17039() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("pfield_v1")).Where(qs.AsCondition(qs.Operator(qs.Ident("pfname"), "=", qs.LiteralString("PF0_2")))).OrderBy((qs.Ident("slotname")).Asc())
@@ -6194,7 +6194,7 @@ func build17271() qs.Statement {
 	return qs.Select(qs.Call("consumes_rw_array", qs.Ident("a")), qs.Ident("a")).FromExpr(qs.TableFunc(qs.Call("returns_rw_array", qs.LiteralInt(1))).As("a"))
 }
 func build17279() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("transition_table_base")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("One")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("Two"))
+	return qs.InsertIntoTable(qs.Table("transition_table_base")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("One"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("Two")))
 }
 func build17287() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("transition_table_level2")).Where(qs.AsCondition((qs.Ident("level2_no")).BetweenExpr(qs.LiteralInt(301), qs.LiteralInt(305)).Expr()))
@@ -6203,10 +6203,10 @@ func build17295() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("transition_table_level2")).Where(qs.AsCondition((qs.Ident("level2_no")).BetweenExpr(qs.LiteralInt(211), qs.LiteralInt(220)).Expr()))
 }
 func build17303() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("partitioned_table")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("Row 1"))
+	return qs.InsertIntoTable(qs.Table("partitioned_table")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("Row 1")))
 }
 func build17311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("point_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("(10.0, 1e+500)"))
+	return qs.InsertIntoTable(qs.Table("point_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("(10.0, 1e+500)")))
 }
 func build17319() qs.Statement {
 	return qs.Select(qs.Star("p")).FromExpr(qs.Table("point_tbl").As("p")).Where(qs.AsCondition(qs.Operator((qs.LiteralString("(0,0,100,100)")).Cast(qs.TypeNamed("box")), "@>", qs.Ident("p", "f1"))))
@@ -6218,7 +6218,7 @@ func build17335() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("point_gist_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("f1"), "~=", (qs.LiteralString("(0.0000018,0.0000018)")).Cast(qs.TypeNamed("point")))))
 }
 func build17343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("polygon_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("(0.0,0.0)"))
+	return qs.InsertIntoTable(qs.Table("polygon_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("(0.0,0.0)")))
 }
 func build17351() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("quad_poly_tbl")).From(qs.Select(qs.Operator(qs.Operator(qs.Operator(qs.Ident("x"), "-", qs.LiteralInt(1)), "*", qs.LiteralInt(100)), "+", qs.Ident("y")), qs.Call("polygon", qs.Call("circle", qs.Call("point", qs.Operator(qs.Ident("x"), "*", qs.LiteralInt(10)), qs.Operator(qs.Ident("y"), "*", qs.LiteralInt(10))), qs.Operator(qs.LiteralInt(1), "+", qs.Operator(qs.Operator(qs.Ident("x"), "+", qs.Ident("y")), "%", qs.LiteralInt(10)))))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(100))).As("x"), qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(100))).As("y")))
@@ -6248,7 +6248,7 @@ func build17415() qs.Statement {
 	return qs.Select(qs.Call("polyf", qs.Call("int4multirange", qs.Call("int4range", qs.LiteralInt(1), qs.LiteralInt(10)), qs.Call("int4range", qs.LiteralInt(20), qs.LiteralInt(30)))))
 }
 func build17423() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t")).ValuesExpr(qs.LiteralInt(3), qs.Array(qs.LiteralInt(3)), qs.LiteralString("a"))
+	return qs.InsertIntoTable(qs.Table("t")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.Array(qs.LiteralInt(3))), qs.Write(qs.LiteralString("a")))
 }
 func build17431() qs.Statement {
 	return qs.Select(qs.Ident("f3"), qs.Call("myaggp09a", qs.Ident("f1"))).FromExpr(qs.Table("t")).GroupByExpr(qs.Ident("f3")).OrderBy((qs.Ident("f3")).Asc())
@@ -6328,7 +6328,7 @@ func build17655() qs.Statement { return qs.DeleteFromTable(qs.Table("tt1")) }
 func build17663() qs.Statement { return qs.Select(qs.LiteralInt(1)) }
 func build17671() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("uctest")) }
 func build17679() qs.Statement {
-	return qs.UpdateTable(qs.Table("uctest")).Set(qs.Assign(qs.Ident("f1"), qs.Operator(qs.Ident("f1"), "+", qs.LiteralInt(10)))).WhereCurrentOf("c1")
+	return qs.UpdateTable(qs.Table("uctest")).Set(qs.Assign(qs.Ident("f1"), qs.Write(qs.Operator(qs.Ident("f1"), "+", qs.LiteralInt(10))))).WhereCurrentOf("c1")
 }
 func build17687() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("uctest")) }
 func build17695() qs.Statement { return qs.DeleteFromTable(qs.Table("uctest")).WhereCurrentOf("c1") }
@@ -6368,11 +6368,11 @@ func build17799() qs.Statement {
 func build17807() qs.Statement { return qs.Select(qs.LiteralInt(2).As("b")) }
 func build17815() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("q5_prep_results")) }
 func build17823() qs.Statement {
-	return qs.UpdateTable(qs.Table("pxtest1")).Set(qs.Assign(qs.Ident("foobar"), qs.LiteralString("bbb"))).Where(qs.AsCondition(qs.Operator(qs.Ident("foobar"), "=", qs.LiteralString("aaa"))))
+	return qs.UpdateTable(qs.Table("pxtest1")).Set(qs.Assign(qs.Ident("foobar"), qs.Write(qs.LiteralString("bbb")))).Where(qs.AsCondition(qs.Operator(qs.Ident("foobar"), "=", qs.LiteralString("aaa"))))
 }
 func build17831() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("pxtest1")) }
 func build17839() qs.Statement {
-	return qs.UpdateTable(qs.Table("pxtest1")).Set(qs.Assign(qs.Ident("foobar"), qs.LiteralString("eee"))).Where(qs.AsCondition(qs.Operator(qs.Ident("foobar"), "=", qs.LiteralString("ddd"))))
+	return qs.UpdateTable(qs.Table("pxtest1")).Set(qs.Assign(qs.Ident("foobar"), qs.Write(qs.LiteralString("eee")))).Where(qs.AsCondition(qs.Operator(qs.Ident("foobar"), "=", qs.LiteralString("ddd"))))
 }
 func build17847() qs.Statement {
 	return qs.Select(qs.Call("pg_advisory_xact_lock_shared", qs.LiteralInt(1)))
@@ -6392,7 +6392,7 @@ func build17895() qs.Statement {
 }
 func build17903() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("atest1")) }
 func build17911() qs.Statement {
-	return qs.UpdateTable(qs.Table("pg_catalog.pg_class")).Set(qs.Assign(qs.Ident("relname"), qs.LiteralString("123")))
+	return qs.UpdateTable(qs.Table("pg_catalog.pg_class")).Set(qs.Assign(qs.Ident("relname"), qs.Write(qs.LiteralString("123"))))
 }
 func build17919() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("atest1")).From(qs.Select(qs.LiteralInt(1), qs.Ident("b")).FromExpr(qs.Table("atest1")))
@@ -6423,20 +6423,20 @@ func build18007() qs.Statement {
 	return qs.Select(qs.Ident("one"), qs.Ident("two")).FromExpr(qs.Table("atest5"))
 }
 func build18015() qs.Statement {
-	return qs.UpdateTable(qs.Table("atest5")).Set(qs.Assign(qs.Ident("three"), qs.LiteralInt(5)), qs.Assign(qs.Ident("one"), qs.LiteralInt(2)))
+	return qs.UpdateTable(qs.Table("atest5")).Set(qs.Assign(qs.Ident("three"), qs.Write(qs.LiteralInt(5))), qs.Assign(qs.Ident("one"), qs.Write(qs.LiteralInt(2))))
 }
 func build18023() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("atest5")).Columns("four").ValuesExpr(qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("atest5")).Columns("four").Values(qs.Write(qs.LiteralInt(4)))
 }
 func build18031() qs.Statement { return qs.Select(qs.Ident("atest6")).FromExpr(qs.Table("atest6")) }
 func build18039() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("mtarget").As("t")).Using(qs.Table("msource").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Ident("t", "b"))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Ident("a"), qs.NullLiteral()))
+	return qs.MergeIntoTable(qs.Table("mtarget").As("t")).Using(qs.Table("msource").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("t", "b")))), qs.NotMatchedByTarget().ThenInsertValues([]string{}, qs.Write(qs.Ident("a")), qs.Write(qs.NullLiteral())))
 }
 func build18047() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t1")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(1), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("t1")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)))
 }
 func build18055() qs.Statement {
-	return qs.UpdateTable(qs.Table("t1")).Set(qs.Assign(qs.Ident("c3"), qs.LiteralInt(10)))
+	return qs.UpdateTable(qs.Table("t1")).Set(qs.Assign(qs.Ident("c3"), qs.Write(qs.LiteralInt(10))))
 }
 func build18063() qs.Statement {
 	return qs.Select(qs.Ident("one")).FromExpr(qs.NaturalJoin(qs.Table("atest5"), qs.Table("atest6")))
@@ -6532,7 +6532,7 @@ func build18327() qs.Statement {
 }
 func build18335() qs.Statement { return qs.Select(qs.LiteralInt(10).As("bad name")) }
 func build18343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("psql_short_tab")).ValuesExpr(qs.LiteralInt(10), qs.LiteralInt(20)).ValuesExpr(qs.LiteralInt(30), qs.LiteralInt(40))
+	return qs.InsertIntoTable(qs.Table("psql_short_tab")).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralInt(20))).Values(qs.Write(qs.LiteralInt(30)), qs.Write(qs.LiteralInt(40)))
 }
 func build18351() qs.Statement {
 	return qs.Select(qs.LiteralString("some\"text").As("a\"title"), qs.LiteralString("  <foo>\n<bar>").As("junk"), qs.LiteralString("   ").As("empty"), qs.Ident("n").As("int")).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(2))).As("n"))
@@ -6541,10 +6541,10 @@ func build18359() qs.Statement {
 	return qs.Select(qs.LiteralString("some\\text").As("a\\title"), qs.LiteralString("  <foo>\n<bar>").As("junk"), qs.LiteralString("   ").As("empty"), qs.Ident("n").As("int")).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(2))).As("n"))
 }
 func build18367() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parent_tab")).ValuesExpr(qs.Call("generate_series", qs.LiteralInt(0), qs.LiteralInt(29)))
+	return qs.InsertIntoTable(qs.Table("parent_tab")).Values(qs.Write(qs.Call("generate_series", qs.LiteralInt(0), qs.LiteralInt(29))))
 }
 func build18375() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("ac_test")).ValuesExpr(qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("ac_test")).Values(qs.Write(qs.LiteralInt(4)))
 }
 func build18383() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("oer_test")) }
 func build18391() qs.Statement { return qs.Select(qs.LiteralString("ok").As("done")) }
@@ -6552,7 +6552,7 @@ func build18399() qs.Statement {
 	return qs.Select(qs.Ident("line")).FromExpr(qs.Table("reload_output")).OrderBy((qs.Ident("lineno")).Asc())
 }
 func build18407() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("bla")).ValuesExpr(qs.LiteralString("Miss Wormwood"))
+	return qs.InsertIntoTable(qs.Table("bla")).Values(qs.Write(qs.LiteralString("Miss Wormwood")))
 }
 func build18415() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("ctv_data")).From(qs.Select(qs.LiteralInt(1), qs.Ident("x"), qs.Operator(qs.LiteralString("*"), "||", qs.Ident("x"))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(10))).As("x")))
@@ -6560,40 +6560,40 @@ func build18415() qs.Statement {
 func build18423() qs.Statement { return qs.Select(qs.LiteralString("val7")) }
 func build18431() qs.Statement { return qs.Select(qs.LiteralInt(1)) }
 func build18439() qs.Statement {
-	return qs.UpdateTable(qs.Table("testpub_parted2")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(2)))
+	return qs.UpdateTable(qs.Table("testpub_parted2")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(2))))
 }
 func build18447() qs.Statement {
-	return qs.UpdateTable(qs.Table("rf_tbl_abcd_nopk")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("rf_tbl_abcd_nopk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))))
 }
 func build18455() qs.Statement {
-	return qs.UpdateTable(qs.Table("rf_tbl_abcd_part_pk")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("rf_tbl_abcd_part_pk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))))
 }
 func build18463() qs.Statement {
-	return qs.UpdateTable(qs.Table("testpub_gencol")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(100))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("testpub_gencol")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(100)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build18471() qs.Statement {
-	return qs.UpdateTable(qs.Table("testpub_tbl8")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("testpub_tbl8")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))))
 }
 func build18479() qs.Statement {
-	return qs.UpdateTable(qs.Table("rf_tbl_abcd_pk")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("rf_tbl_abcd_pk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))))
 }
 func build18487() qs.Statement {
-	return qs.UpdateTable(qs.Table("rf_tbl_abcd_nopk")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("rf_tbl_abcd_nopk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))))
 }
 func build18495() qs.Statement {
-	return qs.UpdateTable(qs.Table("rf_tbl_abcd_part_pk")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("rf_tbl_abcd_part_pk")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))))
 }
 func build18503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pub_test1.tbl")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("test"))
+	return qs.InsertIntoTable(qs.Table("pub_test1.tbl")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("test")))
 }
 func build18511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pub_testpart1.child_parent2")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("pub_testpart1.child_parent2")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build18519() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("pg_publication_tables"))
 }
 func build18527() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("testpub_merge_no_ri")).Using(qs.Table("testpub_merge_pk").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("s", "a"), ">=", qs.LiteralInt(1)))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Ident("s", "b"))))
+	return qs.MergeIntoTable(qs.Table("testpub_merge_no_ri")).Using(qs.Table("testpub_merge_pk").As("s")).On(qs.AsCondition(qs.Operator(qs.Ident("s", "a"), ">=", qs.LiteralInt(1)))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("s", "b")))))
 }
 func build18535() qs.Statement {
 	return qs.Select(qs.Ident("r"), qs.Call("count", qs.Star())).FromExpr(qs.Subquery(qs.Select(qs.Call("random_normal", qs.LiteralInt(10), qs.LiteralInt(0)).As("r")).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(100)))), "ss")).GroupByExpr(qs.Ident("r"))
@@ -6611,7 +6611,7 @@ func build18567() qs.Statement {
 	return qs.Select(qs.Call("random", qs.LiteralNumeric("-2147483648"), qs.LiteralInt(2147483647))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(10))))
 }
 func build18575() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rngfunc2")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(111))
+	return qs.InsertIntoTable(qs.Table("rngfunc2")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(111)))
 }
 func build18583() qs.Statement {
 	return qs.Select(qs.Call("row_to_json", qs.Star("s"))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(11), qs.LiteralInt(14))).WithOrdinality().As("s"))
@@ -6734,10 +6734,10 @@ func build18943() qs.Statement {
 	return qs.Select(qs.Operator(qs.Call("numrange", qs.LiteralNumeric("1.0"), qs.LiteralNumeric("2.0")), "*", qs.Call("numrange", qs.LiteralNumeric("1.5"), qs.LiteralNumeric("3.0"))))
 }
 func build18951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("numrange_test2")).ValuesExpr(qs.Call("numrange", qs.LiteralNumeric("1.1"), qs.LiteralNumeric("2.2"), qs.LiteralString("()")))
+	return qs.InsertIntoTable(qs.Table("numrange_test2")).Values(qs.Write(qs.Call("numrange", qs.LiteralNumeric("1.1"), qs.LiteralNumeric("2.2"), qs.LiteralString("()"))))
 }
 func build18959() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("textrange_test")).ValuesExpr(qs.LiteralString("[,)"))
+	return qs.InsertIntoTable(qs.Table("textrange_test")).Values(qs.Write(qs.LiteralString("[,)")))
 }
 func build18967() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("textrange_test")).Where(qs.AsCondition(qs.Call("range_contains", qs.Ident("tr"), qs.Call("textrange", qs.LiteralString("f"), qs.LiteralString("fx")))))
@@ -6791,7 +6791,7 @@ func build19095() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("test_range_spgist")).Where(qs.AsCondition(qs.Operator(qs.Ident("ir"), "&>", qs.Call("int4range", qs.LiteralInt(100), qs.LiteralInt(500)))))
 }
 func build19103() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test_range_excl")).ValuesExpr(qs.Call("int4range", qs.LiteralInt(123), qs.LiteralInt(123), qs.LiteralString("[]")), qs.Call("int4range", qs.LiteralInt(1), qs.LiteralInt(1), qs.LiteralString("[]")), qs.LiteralString("[2010-01-02 10:00, 2010-01-02 11:00)"))
+	return qs.InsertIntoTable(qs.Table("test_range_excl")).Values(qs.Write(qs.Call("int4range", qs.LiteralInt(123), qs.LiteralInt(123), qs.LiteralString("[]"))), qs.Write(qs.Call("int4range", qs.LiteralInt(1), qs.LiteralInt(1), qs.LiteralString("[]"))), qs.Write(qs.LiteralString("[2010-01-02 10:00, 2010-01-02 11:00)")))
 }
 func build19111() qs.Statement {
 	return qs.Select(qs.Operator((qs.LiteralString("[123.001, 5.e9)")).Cast(qs.TypeNamed("float8range")), "@>", (qs.LiteralNumeric("888.882")).Cast(qs.TypeNamed("float8"))))
@@ -6901,7 +6901,7 @@ func build19391() qs.Statement {
 }
 func build19399() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("foo")) }
 func build19407() qs.Statement {
-	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f3"), qs.Operator(qs.Ident("f3"), "*", qs.LiteralInt(2)))).FromExpr(qs.Table("int4_tbl").As("i")).Where(qs.AsCondition(qs.Operator(qs.Operator(qs.Ident("foo", "f1"), "+", qs.LiteralInt(123455)), "=", qs.Ident("i", "f1")))).Returning(qs.Star("foo"), qs.Ident("i", "f1").As("i.f1"))
+	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f3"), qs.Write(qs.Operator(qs.Ident("f3"), "*", qs.LiteralInt(2))))).FromExpr(qs.Table("int4_tbl").As("i")).Where(qs.AsCondition(qs.Operator(qs.Operator(qs.Ident("foo", "f1"), "+", qs.LiteralInt(123455)), "=", qs.Ident("i", "f1")))).Returning(qs.Star("foo"), qs.Ident("i", "f1").As("i.f1"))
 }
 func build19415() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("foo")) }
 func build19423() qs.Statement {
@@ -6913,13 +6913,13 @@ func build19439() qs.Statement {
 }
 func build19447() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("foo")) }
 func build19455() qs.Statement {
-	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f1"), qs.Ident("new", "f1")), qs.Assign(qs.Ident("f3"), qs.Ident("new", "f3"))).FromExpr(qs.Table("joinme")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.Ident("f2j"))), qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.Ident("old", "f2")))).Expr())).Returning(qs.Star("foo"), qs.Ident("other"))
+	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f1"), qs.Write(qs.Ident("new", "f1"))), qs.Assign(qs.Ident("f3"), qs.Write(qs.Ident("new", "f3")))).FromExpr(qs.Table("joinme")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.Ident("f2j"))), qs.AsCondition(qs.Operator(qs.Ident("f2"), "=", qs.Ident("old", "f2")))).Expr())).Returning(qs.Star("foo"), qs.Ident("other"))
 }
 func build19463() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("foo").As("bar")).DefaultValues().Returning(qs.Ident("bar", "f3"))
 }
 func build19471() qs.Statement {
-	return qs.Explain(qs.InsertIntoTable(qs.Table("foo")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("conflict")).ValuesExpr(qs.LiteralInt(5), qs.LiteralString("ok")).OnConflict(qs.ConflictColumns("f1").DoUpdate(qs.Assign(qs.Ident("f2"), qs.Operator(qs.Ident("excluded", "f2"), "||", qs.LiteralString("ed"))), qs.Assign(qs.Ident("f3"), qs.LiteralInt(-1)))).ReturningRows(qs.ReturningAliases{Old: "o", New: "n"}).Returning((qs.Ident("o", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("o", "ctid"), qs.Star("o"), (qs.Ident("n", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("n", "ctid"), qs.Star("n"), qs.Star())).Verbose(true).Costs(false)
+	return qs.Explain(qs.InsertIntoTable(qs.Table("foo")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("conflict"))).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("ok"))).OnConflict(qs.ConflictColumns("f1").DoUpdate(qs.Assign(qs.Ident("f2"), qs.Write(qs.Operator(qs.Ident("excluded", "f2"), "||", qs.LiteralString("ed")))), qs.Assign(qs.Ident("f3"), qs.Write(qs.LiteralInt(-1))))).ReturningRows(qs.ReturningAliases{Old: "o", New: "n"}).Returning((qs.Ident("o", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("o", "ctid"), qs.Star("o"), (qs.Ident("n", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("n", "ctid"), qs.Star("n"), qs.Star())).Verbose(true).Costs(false)
 }
 func build19479() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("foo")).Where(qs.AsCondition(qs.Operator(qs.Ident("f1"), "=", qs.LiteralInt(6)))).Returning(qs.Ident("old"), (qs.Ident("old")).Field("f4"), (qs.Ident("old")).Fields(), qs.Ident("new"), (qs.Ident("new")).Field("f4"), (qs.Ident("new")).Fields())
@@ -6928,10 +6928,10 @@ func build19487() qs.Statement {
 	return qs.Explain(qs.DeleteFromTable(qs.Table("foo")).Where(qs.AsCondition(qs.Operator(qs.Ident("f1"), "=", qs.LiteralInt(4)))).Returning(qs.Star("old"), qs.Star("new"), qs.Star())).Verbose(true).Costs(false)
 }
 func build19495() qs.Statement {
-	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f4"), qs.Operator(qs.Ident("f4"), "+", qs.LiteralInt(1)))).Returning(qs.Ident("old"), qs.Ident("new"))
+	return qs.UpdateTable(qs.Table("foo")).Set(qs.Assign(qs.Ident("f4"), qs.Write(qs.Operator(qs.Ident("f4"), "+", qs.LiteralInt(1))))).Returning(qs.Ident("old"), qs.Ident("new"))
 }
 func build19503() qs.Statement {
-	return qs.UpdateTable(qs.Table("foo_parted")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)), qs.Assign(qs.Ident("b"), qs.Operator(qs.Ident("b"), "+", qs.LiteralInt(1))), qs.Assign(qs.Ident("c"), qs.Operator(qs.Ident("c"), "||", qs.LiteralString("->P1")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3)))).Returning((qs.Ident("old", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("old", "ctid"), qs.Star("old"), (qs.Ident("new", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("new", "ctid"), qs.Star("new"), qs.Star())
+	return qs.UpdateTable(qs.Table("foo_parted")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))), qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Ident("b"), "+", qs.LiteralInt(1)))), qs.Assign(qs.Ident("c"), qs.Write(qs.Operator(qs.Ident("c"), "||", qs.LiteralString("->P1"))))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3)))).Returning((qs.Ident("old", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("old", "ctid"), qs.Star("old"), (qs.Ident("new", "tableoid")).Cast(qs.TypeNamed("regclass")), qs.Ident("new", "ctid"), qs.Star("new"), qs.Star())
 }
 func build19511() qs.Statement {
 	return qs.Select(qs.Ident("rolname"), qs.Ident("rolsuper"), qs.Ident("rolinherit"), qs.Ident("rolcreaterole"), qs.Ident("rolcreatedb"), qs.Ident("rolcanlogin"), qs.Ident("rolreplication"), qs.Ident("rolbypassrls"), qs.Ident("rolconnlimit"), qs.Ident("rolpassword"), qs.Ident("rolvaliduntil")).FromExpr(qs.Table("pg_authid")).Where(qs.AsCondition(qs.Operator(qs.Ident("rolname"), "=", qs.LiteralString("regress_test_superuser"))))
@@ -6946,13 +6946,13 @@ func build19535() qs.Statement {
 	return qs.Select(qs.Ident("rolname"), qs.Ident("rolsuper"), qs.Ident("rolinherit"), qs.Ident("rolcreaterole"), qs.Ident("rolcreatedb"), qs.Ident("rolcanlogin"), qs.Ident("rolreplication"), qs.Ident("rolbypassrls"), qs.Ident("rolconnlimit"), qs.Ident("rolpassword"), qs.Ident("rolvaliduntil")).FromExpr(qs.Table("pg_authid")).Where(qs.AsCondition(qs.Operator(qs.Ident("rolname"), "=", qs.LiteralString("regress_test_replication"))))
 }
 func build19543() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("document")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(11), qs.LiteralInt(1), qs.LiteralString("regress_rls_bob"), qs.LiteralString("my first novel")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(11), qs.LiteralInt(2), qs.LiteralString("regress_rls_bob"), qs.LiteralString("my second novel")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(22), qs.LiteralInt(2), qs.LiteralString("regress_rls_bob"), qs.LiteralString("my science fiction")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(44), qs.LiteralInt(1), qs.LiteralString("regress_rls_bob"), qs.LiteralString("my first manga")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(44), qs.LiteralInt(2), qs.LiteralString("regress_rls_bob"), qs.LiteralString("my second manga")).ValuesExpr(qs.LiteralInt(6), qs.LiteralInt(22), qs.LiteralInt(1), qs.LiteralString("regress_rls_carol"), qs.LiteralString("great science fiction")).ValuesExpr(qs.LiteralInt(7), qs.LiteralInt(33), qs.LiteralInt(2), qs.LiteralString("regress_rls_carol"), qs.LiteralString("great technology book")).ValuesExpr(qs.LiteralInt(8), qs.LiteralInt(44), qs.LiteralInt(1), qs.LiteralString("regress_rls_carol"), qs.LiteralString("great manga")).ValuesExpr(qs.LiteralInt(9), qs.LiteralInt(22), qs.LiteralInt(1), qs.LiteralString("regress_rls_dave"), qs.LiteralString("awesome science fiction")).ValuesExpr(qs.LiteralInt(10), qs.LiteralInt(33), qs.LiteralInt(2), qs.LiteralString("regress_rls_dave"), qs.LiteralString("awesome technology book"))
+	return qs.InsertIntoTable(qs.Table("document")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_bob")), qs.Write(qs.LiteralString("my first novel"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("regress_rls_bob")), qs.Write(qs.LiteralString("my second novel"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(22)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("regress_rls_bob")), qs.Write(qs.LiteralString("my science fiction"))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(44)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_bob")), qs.Write(qs.LiteralString("my first manga"))).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(44)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("regress_rls_bob")), qs.Write(qs.LiteralString("my second manga"))).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralInt(22)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_carol")), qs.Write(qs.LiteralString("great science fiction"))).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralInt(33)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("regress_rls_carol")), qs.Write(qs.LiteralString("great technology book"))).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralInt(44)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_carol")), qs.Write(qs.LiteralString("great manga"))).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralInt(22)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_dave")), qs.Write(qs.LiteralString("awesome science fiction"))).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralInt(33)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("regress_rls_dave")), qs.Write(qs.LiteralString("awesome technology book")))
 }
 func build19551() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("document").TableSample("bernoulli", qs.LiteralInt(50)).Repeatable(qs.LiteralInt(0))).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("dtitle")))).OrderBy((qs.Ident("did")).Asc())
 }
 func build19559() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("document")).ValuesExpr(qs.LiteralInt(100), qs.LiteralInt(55), qs.LiteralInt(1), qs.LiteralString("regress_rls_dave"), qs.LiteralString("testing sorting of policies"))
+	return qs.InsertIntoTable(qs.Table("document")).Values(qs.Write(qs.LiteralInt(100)), qs.Write(qs.LiteralInt(55)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_dave")), qs.Write(qs.LiteralString("testing sorting of policies")))
 }
 func build19567() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("category")).Where(qs.AsCondition(qs.Operator(qs.Ident("cid"), "=", qs.LiteralInt(33))))
@@ -6979,19 +6979,19 @@ func build19631() qs.Statement {
 }
 func build19639() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rec1")) }
 func build19647() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("s1")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("foo"))
+	return qs.InsertIntoTable(qs.Table("s1")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("foo")))
 }
 func build19655() qs.Statement {
-	return qs.Select(qs.Star()).FromExpr(qs.Table("t1")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "<=", qs.Param[any]("qs-postgres-corpus-19655-param-1"))))
+	return qs.Select(qs.Star()).FromExpr(qs.Table("t1")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "<=", qs.Param("qs-postgres-corpus-19655-param-1"))))
 }
 func build19663() qs.Statement {
-	return qs.Explain(qs.UpdateTable(qs.Table("t1")).Set(qs.Assign(qs.Ident("b"), qs.Operator(qs.Ident("b"), "||", qs.Ident("b")))).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("b"))))).Costs(false)
+	return qs.Explain(qs.UpdateTable(qs.Table("t1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Ident("b"), "||", qs.Ident("b"))))).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("b"))))).Costs(false)
 }
 func build19671() qs.Statement {
-	return qs.UpdateTable(qs.Table("t2")).Set(qs.Assign(qs.Ident("b"), qs.Ident("t2", "b"))).FromExpr(qs.Table("t3")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t2", "a"), "=", qs.LiteralInt(3))), qs.AsCondition(qs.Operator(qs.Ident("t3", "a"), "=", qs.LiteralInt(2))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t2", "b"))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t3", "b")))).Expr()))
+	return qs.UpdateTable(qs.Table("t2")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("t2", "b")))).FromExpr(qs.Table("t3")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t2", "a"), "=", qs.LiteralInt(3))), qs.AsCondition(qs.Operator(qs.Ident("t3", "a"), "=", qs.LiteralInt(2))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t2", "b"))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t3", "b")))).Expr()))
 }
 func build19679() qs.Statement {
-	return qs.UpdateTable(qs.Table("t1").As("t1_1")).Set(qs.Assign(qs.Ident("b"), qs.Ident("t1_2", "b"))).FromExpr(qs.Table("t1").As("t1_2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t1_1", "a"), "=", qs.LiteralInt(4))), qs.AsCondition(qs.Operator(qs.Ident("t1_2", "a"), "=", qs.Ident("t1_1", "a"))), qs.AsCondition(qs.Operator(qs.Ident("t1_2", "b"), "=", qs.Ident("t1_1", "b"))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t1_1", "b"))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t1_2", "b")))).Expr())).Returning(qs.Star(), qs.Ident("t1_1"), qs.Ident("t1_2"))
+	return qs.UpdateTable(qs.Table("t1").As("t1_1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("t1_2", "b")))).FromExpr(qs.Table("t1").As("t1_2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t1_1", "a"), "=", qs.LiteralInt(4))), qs.AsCondition(qs.Operator(qs.Ident("t1_2", "a"), "=", qs.Ident("t1_1", "a"))), qs.AsCondition(qs.Operator(qs.Ident("t1_2", "b"), "=", qs.Ident("t1_1", "b"))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t1_1", "b"))), qs.AsCondition(qs.Call("f_leak", qs.Ident("t1_2", "b")))).Expr())).Returning(qs.Star(), qs.Ident("t1_1"), qs.Ident("t1_2"))
 }
 func build19687() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("bv1")).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("b"))))).Costs(false)
@@ -7000,16 +7000,16 @@ func build19695() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("bv1")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(6))), qs.AsCondition(qs.Call("f_leak", qs.Ident("b")))).Expr()))
 }
 func build19703() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("document")).ValuesExpr(qs.LiteralInt(78), qs.Scalar(qs.Select(qs.Ident("cid")).FromExpr(qs.Table("category")).Where(qs.AsCondition(qs.Operator(qs.Ident("cname"), "=", qs.LiteralString("novel"))))), qs.LiteralInt(1), qs.LiteralString("regress_rls_bob"), qs.LiteralString("some technology novel")).OnConflict(qs.ConflictColumns("did").DoUpdate(qs.Assign(qs.Ident("dtitle"), qs.Ident("excluded", "dtitle")), qs.Assign(qs.Ident("cid"), qs.LiteralInt(33)))).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("document")).Values(qs.Write(qs.LiteralInt(78)), qs.Write(qs.Scalar(qs.Select(qs.Ident("cid")).FromExpr(qs.Table("category")).Where(qs.AsCondition(qs.Operator(qs.Ident("cname"), "=", qs.LiteralString("novel")))))), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_bob")), qs.Write(qs.LiteralString("some technology novel"))).OnConflict(qs.ConflictColumns("did").DoUpdate(qs.Assign(qs.Ident("dtitle"), qs.Write(qs.Ident("excluded", "dtitle"))), qs.Assign(qs.Ident("cid"), qs.Write(qs.LiteralInt(33))))).Returning(qs.Star())
 }
 func build19711() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("document")).ValuesExpr(qs.LiteralInt(1), qs.Scalar(qs.Select(qs.Ident("cid")).FromExpr(qs.Table("category")).Where(qs.AsCondition(qs.Operator(qs.Ident("cname"), "=", qs.LiteralString("novel"))))), qs.LiteralInt(1), qs.LiteralString("regress_rls_bob"), qs.LiteralString("my first novel")).OnConflict(qs.ConflictColumns("did").DoUpdate(qs.Assign(qs.Ident("dauthor"), qs.LiteralString("regress_rls_carol"))))
+	return qs.InsertIntoTable(qs.Table("document")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.Scalar(qs.Select(qs.Ident("cid")).FromExpr(qs.Table("category")).Where(qs.AsCondition(qs.Operator(qs.Ident("cname"), "=", qs.LiteralString("novel")))))), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("regress_rls_bob")), qs.Write(qs.LiteralString("my first novel"))).OnConflict(qs.ConflictColumns("did").DoUpdate(qs.Assign(qs.Ident("dauthor"), qs.Write(qs.LiteralString("regress_rls_carol")))))
 }
 func build19719() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("document").As("d")).Using(qs.Subquery(qs.Select(qs.LiteralInt(4).As("sdid")), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("did"), "=", qs.Ident("s", "sdid")))).When(qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("dnotes"), "<>", qs.LiteralString("")))).ThenUpdate(qs.Assign(qs.Ident("dnotes"), qs.Operator(qs.Ident("dnotes"), "||", qs.LiteralString(" notes added by merge ")))), qs.Matched().ThenDelete())
+	return qs.MergeIntoTable(qs.Table("document").As("d")).Using(qs.Subquery(qs.Select(qs.LiteralInt(4).As("sdid")), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("did"), "=", qs.Ident("s", "sdid")))).When(qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("dnotes"), "<>", qs.LiteralString("")))).ThenUpdate(qs.Assign(qs.Ident("dnotes"), qs.Write(qs.Operator(qs.Ident("dnotes"), "||", qs.LiteralString(" notes added by merge "))))), qs.Matched().ThenDelete())
 }
 func build19727() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("document").As("d")).Using(qs.Subquery(qs.Select(qs.LiteralInt(1).As("sdid")), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("did"), "=", qs.Ident("s", "sdid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("dnotes"), qs.Operator(qs.Ident("dnotes"), "||", qs.LiteralString(" notes added by merge6 "))), qs.Assign(qs.Ident("cid"), qs.Scalar(qs.Select(qs.Ident("cid")).FromExpr(qs.Table("category")).Where(qs.AsCondition(qs.Operator(qs.Ident("cname"), "=", qs.LiteralString("technology"))))))))
+	return qs.MergeIntoTable(qs.Table("document").As("d")).Using(qs.Subquery(qs.Select(qs.LiteralInt(1).As("sdid")), "s")).On(qs.AsCondition(qs.Operator(qs.Ident("did"), "=", qs.Ident("s", "sdid")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("dnotes"), qs.Write(qs.Operator(qs.Ident("dnotes"), "||", qs.LiteralString(" notes added by merge6 ")))), qs.Assign(qs.Ident("cid"), qs.Write(qs.Scalar(qs.Select(qs.Ident("cid")).FromExpr(qs.Table("category")).Where(qs.AsCondition(qs.Operator(qs.Ident("cname"), "=", qs.LiteralString("technology")))))))))
 }
 func build19735() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("z1")).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("b"))))
@@ -7029,7 +7029,7 @@ func build19783() qs.Statement {
 func build19791() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rls_view")) }
 func build19799() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rls_view")) }
 func build19807() qs.Statement {
-	return qs.UpdateTable(qs.Table("x1")).Set(qs.Assign(qs.Ident("b"), qs.Operator(qs.Ident("b"), "||", qs.LiteralString("_updt")))).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("b")))).Returning(qs.Star())
+	return qs.UpdateTable(qs.Table("x1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Ident("b"), "||", qs.LiteralString("_updt"))))).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("b")))).Returning(qs.Star())
 }
 func build19815() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("y2")).From(qs.Select(qs.Ident("x"), qs.Call("public.fipshash", (qs.Ident("x")).Cast(qs.TypeNamed("text")))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(0), qs.LiteralInt(20))).As("x")))
@@ -7044,13 +7044,13 @@ func build19839() qs.Statement {
 	return qs.Explain(qs.InsertIntoTable(qs.Table("t2")).From(qs.Select(qs.Star()).FromExpr(qs.Table("t1")))).Costs(false)
 }
 func build19847() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("comment")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("cool blog")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("fun blog")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("crazy blog")).ValuesExpr(qs.LiteralInt(5), qs.LiteralString("what?")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("insane!")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("who did it?"))
+	return qs.InsertIntoTable(qs.Table("comment")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("cool blog"))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("fun blog"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("crazy blog"))).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("what?"))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("insane!"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("who did it?")))
 }
 func build19855() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("t1"))).Costs(false)
 }
 func build19863() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("current_check")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("abc"), qs.LiteralString("regress_rls_bob")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("bcd"), qs.LiteralString("regress_rls_bob")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("cde"), qs.LiteralString("regress_rls_bob")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("def"), qs.LiteralString("regress_rls_bob"))
+	return qs.InsertIntoTable(qs.Table("current_check")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("abc")), qs.Write(qs.LiteralString("regress_rls_bob"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("bcd")), qs.Write(qs.LiteralString("regress_rls_bob"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("cde")), qs.Write(qs.LiteralString("regress_rls_bob"))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("def")), qs.Write(qs.LiteralString("regress_rls_bob")))
 }
 func build19871() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("current_check")).WhereCurrentOf("current_check_cursor").Returning(qs.Star())
@@ -7062,23 +7062,23 @@ func build19887() qs.Statement {
 	return qs.ValuesExpr((qs.LiteralString("bar")).Cast(qs.TypeNamed("text")))
 }
 func build19895() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("r2")).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("r2")).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build19903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("r1")).ValuesExpr(qs.LiteralInt(10)).ValuesExpr(qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("r1")).Values(qs.Write(qs.LiteralInt(10))).Values(qs.Write(qs.LiteralInt(20)))
 }
 func build19911() qs.Statement {
-	return qs.UpdateTable(qs.Table("r1")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(1)))
+	return qs.UpdateTable(qs.Table("r1")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(1))))
 }
 func build19919() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("r1")).ValuesExpr(qs.LiteralInt(10)).ValuesExpr(qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("r1")).Values(qs.Write(qs.LiteralInt(10))).Values(qs.Write(qs.LiteralInt(20)))
 }
 func build19927() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("r1")).ValuesExpr(qs.LiteralInt(10)).ValuesExpr(qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("r1")).Values(qs.Write(qs.LiteralInt(10))).Values(qs.Write(qs.LiteralInt(20)))
 }
 func build19935() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("r1")) }
 func build19943() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("r1")).ValuesExpr(qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("r1")).Values(qs.Write(qs.LiteralInt(3)))
 }
 func build19951() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rls_tbl")) }
 func build19959() qs.Statement {
@@ -7104,7 +7104,7 @@ func build20007() qs.Statement {
 }
 func build20015() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("people")) }
 func build20023() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pp")).ValuesExpr(qs.Call("repeat", qs.LiteralString("abcdefghijkl"), qs.LiteralInt(100000)))
+	return qs.InsertIntoTable(qs.Table("pp")).Values(qs.Write(qs.Call("repeat", qs.LiteralString("abcdefghijkl"), qs.LiteralInt(100000))))
 }
 func build20031() qs.Statement {
 	return qs.Select(qs.Operator(qs.Row(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3)).Expr(), "<", qs.Row(qs.LiteralInt(1), qs.LiteralInt(3), qs.NullLiteral()).Expr()).As("true"))
@@ -7116,7 +7116,7 @@ func build20047() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("thousand"), qs.Ident("tenthous"), qs.Ident("four")).FromExpr(qs.Table("tenk1")).Where(qs.AsCondition(qs.Operator(qs.Tuple(qs.Ident("thousand"), qs.Ident("tenthous"), qs.Ident("four")).Expr(), ">", qs.Tuple(qs.LiteralInt(998), qs.LiteralInt(5000), qs.LiteralInt(3)).Expr()))).OrderBy((qs.Ident("thousand")).Asc(), (qs.Ident("tenthous")).Asc())).Costs(false)
 }
 func build20055() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test_table")).ValuesExpr(qs.LiteralString("b"), qs.LiteralString("a"))
+	return qs.InsertIntoTable(qs.Table("test_table")).Values(qs.Write(qs.LiteralString("b")), qs.Write(qs.LiteralString("a")))
 }
 func build20063() qs.Statement {
 	return qs.Select((qs.Row(qs.LiteralInt(1), qs.LiteralNumeric("2.0")).Expr()).Field("nosuch"))
@@ -7143,7 +7143,7 @@ func build20119() qs.Statement {
 	return qs.Select(qs.Operator((qs.Row(qs.LiteralInt(1), qs.LiteralInt(2)).Expr()).Cast(qs.TypeNamed("testtype1")), "*<", (qs.Row(qs.LiteralInt(1), qs.LiteralString("abc")).Expr()).Cast(qs.TypeNamed("testtype3"))))
 }
 func build20127() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("price")).ValuesExpr(qs.LiteralInt(1), qs.LiteralBool(false), qs.LiteralInt(42)).ValuesExpr(qs.LiteralInt(10), qs.LiteralBool(false), qs.LiteralInt(100)).ValuesExpr(qs.LiteralInt(11), qs.LiteralBool(true), qs.LiteralNumeric("17.99"))
+	return qs.InsertIntoTable(qs.Table("price")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralBool(false)), qs.Write(qs.LiteralInt(42))).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralBool(false)), qs.Write(qs.LiteralInt(100))).Values(qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralBool(true)), qs.Write(qs.LiteralNumeric("17.99")))
 }
 func build20135() qs.Statement {
 	return qs.Select((qs.Ident("fullname")).Cast(qs.TypeNamed("text"))).FromExpr(qs.Table("fullname"))
@@ -7170,10 +7170,10 @@ func build20191() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("rtest_admin")).Where(qs.AsCondition(qs.Operator(qs.Ident("pname"), "=", qs.Ident("old", "pname"))))
 }
 func build20199() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_order2")).ValuesExpr(qs.Ident("new", "a"), qs.Call("nextval", qs.LiteralString("rtest_seq")), qs.LiteralString("rule 3 - this should run 3rd"))
+	return qs.InsertIntoTable(qs.Table("rtest_order2")).Values(qs.Write(qs.Ident("new", "a")), qs.Write(qs.Call("nextval", qs.LiteralString("rtest_seq"))), qs.Write(qs.LiteralString("rule 3 - this should run 3rd")))
 }
 func build20207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_t3")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(31))
+	return qs.InsertIntoTable(qs.Table("rtest_t3")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(31)))
 }
 func build20215() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("rtest_v1")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
@@ -7185,14 +7185,14 @@ func build20231() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("rtest_v1")).Columns("a").From(qs.Select(qs.Ident("a")).FromExpr(qs.Table("rtest_t3")))
 }
 func build20239() qs.Statement {
-	return qs.UpdateTable(qs.Table("rtest_v1")).Set(qs.Assign(qs.Ident("b"), qs.LiteralInt(99))).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralInt(42))))
+	return qs.UpdateTable(qs.Table("rtest_v1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralInt(99)))).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralInt(42))))
 }
 func build20247() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rtest_v1")) }
 func build20255() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_system")).ValuesExpr(qs.LiteralString("notjw"), qs.LiteralString("WinNT Jan Wieck (notebook)"))
+	return qs.InsertIntoTable(qs.Table("rtest_system")).Values(qs.Write(qs.LiteralString("notjw")), qs.Write(qs.LiteralString("WinNT Jan Wieck (notebook)")))
 }
 func build20263() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_admin")).ValuesExpr(qs.LiteralString("jw"), qs.LiteralString("orion"))
+	return qs.InsertIntoTable(qs.Table("rtest_admin")).Values(qs.Write(qs.LiteralString("jw")), qs.Write(qs.LiteralString("orion")))
 }
 func build20271() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("rtest_system")).Where(qs.AsCondition(qs.Operator(qs.Ident("sysname"), "=", qs.LiteralString("orion"))))
@@ -7201,41 +7201,41 @@ func build20279() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("rtest_emp")).Where(qs.AsCondition(qs.Operator(qs.Ident("ename"), "=", qs.LiteralString("gates"))))
 }
 func build20287() qs.Statement {
-	return qs.UpdateTable(qs.Table("rtest_emp")).Set(qs.Assign(qs.Ident("salary"), qs.Ident("rtest_empmass", "salary"))).FromExpr(qs.Table("rtest_empmass")).Where(qs.AsCondition(qs.Operator(qs.Ident("rtest_emp", "ename"), "=", qs.Ident("rtest_empmass", "ename"))))
+	return qs.UpdateTable(qs.Table("rtest_emp")).Set(qs.Assign(qs.Ident("salary"), qs.Write(qs.Ident("rtest_empmass", "salary")))).FromExpr(qs.Table("rtest_empmass")).Where(qs.AsCondition(qs.Operator(qs.Ident("rtest_emp", "ename"), "=", qs.Ident("rtest_empmass", "ename"))))
 }
 func build20295() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_t4")).ValuesExpr(qs.LiteralInt(19), qs.LiteralString("Record should go to rtest_t5 and t7"))
+	return qs.InsertIntoTable(qs.Table("rtest_t4")).Values(qs.Write(qs.LiteralInt(19)), qs.Write(qs.LiteralString("Record should go to rtest_t5 and t7")))
 }
 func build20303() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rtest_t6")) }
 func build20311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_t9")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("Record should go to rtest_t4"))
+	return qs.InsertIntoTable(qs.Table("rtest_t9")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("Record should go to rtest_t4")))
 }
 func build20319() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_t9")).ValuesExpr(qs.LiteralInt(30), qs.LiteralString("Record should go to rtest_t4"))
+	return qs.InsertIntoTable(qs.Table("rtest_t9")).Values(qs.Write(qs.LiteralInt(30)), qs.Write(qs.LiteralString("Record should go to rtest_t4")))
 }
 func build20327() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("rtest_t4")).From(qs.Select(qs.Star()).FromExpr(qs.Table("rtest_t9")).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "~", qs.LiteralString("and t8")))))
 }
 func build20335() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rtest_t5")) }
 func build20343() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_nothn1")).ValuesExpr(qs.LiteralInt(10), qs.LiteralString("don't want this"))
+	return qs.InsertIntoTable(qs.Table("rtest_nothn1")).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralString("don't want this")))
 }
 func build20351() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_nothn1")).ValuesExpr(qs.LiteralInt(60), qs.LiteralString("want this"))
+	return qs.InsertIntoTable(qs.Table("rtest_nothn1")).Values(qs.Write(qs.LiteralInt(60)), qs.Write(qs.LiteralString("want this")))
 }
 func build20359() qs.Statement { return qs.DeleteFromTable(qs.Table("rtest_nothn1")) }
 func build20367() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_nothn4")).ValuesExpr(qs.LiteralInt(29), qs.LiteralString("want this"))
+	return qs.InsertIntoTable(qs.Table("rtest_nothn4")).Values(qs.Write(qs.LiteralInt(29)), qs.Write(qs.LiteralString("want this")))
 }
 func build20375() qs.Statement { return qs.DeleteFromTable(qs.Table("rtest_nothn4")) }
 func build20383() qs.Statement {
 	return qs.Select(qs.Ident("a"), qs.Ident("b")).FromExpr(qs.Table("rtest_view1").As("x")).Where(qs.AsCondition(qs.Operator(qs.LiteralInt(0), "<", qs.Scalar(qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("rtest_view2").As("y")).Where(qs.AsCondition(qs.Operator(qs.Ident("y", "a"), "=", qs.Ident("x", "a"))))))))
 }
 func build20391() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_view1")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("item 4"), qs.LiteralString("f"))
+	return qs.InsertIntoTable(qs.Table("rtest_view1")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("item 4")), qs.Write(qs.LiteralString("f")))
 }
 func build20399() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_view2")).ValuesExpr(qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("rtest_view2")).Values(qs.Write(qs.LiteralInt(5)))
 }
 func build20407() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("rtest_vview4")).OrderBy((qs.Ident("a")).Asc(), (qs.Ident("b")).Asc())
@@ -7245,19 +7245,19 @@ func build20415() qs.Statement {
 }
 func build20423() qs.Statement { return qs.DeleteFromTable(qs.Table("rtest_view4")) }
 func build20431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rtest_comp")).ValuesExpr(qs.LiteralString("p4"), qs.LiteralString("cm"), qs.LiteralNumeric("15.0"))
+	return qs.InsertIntoTable(qs.Table("rtest_comp")).Values(qs.Write(qs.LiteralString("p4")), qs.Write(qs.LiteralString("cm")), qs.Write(qs.LiteralNumeric("15.0")))
 }
 func build20439() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("unit")).ValuesExpr(qs.LiteralString("cm"), qs.LiteralNumeric("1.0"))
+	return qs.InsertIntoTable(qs.Table("unit")).Values(qs.Write(qs.LiteralString("cm")), qs.Write(qs.LiteralNumeric("1.0")))
 }
 func build20447() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("shoelace_data")).ValuesExpr(qs.LiteralString("sl2"), qs.LiteralInt(6), qs.LiteralString("black"), qs.LiteralNumeric("100.0"), qs.LiteralString("cm"))
+	return qs.InsertIntoTable(qs.Table("shoelace_data")).Values(qs.Write(qs.LiteralString("sl2")), qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("black")), qs.Write(qs.LiteralNumeric("100.0")), qs.Write(qs.LiteralString("cm")))
 }
 func build20455() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("shoe_ready")).Where(qs.AsCondition(qs.Operator(qs.Ident("total_avail"), ">=", qs.LiteralInt(2)))).OrderBy((qs.LiteralInt(1)).Asc())
 }
 func build20463() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("shoelace_arrive")).ValuesExpr(qs.LiteralString("sl3"), qs.LiteralInt(10))
+	return qs.InsertIntoTable(qs.Table("shoelace_arrive")).Values(qs.Write(qs.LiteralString("sl3")), qs.Write(qs.LiteralInt(10)))
 }
 func build20471() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("shoelace_obsolete")).Where(qs.AsCondition(qs.Operator(qs.Ident("sl_avail"), "=", qs.LiteralInt(0))))
@@ -7266,26 +7266,26 @@ func build20479() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("shoe")).OrderBy((qs.Ident("shoename")).Asc())
 }
 func build20487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rules_foo")).ValuesExpr(qs.LiteralInt(100))
+	return qs.InsertIntoTable(qs.Table("rules_foo")).Values(qs.Write(qs.LiteralInt(100)))
 }
 func build20495() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("vview")) }
 func build20503() qs.Statement {
 	return qs.Select(qs.Ident("viewname"), qs.Ident("definition")).FromExpr(qs.Table("pg_views")).Where(qs.AsCondition(qs.Operator(qs.Ident("schemaname"), "=", qs.LiteralString("pg_catalog")))).OrderBy((qs.Ident("viewname")).Asc())
 }
 func build20511() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rule_and_refint_t1")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(12))
+	return qs.InsertIntoTable(qs.Table("rule_and_refint_t1")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(12)))
 }
 func build20519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rule_and_refint_t3")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(11), qs.LiteralInt(12), qs.LiteralString("row2"))
+	return qs.InsertIntoTable(qs.Table("rule_and_refint_t3")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralInt(12)), qs.Write(qs.LiteralString("row2")))
 }
 func build20527() qs.Statement {
-	return qs.UpdateTable(qs.Table("rule_and_refint_t3")).Set(qs.Assign(qs.Ident("data"), qs.Ident("new", "data"))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("rule_and_refint_t3", "id3a"), "=", qs.Ident("new", "id3a"))), qs.AsCondition(qs.Operator(qs.Ident("rule_and_refint_t3", "id3b"), "=", qs.Ident("new", "id3b"))), qs.AsCondition(qs.Operator(qs.Ident("rule_and_refint_t3", "id3c"), "=", qs.Ident("new", "id3c")))).Expr()))
+	return qs.UpdateTable(qs.Table("rule_and_refint_t3")).Set(qs.Assign(qs.Ident("data"), qs.Write(qs.Ident("new", "data")))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("rule_and_refint_t3", "id3a"), "=", qs.Ident("new", "id3a"))), qs.AsCondition(qs.Operator(qs.Ident("rule_and_refint_t3", "id3b"), "=", qs.Ident("new", "id3b"))), qs.AsCondition(qs.Operator(qs.Ident("rule_and_refint_t3", "id3c"), "=", qs.Ident("new", "id3c")))).Expr()))
 }
 func build20535() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test_1")).Columns("name").ValuesExpr(qs.LiteralString("Test 2"))
+	return qs.InsertIntoTable(qs.Table("test_1")).Columns("name").Values(qs.Write(qs.LiteralString("Test 2")))
 }
 func build20543() qs.Statement {
-	return qs.UpdateTable(qs.Table("id_ordered")).Set(qs.Assign(qs.Ident("name"), qs.LiteralString("update 2"))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(2))))
+	return qs.UpdateTable(qs.Table("id_ordered")).Set(qs.Assign(qs.Ident("name"), qs.Write(qs.LiteralString("update 2")))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(2))))
 }
 func build20551() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("t1")).From(qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(5), qs.LiteralInt(19), qs.LiteralInt(1))).As("g")))
@@ -7294,31 +7294,31 @@ func build20559() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("rules_base")).Where(qs.AsCondition(qs.Operator(qs.Ident("f1"), "=", qs.LiteralInt(11)))).Lock(qs.ForUpdate().Of("rules_base"))
 }
 func build20567() qs.Statement {
-	return qs.UpdateTable(qs.Table("rules_src")).Set(qs.Assign(qs.Ident("f2"), qs.Operator(qs.Ident("f2"), "+", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("rules_src")).Set(qs.Assign(qs.Ident("f2"), qs.Write(qs.Operator(qs.Ident("f2"), "+", qs.LiteralInt(1)))))
 }
 func build20575() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rules_src")) }
 func build20583() qs.Statement {
-	return qs.UpdateTable(qs.Table("rule_t1").As("t")).Set(qs.Assign(qs.Ident("c"), qs.Operator(qs.Ident("tt", "a"), "*", qs.LiteralInt(10)))).FromExpr(qs.Subquery(qs.Select(qs.Ident("a")).FromExpr(qs.Table("rule_t1")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.Ident("old", "a")))), "tt")).Where(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("tt", "a"))))
+	return qs.UpdateTable(qs.Table("rule_t1").As("t")).Set(qs.Assign(qs.Ident("c"), qs.Write(qs.Operator(qs.Ident("tt", "a"), "*", qs.LiteralInt(10))))).FromExpr(qs.Subquery(qs.Select(qs.Ident("a")).FromExpr(qs.Table("rule_t1")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.Ident("old", "a")))), "tt")).Where(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("tt", "a"))))
 }
 func build20591() qs.Statement { return qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)) }
 func build20599() qs.Statement {
 	return qs.Select(qs.Ident("tablename"), qs.Ident("rulename"), qs.Ident("definition")).FromExpr(qs.Table("pg_rules")).Where(qs.AsCondition(qs.Operator(qs.Ident("tablename"), "=", qs.LiteralString("hats"))))
 }
 func build20607() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("hats")).ValuesExpr(qs.LiteralString("h8"), qs.LiteralString("white")).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("hats")).Values(qs.Write(qs.LiteralString("h8")), qs.Write(qs.LiteralString("white"))).Returning(qs.Star())
 }
 func build20615() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("hat_data")).Where(qs.AsCondition((qs.Ident("hat_name")).InExpr(qs.LiteralString("h8"), qs.LiteralString("h9"), qs.LiteralString("h7")).Expr())).OrderBy((qs.Ident("hat_name")).Asc())
 }
 func build20623() qs.Statement { return qs.Select(qs.Call("pg_get_viewdef", qs.LiteralInt(0))) }
 func build20631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rule_merge2")).ValuesExpr(qs.Star("new"))
+	return qs.InsertIntoTable(qs.Table("rule_merge2")).Values(qs.Write(qs.Star("new")))
 }
 func build20639() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("ruletest1")).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("ruletest1")).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build20647() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("ruletest_v1")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("ruletest_v1")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build20655() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("onek")).Where(qs.AsCondition(qs.Operator(qs.Ident("onek", "unique1"), "<", qs.LiteralInt(10)))).OrderBy((qs.Ident("onek", "unique1")).Asc())
@@ -7372,7 +7372,7 @@ func build20783() qs.Statement {
 	return qs.Explain(qs.Select(qs.Ident("x"), qs.Ident("y")).DistinctOn(qs.Ident("y"), qs.Ident("x")).FromExpr(qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.Table("distinct_on_tbl")).OrderBy((qs.Ident("x")).Asc()), "s"))).Costs(false)
 }
 func build20791() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test_having")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2), qs.LiteralString("AAAA"), qs.LiteralString("c"))
+	return qs.InsertIntoTable(qs.Table("test_having")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("AAAA")), qs.Write(qs.LiteralString("c")))
 }
 func build20799() qs.Statement {
 	return qs.Select(qs.Ident("b"), qs.Ident("c")).FromExpr(qs.Table("test_having")).GroupByExpr(qs.Ident("b"), qs.Ident("c")).Having(qs.AsCondition(qs.Operator(qs.Call("count", qs.Star()), "=", qs.LiteralInt(1)))).OrderBy((qs.Ident("b")).Asc(), (qs.Ident("c")).Asc())
@@ -7381,7 +7381,7 @@ func build20807() qs.Statement {
 	return qs.Select(qs.LiteralInt(1).As("one")).FromExpr(qs.Table("test_having")).Having(qs.AsCondition(qs.Operator(qs.LiteralInt(1), ">", qs.LiteralInt(2))))
 }
 func build20815() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test_missing_target")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(3), qs.LiteralString("bbbb"), qs.LiteralString("F"))
+	return qs.InsertIntoTable(qs.Table("test_missing_target")).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("bbbb")), qs.Write(qs.LiteralString("F")))
 }
 func build20823() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("test_missing_target")).GroupByExpr(qs.Ident("b")).OrderBy((qs.Ident("b")).Asc())
@@ -7452,10 +7452,10 @@ func build21007() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("my_credit_card_secure")).Where(qs.AsCondition(qs.Call("f_leak", qs.Ident("cnum"))))).Costs(false)
 }
 func build21015() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("serialtest1")).ValuesExpr(qs.LiteralString("bar"))
+	return qs.InsertIntoTable(qs.Table("serialtest1")).Values(qs.Write(qs.LiteralString("bar")))
 }
 func build21023() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("serialtest2")).Columns("f1", "f4").ValuesExpr(qs.LiteralString("bogus"), qs.LiteralInt(-32769))
+	return qs.InsertIntoTable(qs.Table("serialtest2")).Columns("f1", "f4").Values(qs.Write(qs.LiteralString("bogus")), qs.Write(qs.LiteralInt(-32769)))
 }
 func build21031() qs.Statement {
 	return qs.Select(qs.Call("nextval", qs.LiteralString("serialTest2_f2_seq")))
@@ -7737,7 +7737,7 @@ func build21799() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("test_io_vac_strategy")).From(qs.Select(qs.Ident("i"), qs.Ident("i")).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(4500))).As("i")))
 }
 func build21807() qs.Statement {
-	return qs.UpdateTable(qs.Table("brin_hot")).Set(qs.Assign(qs.Ident("val"), qs.LiteralInt(-3))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(42))))
+	return qs.UpdateTable(qs.Table("brin_hot")).Set(qs.Assign(qs.Ident("val"), qs.Write(qs.LiteralInt(-3)))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(42))))
 }
 func build21815() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("brin_hot_2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(2))), qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralInt(100)))).Expr()))
@@ -7960,7 +7960,7 @@ func build22399() qs.Statement {
 	return qs.Select(qs.Call("pg_catalog.pg_restore_attribute_stats", qs.LiteralString("schemaname"), qs.LiteralString("stats_import"), qs.LiteralString("relname"), qs.LiteralString("test"), qs.LiteralString("attname"), qs.LiteralString("tags"), qs.LiteralString("inherited"), (qs.LiteralBool(false)).Cast(qs.TypeBool), qs.LiteralString("null_frac"), (qs.LiteralNumeric("0.34")).Cast(qs.TypeFloat4), qs.LiteralString("most_common_elems"), (qs.LiteralString("{one,two}")).Cast(qs.TypeNamed("text"))))
 }
 func build22407() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("stats_import.test_mr")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("red"), (qs.LiteralString("{[1,3),[5,9),[20,30)}")).Cast(qs.TypeNamed("int4multirange"))).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("red"), (qs.LiteralString("{[11,13),[15,19),[20,30)}")).Cast(qs.TypeNamed("int4multirange"))).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("red"), (qs.LiteralString("{[21,23),[25,29),[120,130)}")).Cast(qs.TypeNamed("int4multirange")))
+	return qs.InsertIntoTable(qs.Table("stats_import.test_mr")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("red")), qs.Write((qs.LiteralString("{[1,3),[5,9),[20,30)}")).Cast(qs.TypeNamed("int4multirange")))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("red")), qs.Write((qs.LiteralString("{[11,13),[15,19),[20,30)}")).Cast(qs.TypeNamed("int4multirange")))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("red")), qs.Write((qs.LiteralString("{[21,23),[25,29),[120,130)}")).Cast(qs.TypeNamed("int4multirange"))))
 }
 func build22415() qs.Statement {
 	return qs.Select(qs.Call("pg_catalog.pg_restore_attribute_stats", qs.LiteralString("schemaname"), qs.LiteralString("stats_import"), qs.LiteralString("relname"), qs.LiteralString("test_dom"), qs.LiteralString("attname"), qs.LiteralString("dmrange"), qs.LiteralString("inherited"), qs.LiteralBool(false), qs.LiteralString("range_length_histogram"), (qs.LiteralString("{29,29,109}")).Cast(qs.TypeNamed("text")), qs.LiteralString("range_empty_frac"), (qs.LiteralString("0")).Cast(qs.TypeFloat4), qs.LiteralString("range_bounds_histogram"), (qs.LiteralString("{\"[1,30)\",\"[11,30)\",\"[21,130)\"}")).Cast(qs.TypeNamed("text"))))
@@ -8075,10 +8075,10 @@ func build22711() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("texttest")).Where(qs.AsCondition((qs.Ident("a")).LikeExpr(qs.LiteralString("%1%")).Expr()))
 }
 func build22719() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("toasttest")).ValuesExpr(qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(10000)))
+	return qs.InsertIntoTable(qs.Table("toasttest")).Values(qs.Write(qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(10000))))
 }
 func build22727() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("toasttest")).ValuesExpr(qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(300)))
+	return qs.InsertIntoTable(qs.Table("toasttest")).Values(qs.Write(qs.Call("repeat", qs.LiteralString("1234567890"), qs.LiteralInt(300))))
 }
 func build22735() qs.Statement {
 	return qs.Select(qs.Operator(qs.Call("pg_relation_size", qs.Ident("reltoastrelid")), "=", qs.LiteralInt(0)).As("is_empty")).FromExpr(qs.Table("pg_class")).Where(qs.AsCondition(qs.Operator(qs.Ident("relname"), "=", qs.LiteralString("toasttest"))))
@@ -8142,7 +8142,7 @@ func build22895() qs.Statement {
 	return qs.Select(qs.Scalar(qs.Union(qs.Select(qs.LiteralInt(2)), qs.Select(qs.LiteralInt(2)))))
 }
 func build22903() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("subselect_tbl")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("subselect_tbl")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)))
 }
 func build22911() qs.Statement {
 	return qs.Select(qs.Ident("f1"), qs.Ident("f2")).FromExpr(qs.Table("subselect_tbl")).Where(qs.AsCondition(qs.Not(qs.AsCondition(qs.Tuple(qs.Ident("f1"), qs.Ident("f2")).InQuery(qs.Select(qs.Ident("f2"), (qs.Ident("f3")).Cast(qs.TypeNamed("int4"))).FromExpr(qs.Table("subselect_tbl")).Where(qs.AsCondition((qs.Ident("f3")).IsNotNull().Expr()))).Expr())).Expr()))
@@ -8157,34 +8157,34 @@ func build22935() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("int4_tbl").As("o")).Where(qs.AsCondition(qs.Not(qs.AsCondition(qs.Exists(qs.Select(qs.LiteralInt(1)).FromExpr(qs.Table("int4_tbl").As("i")).Where(qs.AsCondition(qs.Operator(qs.Ident("i", "f1"), "=", qs.Ident("o", "f1")))).LimitExpr(qs.LiteralInt(1))).Expr())).Expr()))).Costs(false)
 }
 func build22943() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("bar")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("bar")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(2)))
 }
 func build22951() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("orderstest")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1), qs.LiteralBool(false))
+	return qs.InsertIntoTable(qs.Table("orderstest")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralBool(false)))
 }
 func build22959() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("orderstest")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1), qs.LiteralBool(false))
+	return qs.InsertIntoTable(qs.Table("orderstest")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralBool(false)))
 }
 func build22967() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("shipped_view")).Columns("ordnum", "partnum", "value").ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(1), qs.Scalar(qs.Select(qs.Ident("cost")).FromExpr(qs.Table("parts")).Where(qs.AsCondition(qs.Operator(qs.Ident("partnum"), "=", qs.LiteralString("1"))))))
+	return qs.InsertIntoTable(qs.Table("shipped_view")).Columns("ordnum", "partnum", "value").Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.Scalar(qs.Select(qs.Ident("cost")).FromExpr(qs.Table("parts")).Where(qs.AsCondition(qs.Operator(qs.Ident("partnum"), "=", qs.LiteralString("1")))))))
 }
 func build22975() qs.Statement {
 	return qs.Select((qs.Array(qs.LiteralInt(1), qs.LiteralInt(2))).Index(qs.Scalar(qs.Select(qs.Ident("g", "i"))))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(1))).As("g", "i"))
 }
 func build22983() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("tb")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("tb")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)))
 }
 func build22991() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("table_a")).ValuesExpr(qs.LiteralInt(42))
+	return qs.InsertIntoTable(qs.Table("table_a")).Values(qs.Write(qs.LiteralInt(42)))
 }
 func build22999() qs.Statement {
 	return qs.Select(qs.Ident("q")).FromExpr(qs.Subquery(qs.Select(qs.Call("max", qs.Ident("f1"))).FromExpr(qs.Table("int4_tbl")).GroupByExpr(qs.Ident("f1")).OrderBy((qs.Ident("f1")).Asc()), "q"))
 }
 func build23007() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("outer_7597")).ValuesExpr(qs.LiteralInt(0), qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("outer_7597")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralInt(0)))
 }
 func build23015() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("outer_text")).ValuesExpr(qs.LiteralString("a"), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("outer_text")).Values(qs.Write(qs.LiteralString("a")), qs.Write(qs.NullLiteral()))
 }
 func build23023() qs.Statement {
 	return qs.Select(qs.Operator(qs.Row(qs.Row(qs.Row(qs.LiteralInt(1)).Expr()).Expr()).Expr(), "=", qs.AnyQuery(qs.Select(qs.Row(qs.Row(qs.LiteralInt(1)).Expr()).Expr()))))
@@ -8208,7 +8208,7 @@ func build23071() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Subquery(qs.Select(qs.LiteralInt(9).As("x"), qs.Call("unnest", qs.Array(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralInt(3), qs.LiteralInt(11), qs.LiteralInt(12), qs.LiteralInt(13))).As("u")), "ss")).Where(qs.AsCondition(qs.Call("tattle", qs.Ident("x"), qs.Ident("u"))))).Verbose(true).Costs(false)
 }
 func build23079() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("pdt")).ValuesExpr(qs.LiteralInt(1), (qs.Row(qs.LiteralNumeric("1.00")).Expr()).Cast(qs.TypeNamed("t_rec"))).ValuesExpr(qs.LiteralInt(2), (qs.Row(qs.LiteralNumeric("1.0")).Expr()).Cast(qs.TypeNamed("t_rec"))).ValuesExpr(qs.LiteralInt(3), (qs.Row(qs.LiteralInt(2)).Expr()).Cast(qs.TypeNamed("t_rec")))
+	return qs.InsertIntoTable(qs.Table("pdt")).Values(qs.Write(qs.LiteralInt(1)), qs.Write((qs.Row(qs.LiteralNumeric("1.00")).Expr()).Cast(qs.TypeNamed("t_rec")))).Values(qs.Write(qs.LiteralInt(2)), qs.Write((qs.Row(qs.LiteralNumeric("1.0")).Expr()).Cast(qs.TypeNamed("t_rec")))).Values(qs.Write(qs.LiteralInt(3)), qs.Write((qs.Row(qs.LiteralInt(2)).Expr()).Cast(qs.TypeNamed("t_rec"))))
 }
 func build23087() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Subquery(qs.Select(qs.Ident("id"), qs.Ident("a")).DistinctOn(qs.Ident("a")).FromExpr(qs.Table("pdt")).OrderBy((qs.Ident("a")).Asc(), (qs.Ident("id")).Asc()), "s")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", (qs.Row(qs.LiteralNumeric("1.0")).Expr()).Cast(qs.TypeNamed("t_rec")))))
@@ -8265,30 +8265,30 @@ func build23223() qs.Statement {
 	return qs.Select(qs.Ident("id")).FromExpr(qs.Table("test_tablesample").TableSample("foobar", qs.LiteralInt(1)))
 }
 func build23231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("test_tablesample_v1")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("test_tablesample_v1")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build23239() qs.Statement {
 	return qs.Select(qs.Ident("c", "relname")).FromExpr(qs.Table("pg_class").As("c"), qs.Table("pg_tablespace").As("s")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("c", "reltablespace"), "=", qs.Ident("s", "oid"))), qs.AsCondition(qs.Operator(qs.Ident("s", "spcname"), "=", qs.LiteralString("regress_tblspace")))).Expr())).OrderBy((qs.Ident("c", "relname")).Asc())
 }
 func build23247() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("testschema.foo")).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("testschema.foo")).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build23255() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("testschema.test_default_tab")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("testschema.test_default_tab")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build23263() qs.Statement { return qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)) }
 func build23271() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temptest")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("temptest")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build23279() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("temptest")) }
 func build23287() qs.Statement { return qs.Select(qs.LiteralInt(1)) }
 func build23295() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("temptest1")) }
 func build23303() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("whereami")) }
 func build23311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temp_parted_oncommit_test")).ValuesExpr(qs.LiteralInt(1)).ValuesExpr(qs.LiteralInt(2))
+	return qs.InsertIntoTable(qs.Table("temp_parted_oncommit_test")).Values(qs.Write(qs.LiteralInt(1))).Values(qs.Write(qs.LiteralInt(2)))
 }
 func build23319() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temp_inh_oncommit_test")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("temp_inh_oncommit_test")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build23327() qs.Statement {
 	return qs.Select(qs.Operator(qs.Operator(qs.Call("pg_relation_size", qs.LiteralString("test_temp")), "/", (qs.Call("current_setting", qs.LiteralString("block_size"))).Cast(qs.TypeNamed("int8"))), ">", qs.LiteralInt(200)))
@@ -8300,7 +8300,7 @@ func build23343() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star()), qs.Call("max", qs.Ident("a")).As("max_a"), qs.Call("min", qs.Ident("a")).As("min_a"), qs.Call("max", qs.Ident("cnt")).As("max_cnt")).FromExpr(qs.Table("test_temp"))
 }
 func build23351() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("varchar_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("a")).ValuesExpr(qs.LiteralString("ab")).ValuesExpr(qs.LiteralString("abcd")).ValuesExpr(qs.LiteralString("abcd    "))
+	return qs.InsertIntoTable(qs.Table("varchar_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("a"))).Values(qs.Write(qs.LiteralString("ab"))).Values(qs.Write(qs.LiteralString("abcd"))).Values(qs.Write(qs.LiteralString("abcd    ")))
 }
 func build23359() qs.Statement { return qs.Select(qs.Call("length", qs.LiteralInt(42))) }
 func build23367() qs.Statement {
@@ -8353,10 +8353,10 @@ func build23503() qs.Statement {
 }
 func build23511() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("tidscan")) }
 func build23519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("time_tbl")).ValuesExpr(qs.LiteralString("00:00"))
+	return qs.InsertIntoTable(qs.Table("time_tbl")).Values(qs.Write(qs.LiteralString("00:00")))
 }
 func build23527() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("time_tbl")).ValuesExpr(qs.LiteralString("2003-03-07 15:36:39 America/New_York"))
+	return qs.InsertIntoTable(qs.Table("time_tbl")).Values(qs.Write(qs.LiteralString("2003-03-07 15:36:39 America/New_York")))
 }
 func build23535() qs.Statement {
 	return qs.Select((qs.LiteralString("23:59:59.999999")).Cast(qs.TypeTime))
@@ -8374,34 +8374,34 @@ func build23567() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star()).As("one")).FromExpr(qs.Table("timestamp_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("d1"), "=", (qs.LiteralString("today")).Cast(qs.TypeTimestamp))))
 }
 func build23575() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("now"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("now")))
 }
 func build23583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("Mon Feb 10 17:32:01 1997 PST"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("Mon Feb 10 17:32:01 1997 PST")))
 }
 func build23591() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("1997-02-10 17:32:01-08"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("1997-02-10 17:32:01-08")))
 }
 func build23599() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("2000-03-15 12:14:03 GMT-2"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("2000-03-15 12:14:03 GMT-2")))
 }
 func build23607() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("Feb-10-1997 17:32:01 PST"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("Feb-10-1997 17:32:01 PST")))
 }
 func build23615() qs.Statement {
 	return qs.Select(qs.Call("pg_input_is_valid", qs.LiteralString("now"), qs.LiteralString("timestamp")))
 }
 func build23623() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("Feb 12 17:32:01 1997"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("Feb 12 17:32:01 1997")))
 }
 func build23631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("Feb 16 17:32:01 1097"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("Feb 16 17:32:01 1097")))
 }
 func build23639() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("Mar 01 17:32:01 1996"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("Mar 01 17:32:01 1996")))
 }
 func build23647() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).ValuesExpr(qs.LiteralString("Dec 31 17:32:01 1997"))
+	return qs.InsertIntoTable(qs.Table("timestamp_tbl")).Values(qs.Write(qs.LiteralString("Dec 31 17:32:01 1997")))
 }
 func build23655() qs.Statement {
 	return qs.Select((qs.LiteralString("4714-11-24 00:00:00 BC")).Cast(qs.TypeTimestamp))
@@ -8434,23 +8434,23 @@ func build23727() qs.Statement {
 	return qs.Select(qs.Call("age", (qs.LiteralString("-infinity")).Cast(qs.TypeTimestamp), (qs.LiteralString("infinity")).Cast(qs.TypeTimestamp)))
 }
 func build23735() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("tomorrow zulu"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("tomorrow zulu")))
 }
 func build23743() qs.Statement { return qs.Select(qs.Call("pg_sleep", qs.LiteralNumeric("0.1"))) }
 func build23751() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("infinity"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("infinity")))
 }
 func build23759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("Mon Feb 10 17:32:01.6 1997 PST"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("Mon Feb 10 17:32:01.6 1997 PST")))
 }
 func build23767() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("2001-09-22T18:19:20"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("2001-09-22T18:19:20")))
 }
 func build23775() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("Feb 10 5:32PM 1997"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("Feb 10 5:32PM 1997")))
 }
 func build23783() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("1997.041 17:32:01 UTC"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("1997.041 17:32:01 UTC")))
 }
 func build23791() qs.Statement {
 	return qs.Select((qs.LiteralString("20500110 173201 Europe/Helsinki")).Cast(qs.TypeNamed("timestamptz")))
@@ -8462,16 +8462,16 @@ func build23807() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("pg_input_error_info", qs.LiteralString("2001-01-01 00:00 Nehwon/Lankhmar"), qs.LiteralString("timestamptz"))))
 }
 func build23815() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("Feb 16 17:32:01 1997"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("Feb 16 17:32:01 1997")))
 }
 func build23823() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("Feb 16 17:32:01 1997"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("Feb 16 17:32:01 1997")))
 }
 func build23831() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("Feb 28 17:32:01 1997"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("Feb 28 17:32:01 1997")))
 }
 func build23839() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).ValuesExpr(qs.LiteralString("Jan 01 17:32:01 2001"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tbl")).Values(qs.Write(qs.LiteralString("Jan 01 17:32:01 2001")))
 }
 func build23847() qs.Statement {
 	return qs.Select(qs.Ident("d1")).FromExpr(qs.Table("timestamptz_tbl"))
@@ -8504,7 +8504,7 @@ func build23919() qs.Statement {
 	return qs.Select(qs.Call("to_char", qs.Call("now"), qs.LiteralString("of")).As("of"), qs.Call("to_char", qs.Call("now"), qs.LiteralString("tzh:tzm")).As("tzh:tzm"))
 }
 func build23927() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timestamptz_tst")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("Sat Mar 12 23:58:48 1000 IST"))
+	return qs.InsertIntoTable(qs.Table("timestamptz_tst")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("Sat Mar 12 23:58:48 1000 IST")))
 }
 func build23935() qs.Statement {
 	return qs.Select(qs.Call("make_timestamptz", qs.LiteralInt(1973), qs.LiteralInt(7), qs.LiteralInt(15), qs.LiteralInt(8), qs.LiteralInt(15), qs.LiteralNumeric("55.33"), qs.LiteralString("+2")))
@@ -8564,10 +8564,10 @@ func build24079() qs.Statement {
 	return qs.Select(qs.Call("age", (qs.LiteralString("infinity")).Cast(qs.TypeNamed("timestamptz"))))
 }
 func build24087() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timetz_tbl")).ValuesExpr(qs.LiteralString("00:01 PDT"))
+	return qs.InsertIntoTable(qs.Table("timetz_tbl")).Values(qs.Write(qs.LiteralString("00:01 PDT")))
 }
 func build24095() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("timetz_tbl")).ValuesExpr(qs.LiteralString("23:59 PDT"))
+	return qs.InsertIntoTable(qs.Table("timetz_tbl")).Values(qs.Write(qs.LiteralString("23:59 PDT")))
 }
 func build24103() qs.Statement {
 	return qs.Select(qs.Ident("f1").As("Three")).FromExpr(qs.Table("timetz_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("f1"), "<", qs.LiteralString("05:06:07-07"))))
@@ -8584,36 +8584,36 @@ func build24135() qs.Statement {
 func build24143() qs.Statement { return qs.DeleteFromTable(qs.Table("xacttest")) }
 func build24151() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("writetest")) }
 func build24159() qs.Statement {
-	return qs.UpdateTable(qs.Table("temptest")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(0))).FromExpr(qs.Table("writetest")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("temptest", "a"), "=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("writetest", "a"), "=", qs.Ident("temptest", "a")))).Expr()))
+	return qs.UpdateTable(qs.Table("temptest")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(0)))).FromExpr(qs.Table("writetest")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("temptest", "a"), "=", qs.LiteralInt(1))), qs.AsCondition(qs.Operator(qs.Ident("writetest", "a"), "=", qs.Ident("temptest", "a")))).Expr()))
 }
 func build24167() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trans_foo")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("trans_foo")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build24175() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("savepoints")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("savepoints")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build24183() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("savepoints")).ValuesExpr(qs.LiteralInt(4))
+	return qs.InsertIntoTable(qs.Table("savepoints")).Values(qs.Write(qs.LiteralInt(4)))
 }
 func build24191() qs.Statement {
 	return qs.Select(qs.Operator(qs.Ident("a", "xmin"), "=", qs.Ident("b", "xmin"))).FromExpr(qs.Table("savepoints").As("a"), qs.Table("savepoints").As("b")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a", "a"), "=", qs.LiteralInt(6))), qs.AsCondition(qs.Operator(qs.Ident("b", "a"), "=", qs.LiteralInt(7)))).Expr()))
 }
 func build24199() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("savepoints")).ValuesExpr(qs.LiteralInt(14))
+	return qs.InsertIntoTable(qs.Table("savepoints")).Values(qs.Write(qs.LiteralInt(14)))
 }
 func build24207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("savepoints")).ValuesExpr(qs.LiteralInt(21))
+	return qs.InsertIntoTable(qs.Table("savepoints")).Values(qs.Write(qs.LiteralInt(21)))
 }
 func build24215() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("xacttest")) }
 func build24223() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("xacttest")) }
 func build24231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trans_abc")).ValuesExpr(qs.LiteralInt(10))
+	return qs.InsertIntoTable(qs.Table("trans_abc")).Values(qs.Write(qs.LiteralInt(10)))
 }
 func build24239() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trans_abc")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("trans_abc")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build24247() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trans_abc")).ValuesExpr(qs.LiteralString("error"))
+	return qs.InsertIntoTable(qs.Table("trans_abc")).Values(qs.Write(qs.LiteralString("error")))
 }
 func build24255() qs.Statement {
 	return qs.Select(qs.Operator(qs.LiteralInt(1), "/", qs.LiteralInt(0)))
@@ -8632,7 +8632,7 @@ func build24311() qs.Statement {
 func build24319() qs.Statement { return qs.InsertIntoTable(qs.Table("trigtest")).DefaultValues() }
 func build24327() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("trigtest2")) }
 func build24335() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trigger_test")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("foo"), qs.LiteralString("bar"))
+	return qs.InsertIntoTable(qs.Table("trigger_test")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("foo")), qs.Write(qs.LiteralString("bar")))
 }
 func build24343() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("serializable_update_tab")).From(qs.Select(qs.Ident("a"), qs.Call("repeat", qs.LiteralString("xyzxz"), qs.LiteralInt(100)), qs.LiteralString("new")).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(50))).As("a")))
@@ -8644,98 +8644,98 @@ func build24359() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("main_view")).Where(qs.AsCondition((qs.Ident("a")).InExpr(qs.LiteralInt(20), qs.LiteralInt(21)).Expr()))
 }
 func build24367() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("city_view")).ValuesExpr(qs.LiteralInt(234567), qs.LiteralString("Birmingham"), qs.LiteralInt(1016800), qs.LiteralString("UK"), qs.LiteralString("EU")).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("city_view")).Values(qs.Write(qs.LiteralInt(234567)), qs.Write(qs.LiteralString("Birmingham")), qs.Write(qs.LiteralInt(1016800)), qs.Write(qs.LiteralString("UK")), qs.Write(qs.LiteralString("EU"))).Returning(qs.Star())
 }
 func build24375() qs.Statement {
-	return qs.UpdateTable(qs.Table("city_view").As("v1")).Set(qs.Assign(qs.Ident("country_name"), qs.Ident("v2", "country_name"))).FromExpr(qs.Table("city_view").As("v2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("v2", "city_name"), "=", qs.LiteralString("Birmingham"))), qs.AsCondition(qs.Operator(qs.Ident("v1", "city_name"), "=", qs.LiteralString("London")))).Expr())).Returning(qs.Star())
+	return qs.UpdateTable(qs.Table("city_view").As("v1")).Set(qs.Assign(qs.Ident("country_name"), qs.Write(qs.Ident("v2", "country_name")))).FromExpr(qs.Table("city_view").As("v2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("v2", "city_name"), "=", qs.LiteralString("Birmingham"))), qs.AsCondition(qs.Operator(qs.Ident("v1", "city_name"), "=", qs.LiteralString("London")))).Expr())).Returning(qs.Star())
 }
 func build24383() qs.Statement {
-	return qs.UpdateTable(qs.Table("city_view")).Set(qs.Assign(qs.Ident("city_name"), qs.Ident("new", "city_name")), qs.Assign(qs.Ident("population"), qs.Ident("new", "population")), qs.Assign(qs.Ident("country_name"), qs.Ident("new", "country_name"))).Where(qs.AsCondition(qs.Operator(qs.Ident("city_id"), "=", qs.Ident("old", "city_id")))).Returning(qs.Star("new"))
+	return qs.UpdateTable(qs.Table("city_view")).Set(qs.Assign(qs.Ident("city_name"), qs.Write(qs.Ident("new", "city_name"))), qs.Assign(qs.Ident("population"), qs.Write(qs.Ident("new", "population"))), qs.Assign(qs.Ident("country_name"), qs.Write(qs.Ident("new", "country_name")))).Where(qs.AsCondition(qs.Operator(qs.Ident("city_id"), "=", qs.Ident("old", "city_id")))).Returning(qs.Star("new"))
 }
 func build24391() qs.Statement {
-	return qs.UpdateTable(qs.Table("city_view").As("v")).Set(qs.Assign(qs.Ident("population"), qs.LiteralInt(599657))).FromExpr(qs.Table("city_table").As("ci"), qs.Table("country_table").As("co")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("ci", "city_name"), "=", qs.LiteralString("Washington DC"))), qs.AsCondition(qs.Operator(qs.Ident("co", "country_name"), "=", qs.LiteralString("USA"))), qs.AsCondition(qs.Operator(qs.Ident("v", "city_id"), "=", qs.Ident("ci", "city_id"))), qs.AsCondition(qs.Operator(qs.Ident("v", "country_name"), "=", qs.Ident("co", "country_name")))).Expr())).Returning(qs.Ident("co", "country_id"), qs.Ident("v", "country_name"), qs.Ident("v", "city_id"), qs.Ident("v", "city_name"), qs.Ident("v", "population"))
+	return qs.UpdateTable(qs.Table("city_view").As("v")).Set(qs.Assign(qs.Ident("population"), qs.Write(qs.LiteralInt(599657)))).FromExpr(qs.Table("city_table").As("ci"), qs.Table("country_table").As("co")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("ci", "city_name"), "=", qs.LiteralString("Washington DC"))), qs.AsCondition(qs.Operator(qs.Ident("co", "country_name"), "=", qs.LiteralString("USA"))), qs.AsCondition(qs.Operator(qs.Ident("v", "city_id"), "=", qs.Ident("ci", "city_id"))), qs.AsCondition(qs.Operator(qs.Ident("v", "country_name"), "=", qs.Ident("co", "country_name")))).Expr())).Returning(qs.Ident("co", "country_id"), qs.Ident("v", "country_name"), qs.Ident("v", "city_id"), qs.Ident("v", "city_name"), qs.Ident("v", "population"))
 }
 func build24399() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("child")).ValuesExpr(qs.LiteralInt(10), qs.LiteralInt(1), qs.LiteralString("b"))
+	return qs.InsertIntoTable(qs.Table("child")).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("b")))
 }
 func build24407() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("parent").As("p")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "id")).On(qs.AsCondition(qs.Operator(qs.Ident("p", "aid"), "=", qs.Ident("v", "id")))).When(qs.Matched().ThenDelete())
 }
 func build24415() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("self_ref_trigger")).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(1), qs.LiteralString("root child B"))
+	return qs.InsertIntoTable(qs.Table("self_ref_trigger")).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("root child B")))
 }
 func build24423() qs.Statement {
-	return qs.UpdateTable(qs.Table("stmt_trig_on_empty_upd1")).Set(qs.Assign(qs.Ident("a"), qs.Ident("a"))).Where(qs.AsCondition(qs.LiteralBool(false))).Returning(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1)).As("aa"))
+	return qs.UpdateTable(qs.Table("stmt_trig_on_empty_upd1")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Ident("a")))).Where(qs.AsCondition(qs.LiteralBool(false))).Returning(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1)).As("aa"))
 }
 func build24431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("upsert")).ValuesExpr(qs.LiteralInt(6), qs.LiteralString("white")).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("color"), qs.Operator(qs.LiteralString("updated "), "||", qs.Ident("upsert", "color")))))
+	return qs.InsertIntoTable(qs.Table("upsert")).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("white"))).OnConflict(qs.ConflictColumns("key").DoUpdate(qs.Assign(qs.Ident("color"), qs.Write(qs.Operator(qs.LiteralString("updated "), "||", qs.Ident("upsert", "color"))))))
 }
 func build24439() qs.Statement {
 	return qs.Select(((qs.Ident("tgrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text")), qs.Ident("tgname"), (qs.Ident("tgfoid")).Cast(qs.TypeNamed("regproc")), qs.Ident("tgenabled"), qs.Ident("tgisinternal")).FromExpr(qs.Table("pg_trigger")).Where(qs.AsCondition(qs.Operator(qs.Ident("tgname"), "~", qs.LiteralString("^trg1")))).OrderBy((qs.LiteralInt(1)).Asc())
 }
 func build24447() qs.Statement {
-	return qs.UpdateTable(qs.Table("parted_trig")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(2))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("parted_trig")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(2)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build24455() qs.Statement {
-	return qs.UpdateTable(qs.Table("parted")).Set(qs.Assign(qs.Ident("c"), qs.Operator(qs.Ident("c"), "||", qs.LiteralString("v3"))))
+	return qs.UpdateTable(qs.Table("parted")).Set(qs.Assign(qs.Ident("c"), qs.Write(qs.Operator(qs.Ident("c"), "||", qs.LiteralString("v3")))))
 }
 func build24463() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Star()).FromExpr(qs.Table("parted"))
 }
 func build24471() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parted")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralString("two fail"))
+	return qs.InsertIntoTable(qs.Table("parted")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("two fail")))
 }
 func build24479() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parted1_constr")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("aardwolf")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("aasvogel"))
+	return qs.InsertIntoTable(qs.Table("parted1_constr")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("aardwolf"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("aasvogel")))
 }
 func build24487() qs.Statement {
 	return qs.Select((qs.Ident("tgrelid")).Cast(qs.TypeNamed("regclass")), qs.Ident("tgname"), qs.Ident("tgenabled")).FromExpr(qs.Table("pg_trigger")).Where(qs.AsCondition((qs.Ident("tgrelid")).InExpr((qs.LiteralString("parent")).Cast(qs.TypeNamed("regclass")), (qs.LiteralString("child1")).Cast(qs.TypeNamed("regclass"))).Expr())).OrderBy((((qs.Ident("tgrelid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text"))).Asc())
 }
 func build24495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trgfire")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("trgfire")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build24503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trgfire")).ValuesExpr(qs.LiteralInt(11))
+	return qs.InsertIntoTable(qs.Table("trgfire")).Values(qs.Write(qs.LiteralInt(11)))
 }
 func build24511() qs.Statement {
-	return qs.UpdateTable(qs.Table("parent")).Set(qs.Assign(qs.Ident("b"), qs.Operator(qs.Ident("b"), "+", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("parent")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Ident("b"), "+", qs.LiteralInt(1)))))
 }
 func build24519() qs.Statement { return qs.DeleteFromTable(qs.Table("parent")) }
 func build24527() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("child3")).ValuesExpr(qs.LiteralString("CCC"), qs.LiteralInt(42), qs.LiteralString("foo"))
+	return qs.InsertIntoTable(qs.Table("child3")).Values(qs.Write(qs.LiteralString("CCC")), qs.Write(qs.LiteralInt(42)), qs.Write(qs.LiteralString("foo")))
 }
 func build24535() qs.Statement { return qs.DeleteFromTable(qs.Table("child3")) }
 func build24543() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("my_table")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("AAA")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("BBB")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("CCC")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("DDD")).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Operator(qs.Operator(qs.Ident("my_table", "b"), "||", qs.LiteralString(":")), "||", qs.Ident("excluded", "b")))))
+	return qs.InsertIntoTable(qs.Table("my_table")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("AAA"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("BBB"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("CCC"))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("DDD"))).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Operator(qs.Ident("my_table", "b"), "||", qs.LiteralString(":")), "||", qs.Ident("excluded", "b"))))))
 }
 func build24551() qs.Statement {
-	return qs.UpdateTable(qs.Table("refd_table")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(11))).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralString("one"))))
+	return qs.UpdateTable(qs.Table("refd_table")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(11)))).Where(qs.AsCondition(qs.Operator(qs.Ident("b"), "=", qs.LiteralString("one"))))
 }
 func build24559() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("self_ref")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build24567() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("parted_trig")).Columns("a").ValuesExpr(qs.LiteralInt(50))
+	return qs.InsertIntoTable(qs.Table("parted_trig")).Columns("a").Values(qs.Write(qs.LiteralInt(50)))
 }
 func build24575() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("convslot_test_parent")).Columns("col1").ValuesExpr(qs.LiteralString("1"))
+	return qs.InsertIntoTable(qs.Table("convslot_test_parent")).Columns("col1").Values(qs.Write(qs.LiteralString("1")))
 }
 func build24583() qs.Statement {
-	return qs.UpdateTable(qs.Table("convslot_test_parent")).Set(qs.Assign(qs.Ident("val"), qs.LiteralInt(3)))
+	return qs.UpdateTable(qs.Table("convslot_test_parent")).Set(qs.Assign(qs.Ident("val"), qs.Write(qs.LiteralInt(3))))
 }
 func build24591() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("truncate_a")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("truncate_a")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build24599() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trunc_d")).ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("trunc_d")).Values(qs.Write(qs.LiteralInt(1)))
 }
 func build24607() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trunc_e")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("trunc_e")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(1)))
 }
 func build24615() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("trunc_f")) }
 func build24623() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("trunc_fa")) }
 func build24631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("trunc_trigger_test")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("foo"), qs.LiteralString("bar")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("baz"), qs.LiteralString("quux"))
+	return qs.InsertIntoTable(qs.Table("trunc_trigger_test")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("foo")), qs.Write(qs.LiteralString("bar"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("baz")), qs.Write(qs.LiteralString("quux")))
 }
 func build24639() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star()).As("Row count in test table")).FromExpr(qs.Table("trunc_trigger_test"))
@@ -8906,7 +8906,7 @@ func build25095() qs.Statement {
 	return qs.Explain(qs.Select(qs.Star()).FromExpr(qs.Table("test_tsquery"), qs.TableFunc(qs.Call("to_tsquery", qs.LiteralString("english"), qs.LiteralString("new"))).As("q")).Where(qs.AsCondition(qs.Operator(qs.Ident("txtsample"), "@@", qs.Ident("q"))))).Costs(false)
 }
 func build25103() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("phrase_index_test")).ValuesExpr(qs.LiteralString("A fat cat has just eaten a rat."))
+	return qs.InsertIntoTable(qs.Table("phrase_index_test")).Values(qs.Write(qs.LiteralString("A fat cat has just eaten a rat.")))
 }
 func build25111() qs.Statement {
 	return qs.Select(qs.Call("websearch_to_tsquery", qs.LiteralString("simple"), qs.LiteralString("fat-rat")))
@@ -8936,7 +8936,7 @@ func build25175() qs.Statement {
 	return qs.Select(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(3)))
 }
 func build25183() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("few")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("a"), qs.LiteralString("foo")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("a"), qs.LiteralString("bar")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("b"), qs.LiteralString("bar"))
+	return qs.InsertIntoTable(qs.Table("few")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("a")), qs.Write(qs.LiteralString("foo"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("a")), qs.Write(qs.LiteralString("bar"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("b")), qs.Write(qs.LiteralString("bar")))
 }
 func build25191() qs.Statement {
 	return qs.Select(qs.Ident("few", "id")).FromExpr(qs.Table("few")).OrderBy((qs.Ident("id")).Asc(), (qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(3))).Desc())
@@ -9047,7 +9047,7 @@ func build25471() qs.Statement {
 	return qs.Select(qs.Call("setweight", (qs.LiteralString("a:1,3A asd:1C w:5,6,12B,13A zxc:81,222A,567")).Cast(qs.TypeNamed("tsvector")), qs.LiteralString("c"), qs.LiteralString("{a}")))
 }
 func build25479() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("abbrev_abort_uuids")).Columns("id").ValuesExpr(qs.LiteralInt(0))
+	return qs.InsertIntoTable(qs.Table("abbrev_abort_uuids")).Columns("id").Values(qs.Write(qs.LiteralInt(0)))
 }
 func build25487() qs.Statement {
 	return qs.Select(qs.Ident("abort_increasing"), qs.Ident("noabort_increasing")).FromExpr(qs.Table("abbrev_abort_uuids")).OrderBy((qs.Ident("abort_increasing")).Asc()).LimitExpr(qs.LiteralInt(5))
@@ -9147,7 +9147,7 @@ func build25751() qs.Statement {
 	return (qs.Union(qs.SelectNoColumns().FromExpr(qs.Table("cte")), qs.SelectNoColumns().FromExpr(qs.Table("cte")))).With(qs.CTE("cte", qs.Select(qs.Ident("s")).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(5))).As("s"))).NotMaterialized())
 }
 func build25759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t2c")).ValuesExpr(qs.LiteralString("vw")).ValuesExpr(qs.LiteralString("cd")).ValuesExpr(qs.LiteralString("mn")).ValuesExpr(qs.LiteralString("ef"))
+	return qs.InsertIntoTable(qs.Table("t2c")).Values(qs.Write(qs.LiteralString("vw"))).Values(qs.Write(qs.LiteralString("cd"))).Values(qs.Write(qs.LiteralString("mn"))).Values(qs.Write(qs.LiteralString("ef")))
 }
 func build25767() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Subquery(qs.Union(qs.Select(qs.LiteralInt(1).As("t"), qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(10)).As("x")), qs.Select(qs.LiteralInt(2).As("t"), qs.LiteralInt(4).As("x"))), "ss")).Where(qs.AsCondition(qs.Operator(qs.Ident("x"), "<", qs.LiteralInt(4)))).OrderBy((qs.Ident("x")).Asc())
@@ -9164,38 +9164,38 @@ func build25791() qs.Statement {
 func build25799() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("ro_view1")) }
 func build25807() qs.Statement { return qs.DeleteFromTable(qs.Table("ro_view2")) }
 func build25815() qs.Statement {
-	return qs.UpdateTable(qs.Table("ro_view10")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("ro_view10")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(1)))))
 }
 func build25823() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("ro_view13").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(3), qs.LiteralString("Row 3")), "v", "a", "b")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenDoNothing(), qs.NotMatchedByTarget().ThenDoNothing())
 }
 func build25831() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("rw_view14").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(2), qs.LiteralString("Merged row 2")).RowExpr(qs.LiteralInt(3), qs.LiteralString("Merged row 3")), "v", "a", "b")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Ident("v", "b"))), qs.NotMatchedByTarget().ThenInsertValues([]string{"a", "b"}, qs.Ident("v", "a"), qs.Ident("v", "b")))
+	return qs.MergeIntoTable(qs.Table("rw_view14").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(2), qs.LiteralString("Merged row 2")).RowExpr(qs.LiteralInt(3), qs.LiteralString("Merged row 3")), "v", "a", "b")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("v", "b")))), qs.NotMatchedByTarget().ThenInsertValues([]string{"a", "b"}, qs.Write(qs.Ident("v", "a")), qs.Write(qs.Ident("v", "b"))))
 }
 func build25839() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view15")).Columns("a").ValuesExpr(qs.LiteralInt(3)).OnConflict((qs.ConflictColumns("a")).DoNothing())
+	return qs.InsertIntoTable(qs.Table("rw_view15")).Columns("a").Values(qs.Write(qs.LiteralInt(3))).OnConflict((qs.ConflictColumns("a")).DoNothing())
 }
 func build25847() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view15")).Set(qs.Assign(qs.Ident("upper"), qs.LiteralString("ROW 3"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
+	return qs.UpdateTable(qs.Table("rw_view15")).Set(qs.Assign(qs.Ident("upper"), qs.Write(qs.LiteralString("ROW 3")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
 }
 func build25855() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view16")).Set(qs.Assign(qs.Ident("aa"), qs.LiteralInt(-3))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
+	return qs.UpdateTable(qs.Table("rw_view16")).Set(qs.Assign(qs.Ident("aa"), qs.Write(qs.LiteralInt(-3)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
 }
 func build25863() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tbl")).ValuesExpr(qs.Ident("new", "a"), qs.Ident("new", "b"))
+	return qs.InsertIntoTable(qs.Table("base_tbl")).Values(qs.Write(qs.Ident("new", "a")), qs.Write(qs.Ident("new", "b")))
 }
 func build25871() qs.Statement {
 	return qs.Select(qs.Star(), qs.LiteralString("Const").As("c"), qs.Scalar(qs.Select(qs.Concat(qs.LiteralString("b: "), qs.Ident("b")))).As("d")).FromExpr(qs.Table("base_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), ">", qs.LiteralInt(0))))
 }
 func build25879() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("base_tbl")) }
 func build25887() qs.Statement {
-	return qs.Explain(qs.MergeIntoTable(qs.Table("rw_view1").As("t")).Using(qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(5)))), "s", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.LiteralString("Updated"))))).Costs(false)
+	return qs.Explain(qs.MergeIntoTable(qs.Table("rw_view1").As("t")).Using(qs.Subquery(qs.Select(qs.Star()).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(5)))), "s", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("Updated")))))).Costs(false)
 }
 func build25895() qs.Statement {
 	return qs.Select(qs.Ident("b").As("bb"), qs.Ident("a").As("aa"), qs.LiteralString("Const1").As("c")).FromExpr(qs.Table("base_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), ">", qs.LiteralInt(0))))
 }
 func build25903() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("bbb"), qs.LiteralString("Row 4"))).Where(qs.AsCondition(qs.Operator(qs.Ident("aaa"), "=", qs.LiteralInt(4))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("bbb"), qs.Write(qs.LiteralString("Row 4")))).Where(qs.AsCondition(qs.Operator(qs.Ident("aaa"), "=", qs.LiteralInt(4))))
 }
 func build25911() qs.Statement {
 	return qs.Explain(qs.DeleteFromTable(qs.Table("rw_view2")).Where(qs.AsCondition(qs.Operator(qs.Ident("aaa"), "=", qs.LiteralInt(4))))).Costs(false)
@@ -9217,103 +9217,103 @@ func build25951() qs.Statement {
 }
 func build25959() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rw_view2")) }
 func build25967() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.Select(qs.Ident("x"), qs.Operator(qs.LiteralString("R"), "||", qs.Ident("x"))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(0), qs.LiteralInt(3))).As("x")), "s", "a", "b")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "a")))).When(qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "<=", qs.LiteralInt(1)))).ThenDelete(), qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Ident("s", "b"))), qs.NotMatchedByTarget().And(qs.AsCondition(qs.Operator(qs.Ident("s", "a"), ">", qs.LiteralInt(0)))).ThenInsertValues([]string{}, qs.Ident("s", "a"), qs.Ident("s", "b")))
+	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.Select(qs.Ident("x"), qs.Operator(qs.LiteralString("R"), "||", qs.Ident("x"))).FromExpr(qs.TableFunc(qs.Call("generate_series", qs.LiteralInt(0), qs.LiteralInt(3))).As("x")), "s", "a", "b")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("s", "a")))).When(qs.Matched().And(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "<=", qs.LiteralInt(1)))).ThenDelete(), qs.Matched().ThenUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("s", "b")))), qs.NotMatchedByTarget().And(qs.AsCondition(qs.Operator(qs.Ident("s", "a"), ">", qs.LiteralInt(0)))).ThenInsertValues([]string{}, qs.Write(qs.Ident("s", "a")), qs.Write(qs.Ident("s", "b"))))
 }
 func build25975() qs.Statement {
 	return qs.Select(qs.Ident("b").As("bb"), qs.Ident("a").As("aa")).FromExpr(qs.Table("base_tbl"))
 }
 func build25983() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("base_tbl")) }
 func build25991() qs.Statement {
-	return qs.UpdateTable(qs.Table("base_tbl")).Set(qs.Assign(qs.Ident("a"), qs.Ident("a")), qs.Assign(qs.Ident("c"), qs.Ident("c")))
+	return qs.UpdateTable(qs.Table("base_tbl")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Ident("a"))), qs.Assign(qs.Ident("c"), qs.Write(qs.Ident("c"))))
 }
 func build25999() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("aa"), qs.Ident("aa")), qs.Assign(qs.Ident("cc"), qs.Ident("cc"))))
+	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("aa"), qs.Write(qs.Ident("aa"))), qs.Assign(qs.Ident("cc"), qs.Write(qs.Ident("cc")))))
 }
 func build26007() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("base_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build26015() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view2")).ValuesExpr(qs.LiteralString("Row 6"), qs.LiteralNumeric("6.0"), qs.LiteralInt(6))
+	return qs.InsertIntoTable(qs.Table("rw_view2")).Values(qs.Write(qs.LiteralString("Row 6")), qs.Write(qs.LiteralNumeric("6.0")), qs.Write(qs.LiteralInt(6)))
 }
 func build26023() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("base_tbl")) }
 func build26031() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.LiteralString("bar"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("bar")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build26039() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.LiteralString("bar"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("bar")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build26047() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("b"), qs.LiteralString("foo"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("foo")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build26055() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.LiteralString("bar"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("bar")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build26063() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.LiteralString("bar"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("bar")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build26071() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view1")).ValuesExpr(qs.LiteralString("Row 3"), qs.LiteralNumeric("3.0"), qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("rw_view1")).Values(qs.Write(qs.LiteralString("Row 3")), qs.Write(qs.LiteralNumeric("3.0")), qs.Write(qs.LiteralInt(3)))
 }
 func build26079() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("rw_view1")) }
 func build26087() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("rw_view1").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("bb"), qs.Ident("bb"))))
+	return qs.MergeIntoTable(qs.Table("rw_view1").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("bb"), qs.Write(qs.Ident("bb")))))
 }
 func build26095() qs.Statement {
 	return qs.MergeIntoTable(qs.Table("rw_view1").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenDelete())
 }
 func build26103() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("aa"), qs.Ident("aa")))
+	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("aa"), qs.Write(qs.Ident("aa"))))
 }
 func build26111() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("cc"), qs.Ident("cc")))
+	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("cc"), qs.Write(qs.Ident("cc"))))
 }
 func build26119() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aaa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("aaa"), qs.Ident("aaa"))))
+	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aaa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("aaa"), qs.Write(qs.Ident("aaa")))))
 }
 func build26127() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("aaa"), qs.Ident("aaa")))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("aaa"), qs.Write(qs.Ident("aaa"))))
 }
 func build26135() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("bbb"), qs.Ident("bbb")))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("bbb"), qs.Write(qs.Ident("bbb"))))
 }
 func build26143() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("ccc"), qs.Ident("ccc")))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("ccc"), qs.Write(qs.Ident("ccc"))))
 }
 func build26151() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("aaa"), qs.Ident("aaa")))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("aaa"), qs.Write(qs.Ident("aaa"))))
 }
 func build26159() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("bbb"), qs.Ident("bbb")))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("bbb"), qs.Write(qs.Ident("bbb"))))
 }
 func build26167() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("ccc"), qs.Ident("ccc")))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("ccc"), qs.Write(qs.Ident("ccc"))))
 }
 func build26175() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aaa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("aaa"), qs.Ident("aaa"))))
+	return qs.MergeIntoTable(qs.Table("rw_view2").As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(1)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "aaa"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("aaa"), qs.Write(qs.Ident("aaa")))))
 }
 func build26183() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view1")).Columns("aa").ValuesExpr(qs.LiteralInt(5))
+	return qs.InsertIntoTable(qs.Table("rw_view1")).Columns("aa").Values(qs.Write(qs.LiteralInt(5)))
 }
 func build26191() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tbl")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(5)).ValuesExpr(qs.LiteralInt(3), qs.LiteralInt(-3))
+	return qs.InsertIntoTable(qs.Table("base_tbl")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralInt(-3)))
 }
 func build26199() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tbl")).ValuesExpr(qs.LiteralInt(1), qs.Array(qs.LiteralInt(2))).ValuesExpr(qs.LiteralInt(3), qs.Array(qs.LiteralInt(4)))
+	return qs.InsertIntoTable(qs.Table("base_tbl")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.Array(qs.LiteralInt(2)))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.Array(qs.LiteralInt(4))))
 }
 func build26207() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view1")).Columns("s", "c", "a").ValuesExpr(qs.Default(), qs.Default(), qs.LiteralNumeric("1.1"))
+	return qs.InsertIntoTable(qs.Table("rw_view1")).Columns("s", "c", "a").Values(qs.Default(), qs.Default(), qs.Write(qs.LiteralNumeric("1.1")))
 }
 func build26215() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view2")).Columns("base_a").ValuesExpr(qs.LiteralNumeric("1.1")).Returning(qs.Ident("t"))
+	return qs.InsertIntoTable(qs.Table("rw_view2")).Columns("base_a").Values(qs.Write(qs.LiteralNumeric("1.1"))).Returning(qs.Ident("t"))
 }
 func build26223() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view3")).Set(qs.Assign(qs.Ident("s"), qs.Ident("s")))
+	return qs.UpdateTable(qs.Table("rw_view3")).Set(qs.Assign(qs.Ident("s"), qs.Write(qs.Ident("s"))))
 }
 func build26231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tbl")).Columns("id").ValuesExpr(qs.LiteralInt(1))
+	return qs.InsertIntoTable(qs.Table("base_tbl")).Columns("id").Values(qs.Write(qs.LiteralInt(1)))
 }
 func build26239() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("id"), qs.LiteralInt(3000))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(3))))
+	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralInt(3000)))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralInt(3))))
 }
 func build26247() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("rw_view2")).OrderBy((qs.Ident("a")).Asc())
@@ -9322,67 +9322,67 @@ func build26255() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("rw_view1").Only()).Where(qs.AsCondition((qs.Ident("a")).InExpr(qs.LiteralInt(-6), qs.LiteralInt(6)).Expr()))
 }
 func build26263() qs.Statement {
-	return qs.MergeIntoTable(qs.Table("rw_view2").Only().As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(-30)).RowExpr(qs.LiteralInt(4)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("t", "a"), "+", qs.LiteralInt(1)))))
+	return qs.MergeIntoTable(qs.Table("rw_view2").Only().As("t")).Using(qs.Subquery(qs.ValuesExpr(qs.LiteralInt(-30)).RowExpr(qs.LiteralInt(4)), "v", "a")).On(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.Ident("v", "a")))).When(qs.Matched().ThenUpdate(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("t", "a"), "+", qs.LiteralInt(1))))))
 }
 func build26271() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("base_tbl_child")).OrderBy((qs.Ident("a")).Asc())
 }
 func build26279() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("b"), qs.LiteralInt(-5))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
+	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralInt(-5)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(3))))
 }
 func build26287() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("base_tbl")).OrderBy((qs.Ident("a")).Asc(), (qs.Ident("b")).Asc())
 }
 func build26295() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "-", qs.LiteralInt(10))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "-", qs.LiteralInt(10)))))
 }
 func build26303() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view2")).ValuesExpr(qs.LiteralInt(30))
+	return qs.InsertIntoTable(qs.Table("rw_view2")).Values(qs.Write(qs.LiteralInt(30)))
 }
 func build26311() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view1")).ValuesExpr(qs.LiteralInt(-1))
+	return qs.InsertIntoTable(qs.Table("rw_view1")).Values(qs.Write(qs.LiteralInt(-1)))
 }
 func build26319() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view1")).ValuesExpr(qs.LiteralInt(10), qs.Array(qs.LiteralInt(4), qs.LiteralInt(5)))
+	return qs.InsertIntoTable(qs.Table("rw_view1")).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.Array(qs.LiteralInt(4), qs.LiteralInt(5))))
 }
 func build26327() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(5))))
+	return qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "+", qs.LiteralInt(5)))))
 }
 func build26335() qs.Statement {
 	return qs.Select(qs.Ident("a")).FromExpr(qs.Table("base_tbl")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "<", qs.Ident("b"))))
 }
 func build26343() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("a"), qs.Operator(qs.Ident("a"), "-", qs.LiteralInt(10))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Operator(qs.Ident("a"), "-", qs.LiteralInt(10)))))
 }
 func build26351() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view2")).ValuesExpr(qs.LiteralInt(-10))
+	return qs.InsertIntoTable(qs.Table("rw_view2")).Values(qs.Write(qs.LiteralInt(-10)))
 }
 func build26359() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tbl")).ValuesExpr(qs.Ident("new", "a"))
+	return qs.InsertIntoTable(qs.Table("base_tbl")).Values(qs.Write(qs.Ident("new", "a")))
 }
 func build26367() qs.Statement {
 	return qs.Select(qs.Ident("table_name"), qs.Ident("is_insertable_into")).FromExpr(qs.Table("information_schema.tables")).Where(qs.AsCondition(qs.Operator(qs.Ident("table_name"), "=", qs.LiteralString("rw_view1"))))
 }
 func build26375() qs.Statement {
-	return qs.Explain(qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("person"), qs.Ident("person"))).Where(qs.AsCondition(qs.Call("snoop", qs.Ident("person"))))).Costs(false)
+	return qs.Explain(qs.UpdateTable(qs.Table("rw_view1")).Set(qs.Assign(qs.Ident("person"), qs.Write(qs.Ident("person")))).Where(qs.AsCondition(qs.Call("snoop", qs.Ident("person"))))).Costs(false)
 }
 func build26383() qs.Statement {
-	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("person"), qs.Ident("person"))).Where(qs.AsCondition(qs.Call("snoop", qs.Ident("person"))))
+	return qs.UpdateTable(qs.Table("rw_view2")).Set(qs.Assign(qs.Ident("person"), qs.Write(qs.Ident("person")))).Where(qs.AsCondition(qs.Call("snoop", qs.Ident("person"))))
 }
 func build26391() qs.Statement {
-	return qs.UpdateTable(qs.Table("base_tbl")).Set(qs.Assign(qs.Ident("data"), qs.Ident("new", "data")), qs.Assign(qs.Ident("deleted"), qs.LiteralBool(false))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.Ident("new", "id"))))
+	return qs.UpdateTable(qs.Table("base_tbl")).Set(qs.Assign(qs.Ident("data"), qs.Write(qs.Ident("new", "data"))), qs.Assign(qs.Ident("deleted"), qs.Write(qs.LiteralBool(false)))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.Ident("new", "id"))))
 }
 func build26399() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("base_tbl")) }
 func build26407() qs.Statement {
-	return qs.Explain(qs.UpdateTable(qs.Table("v1")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(100))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Call("snoop", qs.Ident("a"))), qs.AsCondition(qs.Call("leakproof", qs.Ident("a"))), qs.AsCondition(qs.Operator(qs.Ident("a"), "<", qs.LiteralInt(7))), qs.AsCondition(qs.Operator(qs.Ident("a"), "<>", qs.LiteralInt(6)))).Expr()))).Verbose(true).Costs(false)
+	return qs.Explain(qs.UpdateTable(qs.Table("v1")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(100)))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Call("snoop", qs.Ident("a"))), qs.AsCondition(qs.Call("leakproof", qs.Ident("a"))), qs.AsCondition(qs.Operator(qs.Ident("a"), "<", qs.LiteralInt(7))), qs.AsCondition(qs.Operator(qs.Ident("a"), "<>", qs.LiteralInt(6)))).Expr()))).Verbose(true).Costs(false)
 }
 func build26415() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("t1")) }
 func build26423() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("tx1")) }
 func build26431() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("t2")).ValuesExpr(qs.LiteralInt(10)).ValuesExpr(qs.LiteralInt(20))
+	return qs.InsertIntoTable(qs.Table("t2")).Values(qs.Write(qs.LiteralInt(10))).Values(qs.Write(qs.LiteralInt(20)))
 }
 func build26439() qs.Statement {
-	return qs.UpdateTable(qs.Table("v2")).Set(qs.Assign(qs.Ident("c"), qs.LiteralInt(30))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
+	return qs.UpdateTable(qs.Table("v2")).Set(qs.Assign(qs.Ident("c"), qs.Write(qs.LiteralInt(30)))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1))))
 }
 func build26447() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("t1")).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), ">", qs.LiteralInt(0))))
@@ -9394,82 +9394,82 @@ func build26463() qs.Statement {
 	return qs.Select((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass")), qs.Star()).FromExpr(qs.Table("uv_pt")).OrderBy((qs.Ident("a")).Asc(), (qs.Ident("b")).Asc())
 }
 func build26471() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("uv_iocu_view")).Columns("a", "b").ValuesExpr(qs.LiteralString("xyxyxy"), qs.LiteralInt(1)).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Ident("uv_iocu_view", "b"))))
+	return qs.InsertIntoTable(qs.Table("uv_iocu_view")).Columns("a", "b").Values(qs.Write(qs.LiteralString("xyxyxy")), qs.Write(qs.LiteralInt(1))).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.Assign(qs.Ident("b"), qs.Write(qs.Ident("uv_iocu_view", "b")))))
 }
 func build26479() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("uv_iocu_tab")) }
 func build26487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("uv_iocu_view")).Columns("aa").ValuesExpr(qs.LiteralInt(1)).OnConflict(qs.ConflictColumns("aa").DoUpdate(qs.Assign(qs.Ident("bb"), qs.Operator(qs.LiteralString("Rejected: "), "||", qs.Star("excluded")))))
+	return qs.InsertIntoTable(qs.Table("uv_iocu_view")).Columns("aa").Values(qs.Write(qs.LiteralInt(1))).OnConflict(qs.ConflictColumns("aa").DoUpdate(qs.Assign(qs.Ident("bb"), qs.Write(qs.Operator(qs.LiteralString("Rejected: "), "||", qs.Star("excluded"))))))
 }
 func build26495() qs.Statement {
 	return qs.Select(qs.Ident("b").As("bb"), qs.Ident("c").As("cc"), qs.Ident("a").As("aa")).FromExpr(qs.Table("base_tbl"))
 }
 func build26503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("rw_view2")).Columns("aa", "bb").ValuesExpr(qs.LiteralInt(1), qs.LiteralString("xxx")).OnConflict(qs.ConflictColumns("aa").DoUpdate(qs.Assign(qs.Ident("bb"), qs.Ident("excluded", "bb"))))
+	return qs.InsertIntoTable(qs.Table("rw_view2")).Columns("aa", "bb").Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("xxx"))).OnConflict(qs.ConflictColumns("aa").DoUpdate(qs.Assign(qs.Ident("bb"), qs.Write(qs.Ident("excluded", "bb")))))
 }
 func build26511() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("base_tbl")) }
 func build26519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tab_def_view")).ValuesExpr(qs.LiteralInt(14), qs.Default(), qs.Default(), qs.Default(), qs.Default())
+	return qs.InsertIntoTable(qs.Table("base_tab_def_view")).Values(qs.Write(qs.LiteralInt(14)), qs.Default(), qs.Default(), qs.Default(), qs.Default())
 }
 func build26527() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tab_def_view")).ValuesExpr(qs.LiteralInt(11))
+	return qs.InsertIntoTable(qs.Table("base_tab_def_view")).Values(qs.Write(qs.LiteralInt(11)))
 }
 func build26535() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tab_def")).ValuesExpr(qs.LiteralInt(2)).ValuesExpr(qs.LiteralInt(3))
+	return qs.InsertIntoTable(qs.Table("base_tab_def")).Values(qs.Write(qs.LiteralInt(2))).Values(qs.Write(qs.LiteralInt(3)))
 }
 func build26543() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("base_tab_def")).OrderBy((qs.Ident("a")).Asc())
 }
 func build26551() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("base_tab_def_view")).ValuesExpr(qs.LiteralInt(14), qs.Default(), qs.Default(), qs.Default(), qs.Default())
+	return qs.InsertIntoTable(qs.Table("base_tab_def_view")).Values(qs.Write(qs.LiteralInt(14)), qs.Default(), qs.Default(), qs.Default(), qs.Default())
 }
 func build26559() qs.Statement {
 	return qs.Select(qs.Ident("c"), qs.Ident("a"), qs.Ident("b")).FromExpr(qs.Table("base_tab"))
 }
 func build26567() qs.Statement {
-	return qs.UpdateTable(qs.Table("update_test").As("t")).Set(qs.Assign(qs.Ident("b"), qs.LiteralInt(10))).Where(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.LiteralInt(10))))
+	return qs.UpdateTable(qs.Table("update_test").As("t")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralInt(10)))).Where(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.LiteralInt(10))))
 }
 func build26575() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("update_test")).From(qs.Select(qs.Ident("a"), qs.Operator(qs.Ident("b"), "+", qs.LiteralInt(1)), qs.Ident("c")).FromExpr(qs.Table("update_test")))
 }
 func build26583() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("update_test")) }
 func build26591() qs.Statement {
-	return qs.UpdateTable(qs.Table("update_test").As("t")).Set(qs.Assign(qs.Ident("b"), qs.Operator(qs.Ident("update_test", "b"), "+", qs.LiteralInt(10)))).Where(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.LiteralInt(10))))
+	return qs.UpdateTable(qs.Table("update_test").As("t")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Ident("update_test", "b"), "+", qs.LiteralInt(10))))).Where(qs.AsCondition(qs.Operator(qs.Ident("t", "a"), "=", qs.LiteralInt(10))))
 }
 func build26599() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("upsert_test")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("Baz")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("Zaz")).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.AssignRowFrom([]qs.Expr{qs.Ident("b"), qs.Ident("a")}, qs.Select(qs.Operator(qs.Ident("b"), "||", qs.LiteralString(", Correlated")), qs.Ident("a")).FromExpr(qs.Table("upsert_test").As("i")).Where(qs.AsCondition(qs.Operator(qs.Ident("i", "a"), "=", qs.Ident("upsert_test", "a"))))))).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("upsert_test")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("Baz"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("Zaz"))).OnConflict(qs.ConflictColumns("a").DoUpdate(qs.AssignRowFrom([]qs.Expr{qs.Ident("b"), qs.Ident("a")}, qs.Select(qs.Operator(qs.Ident("b"), "||", qs.LiteralString(", Correlated")), qs.Ident("a")).FromExpr(qs.Table("upsert_test").As("i")).Where(qs.AsCondition(qs.Operator(qs.Ident("i", "a"), "=", qs.Ident("upsert_test", "a"))))))).Returning(qs.Star())
 }
 func build26607() qs.Statement {
-	return qs.Explain(qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("c"), qs.Operator(qs.Ident("c"), "-", qs.LiteralInt(50)))).Where(qs.AsCondition(qs.Operator(qs.Ident("c"), ">", qs.LiteralInt(97))))).Costs(false)
+	return qs.Explain(qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("c"), qs.Write(qs.Operator(qs.Ident("c"), "-", qs.LiteralInt(50))))).Where(qs.AsCondition(qs.Operator(qs.Ident("c"), ">", qs.LiteralInt(97))))).Costs(false)
 }
 func build26615() qs.Statement {
-	return qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("b"), qs.Operator(qs.Ident("b"), "-", qs.LiteralInt(6)))).Where(qs.AsCondition(qs.Operator(qs.Ident("c"), ">", qs.LiteralInt(116)))).Returning(qs.Ident("a"), qs.Operator(qs.Ident("b"), "+", qs.Ident("c")))
+	return qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.Operator(qs.Ident("b"), "-", qs.LiteralInt(6))))).Where(qs.AsCondition(qs.Operator(qs.Ident("c"), ">", qs.LiteralInt(116)))).Returning(qs.Ident("a"), qs.Operator(qs.Ident("b"), "+", qs.Ident("c")))
 }
 func build26623() qs.Statement {
-	return qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("c"), (qs.Case().When(qs.AsCondition(qs.Operator(qs.Ident("c"), "=", qs.LiteralInt(96))), qs.LiteralInt(110)).Else(qs.Operator(qs.Ident("c"), "+", qs.LiteralInt(1)))).End())).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("b"))), qs.AsCondition(qs.Operator(qs.Ident("b"), ">", qs.LiteralInt(10))), qs.AsCondition(qs.Operator(qs.Ident("c"), ">=", qs.LiteralInt(96)))).Expr()))
+	return qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("c"), qs.Write((qs.Case().When(qs.AsCondition(qs.Operator(qs.Ident("c"), "=", qs.LiteralInt(96))), qs.LiteralInt(110)).Else(qs.Operator(qs.Ident("c"), "+", qs.LiteralInt(1)))).End()))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("b"))), qs.AsCondition(qs.Operator(qs.Ident("b"), ">", qs.LiteralInt(10))), qs.AsCondition(qs.Operator(qs.Ident("c"), ">=", qs.LiteralInt(96)))).Expr()))
 }
 func build26631() qs.Statement {
-	return qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("a"), qs.LiteralString("b")), qs.Assign(qs.Ident("c"), qs.LiteralInt(122))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("a"))), qs.AsCondition(qs.Operator(qs.Ident("c"), "=", qs.LiteralInt(200)))).Expr()))
+	return qs.UpdateTable(qs.Table("range_parted")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralString("b"))), qs.Assign(qs.Ident("c"), qs.Write(qs.LiteralInt(122)))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("a"))), qs.AsCondition(qs.Operator(qs.Ident("c"), "=", qs.LiteralInt(200)))).Expr()))
 }
 func build26639() qs.Statement {
-	return qs.UpdateTable(qs.Table("part_a_10_a_20")).Set(qs.Assign(qs.Ident("a"), qs.LiteralString("ad"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("a"))))
+	return qs.UpdateTable(qs.Table("part_a_10_a_20")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralString("ad")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("a"))))
 }
 func build26647() qs.Statement {
-	return qs.UpdateTable(qs.Table("list_default")).Set(qs.Assign(qs.Ident("a"), qs.LiteralString("x"))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("d"))))
+	return qs.UpdateTable(qs.Table("list_default")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralString("x")))).Where(qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralString("d"))))
 }
 func build26655() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("list_parted")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(5), qs.LiteralInt(50))
+	return qs.InsertIntoTable(qs.Table("list_parted")).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(50)))
 }
 func build26663() qs.Statement {
 	return qs.Select(((qs.Ident("tableoid")).Cast(qs.TypeNamed("regclass"))).Cast(qs.TypeNamed("text")), qs.Star()).FromExpr(qs.Table("list_parted")).OrderBy((qs.LiteralInt(1)).Asc(), (qs.LiteralInt(2)).Asc(), (qs.LiteralInt(3)).Asc(), (qs.LiteralInt(4)).Asc())
 }
 func build26671() qs.Statement {
-	return qs.UpdateTable(qs.Table("list_parted").As("t1")).Set(qs.Assign(qs.Ident("a"), qs.LiteralInt(2))).FromExpr(qs.Table("non_parted").As("t2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t1", "a"), "=", qs.Ident("t2", "id"))), qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1)))).Expr()))
+	return qs.UpdateTable(qs.Table("list_parted").As("t1")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.LiteralInt(2)))).FromExpr(qs.Table("non_parted").As("t2")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("t1", "a"), "=", qs.Ident("t2", "id"))), qs.AsCondition(qs.Operator(qs.Ident("a"), "=", qs.LiteralInt(1)))).Expr()))
 }
 func build26679() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("guid1")).Columns("guid_field").ValuesExpr(qs.LiteralString("11111111-1111-1111-1111-111111111111F"))
+	return qs.InsertIntoTable(qs.Table("guid1")).Columns("guid_field").Values(qs.Write(qs.LiteralString("11111111-1111-1111-1111-111111111111F")))
 }
 func build26687() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("guid1")).Columns("guid_field").ValuesExpr(qs.LiteralString("11111111-1111-1111-1111-111111111111"))
+	return qs.InsertIntoTable(qs.Table("guid1")).Columns("guid_field").Values(qs.Write(qs.LiteralString("11111111-1111-1111-1111-111111111111")))
 }
 func build26695() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("guid1")).Where(qs.AsCondition(qs.Operator(qs.Ident("guid_field"), "<", qs.LiteralString("22222222-2222-2222-2222-222222222222"))))
@@ -9478,7 +9478,7 @@ func build26703() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Star())).FromExpr(qs.Table("pg_class")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("relkind"), "=", qs.LiteralString("i"))), qs.AsCondition((qs.Ident("relname")).LikeExpr(qs.LiteralString("guid%")).Expr())).Expr()))
 }
 func build26711() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("guid1")).Columns("guid_field").ValuesExpr(qs.Call("gen_random_uuid"))
+	return qs.InsertIntoTable(qs.Table("guid1")).Columns("guid_field").Values(qs.Write(qs.Call("gen_random_uuid")))
 }
 func build26719() qs.Statement {
 	return qs.Select((qs.Call("count", qs.Ident("guid_field"))).Distinct()).FromExpr(qs.Table("guid1"))
@@ -9506,10 +9506,10 @@ func build26783() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("pvactst2")).From(qs.Select(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(1000))))
 }
 func build26791() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("vac_truncate_test")).ValuesExpr(qs.LiteralInt(1), qs.NullLiteral()).ValuesExpr(qs.NullLiteral(), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("vac_truncate_test")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.NullLiteral())).Values(qs.Write(qs.NullLiteral()), qs.Write(qs.NullLiteral()))
 }
 func build26799() qs.Statement {
-	return qs.UpdateTable(qs.Table("vacparted")).Set(qs.Assign(qs.Ident("b"), qs.LiteralString("b")))
+	return qs.UpdateTable(qs.Table("vacparted")).Set(qs.Assign(qs.Ident("b"), qs.Write(qs.LiteralString("b"))))
 }
 func build26807() qs.Statement {
 	return qs.Select(qs.Ident("relname"), (qs.Ident("last_analyze")).IsNotNull().Expr().As("analyzed"), (qs.Ident("last_vacuum")).IsNotNull().Expr().As("vacuumed")).FromExpr(qs.Table("pg_stat_user_tables")).Where(qs.AsCondition((qs.Ident("relid")).InExpr((qs.LiteralString("only_inh_parent")).Cast(qs.TypeNamed("regclass")), (qs.LiteralString("only_inh_child")).Cast(qs.TypeNamed("regclass"))).Expr())).OrderBy((qs.Ident("relname")).Asc())
@@ -9518,7 +9518,7 @@ func build26815() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("vac_option_tab_counts"))
 }
 func build26823() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("varchar_tbl")).Columns("f1").ValuesExpr(qs.LiteralString("1"))
+	return qs.InsertIntoTable(qs.Table("varchar_tbl")).Columns("f1").Values(qs.Write(qs.LiteralString("1")))
 }
 func build26831() qs.Statement {
 	return qs.Select(qs.Star("c")).FromExpr(qs.Table("varchar_tbl").As("c")).Where(qs.AsCondition(qs.Operator(qs.Ident("c", "f1"), "=", qs.LiteralString("a"))))
@@ -9584,7 +9584,7 @@ func build26991() qs.Statement {
 	return qs.Select(qs.Ident("id"), qs.Ident("f_float8"), (qs.Call("first_value", qs.Ident("id"))).OverNamed("w"), (qs.Call("last_value", qs.Ident("id"))).OverNamed("w")).FromExpr(qs.Table("numerics")).Window("w", qs.Window().OrderBy((qs.Ident("f_float8")).Asc()).RangeBetween(qs.PrecedingExpr(qs.LiteralNumeric("1.1")), qs.FollowingExpr(qs.LiteralString("NaN"))))
 }
 func build26999() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("datetimes")).ValuesExpr(qs.LiteralInt(0), qs.LiteralString("10:00"), qs.LiteralString("10:00 BST"), qs.LiteralString("-infinity"), qs.LiteralString("-infinity"), qs.LiteralString("-infinity")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("11:00"), qs.LiteralString("11:00 BST"), qs.LiteralString("1 year"), qs.LiteralString("2000-10-19 10:23:54+01"), qs.LiteralString("2000-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(2), qs.LiteralString("12:00"), qs.LiteralString("12:00 BST"), qs.LiteralString("2 years"), qs.LiteralString("2001-10-19 10:23:54+01"), qs.LiteralString("2001-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(3), qs.LiteralString("13:00"), qs.LiteralString("13:00 BST"), qs.LiteralString("3 years"), qs.LiteralString("2001-10-19 10:23:54+01"), qs.LiteralString("2001-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("14:00"), qs.LiteralString("14:00 BST"), qs.LiteralString("4 years"), qs.LiteralString("2002-10-19 10:23:54+01"), qs.LiteralString("2002-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(5), qs.LiteralString("15:00"), qs.LiteralString("15:00 BST"), qs.LiteralString("5 years"), qs.LiteralString("2003-10-19 10:23:54+01"), qs.LiteralString("2003-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(6), qs.LiteralString("15:00"), qs.LiteralString("15:00 BST"), qs.LiteralString("5 years"), qs.LiteralString("2004-10-19 10:23:54+01"), qs.LiteralString("2004-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(7), qs.LiteralString("17:00"), qs.LiteralString("17:00 BST"), qs.LiteralString("7 years"), qs.LiteralString("2005-10-19 10:23:54+01"), qs.LiteralString("2005-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(8), qs.LiteralString("18:00"), qs.LiteralString("18:00 BST"), qs.LiteralString("8 years"), qs.LiteralString("2006-10-19 10:23:54+01"), qs.LiteralString("2006-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(9), qs.LiteralString("19:00"), qs.LiteralString("19:00 BST"), qs.LiteralString("9 years"), qs.LiteralString("2007-10-19 10:23:54+01"), qs.LiteralString("2007-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(10), qs.LiteralString("20:00"), qs.LiteralString("20:00 BST"), qs.LiteralString("10 years"), qs.LiteralString("2008-10-19 10:23:54+01"), qs.LiteralString("2008-10-19 10:23:54")).ValuesExpr(qs.LiteralInt(11), qs.LiteralString("21:00"), qs.LiteralString("21:00 BST"), qs.LiteralString("infinity"), qs.LiteralString("infinity"), qs.LiteralString("infinity"))
+	return qs.InsertIntoTable(qs.Table("datetimes")).Values(qs.Write(qs.LiteralInt(0)), qs.Write(qs.LiteralString("10:00")), qs.Write(qs.LiteralString("10:00 BST")), qs.Write(qs.LiteralString("-infinity")), qs.Write(qs.LiteralString("-infinity")), qs.Write(qs.LiteralString("-infinity"))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("11:00")), qs.Write(qs.LiteralString("11:00 BST")), qs.Write(qs.LiteralString("1 year")), qs.Write(qs.LiteralString("2000-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2000-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("12:00")), qs.Write(qs.LiteralString("12:00 BST")), qs.Write(qs.LiteralString("2 years")), qs.Write(qs.LiteralString("2001-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2001-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("13:00")), qs.Write(qs.LiteralString("13:00 BST")), qs.Write(qs.LiteralString("3 years")), qs.Write(qs.LiteralString("2001-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2001-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("14:00")), qs.Write(qs.LiteralString("14:00 BST")), qs.Write(qs.LiteralString("4 years")), qs.Write(qs.LiteralString("2002-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2002-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("15:00")), qs.Write(qs.LiteralString("15:00 BST")), qs.Write(qs.LiteralString("5 years")), qs.Write(qs.LiteralString("2003-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2003-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(6)), qs.Write(qs.LiteralString("15:00")), qs.Write(qs.LiteralString("15:00 BST")), qs.Write(qs.LiteralString("5 years")), qs.Write(qs.LiteralString("2004-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2004-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(7)), qs.Write(qs.LiteralString("17:00")), qs.Write(qs.LiteralString("17:00 BST")), qs.Write(qs.LiteralString("7 years")), qs.Write(qs.LiteralString("2005-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2005-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(8)), qs.Write(qs.LiteralString("18:00")), qs.Write(qs.LiteralString("18:00 BST")), qs.Write(qs.LiteralString("8 years")), qs.Write(qs.LiteralString("2006-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2006-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(9)), qs.Write(qs.LiteralString("19:00")), qs.Write(qs.LiteralString("19:00 BST")), qs.Write(qs.LiteralString("9 years")), qs.Write(qs.LiteralString("2007-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2007-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(10)), qs.Write(qs.LiteralString("20:00")), qs.Write(qs.LiteralString("20:00 BST")), qs.Write(qs.LiteralString("10 years")), qs.Write(qs.LiteralString("2008-10-19 10:23:54+01")), qs.Write(qs.LiteralString("2008-10-19 10:23:54"))).Values(qs.Write(qs.LiteralInt(11)), qs.Write(qs.LiteralString("21:00")), qs.Write(qs.LiteralString("21:00 BST")), qs.Write(qs.LiteralString("infinity")), qs.Write(qs.LiteralString("infinity")), qs.Write(qs.LiteralString("infinity")))
 }
 func build27007() qs.Statement {
 	return qs.Select(qs.Ident("id"), qs.Ident("f_timetz"), (qs.Call("first_value", qs.Ident("id"))).OverNamed("w"), (qs.Call("last_value", qs.Ident("id"))).OverNamed("w")).FromExpr(qs.Table("datetimes")).Window("w", qs.Window().OrderBy((qs.Ident("f_timetz")).Asc()).RangeBetween(qs.PrecedingExpr((qs.LiteralString("70 min")).Cast(qs.TypeInterval)), qs.FollowingExpr((qs.LiteralString("2 hours")).Cast(qs.TypeInterval))))
@@ -9671,7 +9671,7 @@ func build27223() qs.Statement {
 	return (qs.Select(qs.Ident("n"), qs.Call("pg_typeof", qs.Ident("n"))).FromExpr(qs.Table("t"))).WithRecursive(qs.CTE("t", qs.UnionAll(qs.Select(qs.LiteralString("foo")), qs.Select(qs.Operator(qs.Ident("n"), "||", qs.LiteralString(" bar"))).FromExpr(qs.Table("t")).Where(qs.AsCondition(qs.Operator(qs.Call("length", qs.Ident("n")), "<", qs.LiteralInt(20)))))).Columns("n"))
 }
 func build27231() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("department")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(2), qs.LiteralString("D"))
+	return qs.InsertIntoTable(qs.Table("department")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("D")))
 }
 func build27239() qs.Statement {
 	return (qs.Select(qs.Star()).FromExpr(qs.Table("subdepartment"))).WithRecursive(qs.CTE("subdepartment", qs.Union(qs.Select(qs.Ident("id"), qs.Ident("parent_department"), qs.Ident("name")).FromExpr(qs.Table("department")).Where(qs.AsCondition(qs.Operator(qs.Ident("name"), "=", qs.LiteralString("A")))), qs.Select(qs.Ident("d", "id"), qs.Ident("d", "parent_department"), qs.Ident("d", "name")).FromExpr(qs.InnerJoin(qs.Table("department").As("d"), qs.Table("subdepartment").As("sd")).On(qs.AsCondition(qs.Operator(qs.Ident("d", "parent_department"), "=", qs.Ident("sd", "id")))))))).OrderBy((qs.Ident("name")).Asc())
@@ -9689,7 +9689,7 @@ func build27271() qs.Statement {
 	return (qs.Select(qs.Star()).FromExpr(qs.Table("search_graph"))).WithRecursive(qs.CTE("search_graph", qs.UnionAll(qs.Select(qs.Star()).FromExpr(qs.Table("graph0").As("g")), qs.Select(qs.Star("g")).FromExpr(qs.Table("graph0").As("g"), qs.Table("search_graph").As("sg")).Where(qs.AsCondition(qs.Operator(qs.Ident("g", "f"), "=", qs.Ident("sg", "t")))))).Columns("f", "t", "label").Search(qs.SearchDepthFirst("f", "t").Set("label")))
 }
 func build27279() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("graph")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2), qs.LiteralString("arc 1 -> 2")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(3), qs.LiteralString("arc 1 -> 3")).ValuesExpr(qs.LiteralInt(2), qs.LiteralInt(3), qs.LiteralString("arc 2 -> 3")).ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(4), qs.LiteralString("arc 1 -> 4")).ValuesExpr(qs.LiteralInt(4), qs.LiteralInt(5), qs.LiteralString("arc 4 -> 5")).ValuesExpr(qs.LiteralInt(5), qs.LiteralInt(1), qs.LiteralString("arc 5 -> 1"))
+	return qs.InsertIntoTable(qs.Table("graph")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralString("arc 1 -> 2"))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("arc 1 -> 3"))).Values(qs.Write(qs.LiteralInt(2)), qs.Write(qs.LiteralInt(3)), qs.Write(qs.LiteralString("arc 2 -> 3"))).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("arc 1 -> 4"))).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralString("arc 4 -> 5"))).Values(qs.Write(qs.LiteralInt(5)), qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("arc 5 -> 1")))
 }
 func build27287() qs.Statement {
 	return (qs.Select(qs.Star()).FromExpr(qs.Table("test"))).WithRecursive(qs.CTE("test", qs.UnionAll(qs.Select(qs.LiteralInt(0).As("x")), qs.Select(qs.Operator(qs.Operator(qs.Ident("x"), "+", qs.LiteralInt(1)), "%", qs.LiteralInt(10))).FromExpr(qs.Table("test")))).Cycle(qs.Cycle("x").Set("is_cycle").Using("path").Values(qs.LiteralBool(true), qs.LiteralBool(false))))
@@ -9716,16 +9716,16 @@ func build27343() qs.Statement {
 	return (qs.Select(qs.Star()).FromExpr(qs.Table("x"))).WithRecursive(qs.CTE("x", qs.UnionAll(qs.ValuesExpr(qs.LiteralInt(1)), qs.Select(qs.Scalar(qs.Select(qs.Star()).FromExpr(qs.Table("x")))).FromExpr(qs.Table("x")).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "<", qs.LiteralInt(5)))))).Columns("id"))
 }
 func build27351() qs.Statement {
-	return (qs.UpdateTable(qs.Table("y")).Set(qs.Assign(qs.Ident("a"), qs.Ident("t", "n"))).FromExpr(qs.Table("t"))).With(qs.CTE("t", qs.Select(qs.Star("old"))))
+	return (qs.UpdateTable(qs.Table("y")).Set(qs.Assign(qs.Ident("a"), qs.Write(qs.Ident("t", "n")))).FromExpr(qs.Table("t"))).With(qs.CTE("t", qs.Select(qs.Star("old"))))
 }
 func build27359() qs.Statement {
 	return (qs.Select(qs.Star()).FromExpr(qs.Table("t"))).WithRecursive(qs.CTE("t", (qs.UnionAll(qs.Select(qs.Ident("i")).FromExpr(qs.Table("s")), qs.Select(qs.Operator(qs.Ident("j"), "+", qs.LiteralInt(1))).FromExpr(qs.Table("t")).Where(qs.AsCondition(qs.Operator(qs.Ident("j"), "<", qs.LiteralInt(10)))))).WithRecursive(qs.CTE("s", qs.UnionAll(qs.ValuesExpr(qs.LiteralInt(1)), qs.Select(qs.Operator(qs.Ident("i"), "+", qs.LiteralInt(1))).FromExpr(qs.Table("s")).Where(qs.AsCondition(qs.Operator(qs.Ident("i"), "<", qs.LiteralInt(10)))))).Columns("i"))).Columns("j"))
 }
 func build27367() qs.Statement {
-	return (qs.Select(qs.Star()).FromExpr(qs.Table("t"))).With(qs.CTE("t", qs.InsertIntoTable(qs.Table("y")).ValuesExpr(qs.LiteralInt(11)).ValuesExpr(qs.LiteralInt(12)).ValuesExpr(qs.LiteralInt(13)).ValuesExpr(qs.LiteralInt(14)).ValuesExpr(qs.LiteralInt(15)).ValuesExpr(qs.LiteralInt(16)).ValuesExpr(qs.LiteralInt(17)).ValuesExpr(qs.LiteralInt(18)).ValuesExpr(qs.LiteralInt(19)).ValuesExpr(qs.LiteralInt(20)).Returning(qs.Star())))
+	return (qs.Select(qs.Star()).FromExpr(qs.Table("t"))).With(qs.CTE("t", qs.InsertIntoTable(qs.Table("y")).Values(qs.Write(qs.LiteralInt(11))).Values(qs.Write(qs.LiteralInt(12))).Values(qs.Write(qs.LiteralInt(13))).Values(qs.Write(qs.LiteralInt(14))).Values(qs.Write(qs.LiteralInt(15))).Values(qs.Write(qs.LiteralInt(16))).Values(qs.Write(qs.LiteralInt(17))).Values(qs.Write(qs.LiteralInt(18))).Values(qs.Write(qs.LiteralInt(19))).Values(qs.Write(qs.LiteralInt(20))).Returning(qs.Star())))
 }
 func build27375() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("y")).ValuesExpr(qs.LiteralInt(42)).Returning(qs.Star())
+	return qs.InsertIntoTable(qs.Table("y")).Values(qs.Write(qs.LiteralInt(42))).Returning(qs.Star())
 }
 func build27383() qs.Statement {
 	return (qs.InsertIntoTable(qs.Table("bug6051")).From(qs.Select(qs.Star()).FromExpr(qs.Table("t1")))).With(qs.CTE("t1", qs.DeleteFromTable(qs.Table("bug6051")).Returning(qs.Star())))
@@ -9734,7 +9734,7 @@ func build27391() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("
 func build27399() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("id_alw4")) }
 func build27407() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("y")) }
 func build27415() qs.Statement {
-	return (qs.InsertIntoTable(qs.Table("withz")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("insert")).OnConflict(qs.ConflictColumns("k").DoUpdate(qs.Assign(qs.Ident("v"), qs.LiteralString(" update"))).Where(qs.AsCondition(qs.Operator(qs.Ident("withz", "k"), "=", qs.Scalar(qs.Select(qs.Ident("a")).FromExpr(qs.Table("aa")))))))).With(qs.CTE("aa", qs.Select(qs.LiteralInt(1).As("a"), qs.LiteralInt(2).As("b"))))
+	return (qs.InsertIntoTable(qs.Table("withz")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("insert"))).OnConflict(qs.ConflictColumns("k").DoUpdate(qs.Assign(qs.Ident("v"), qs.Write(qs.LiteralString(" update")))).Where(qs.AsCondition(qs.Operator(qs.Ident("withz", "k"), "=", qs.Scalar(qs.Select(qs.Ident("a")).FromExpr(qs.Table("aa")))))))).With(qs.CTE("aa", qs.Select(qs.LiteralInt(1).As("a"), qs.LiteralInt(2).As("b"))))
 }
 func build27423() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("m")).Where(qs.AsCondition(qs.Operator(qs.Ident("k"), "=", qs.LiteralInt(0))))
@@ -9743,14 +9743,14 @@ func build27431() qs.Statement {
 	return qs.InsertIntoTable(qs.Table("y")).From(qs.Select(qs.Call("generate_series", qs.LiteralInt(1), qs.LiteralInt(3))))
 }
 func build27439() qs.Statement {
-	return (qs.Select(qs.Star()).FromExpr(qs.Table("t"))).With(qs.CTE("t", qs.InsertIntoTable(qs.Table("y")).ValuesExpr(qs.LiteralInt(21)).ValuesExpr(qs.LiteralInt(22)).ValuesExpr(qs.LiteralInt(23)).Returning(qs.Star())))
+	return (qs.Select(qs.Star()).FromExpr(qs.Table("t"))).With(qs.CTE("t", qs.InsertIntoTable(qs.Table("y")).Values(qs.Write(qs.LiteralInt(21))).Values(qs.Write(qs.LiteralInt(22))).Values(qs.Write(qs.LiteralInt(23))).Returning(qs.Star())))
 }
 func build27447() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("child2")).ValuesExpr(qs.LiteralInt(23), qs.LiteralString("c21")).ValuesExpr(qs.LiteralInt(24), qs.LiteralString("c22"))
+	return qs.InsertIntoTable(qs.Table("child2")).Values(qs.Write(qs.LiteralInt(23)), qs.Write(qs.LiteralString("c21"))).Values(qs.Write(qs.LiteralInt(24)), qs.Write(qs.LiteralString("c22")))
 }
 func build27455() qs.Statement { return qs.Select(qs.Star()).FromExpr(qs.Table("parent")) }
 func build27463() qs.Statement {
-	return (qs.ValuesExpr(qs.LiteralBool(false))).With(qs.CTE("t", qs.InsertIntoTable(qs.Table("y")).ValuesExpr(qs.LiteralInt(0))))
+	return (qs.ValuesExpr(qs.LiteralBool(false))).With(qs.CTE("t", qs.InsertIntoTable(qs.Table("y")).Values(qs.Write(qs.LiteralInt(0)))))
 }
 func build27471() qs.Statement {
 	return qs.Select(qs.Call("pg_get_constraintdef", qs.Ident("oid"))).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition(qs.Operator(qs.Ident("conname"), "=", qs.LiteralString("temporal_rng_pk"))))
@@ -9759,137 +9759,137 @@ func build27479() qs.Statement {
 	return qs.Select(qs.Call("pg_get_constraintdef", qs.Ident("oid"))).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition(qs.Operator(qs.Ident("conname"), "=", qs.LiteralString("temporal_rng3_uq"))))
 }
 func build27487() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng4")).ValuesExpr(qs.LiteralString("[1,2)"), qs.LiteralString("[30,)"))
+	return qs.InsertIntoTable(qs.Table("temporal_rng4")).Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.LiteralString("[30,)")))
 }
 func build27495() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05")))
+	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05"))))
 }
 func build27503() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").ValuesExpr(qs.NullLiteral(), qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05")))
+	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").Values(qs.Write(qs.NullLiteral()), qs.Write(qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05"))))
 }
 func build27511() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_rng")).Set(qs.Assign(qs.Ident("id"), qs.LiteralString("[1,2)")), qs.Assign(qs.Ident("valid_at"), qs.Call("daterange", qs.LiteralString("2018-03-05"), qs.LiteralString("2018-05-05")))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[21,22)"))))
+	return qs.UpdateTable(qs.Table("temporal_rng")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralString("[1,2)"))), qs.Assign(qs.Ident("valid_at"), qs.Write(qs.Call("daterange", qs.LiteralString("2018-03-05"), qs.LiteralString("2018-05-05"))))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[21,22)"))))
 }
 func build27519() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[3,4)"), qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.NullLiteral()))
+	return qs.InsertIntoTable(qs.Table("temporal_rng3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[3,4)")), qs.Write(qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.NullLiteral())))
 }
 func build27527() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[2,3)"), qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05")))
+	return qs.InsertIntoTable(qs.Table("temporal_rng3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[2,3)")), qs.Write(qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05"))))
 }
 func build27535() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_rng3")).Set(qs.Assign(qs.Ident("valid_at"), qs.LiteralString("[2020-01-01,2021-01-01)"))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[11,12)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2018-01-15")).Cast(qs.TypeNamed("date"))))).Expr()))
+	return qs.UpdateTable(qs.Table("temporal_rng3")).Set(qs.Assign(qs.Ident("valid_at"), qs.Write(qs.LiteralString("[2020-01-01,2021-01-01)")))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[11,12)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2018-01-15")).Cast(qs.TypeNamed("date"))))).Expr()))
 }
 func build27543() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("temporal_rng3")).OrderBy((qs.Ident("id")).Asc(), (qs.Ident("valid_at")).Asc())
 }
 func build27551() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-02"), qs.LiteralString("2018-02-03"))))
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-02"), qs.LiteralString("2018-02-03")))))
 }
 func build27559() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("temporal_mltrng")).OrderBy((qs.Ident("id")).Asc(), (qs.Ident("valid_at")).Asc())
 }
 func build27567() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_mltrng")).Set(qs.Assign(qs.Ident("id"), qs.LiteralString("[1,2)")), qs.Assign(qs.Ident("valid_at"), qs.LiteralString("{}"))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[21,22)"))))
+	return qs.UpdateTable(qs.Table("temporal_mltrng")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralString("[1,2)"))), qs.Assign(qs.Ident("valid_at"), qs.Write(qs.LiteralString("{}")))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[21,22)"))))
 }
 func build27575() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05"))))
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-01-05")))))
 }
 func build27583() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[3,4)"), qs.NullLiteral())
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[3,4)")), qs.Write(qs.NullLiteral()))
 }
 func build27591() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_mltrng3")).Set(qs.Assign(qs.Ident("id"), qs.LiteralString("[1,2)")), qs.Assign(qs.Ident("valid_at"), qs.NullLiteral())).Where(qs.AsCondition(qs.And(qs.AsCondition((qs.Ident("id")).IsNull().Expr()), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2020-06-01")).Cast(qs.TypeNamed("date"))))).Expr()))
+	return qs.UpdateTable(qs.Table("temporal_mltrng3")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralString("[1,2)"))), qs.Assign(qs.Ident("valid_at"), qs.Write(qs.NullLiteral()))).Where(qs.AsCondition(qs.And(qs.AsCondition((qs.Ident("id")).IsNull().Expr()), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2020-06-01")).Cast(qs.TypeNamed("date"))))).Expr()))
 }
 func build27599() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("temporal_partitioned")).OrderBy((qs.Ident("id")).Asc(), (qs.Ident("valid_at")).Asc())
 }
 func build27607() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01"))).OnConflict((qs.AnyConflict()).DoNothing())
+	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01")))).OnConflict((qs.AnyConflict()).DoNothing())
 }
 func build27615() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("temporal_rng")).OrderBy((qs.Ident("id")).Asc(), (qs.Ident("valid_at")).Asc())
 }
 func build27623() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("daterange", qs.LiteralString("2010-01-01"), qs.LiteralString("2020-01-01"))).OnConflict(qs.ConflictColumns("id", "valid_at").DoUpdate(qs.Assign(qs.Ident("id"), qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[3,4)")))))
+	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("daterange", qs.LiteralString("2010-01-01"), qs.LiteralString("2020-01-01")))).OnConflict(qs.ConflictColumns("id", "valid_at").DoUpdate(qs.Assign(qs.Ident("id"), qs.Write(qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[3,4)"))))))
 }
 func build27631() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2010-01-01")))
+	return qs.InsertIntoTable(qs.Table("temporal3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2010-01-01"))))
 }
 func build27639() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[2,3)"), qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01"))).OnConflict((qs.ConflictColumns("id", "valid_at")).DoNothing())
+	return qs.InsertIntoTable(qs.Table("temporal3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[2,3)")), qs.Write(qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01")))).OnConflict((qs.ConflictColumns("id", "valid_at")).DoNothing())
 }
 func build27647() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01"))).OnConflict(qs.ConflictColumns("id", "valid_at").DoUpdate(qs.Assign(qs.Ident("id"), qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[2,3)")))))
+	return qs.InsertIntoTable(qs.Table("temporal3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01")))).OnConflict(qs.ConflictColumns("id", "valid_at").DoUpdate(qs.Assign(qs.Ident("id"), qs.Write(qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[2,3)"))))))
 }
 func build27655() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("temporal3")).OrderBy((qs.Ident("id")).Asc(), (qs.Ident("valid_at")).Asc())
 }
 func build27663() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2010-01-01"), qs.LiteralString("2020-01-01")))).OnConflict((qs.ConflictColumns("id", "valid_at")).DoNothing())
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2010-01-01"), qs.LiteralString("2020-01-01"))))).OnConflict((qs.ConflictColumns("id", "valid_at")).DoNothing())
 }
 func build27671() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2010-01-01"))))
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2010-01-01")))))
 }
 func build27679() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[2,3)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01")))).OnConflict(qs.ConflictConstraint("temporal_mltrng_pk").DoUpdate(qs.Assign(qs.Ident("id"), qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[4,5)")))))
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[2,3)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01"))))).OnConflict(qs.ConflictConstraint("temporal_mltrng_pk").DoUpdate(qs.Assign(qs.Ident("id"), qs.Write(qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[4,5)"))))))
 }
 func build27687() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01")))).OnConflict((qs.ConflictColumns("id", "valid_at")).DoNothing())
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2005-01-01"), qs.LiteralString("2006-01-01"))))).OnConflict((qs.ConflictColumns("id", "valid_at")).DoNothing())
 }
 func build27695() qs.Statement {
 	return qs.Select(qs.Star()).FromExpr(qs.Table("temporal_mltrng3")).OrderBy((qs.Ident("id")).Asc(), (qs.Ident("valid_at")).Asc())
 }
 func build27703() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2010-01-01"), qs.LiteralString("2020-01-01")))).OnConflict(qs.ConflictConstraint("temporal_mltrng3_uq").DoUpdate(qs.Assign(qs.Ident("id"), qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[3,4)")))))
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng3")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2010-01-01"), qs.LiteralString("2020-01-01"))))).OnConflict(qs.ConflictConstraint("temporal_mltrng3_uq").DoUpdate(qs.Assign(qs.Ident("id"), qs.Write(qs.Operator(qs.Ident("excluded", "id"), "+", qs.LiteralString("[3,4)"))))))
 }
 func build27711() qs.Statement { return qs.DeleteFromTable(qs.Table("temporal_fk_rng2rng")) }
 func build27719() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_fk_rng2rng")).Set(qs.Assign(qs.Ident("parent_id"), qs.LiteralString("[8,9)"))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[1,2)"))))
+	return qs.UpdateTable(qs.Table("temporal_fk_rng2rng")).Set(qs.Assign(qs.Ident("parent_id"), qs.Write(qs.LiteralString("[8,9)")))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[1,2)"))))
 }
 func build27727() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_fk_rng2rng")).Columns("id", "valid_at", "parent_id").ValuesExpr(qs.LiteralString("[3,4)"), qs.Call("daterange", qs.LiteralString("2018-01-05"), qs.LiteralString("2018-01-10")), qs.LiteralString("[5,6)"))
+	return qs.InsertIntoTable(qs.Table("temporal_fk_rng2rng")).Columns("id", "valid_at", "parent_id").Values(qs.Write(qs.LiteralString("[3,4)")), qs.Write(qs.Call("daterange", qs.LiteralString("2018-01-05"), qs.LiteralString("2018-01-10"))), qs.Write(qs.LiteralString("[5,6)")))
 }
 func build27735() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_rng")).Set(qs.Assign(qs.Ident("valid_at"), qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-03-01")))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[1,2)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2018-01-25")).Cast(qs.TypeNamed("date"))))).Expr()))
+	return qs.UpdateTable(qs.Table("temporal_rng")).Set(qs.Assign(qs.Ident("valid_at"), qs.Write(qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-03-01"))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[1,2)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2018-01-25")).Cast(qs.TypeNamed("date"))))).Expr()))
 }
 func build27743() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_rng")).Set(qs.Assign(qs.Ident("id"), qs.LiteralString("[7,8)"))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "=", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01"))))).Expr()))
+	return qs.UpdateTable(qs.Table("temporal_rng")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralString("[7,8)")))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "=", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01"))))).Expr()))
 }
 func build27751() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("temporal_rng")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "=", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01"))))).Expr()))
 }
 func build27759() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[-1,-1]"), qs.Call("daterange", qs.NullLiteral(), qs.NullLiteral()))
+	return qs.InsertIntoTable(qs.Table("temporal_rng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[-1,-1]")), qs.Write(qs.Call("daterange", qs.NullLiteral(), qs.NullLiteral())))
 }
 func build27767() qs.Statement {
 	return qs.Select(qs.Call("pg_get_constraintdef", qs.Ident("oid"))).FromExpr(qs.Table("pg_constraint")).Where(qs.AsCondition(qs.Operator(qs.Ident("conname"), "=", qs.LiteralString("temporal_fk_mltrng2mltrng_fk"))))
 }
 func build27775() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[5,6)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01")))).ValuesExpr(qs.LiteralString("[5,6)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-02-01"), qs.LiteralString("2018-03-01"))))
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[5,6)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01"))))).Values(qs.Write(qs.LiteralString("[5,6)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-02-01"), qs.LiteralString("2018-03-01")))))
 }
 func build27783() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_mltrng")).Set(qs.Assign(qs.Ident("valid_at"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2016-02-01"), qs.LiteralString("2016-03-01"))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "=", qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-02-01"), qs.LiteralString("2018-03-01")))))).Expr()))
+	return qs.UpdateTable(qs.Table("temporal_mltrng")).Set(qs.Assign(qs.Ident("valid_at"), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2016-02-01"), qs.LiteralString("2016-03-01")))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "=", qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-02-01"), qs.LiteralString("2018-03-01")))))).Expr()))
 }
 func build27791() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_mltrng")).Set(qs.Assign(qs.Ident("id"), qs.LiteralString("[2,3)")), qs.Assign(qs.Ident("valid_at"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-15"), qs.LiteralString("2018-03-01"))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[1,2)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2018-01-15")).Cast(qs.TypeNamed("date"))))).Expr()))
+	return qs.UpdateTable(qs.Table("temporal_mltrng")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralString("[2,3)"))), qs.Assign(qs.Ident("valid_at"), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-15"), qs.LiteralString("2018-03-01")))))).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[1,2)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "@>", (qs.LiteralString("2018-01-15")).Cast(qs.TypeNamed("date"))))).Expr()))
 }
 func build27799() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[5,6)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01"))))
+	return qs.InsertIntoTable(qs.Table("temporal_mltrng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[5,6)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01")))))
 }
 func build27807() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_partitioned_fk_rng2rng")).Columns("id", "valid_at", "parent_id").ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2000-02-15")), qs.LiteralString("[1,2)")).ValuesExpr(qs.LiteralString("[1,2)"), qs.Call("daterange", qs.LiteralString("2001-01-01"), qs.LiteralString("2002-01-01")), qs.LiteralString("[2,3)")).ValuesExpr(qs.LiteralString("[2,3)"), qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2000-02-15")), qs.LiteralString("[1,2)"))
+	return qs.InsertIntoTable(qs.Table("temporal_partitioned_fk_rng2rng")).Columns("id", "valid_at", "parent_id").Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2000-02-15"))), qs.Write(qs.LiteralString("[1,2)"))).Values(qs.Write(qs.LiteralString("[1,2)")), qs.Write(qs.Call("daterange", qs.LiteralString("2001-01-01"), qs.LiteralString("2002-01-01"))), qs.Write(qs.LiteralString("[2,3)"))).Values(qs.Write(qs.LiteralString("[2,3)")), qs.Write(qs.Call("daterange", qs.LiteralString("2000-01-01"), qs.LiteralString("2000-02-15"))), qs.Write(qs.LiteralString("[1,2)")))
 }
 func build27815() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_partitioned_rng")).Set(qs.Assign(qs.Ident("valid_at"), qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01")))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))))
+	return qs.UpdateTable(qs.Table("temporal_partitioned_rng")).Set(qs.Assign(qs.Ident("valid_at"), qs.Write(qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01"))))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))))
 }
 func build27823() qs.Statement {
 	return qs.DeleteFromTable(qs.Table("temporal_partitioned_rng")).Where(qs.AsCondition(qs.And(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[5,6)"))), qs.AsCondition(qs.Operator(qs.Ident("valid_at"), "=", qs.Call("daterange", qs.LiteralString("2018-02-01"), qs.LiteralString("2018-03-01"))))).Expr()))
 }
 func build27831() qs.Statement {
-	return qs.UpdateTable(qs.Table("temporal_partitioned_fk_mltrng2mltrng")).Set(qs.Assign(qs.Ident("id"), qs.LiteralString("[1,2)"))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[4,5)"))))
+	return qs.UpdateTable(qs.Table("temporal_partitioned_fk_mltrng2mltrng")).Set(qs.Assign(qs.Ident("id"), qs.Write(qs.LiteralString("[1,2)")))).Where(qs.AsCondition(qs.Operator(qs.Ident("id"), "=", qs.LiteralString("[4,5)"))))
 }
 func build27839() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("temporal_partitioned_mltrng")).Columns("id", "valid_at").ValuesExpr(qs.LiteralString("[5,6)"), qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01"))))
+	return qs.InsertIntoTable(qs.Table("temporal_partitioned_mltrng")).Columns("id", "valid_at").Values(qs.Write(qs.LiteralString("[5,6)")), qs.Write(qs.Call("datemultirange", qs.Call("daterange", qs.LiteralString("2018-01-01"), qs.LiteralString("2018-02-01")))))
 }
 func build27847() qs.Statement {
 	return qs.Select(qs.Call("length", qs.Ident("stringu1"))).FromExpr(qs.Table("tenk1")).GroupByExpr(qs.Call("length", qs.Ident("stringu1"))).Into("parallel_write")
@@ -9908,13 +9908,13 @@ func build27887() qs.Statement {
 	return qs.Select(qs.Call("pg_input_is_valid", qs.LiteralString("12:13:"), qs.LiteralString("pg_snapshot")))
 }
 func build27895() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("snapshot_test")).ValuesExpr(qs.LiteralInt(4), qs.LiteralString("100:150:101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131"))
+	return qs.InsertIntoTable(qs.Table("snapshot_test")).Values(qs.Write(qs.LiteralInt(4)), qs.Write(qs.LiteralString("100:150:101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131")))
 }
 func build27903() qs.Statement {
 	return qs.Select(qs.Call("pg_visible_in_snapshot", qs.LiteralString("1000100010001012"), qs.LiteralString("1000100010001000:1000100010001100:1000100010001012,1000100010001013")))
 }
 func build27911() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("xmltest")).ValuesExpr(qs.LiteralInt(1), qs.LiteralString("<value>one</value>"))
+	return qs.InsertIntoTable(qs.Table("xmltest")).Values(qs.Write(qs.LiteralInt(1)), qs.Write(qs.LiteralString("<value>one</value>")))
 }
 func build27919() qs.Statement {
 	return qs.Select(qs.Ident("message")).FromExpr(qs.TableFunc(qs.Call("pg_input_error_info", qs.LiteralString("<?xml version=\"1.0\" standalone=\"y\"?><foo/>"), qs.LiteralString("xml"))))
@@ -9970,7 +9970,7 @@ func build28063() qs.Statement {
 	return qs.Select(qs.Call("xpath", qs.LiteralString("root"), qs.LiteralString("<root/>")))
 }
 func build28071() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("xmltest")).ValuesExpr(qs.LiteralInt(4), (qs.LiteralString("<menu><beers><name>Budvar</name><cost>free</cost><name>Carling</name><cost>lots</cost></beers></menu>")).Cast(qs.TypeNamed("xml")))
+	return qs.InsertIntoTable(qs.Table("xmltest")).Values(qs.Write(qs.LiteralInt(4)), qs.Write((qs.LiteralString("<menu><beers><name>Budvar</name><cost>free</cost><name>Carling</name><cost>lots</cost></beers></menu>")).Cast(qs.TypeNamed("xml"))))
 }
 func build28079() qs.Statement {
 	return qs.Select(qs.Call("count", qs.Ident("id"))).FromExpr(qs.Table("xmltest")).Where(qs.AsCondition(qs.Call("xpath_exists", qs.LiteralString("/menu/beer"), qs.Ident("data"))))
@@ -10000,7 +10000,7 @@ func build28143() qs.Statement {
 	return qs.Select(qs.Star("xmltable")).FromExpr(qs.Subquery(qs.Select(qs.Ident("data")).FromExpr(qs.Table("xmldata")), "x"), qs.Lateral(qs.XMLTable(qs.LiteralString("/ROWS/ROW"), qs.Ident("data"), qs.XMLColumn("id", qs.TypeInt4).Path(qs.LiteralString("@id")), qs.XMLOrdinality("_id"), qs.XMLColumn("country_name", qs.TypeNamed("text")).Path(qs.LiteralString("COUNTRY_NAME")).NotNull(), qs.XMLColumn("country_id", qs.TypeNamed("text")).Path(qs.LiteralString("COUNTRY_ID")), qs.XMLColumn("region_id", qs.TypeInt4).Path(qs.LiteralString("REGION_ID")), qs.XMLColumn("size", qs.TypeFloat8).Path(qs.LiteralString("SIZE")), qs.XMLColumn("unit", qs.TypeNamed("text")).Path(qs.LiteralString("SIZE/@unit")), qs.XMLColumn("premier_name", qs.TypeNamed("text")).Path(qs.LiteralString("PREMIER_NAME")).Default(qs.LiteralString("not specified"))).Ref()))
 }
 func build28151() qs.Statement {
-	return qs.InsertIntoTable(qs.Table("xmltest2")).ValuesExpr(qs.LiteralString("<d><r><cc>3</cc></r></d>"), qs.LiteralString("C"))
+	return qs.InsertIntoTable(qs.Table("xmltest2")).Values(qs.Write(qs.LiteralString("<d><r><cc>3</cc></r></d>")), qs.Write(qs.LiteralString("C")))
 }
 func build28159() qs.Statement { return qs.Select(qs.Call("xmltext", qs.NullLiteral())) }
 func build28167() qs.Statement {
