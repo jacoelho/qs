@@ -10,7 +10,8 @@ import (
 
 func TestCompositeFieldsAndUpdates(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	if _, err := conn.Exec(ctx, `
 		DROP TABLE IF EXISTS qs_composite_people;
 		DROP TYPE IF EXISTS qs_composite_person CASCADE;
@@ -35,7 +36,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		person.Field("age"),
 		qs.Col("note"),
 	).From("qs_composite_people").Where(qs.Eq("id", 1))
-	sql, args, err := read.ToSQL()
+	sql, args, err := session.render(t, read)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 	}
 
 	expanded := qs.Select(person.Fields()).From("qs_composite_people").Where(qs.Eq("id", 1))
-	sql, args, err = expanded.ToSQL()
+	sql, args, err = session.render(t, expanded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +65,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		qs.Assign(person.Field("first_name"), qs.Write(qs.Param("Grace"))),
 		qs.Assign(person.Field("age"), qs.Write(qs.Param(37))),
 	).Where(qs.Eq("id", 1))
-	sql, args, err = update.ToSQL()
+	sql, args, err = session.render(t, update)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +86,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 	).Values(
 		qs.Write(qs.Param(2)), qs.Write(qs.Param("Alan")), qs.Write(qs.Param(41)),
 	)
-	sql, args, err = insert.ToSQL()
+	sql, args, err = session.render(t, insert)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,12 +104,13 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 
 func TestNamedTypeCastChangesResult(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	numeric := func(scale int) qs.Expr {
 		return qs.Param("12.345").Cast(qs.TypeNamed("pg_catalog", "numeric").Modifiers(5, scale)).Cast(qs.TypeText)
 	}
 	query := qs.Select(numeric(2), numeric(1))
-	sql, args, err := query.ToSQL()
+	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)
 	}

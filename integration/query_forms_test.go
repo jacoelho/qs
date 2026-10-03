@@ -12,7 +12,8 @@ import (
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	cases := []struct {
 		name  string
 		query qs.Statement
@@ -24,7 +25,7 @@ func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := tc.query.ToSQL()
+			sql, args, err := session.render(t, tc.query)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +54,9 @@ func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestPostgreSQLNumericRadixValues(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	requireVersion(t, session, qs.PostgreSQL16)
 	cases := []struct {
 		name, token, want string
 	}{
@@ -65,7 +68,7 @@ func TestPostgreSQLNumericRadixValues(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			query := qs.Select(qs.LiteralNumeric(tc.token).Cast(qs.TypeText))
-			sql, args, err := query.ToSQL()
+			sql, args, err := session.render(t, query)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,7 +85,8 @@ func TestPostgreSQLNumericRadixValues(t *testing.T) {
 
 func TestPostgreSQLUnaliasedLateralCorrelation(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	requireVersion(t, session, qs.PostgreSQL16)
 	outer := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("o", "n")
 	lateral := qs.Lateral(qs.Derived(
 		qs.Select(qs.LiteralInt(1)).Where(qs.Col("o.n").EqExpr(qs.LiteralInt(1))),
@@ -91,7 +95,7 @@ func TestPostgreSQLUnaliasedLateralCorrelation(t *testing.T) {
 		FromExpr(outer).
 		CrossJoinExpr(lateral).
 		OrderBy(qs.Asc("o.n"))
-	got := queryStrings(t, ctx, conn, query)
+	got := queryStrings(t, session, query)
 	want := []string{"1"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v; want %#v", got, want)

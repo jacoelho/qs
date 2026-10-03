@@ -469,6 +469,19 @@ Statement builders mutate. Repeated calls behave as follows:
 | `UpdateBuilder`, `InsertAssignments` | `Set` | Appends assignments |
 | `InsertRows` | `Values` | Appends a row |
 
+For example, `SelectCols("id").From("a").From("b")` selects from only
+`b`, while `Update("target").From("a").From("b")` retains both source tables.
+
+`WhereIf(include, condition)` controls whether a predicate is appended; Go still
+constructs `condition` before the call. Use an ordinary `if` when constructing
+an optional predicate is expensive:
+
+```go
+if includeIDs {
+    q.Where(qs.In("id", ids...))
+}
+```
+
 Conflict descriptors use value-style methods: retain the result of `TargetWhere`
 or `ConflictUpdate.Where`. `TargetWhere` filters index inference; `Where` filters
 the update action. These calls do not mutate an earlier descriptor.
@@ -632,6 +645,32 @@ query, args, err := qs.Select(qs.Param(nil).Cast(qs.TypeText)).ToSQL()
 
 When migrating explicit type arguments, preserve the argument type:
 `qs.Param[int64](1)` becomes `qs.Param(int64(1))`.
+
+The scalar `Eq`, `Ne`, `Lt`, `Lte`, `Gt`, and `Gte` helpers also accept
+`any`, including untyped nil. `qs.Eq("id", nil)` renders `("id" = $1)`
+with one nil argument; use `IsNull` for a SQL NULL test. Migrate explicit type
+arguments without changing the payload type:
+
+```go
+// Before: qs.Eq[int64]("id", 1)
+condition := qs.Eq("id", int64(1))
+```
+
+For an explicitly instantiated function value, preserve its typed signature
+with an application-owned wrapper when needed:
+
+```go
+eqID := func(column string, value int64) qs.Condition {
+    return qs.Eq(column, value)
+}
+```
+
+`Relation.Col` treats its column name literally, with or without an alias.
+`qs.Table("public.settings").Col("a.b")` produces
+`"public"."settings"."a.b"`; `.Col("*")` names the literal column `"*"`.
+Use `.Star()` for a wildcard and top-level `qs.Col(path)` for a dotted path.
+This changes the formerly inconsistent unaliased `Table.Col` behavior.
+`TableIdent("*")` names a literal table, while `Table("*")` is invalid.
 
 ## Reuse buffers for repeated rendering
 

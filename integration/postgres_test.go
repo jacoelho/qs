@@ -19,7 +19,13 @@ import (
 
 var connectionSequence atomic.Uint64
 
-func connect(t *testing.T) (context.Context, *pgx.Conn) {
+type testSession struct {
+	context.Context
+	*pgx.Conn
+	options qs.Options
+}
+
+func connect(t *testing.T) *testSession {
 	t.Helper()
 	dsn := os.Getenv("QS_TEST_DSN")
 	if dsn == "" {
@@ -54,16 +60,44 @@ func connect(t *testing.T) (context.Context, *pgx.Conn) {
 	if err := conn.QueryRow(ctx, "SELECT current_setting('server_version_num')::int").Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if version < 180000 {
-		t.Fatalf("PostgreSQL 18 required; server_version_num=%d", version)
+	major := version / 10000
+	if major < 12 || major > 18 {
+		t.Fatalf("PostgreSQL 12..18 required; server_version_num=%d", version)
 	}
-	return ctx, conn
+	var encoding string
+	if err := conn.QueryRow(ctx, "SHOW server_encoding").Scan(&encoding); err != nil {
+		t.Fatal(err)
+	}
+	if encoding != "UTF8" {
+		t.Fatalf("UTF8 database required; server_encoding=%s", encoding)
+	}
+	if _, err := conn.Exec(ctx, "SET TIME ZONE 'UTC'"); err != nil {
+		t.Fatal(err)
+	}
+	return &testSession{
+		Context: ctx,
+		Conn:    conn,
+		options: qs.Options{PostgreSQL: qs.PostgreSQLVersion(major)},
+	}
+}
+
+func (s *testSession) render(t *testing.T, statement qs.Statement) (string, []any, error) {
+	t.Helper()
+	return statement.ToSQLWith(s.options)
+}
+
+func requireVersion(t *testing.T, session *testSession, minimum qs.PostgreSQLVersion) {
+	t.Helper()
+	if session.options.PostgreSQL < minimum {
+		t.Skipf("requires PostgreSQL %d or newer (connected to %d)", minimum, session.options.PostgreSQL)
+	}
 }
 
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestTypedJSONDocuments(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	object := qs.JSONBParam(`{"0":42,"a":null,"items":[{"name":"Ada"}]}`)
 	array := qs.JSONBParam(`[{"name":"Ada"},{"name":"Grace"},"0"]`)
 	cases := []struct {
@@ -112,7 +146,7 @@ func TestTypedJSONDocuments(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query, args, err := qs.Select(tc.expr.Cast(qs.TypeText)).ToSQL()
+			query, args, err := session.render(t, qs.Select(tc.expr.Cast(qs.TypeText)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,7 +180,8 @@ func TestTypedJSONDocuments(t *testing.T) {
 
 func TestTypedJSONFilterAndUpdate(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	if _, err := conn.Exec(ctx, `CREATE TEMP TABLE qs_json_events(id int, payload jsonb);
 		INSERT INTO qs_json_events VALUES (1,'{"items":[{"name":"Ada"}]}'), (2,'{"items":[{"name":"Grace"}]}')`); err != nil {
 		t.Fatal(err)
@@ -156,7 +191,7 @@ func TestTypedJSONFilterAndUpdate(t *testing.T) {
 		Set(doc.Set(doc.Concat(qs.JSONBParam(`{"active":true}`)))).
 		Where(doc.Key("items").Index(0).TextKey("name").Eq("Ada")).
 		Returning(doc.PathText("items", "0", "name").Expr(), doc.TextKey("active").Expr())
-	sql, args, err := query.ToSQL()
+	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,30 +213,46 @@ func TestTypedJSONFilterAndUpdate(t *testing.T) {
 
 func TestExactLiteralSemantics(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	query := qs.Select(
 		qs.LiteralNumeric("123456789012345678901234567890.123456789").Cast(qs.TypeText),
 		qs.LiteralBit("00101").Cast(qs.TypeText),
-		qs.LiteralHex("Ab09").Cast(qs.TypeText),
 		qs.PrefixOperator("|/", qs.LiteralInt(9)).Cast(qs.TypeText),
 	)
-	sql, args, err := query.ToSQL()
+	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var numeric, bits, hex, root string
-	if err := conn.QueryRow(ctx, sql, args...).Scan(&numeric, &bits, &hex, &root); err != nil {
+	var numeric, bits, root string
+	if err := conn.QueryRow(ctx, sql, args...).Scan(&numeric, &bits, &root); err != nil {
 		t.Fatal(err)
 	}
-	if numeric != "123456789012345678901234567890.123456789" || bits != "00101" || hex != "1010101100001001" || root != "3" {
-		t.Fatalf("numeric=%q bits=%q hex=%q root=%q", numeric, bits, hex, root)
+	if numeric != "123456789012345678901234567890.123456789" || bits != "00101" || root != "3" {
+		t.Fatalf("numeric=%q bits=%q root=%q", numeric, bits, root)
+	}
+	if session.options.PostgreSQL >= qs.PostgreSQL16 {
+		hexQuery := qs.Select(qs.LiteralHex("Ab09").Cast(qs.TypeText))
+		sql, args, err = session.render(t, hexQuery)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var hex string
+		if err := conn.QueryRow(ctx, sql, args...).Scan(&hex); err != nil {
+			t.Fatal(err)
+		}
+		if hex != "1010101100001001" {
+			t.Fatalf("hex=%q; want 1010101100001001", hex)
+		}
 	}
 }
 
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestExplainSerialization(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	requireVersion(t, session, qs.PostgreSQL17)
 	for _, tc := range []struct {
 		mode   qs.ExplainSerialization
 		format string
@@ -213,7 +264,7 @@ func TestExplainSerialization(t *testing.T) {
 		t.Run(tc.format+"_serialization", func(t *testing.T) {
 			query := qs.Explain(qs.Select(qs.LiteralInt(1))).Analyze(true).
 				Serialize(tc.mode).Timing(false).Format(qs.ExplainJSON)
-			sql, args, err := query.ToSQL()
+			sql, args, err := session.render(t, query)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -244,13 +295,13 @@ func TestExplainSerialization(t *testing.T) {
 	}
 }
 
-func queryStrings(t *testing.T, ctx context.Context, conn *pgx.Conn, s qs.Statement) []string {
+func queryStrings(t *testing.T, session *testSession, statement qs.Statement) []string {
 	t.Helper()
-	sql, args, err := s.ToSQL()
+	sql, args, err := session.render(t, statement)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := conn.Query(ctx, sql, args...)
+	rows, err := session.Query(session, sql, args...)
 	if err != nil {
 		t.Fatalf("%s: %v", sql, err)
 	}
@@ -271,7 +322,8 @@ func queryStrings(t *testing.T, ctx context.Context, conn *pgx.Conn, s qs.Statem
 
 func TestNullsAndArrayEncoding(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	q := qs.Select(
 		qs.ParamNull(qs.NullOf[string]()).Cast(qs.TypeText),
 		qs.ParamNull(qs.NonNull("value")).Cast(qs.TypeText),
@@ -279,7 +331,7 @@ func TestNullsAndArrayEncoding(t *testing.T) {
 		qs.Param(1).Cast(qs.TypeInt4).InExpr(qs.Param(2), qs.NullLiteral()).Expr(),
 		qs.EqAny(qs.Param(int64(2)), qs.ArrayParam([]int64{1, 2}, qs.TypeInt8)).Expr(),
 	)
-	sql, args, err := q.ToSQL()
+	sql, args, err := session.render(t, q)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,9 +346,10 @@ func TestNullsAndArrayEncoding(t *testing.T) {
 	}
 }
 
-func TestPostgreSQL18Mutations(t *testing.T) {
+func TestPostgreSQLMutationsAcrossVersions(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	_, err := conn.Exec(ctx, `CREATE TEMP TABLE target(id bigint PRIMARY KEY,name text);
         CREATE TEMP TABLE source(id bigint PRIMARY KEY,name text);
         INSERT INTO target VALUES(1,'old'); INSERT INTO source VALUES(1,'new'),(2,'inserted');`)
@@ -305,38 +358,43 @@ func TestPostgreSQL18Mutations(t *testing.T) {
 	}
 	upsert := qs.InsertInto("target").Columns("id", "name").Values(qs.Write(qs.Param(int64(1))), qs.Write(qs.Param("updated"))).
 		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).ReturningCols("name")
-	if got := queryStrings(t, ctx, conn, upsert); !reflect.DeepEqual(got, []string{"updated"}) {
+	if got := queryStrings(t, session, upsert); !reflect.DeepEqual(got, []string{"updated"}) {
 		t.Fatal(got)
 	}
-	q := qs.MergeInto("target").Using(qs.Table("source")).On(qs.EqColumns("target.id", "source.id")).
-		When(qs.Matched().ThenUpdate(qs.Set("name", qs.Write(qs.Col("source.name")))),
-			qs.NotMatchedByTarget().ThenInsert(qs.Set("id", qs.Write(qs.Col("source.id"))), qs.Set("name", qs.Write(qs.Col("source.name"))))).
-		Returning(qs.MergeAction())
-	got := queryStrings(t, ctx, conn, q)
-	actions := map[string]int{}
-	for _, a := range got {
-		actions[a]++
-	}
-	if actions["INSERT"] != 1 || actions["UPDATE"] != 1 || len(got) != 2 {
-		t.Fatal(got)
+	if session.options.PostgreSQL >= qs.PostgreSQL17 {
+		q := qs.MergeInto("target").Using(qs.Table("source")).On(qs.EqColumns("target.id", "source.id")).
+			When(qs.Matched().ThenUpdate(qs.Set("name", qs.Write(qs.Col("source.name")))),
+				qs.NotMatchedByTarget().ThenInsert(qs.Set("id", qs.Write(qs.Col("source.id"))), qs.Set("name", qs.Write(qs.Col("source.name"))))).
+			Returning(qs.MergeAction())
+		got := queryStrings(t, session, q)
+		actions := map[string]int{}
+		for _, a := range got {
+			actions[a]++
+		}
+		if actions["INSERT"] != 1 || actions["UPDATE"] != 1 || len(got) != 2 {
+			t.Fatal(got)
+		}
 	}
 	oldNew := qs.Update("target").Set(qs.Set("name", qs.Write(qs.Param("latest")))).Where(qs.Eq("id", int64(1))).Returning(qs.Old("name"), qs.New("name"))
-	sql, args, err := oldNew.ToSQL()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var oldName, newName string
-	if err := conn.QueryRow(ctx, sql, args...).Scan(&oldName, &newName); err != nil {
-		t.Fatalf("%s: %v", sql, err)
-	}
-	if oldName != "new" || newName != "latest" {
-		t.Fatal(oldName, newName)
+	if session.options.PostgreSQL >= qs.PostgreSQL18 {
+		sql, args, err := session.render(t, oldNew)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var oldName, newName string
+		if err := conn.QueryRow(ctx, sql, args...).Scan(&oldName, &newName); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+		if oldName != "new" || newName != "latest" {
+			t.Fatal(oldName, newName)
+		}
 	}
 }
 
 func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	if _, err := conn.Exec(ctx, `
 		CREATE TEMP TABLE write_defaults (
 			id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -350,7 +408,7 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 	}
 
 	defaults := qs.InsertInto("write_defaults").DefaultValues().ReturningCols("name", "count", "note")
-	sql, args, err := defaults.ToSQL()
+	sql, args, err := session.render(t, defaults)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -364,7 +422,7 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 	}
 
 	writeDefault := qs.InsertInto("write_defaults").Columns("name", "count").Values(qs.Default(), qs.Write(qs.Param(11))).ReturningCols("name", "count")
-	sql, args, err = writeDefault.ToSQL()
+	sql, args, err = session.render(t, writeDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +437,7 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 		[]qs.Expr{qs.Col("name"), qs.Col("count")},
 		qs.WriteTuple(qs.Default(), qs.Write(qs.Param(23))),
 	)).Where(qs.Eq("count", 11)).ReturningCols("name", "count")
-	sql, args, err = rowDefault.ToSQL()
+	sql, args, err = session.render(t, rowDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,36 +449,57 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 	}
 
 	merge := qs.MergeInto("write_defaults").Using(qs.Table("merge_defaults_source")).On(qs.EqColumns("write_defaults.id", "merge_defaults_source.id")).
-		When(qs.NotMatched().ThenInsertValues([]string{"name", "note"}, qs.Default(), qs.Write(qs.Col("merge_defaults_source.note")))).
-		Returning(qs.Col("write_defaults.name"), qs.Col("write_defaults.note"))
-	sql, args, err = merge.ToSQL()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := conn.QueryRow(ctx, sql, args...).Scan(&name, &note); err != nil {
-		t.Fatalf("%s: %v", sql, err)
-	}
-	if name != "server-name" || note != "merge-note" {
-		t.Fatalf("merge default name=%q note=%q", name, note)
+		When(qs.NotMatched().ThenInsertValues([]string{"name", "note"}, qs.Default(), qs.Write(qs.Col("merge_defaults_source.note"))))
+	if session.options.PostgreSQL >= qs.PostgreSQL15 {
+		if session.options.PostgreSQL >= qs.PostgreSQL17 {
+			sql, args, err = session.render(t, merge.Returning(qs.Col("write_defaults.name"), qs.Col("write_defaults.note")))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := conn.QueryRow(ctx, sql, args...).Scan(&name, &note); err != nil {
+				t.Fatalf("%s: %v", sql, err)
+			}
+		} else {
+			sql, args, err = session.render(t, merge)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := conn.Exec(ctx, sql, args...); err != nil {
+				t.Fatalf("%s: %v", sql, err)
+			}
+			check := qs.SelectCols("name", "note").From("write_defaults").Where(qs.Eq("note", "merge-note"))
+			sql, args, err = session.render(t, check)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := conn.QueryRow(ctx, sql, args...).Scan(&name, &note); err != nil {
+				t.Fatalf("%s: %v", sql, err)
+			}
+		}
+		if name != "server-name" || note != "merge-note" {
+			t.Fatalf("merge default name=%q note=%q", name, note)
+		}
 	}
 }
 
 func TestRecursiveCTEAndSQLJSON(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
 	seed := qs.Select(qs.LiteralInt(1))
 	step := qs.Select(qs.Col("n").Add(qs.LiteralInt(1))).From("numbers").Where(qs.Lt("n", 3))
 	numbers := qs.CTE("numbers", qs.UnionAll(seed, step)).Columns("n")
 	q := qs.Select(qs.Col("n").Cast(qs.TypeText)).WithRecursive(numbers).From("numbers").OrderBy(qs.Asc("n"))
-	if got := queryStrings(t, ctx, conn, q); !reflect.DeepEqual(got, []string{"1", "2", "3"}) {
+	if got := queryStrings(t, session, q); !reflect.DeepEqual(got, []string{"1", "2", "3"}) {
 		t.Fatal(got)
 	}
-	json := qs.JSONValue(qs.Param(`{"name":"Ana"}`).Cast(qs.TypeJSONB), qs.LiteralString("$.name")).Returning(qs.TypeText).Expr()
-	if got := queryStrings(t, ctx, conn, qs.Select(json)); !reflect.DeepEqual(got, []string{"Ana"}) {
-		t.Fatal(got)
-	}
-	table := qs.JSONTable(qs.Param(`[{"name":"Ana"},{"name":"João"}]`).Cast(qs.TypeJSONB), "$[*]", qs.JSONOrdinality("position"), qs.JSONColumn("name", qs.TypeText).Path("$.name")).As("j")
-	if got := queryStrings(t, ctx, conn, qs.SelectCols("j.name").FromExpr(table).OrderBy(qs.Asc("j.position"))); !reflect.DeepEqual(got, []string{"Ana", "João"}) {
-		t.Fatal(got)
+	if session.options.PostgreSQL >= qs.PostgreSQL17 {
+		json := qs.JSONValue(qs.Param(`{"name":"Ana"}`).Cast(qs.TypeJSONB), qs.LiteralString("$.name")).Returning(qs.TypeText).Expr()
+		if got := queryStrings(t, session, qs.Select(json)); !reflect.DeepEqual(got, []string{"Ana"}) {
+			t.Fatal(got)
+		}
+		table := qs.JSONTable(qs.Param(`[{"name":"Ana"},{"name":"João"}]`).Cast(qs.TypeJSONB), "$[*]", qs.JSONOrdinality("position"), qs.JSONColumn("name", qs.TypeText).Path("$.name")).As("j")
+		if got := queryStrings(t, session, qs.SelectCols("j.name").FromExpr(table).OrderBy(qs.Asc("j.position"))); !reflect.DeepEqual(got, []string{"Ana", "João"}) {
+			t.Fatal(got)
+		}
 	}
 }

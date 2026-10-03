@@ -110,7 +110,7 @@ func (r RowExpr) in(operator string, rows []RowExpr) Condition {
 		}
 		exprs[i] = row.expr
 	}
-	return inOwnedExpressions(r.expr, operator, exprs, r.width)
+	return inOwnedExpressions(r.expr, operator, exprs)
 }
 
 // Field carries an application's non-NULL Go payload type. It does not prove

@@ -311,13 +311,16 @@ func PrefixOperator(operator string, operand Expr) Expr {
 }
 
 func validOperator(op string) bool {
-	if op == "" || strings.Contains(op, "--") || strings.Contains(op, "/*") {
+	if op == "" || len(op) > 63 || op == "=>" || strings.Contains(op, "--") || strings.Contains(op, "/*") {
 		return false
 	}
 	for _, c := range op {
 		if !strings.ContainsRune("+-*/<>=~!@#%^&|`?", c) {
 			return false
 		}
+	}
+	if len(op) > 1 && (op[len(op)-1] == '+' || op[len(op)-1] == '-') && !strings.ContainsAny(op, "~!@#%^&|`?") {
+		return false
 	}
 	return true
 }

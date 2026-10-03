@@ -139,6 +139,9 @@ func AppendWith(sql []byte, args []any, s Statement, options Options) ([]byte, [
 		w.statement(s)
 	}
 	if w.err != nil {
+		// Binding only appends to the argument slice, so the final length bounds
+		// every slot that rendering could have written in the original array.
+		clear(args[len(args):min(len(w.args), cap(args))])
 		clear(w.args[len(args):])
 		return sql, args, w.err
 	}

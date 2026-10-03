@@ -40,7 +40,13 @@ func checkRoleFuzz(t *testing.T, statement Statement, valid bool, golden string,
 				t.Fatalf("input=%x invalid: SQL=%q args=%#v err=%v", input, sql, args, err)
 			}
 			prefix := append(make([]byte, 0, 8192), "prefix "...)
-			binds := append(make([]any, 0, 128), "prefix")
+			spare := 0
+			if len(input) > 0 {
+				spare = int(input[0] % 5)
+			}
+			storage := make([]any, 1+spare)
+			storage[0] = "prefix"
+			binds := storage[:1]
 			out, values, err := current.AppendWith(prefix, binds, options)
 			if valid {
 				wantArgs := append([]any{"prefix"}, expected...)
@@ -49,6 +55,13 @@ func checkRoleFuzz(t *testing.T, statement Statement, valid bool, golden string,
 				}
 			} else if !errors.Is(err, ErrInvalid) || string(out) != "prefix " || !reflect.DeepEqual(values, []any{"prefix"}) || string(prefix) != "prefix " || binds[0] != "prefix" {
 				t.Fatalf("input=%x rollback SQL=%q args=%#v err=%v", input, out, values, err)
+			}
+			if !valid {
+				for i, value := range storage[1:] {
+					if value != nil {
+						t.Fatalf("input=%x original appended slot %d retained %T", input, i+1, value)
+					}
+				}
 			}
 		}
 	}

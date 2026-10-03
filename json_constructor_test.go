@@ -132,30 +132,40 @@ func TestJSONConstructorErrorsAndVersions(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name string
-		q    Statement
+		name    string
+		q       Statement
+		minimum PostgreSQLVersion
+		sql     string
+		args    []any
 	}{
-		{"object", Select(JSONObject(JSONPair(Param("a"), Param(1))).Expr())},
-		{"array", Select(JSONArray(Param(1)).Expr())},
-		{"object_aggregate", Select(JSONObjectAggregate(Param("a"), Param(1)).Expr())},
-		{"array_aggregate", Select(JSONArrayAggregate(Param(1)).Expr())},
-		{"array_query", Select(JSONArrayQuery(Select(Param(1))).Expr())},
-		{"parse", Select(JSONParse(Param(`1`)).Expr())},
-		{"scalar", Select(JSONScalar(Param(1)))},
-		{"serialize", Select(JSONSerialize(Param(`1`)).Expr())},
-		{"is_json", Select(IsJSON(Param(`1`)).Expr())},
+		{"object", Select(JSONObject(JSONPair(Param("a"), Param(1))).Expr()), PostgreSQL16, `SELECT JSON_OBJECT($1 : $2)`, []any{"a", 1}},
+		{"array", Select(JSONArray(Param(1)).Expr()), PostgreSQL16, `SELECT JSON_ARRAY($1)`, []any{1}},
+		{"object_aggregate", Select(JSONObjectAggregate(Param("a"), Param(1)).Expr()), PostgreSQL16, `SELECT JSON_OBJECTAGG($1 : $2)`, []any{"a", 1}},
+		{"array_aggregate", Select(JSONArrayAggregate(Param(1)).Expr()), PostgreSQL16, `SELECT JSON_ARRAYAGG($1)`, []any{1}},
+		{"array_query", Select(JSONArrayQuery(Select(Param(1))).Expr()), PostgreSQL16, `SELECT JSON_ARRAY(SELECT $1)`, []any{1}},
+		{"parse", Select(JSONParse(Param(`1`)).Expr()), PostgreSQL17, `SELECT JSON($1)`, []any{"1"}},
+		{"parse_format", Select(JSONParse(JSONInputExpr(Param(`1`)).FormatJSON()).Expr()), PostgreSQL17, `SELECT JSON($1 FORMAT JSON)`, []any{"1"}},
+		{"scalar", Select(JSONScalar(Param(1))), PostgreSQL17, `SELECT JSON_SCALAR($1)`, []any{1}},
+		{"serialize", Select(JSONSerialize(Param(`1`)).Expr()), PostgreSQL17, `SELECT JSON_SERIALIZE($1)`, []any{"1"}},
+		{"is_json", Select(IsJSON(Param(`1`)).Expr()), PostgreSQL16, `SELECT $1 IS JSON`, []any{"1"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			_, _, err := ToSQLWith(tc.q, Options{PostgreSQL: PostgreSQL15})
-			if !errors.Is(err, ErrUnsupported) {
-				t.Fatalf("PostgreSQL 15 accepted SQL/JSON constructor: %v", err)
-			}
-			if _, _, err := ToSQLWith(tc.q, Options{PostgreSQL: PostgreSQL16}); err != nil {
-				t.Fatalf("PostgreSQL 16 rejected SQL/JSON constructor: %v", err)
+			for version := PostgreSQL12; version <= PostgreSQL18; version++ {
+				sql, args, err := ToSQLWith(tc.q, Options{PostgreSQL: version})
+				if version < tc.minimum {
+					if !errors.Is(err, ErrUnsupported) || sql != "" || args != nil {
+						t.Fatalf("PostgreSQL %d: SQL=%q args=%#v err=%v; want atomic ErrUnsupported", version, sql, args, err)
+					}
+				} else if err != nil || sql != tc.sql || !reflect.DeepEqual(args, tc.args) {
+					t.Fatalf("PostgreSQL %d: SQL=%q args=%#v err=%v; want SQL=%q args=%#v", version, sql, args, err, tc.sql, tc.args)
+				}
 			}
 		})
+	}
+	sql, args, err := Select(Call("json", Param("1"))).ToSQLWith(Options{PostgreSQL: PostgreSQL12})
+	if err != nil || sql != `SELECT "json"($1)` || !reflect.DeepEqual(args, []any{"1"}) {
+		t.Fatalf("generic Call acquired a syntax gate: SQL=%q args=%#v err=%v", sql, args, err)
 	}
 }
 

@@ -1,6 +1,9 @@
 package qs
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 type relationKind uint8
 
@@ -122,13 +125,28 @@ func (r Relation) Repeatable(seed Expr) Relation {
 	return r
 }
 
-// Col refers to a named column using the relation's alias (when present).
+// Col refers to a literal column name using the relation's alias when present.
+// Dots and * in column are quoted; use Star for a relation wildcard.
 func (r Relation) Col(column string) Expr {
 	if r.alias != "" {
 		return Ident(r.alias, column)
 	}
 	if r.kind == relationTable {
-		return Col(r.name + "." + column)
+		parts := make(identifierParts, strings.Count(r.name, ".")+2)
+		name := r.name
+		for i := range parts[:len(parts)-1] {
+			part, rest, found := strings.Cut(name, ".")
+			if part == "" || part == "*" {
+				return invalidExpr("column", "invalid table path")
+			}
+			parts[i] = part
+			if !found {
+				parts[len(parts)-1] = column
+				return Expr{kind: exprIdentifierParts, value: parts}
+			}
+			name = rest
+		}
+		return Expr{kind: exprIdentifierParts, value: parts}
 	}
 	if r.kind == relationTableIdent {
 		base, ok := r.value.(identifierParts)

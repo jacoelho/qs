@@ -97,6 +97,10 @@ formats remain distinct. Assignment destinations have their own grammar.
 Parenthesized indirection preserves successive indexing and projection width.
 Window definitions validate local inheritance and effective frame ordering.
 Unknown widths remain unknown; all width consumers share a bounded inspector.
+Immutable row-list membership widths are checked at construction; live subquery
+widths are checked at rendering. Relation columns append a literal identifier
+component to a separately parsed table path, preserving the existing identifier
+representation.
 Row-width errors identify one-based row positions and expected/actual counts,
 never bound data. Unknown rows do not erase the preceding known width.
 
@@ -125,7 +129,9 @@ thresholds. Parameter limits include prefix arguments; depth limits bound nested
 traversal and reject cycles. `RenderError` preserves context and wraps sentinels.
 `ToSQL` discards partial output on failure. Append methods preserve original slice
 lengths and visible prefixes, clear appended argument references, and may change
-unused backing-array capacity.
+unused backing-array capacity. Cleanup covers written slots in both the original
+and final argument arrays. Its bound depends on the renderer appending arguments
+without shortening their length.
 
 Builders mutate; structural descriptors use value-style methods and own supplied
 lists. Private paths may consume freshly owned lists without another copy.

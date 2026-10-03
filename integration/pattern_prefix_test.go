@@ -11,7 +11,8 @@ import (
 
 func TestPostgreSQLLiteralPatterns(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	if _, err := conn.Exec(ctx, `CREATE TEMP TABLE qs_pattern_prefix (id integer PRIMARY KEY, value text)`); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +60,7 @@ func TestPostgreSQLLiteralPatterns(t *testing.T) {
 	} {
 		query := qs.Select(qs.Col("value")).From("qs_pattern_prefix").
 			Where(tc.condition).OrderBy(qs.Asc("id"))
-		got := queryStrings(t, ctx, conn, query)
+		got := queryStrings(t, session, query)
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s: got %#v, want %#v", tc.name, got, tc.want)
 		}
@@ -72,7 +73,7 @@ func TestPostgreSQLLiteralPatterns(t *testing.T) {
 		qs.ILikeContains("value", "x").Not().Expr().IsNull().Expr(),
 	).
 		From("qs_pattern_prefix").Where(qs.IsNull("value"))
-	sql, args, err := nullQuery.ToSQL()
+	sql, args, err := session.render(t, nullQuery)
 	if err != nil {
 		t.Fatal(err)
 	}
