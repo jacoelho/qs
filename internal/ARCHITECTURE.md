@@ -100,11 +100,14 @@ Unknown widths remain unknown; all width consumers share a bounded inspector.
 Row-width errors identify one-based row positions and expected/actual counts,
 never bound data. Unknown rows do not erase the preceding known width.
 
-`LikePrefix` and `ILikePrefix` own literal-prefix escaping: one pass escapes
-`!`, `%`, and `_`, then appends `%`. The pattern is bound and the fixed escape
-is emitted with `LiteralString("!")`. Existing pattern predicates retain raw
-pattern semantics; prefix helpers compose existing expressions without a new
-node representation.
+`LikePrefix`, `LikeSuffix`, `LikeContains` and their case-insensitive variants
+own literal-match escaping: one pass escapes `!`, `%`, and `_`, then adds the
+leading or trailing `%` required by the operation. The pattern is bound and the
+fixed escape is emitted with `LiteralString("!")`. Empty suffix and contains
+inputs intentionally match every non-NULL text value; callers decide whether an
+empty filter should be omitted. Existing `Like` and `ILike` retain raw-pattern
+semantics. Top-level helpers delegate to the `Expr` methods so the pattern
+builder and `ESCAPE` policy have one owner without a new node representation.
 
 ## Rendering and lifetime
 

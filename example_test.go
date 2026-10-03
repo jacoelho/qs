@@ -2,6 +2,7 @@ package qs_test
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jacoelho/qs"
 )
@@ -117,6 +118,36 @@ func ExampleSelectBuilder_filters() {
 	// [42 jo% jo% admin editor] <nil>
 	// SELECT "id", "email" FROM "users" WHERE ("tenant_id" = $1) AND ("deleted_at" IS NULL)
 	// [42] <nil>
+}
+
+func ExampleTypedExpr_search() {
+	users := qs.Table("users").As("u")
+	id := qs.TypedExpr[int64](users.Col("id"))
+	ids := []int64{10, 20}
+	requiredTags := []string{"staff", "active"}
+	rawUsername := "Al"
+
+	q := qs.Select(
+		id.As("id"),
+		users.Col("username"),
+		qs.CountAll().Over(qs.Window()).As("total"),
+	).FromExpr(users)
+	if len(ids) > 0 {
+		q.Where(id.In(ids...))
+	}
+	if len(requiredTags) > 0 {
+		q.Where(qs.ArrayContains(users.Col("tags"), qs.ArrayParam(requiredTags, qs.TypeText)))
+	}
+	if rawUsername != "" {
+		q.Where(qs.Lower(users.Col("username")).LikePrefix(strings.ToLower(rawUsername)))
+	}
+
+	query, args, err := q.OrderBy(id.Asc()).Limit(20).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "u"."id" AS "id", "u"."username", count(*) OVER () AS "total" FROM "users" AS "u" WHERE ("u"."id" IN ($1, $2)) AND ("u"."tags" @> ($3)::text[]) AND (lower("u"."username") LIKE $4 ESCAPE E'!') ORDER BY "u"."id" ASC LIMIT $5
+	// [10 20 [staff active] al% 20] <nil>
 }
 
 func ExampleSelectBuilder_pagination() {
@@ -301,4 +332,24 @@ func ExampleILikePrefix() {
 	// Output:
 	// SELECT "id" FROM "users" WHERE ("name" ILIKE $1 ESCAPE E'!')
 	// [a!_!%%] <nil>
+}
+
+func ExampleLikeSuffix() {
+	query, args, err := qs.SelectCols("id").From("users").
+		Where(qs.LikeSuffix("email", "@example.com")).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "id" FROM "users" WHERE ("email" LIKE $1 ESCAPE E'!')
+	// [%@example.com] <nil>
+}
+
+func ExampleILikeContains() {
+	query, args, err := qs.SelectCols("id").From("users").
+		Where(qs.ILikeContains("display_name", "50%_")).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "id" FROM "users" WHERE ("display_name" ILIKE $1 ESCAPE E'!')
+	// [%50!%!_%] <nil>
 }

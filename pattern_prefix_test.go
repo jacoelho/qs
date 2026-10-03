@@ -39,3 +39,36 @@ func TestLikePrefixArgumentOrder(t *testing.T) {
 	t.Parallel()
 	checkSQL(t, Select(Param("left").ILikePrefix("jo").Expr()), `SELECT ($1 ILIKE $2 ESCAPE E'!')`, "left", "jo%")
 }
+
+func TestLikeSuffixAndContainsAPIs(t *testing.T) {
+	t.Parallel()
+	const text = "a!%_"
+	runCases(t, []renderCase{
+		{"like_suffix_top_level", Select(LikeSuffix("name", text).Expr()), `SELECT ("name" LIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_"}},
+		{"ilike_suffix_top_level", Select(ILikeSuffix("name", text).Expr()), `SELECT ("name" ILIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_"}},
+		{"like_suffix_expr", Select(Col("name").LikeSuffix(text).Expr()), `SELECT ("name" LIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_"}},
+		{"ilike_suffix_expr", Select(Col("name").ILikeSuffix(text).Expr()), `SELECT ("name" ILIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_"}},
+		{"like_contains_top_level", Select(LikeContains("name", text).Expr()), `SELECT ("name" LIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_%"}},
+		{"ilike_contains_top_level", Select(ILikeContains("name", text).Expr()), `SELECT ("name" ILIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_%"}},
+		{"like_contains_expr", Select(Col("name").LikeContains(text).Expr()), `SELECT ("name" LIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_%"}},
+		{"ilike_contains_expr", Select(Col("name").ILikeContains(text).Expr()), `SELECT ("name" ILIKE $1 ESCAPE E'!')`, []any{"%a!!!%!_%"}},
+	})
+}
+
+func TestLikeSuffixAndContainsEmpty(t *testing.T) {
+	t.Parallel()
+	runCases(t, []renderCase{
+		{"empty_suffix", Select(LikeSuffix("name", "").Expr()), `SELECT ("name" LIKE $1 ESCAPE E'!')`, []any{"%"}},
+		{"empty_contains", Select(LikeContains("name", "").Expr()), `SELECT ("name" LIKE $1 ESCAPE E'!')`, []any{"%%"}},
+	})
+}
+
+func TestLikeContainsNotArgumentOrder(t *testing.T) {
+	t.Parallel()
+	checkSQL(t, Select(Param("left").ILikeContains("a!%_").Not().Expr()), `SELECT (NOT ($1 ILIKE $2 ESCAPE E'!'))`, "left", "%a!!!%!_%")
+}
+
+func TestLiteralLikeRejectsEscapeOverride(t *testing.T) {
+	t.Parallel()
+	checkError(t, Select(LikeContains("name", "value").Escape("").Expr()), ErrInvalid)
+}

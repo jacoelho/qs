@@ -5,7 +5,15 @@ import (
 	"unicode/utf8"
 )
 
-const likePrefixEscape = "!"
+const literalLikeEscape = "!"
+
+type literalLikeMode uint8
+
+const (
+	literalLikePrefix literalLikeMode = iota
+	literalLikeSuffix
+	literalLikeContains
+)
 
 // Like compares a named column with a bound LIKE pattern.
 func Like(column, pattern string) Condition { return Col(column).Like(pattern) }
@@ -25,6 +33,18 @@ func LikePrefix(column, prefix string) Condition { return Col(column).LikePrefix
 // ILikePrefix compares a named column with a literal prefix using ILIKE.
 func ILikePrefix(column, prefix string) Condition { return Col(column).ILikePrefix(prefix) }
 
+// LikeSuffix compares a named column with a literal suffix using LIKE.
+func LikeSuffix(column, text string) Condition { return Col(column).LikeSuffix(text) }
+
+// ILikeSuffix compares a named column with a literal suffix using ILIKE.
+func ILikeSuffix(column, text string) Condition { return Col(column).ILikeSuffix(text) }
+
+// LikeContains compares a named column with a literal substring using LIKE.
+func LikeContains(column, text string) Condition { return Col(column).LikeContains(text) }
+
+// ILikeContains compares a named column with a literal substring using ILIKE.
+func ILikeContains(column, text string) Condition { return Col(column).ILikeContains(text) }
+
 // Like compares e with a bound LIKE pattern.
 func (e Expr) Like(pattern string) Condition { return compare(e, "LIKE", Param(pattern)) }
 
@@ -41,14 +61,38 @@ func (e Expr) NotILike(pattern string) Condition { return compare(e, "NOT ILIKE"
 // and _ with the fixed ! escape character and appends %, so an empty prefix
 // matches every non-NULL value.
 func (e Expr) LikePrefix(prefix string) Condition {
-	return e.Like(likePrefixPattern(prefix)).EscapeExpr(LiteralString(likePrefixEscape))
+	return e.Like(literalLikePattern(prefix, literalLikePrefix)).EscapeExpr(LiteralString(literalLikeEscape))
 }
 
 // ILikePrefix compares e with a literal prefix using ILIKE. It escapes !, %,
 // and _ with the fixed ! escape character and appends %, so an empty prefix
 // matches every non-NULL value.
 func (e Expr) ILikePrefix(prefix string) Condition {
-	return e.ILike(likePrefixPattern(prefix)).EscapeExpr(LiteralString(likePrefixEscape))
+	return e.ILike(literalLikePattern(prefix, literalLikePrefix)).EscapeExpr(LiteralString(literalLikeEscape))
+}
+
+// LikeSuffix compares e with a literal suffix using LIKE. It escapes !, %, and _
+// with fixed ESCAPE '!'. An empty suffix matches every non-NULL text value.
+func (e Expr) LikeSuffix(text string) Condition {
+	return e.Like(literalLikePattern(text, literalLikeSuffix)).EscapeExpr(LiteralString(literalLikeEscape))
+}
+
+// ILikeSuffix compares e with a literal suffix using ILIKE. It escapes !, %, and _
+// with fixed ESCAPE '!'. An empty suffix matches every non-NULL text value.
+func (e Expr) ILikeSuffix(text string) Condition {
+	return e.ILike(literalLikePattern(text, literalLikeSuffix)).EscapeExpr(LiteralString(literalLikeEscape))
+}
+
+// LikeContains compares e with a literal substring using LIKE. It escapes !, %, and _
+// with fixed ESCAPE '!'. Empty text matches every non-NULL text value.
+func (e Expr) LikeContains(text string) Condition {
+	return e.Like(literalLikePattern(text, literalLikeContains)).EscapeExpr(LiteralString(literalLikeEscape))
+}
+
+// ILikeContains compares e with a literal substring using ILIKE. It escapes !, %, and _
+// with fixed ESCAPE '!'. Empty text matches every non-NULL text value.
+func (e Expr) ILikeContains(text string) Condition {
+	return e.ILike(literalLikePattern(text, literalLikeContains)).EscapeExpr(LiteralString(literalLikeEscape))
 }
 
 // LikeExpr compares e with a SQL expression using LIKE.
@@ -92,17 +136,26 @@ func (c Condition) EscapeExpr(character Expr) Condition {
 	return AsCondition(Fragment(UnsafeSQL("("), e.node.left, UnsafeSQL(" "+e.text+" "), e.node.right, UnsafeSQL(" ESCAPE "), character, UnsafeSQL(")")))
 }
 
-func likePrefixPattern(prefix string) string {
+func literalLikePattern(text string, mode literalLikeMode) string {
 	var pattern strings.Builder
-	pattern.Grow(len(prefix) + 1)
-	for i := range len(prefix) {
-		switch prefix[i] {
-		case '!', '%', '_':
-			pattern.WriteString(likePrefixEscape)
-		}
-		pattern.WriteByte(prefix[i])
+	wildcardCount := 1
+	if mode == literalLikeContains {
+		wildcardCount = 2
 	}
-	pattern.WriteByte('%')
+	pattern.Grow(len(text) + wildcardCount)
+	if mode != literalLikePrefix {
+		pattern.WriteByte('%')
+	}
+	for i := range len(text) {
+		switch text[i] {
+		case '!', '%', '_':
+			pattern.WriteString(literalLikeEscape)
+		}
+		pattern.WriteByte(text[i])
+	}
+	if mode != literalLikeSuffix {
+		pattern.WriteByte('%')
+	}
 	return pattern.String()
 }
 
