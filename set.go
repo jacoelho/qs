@@ -89,12 +89,21 @@ func (b *SetBuilder) append(w *renderer) {
 		return
 	}
 	w.head(b.base)
+	if w.err != nil {
+		return
+	}
 	w.byte('(')
 	w.statement(b.left)
+	if w.stopped("left", 0) {
+		return
+	}
 	w.text(") ")
 	w.text(operator)
 	w.text(" (")
 	w.statement(b.right)
+	if w.stopped("right", 0) {
+		return
+	}
 	w.byte(')')
 	w.tail(b.tail, false)
 	w.foot(b.base)
@@ -143,6 +152,9 @@ func (b *ValuesBuilder) RowExpr(expressions ...Expr) *ValuesBuilder {
 }
 func (b *ValuesBuilder) append(w *renderer) {
 	w.head(b.base)
+	if w.err != nil {
+		return
+	}
 	w.values(b.rows, false)
 	w.tail(b.tail, false)
 	w.foot(b.base)
@@ -156,6 +168,7 @@ func (w *renderer) values(rows [][]Expr, allowDefault bool) {
 	for i, row := range rows {
 		rowWidth := projectionWidth(row)
 		if !w.rowWidth("VALUES", i+1, rowWidth, width) {
+			w.errorPath("row", i+1)
 			return
 		}
 		if rowWidth >= 0 {
@@ -174,6 +187,9 @@ func (w *renderer) values(rows [][]Expr, allowDefault bool) {
 		}
 		w.byte('(')
 		w.exprs(row, ", ")
+		if w.stopped("row", i+1) {
+			return
+		}
 		w.byte(')')
 	}
 }
@@ -218,6 +234,7 @@ func (w *renderer) writeValues(rows [][]WriteValue) {
 	for i, row := range rows {
 		rowWidth := writeProjectionWidth(row)
 		if !w.rowWidth("INSERT", i+1, rowWidth, width) {
+			w.errorPath("row", i+1)
 			return
 		}
 		if rowWidth >= 0 {
@@ -232,6 +249,10 @@ func (w *renderer) writeValues(rows [][]WriteValue) {
 				w.text(", ")
 			}
 			w.writeExpr(value.expr())
+			if w.stopped("value", j+1) {
+				w.errorPath("row", i+1)
+				return
+			}
 		}
 		w.byte(')')
 	}
@@ -251,6 +272,9 @@ func TableRows(name string) *TableBuilder { return &TableBuilder{table: Table(na
 func (b *TableBuilder) Only() *TableBuilder { b.table = b.table.Only(); return b }
 func (b *TableBuilder) append(w *renderer) {
 	w.head(b.base)
+	if w.err != nil {
+		return
+	}
 	w.text("TABLE ")
 	w.target(b.table, false)
 	w.tail(b.tail, true)

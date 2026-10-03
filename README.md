@@ -752,3 +752,30 @@ schema validity or query plans. Make and CI bound test parallelism;
 
 License: MIT. PostgreSQL-derived fixtures retain their
 [upstream notice](internal/postgrescorpus/NOTICE.postgresql).
+
+## Render diagnostics and syntax targets
+
+`errors.Is` identifies a render failure's cause. `errors.As` exposes
+`*qs.RenderError`, whose `Clause` and `Detail` describe the leaf failure.
+`Path` contains structural locations from outermost to innermost, with one-based
+indexes. Each returned error owns its path, so subsequent renders cannot change
+it. Paths contain static roles and indexes, never bound values, caller names or
+SQL fragments. They identify composition boundaries, not every internal node.
+The cause and path ordering are contracts; `Error()` text is diagnostic output,
+not a machine-parsing format.
+
+Dedicated syntax checks use each render's `Options.PostgreSQL`: normalization
+requires PostgreSQL 13, `SubstringSimilar` requires 14, and `AtLocal` requires 17.
+`JSONParse`, `JSONScalar`, and `JSONSerialize` require PostgreSQL 17; the
+SQL/JSON object, array, aggregate and predicate forms retain their PostgreSQL 16
+minimum. See the [PostgreSQL 17 release notes](https://www.postgresql.org/docs/17/release-17.html)
+for the parser, scalar and serialization additions.
+Older substring spellings keep their existing availability. Arbitrary `Call`
+names and trusted SQL are not inspected to infer feature requirements.
+Symbolic operators follow standard PostgreSQL builds' 63-byte name limit;
+validation does not establish that an operator exists or supports ordering.
+
+Root tests exercise version gates without a database. Integration CI runs
+PostgreSQL 12–18 with the detected server version passed to rendering, alongside
+root and integration race tests. This covers declared syntax targets rather than
+certifying every possible combination of schema, types and extensions.

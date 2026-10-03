@@ -322,7 +322,7 @@ func ExampleValuesBuilder_Row_widthError() {
 	_, _, err := qs.Values(1).Row(2, 3).ToSQL()
 	fmt.Println(err)
 	// Output:
-	// qs: invalid query (VALUES): row 2: expected 1 value, got 2 values
+	// qs: invalid query (VALUES): row 2: expected 1 value, got 2 values [path: VALUES → row[2]]
 }
 
 func ExampleILikePrefix() {

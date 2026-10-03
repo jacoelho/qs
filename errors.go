@@ -1,6 +1,9 @@
 package qs
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 // Sentinel errors can be matched with errors.Is.
 var (
@@ -22,9 +25,14 @@ type RenderError struct {
 	Clause string
 	// Detail explains the validation failure without including bound values.
 	Detail string
+	// Path locates the failure from outermost to innermost structural scope.
+	// Indexes are one-based. Each returned error owns its path; labels contain
+	// no bound values, caller names or SQL fragments.
+	Path []string
 }
 
-// Error describes the cause and clause; a nil receiver returns "<nil>".
+// Error describes the failure; its text is diagnostic, not a parsing format.
+// A nil receiver returns "<nil>".
 func (e *RenderError) Error() string {
 	if e == nil {
 		return "<nil>"
@@ -35,6 +43,9 @@ func (e *RenderError) Error() string {
 	}
 	if e.Clause != "" || e.Detail != "" {
 		message += " (" + e.Clause + "): " + e.Detail
+	}
+	if len(e.Path) != 0 {
+		message += " [path: " + strings.Join(e.Path, " → ") + "]"
 	}
 	return message
 }

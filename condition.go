@@ -269,6 +269,9 @@ func (w *renderer) membership(e Expr) {
 	n := ownedPayload[*membershipExpression](e.value)
 	w.byte('(')
 	w.expr(n.left)
+	if w.stopped("membership left", 0) {
+		return
+	}
 	w.byte(' ')
 	w.text(e.text)
 	w.text(" (")
@@ -279,11 +282,17 @@ func (w *renderer) membership(e Expr) {
 			return
 		}
 		w.statement(n.query)
+		if w.stopped("membership subquery", 0) {
+			return
+		}
 	} else {
 		if !w.require(len(n.values) != 0, "IN", "nil subquery") {
 			return
 		}
 		w.exprs(n.values, ", ")
+		if w.stopped("membership values", 0) {
+			return
+		}
 	}
 	w.text("))")
 }
@@ -329,12 +338,15 @@ func EqAny(left, array Expr) Condition { return left.EqExpr(AnyArray(array)) }
 func EqAll(left, array Expr) Condition { return left.EqExpr(AllArray(array)) }
 
 func (w *renderer) conditions(conditions []Condition) {
+	if w.err != nil {
+		return
+	}
 	for i, c := range conditions {
 		if i != 0 {
 			w.text(" AND ")
 		}
 		w.expr(c.expr)
-		if w.err != nil {
+		if w.stopped("condition", i+1) {
 			return
 		}
 	}

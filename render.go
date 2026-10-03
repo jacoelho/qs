@@ -1,6 +1,10 @@
 package qs
 
-import "strconv"
+import (
+	"errors"
+	"slices"
+	"strconv"
+)
 
 // Statement is a complete query. It is sealed to keep rendering and parameter
 // ownership in one place. Use StatementSQL for trusted extensions.
@@ -143,6 +147,9 @@ func AppendWith(sql []byte, args []any, s Statement, options Options) ([]byte, [
 		// every slot that rendering could have written in the original array.
 		clear(args[len(args):min(len(w.args), cap(args))])
 		clear(w.args[len(args):])
+		if detail, ok := errors.AsType[*RenderError](w.err); ok {
+			slices.Reverse(detail.Path)
+		}
 		return sql, args, w.err
 	}
 	return w.sql, w.args, nil
@@ -200,13 +207,20 @@ func (w *renderer) bind(value any) {
 // Concrete dispatch keeps renderer pointers out of public interfaces; this is
 // significant for escape analysis of the warm, reusable-buffer path.
 func (w *renderer) statement(s Statement) {
+	if w.err != nil {
+		return
+	}
 	if !w.enter() {
+		w.statementErrorPath(s)
 		return
 	}
 	defer func() { w.depth-- }()
 	w.statementDepth++
 	defer func() { w.statementDepth-- }()
 	w.dispatchStatement(s)
+	if w.err != nil {
+		w.statementErrorPath(s)
+	}
 }
 
 func (w *renderer) dispatchStatement(s Statement) {

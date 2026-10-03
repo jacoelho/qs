@@ -105,6 +105,9 @@ func (w *renderer) writeRow(e Expr) {
 			w.text(", ")
 		}
 		w.writeExpr(value)
+		if w.stopped("value", i+1) {
+			return
+		}
 	}
 	w.byte(')')
 }

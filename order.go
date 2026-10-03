@@ -57,34 +57,47 @@ func Ordinal(index int) Expr {
 }
 
 func (w *renderer) orders(terms []Order) {
+	if w.err != nil {
+		return
+	}
 	for i, term := range terms {
 		if i != 0 {
 			w.text(", ")
 		}
-		w.expr(term.expr)
-		switch term.direction {
-		case ascending:
-			w.text(" ASC")
-		case descending:
-			w.text(" DESC")
-		case usingOperator:
-			if !w.require(validOperator(term.operator), "ORDER BY", "invalid symbolic ordering operator") {
-				return
-			}
-			w.text(" USING ")
-			w.text(term.operator)
-		default:
-			w.fail(ErrInvalid, "ORDER BY", "zero ordering term")
+		w.order(term)
+		if w.stopped("order", i+1) {
 			return
 		}
-		switch term.nulls {
-		case defaultNulls:
-		case nullsFirst:
-			w.text(" NULLS FIRST")
-		case nullsLast:
-			w.text(" NULLS LAST")
-		default:
-			w.fail(ErrInvalid, "ORDER BY", "invalid NULL ordering")
+	}
+}
+
+func (w *renderer) order(term Order) {
+	w.expr(term.expr)
+	if w.err != nil {
+		return
+	}
+	switch term.direction {
+	case ascending:
+		w.text(" ASC")
+	case descending:
+		w.text(" DESC")
+	case usingOperator:
+		if !w.require(validOperator(term.operator), "ORDER BY", "invalid symbolic ordering operator") {
+			return
 		}
+		w.text(" USING ")
+		w.text(term.operator)
+	default:
+		w.fail(ErrInvalid, "ORDER BY", "zero ordering term")
+		return
+	}
+	switch term.nulls {
+	case defaultNulls:
+	case nullsFirst:
+		w.text(" NULLS FIRST")
+	case nullsLast:
+		w.text(" NULLS LAST")
+	default:
+		w.fail(ErrInvalid, "ORDER BY", "invalid NULL ordering")
 	}
 }

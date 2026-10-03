@@ -91,11 +91,17 @@ func (w *renderer) call(e Expr) {
 	n := ownedPayload[*callExpression](e.value)
 	if n.minimumVersion != 0 {
 		w.feature(n.minimumVersion, e.text)
+		if w.stopped("version", 0) {
+			return
+		}
 	}
 	if n.builtin {
 		w.text(e.text)
 	} else {
 		w.identifierPath(e.text, false)
+		if w.stopped("function name", 0) {
+			return
+		}
 	}
 	w.byte('(')
 	m := n.mods
@@ -103,9 +109,15 @@ func (w *renderer) call(e Expr) {
 		w.text("DISTINCT ")
 	}
 	w.exprs(n.args, ", ")
+	if w.stopped("arguments", 0) {
+		return
+	}
 	if m != nil && len(m.order) != 0 {
 		w.text(" ORDER BY ")
 		w.orders(m.order)
+		if w.stopped("ORDER BY", 0) {
+			return
+		}
 	}
 	w.byte(')')
 	if m == nil {
@@ -120,6 +132,9 @@ func (w *renderer) call(e Expr) {
 		}
 		w.text(" WITHIN GROUP (ORDER BY ")
 		w.orders(m.within)
+		if w.stopped("WITHIN GROUP", 0) {
+			return
+		}
 		w.byte(')')
 	}
 	w.aggregateTail(m.aggregateTail)

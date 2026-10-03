@@ -97,8 +97,14 @@ type statementBase struct {
 }
 
 func (w *renderer) head(base statementBase) {
-	for _, p := range base.prefix {
+	if w.err != nil {
+		return
+	}
+	for i, p := range base.prefix {
 		w.expr(p)
+		if w.stopped("prefix", i+1) {
+			return
+		}
 		w.byte(' ')
 	}
 	if len(base.with) == 0 {
@@ -114,7 +120,8 @@ func (w *renderer) withClause(base statementBase) {
 		w.text("RECURSIVE ")
 	}
 	for i, c := range base.with {
-		if !w.withQuery(base, i, c) {
+		if ok := w.withQuery(base, i, c); !ok || w.err != nil {
+			w.errorPath("CTE", i+1)
 			return
 		}
 	}
@@ -131,9 +138,15 @@ func (w *renderer) withQuery(base statementBase, i int, c WithQuery) bool {
 		w.text(", ")
 	}
 	w.identifierPart(c.name)
+	if w.stopped("name", 0) {
+		return false
+	}
 	if len(c.columns) > 0 {
 		w.text(" (")
 		w.names(c.columns)
+		if w.stopped("columns", 0) {
+			return false
+		}
 		w.byte(')')
 	}
 	if !cteBody(c.body) {
@@ -161,6 +174,9 @@ func (w *renderer) withQuery(base statementBase, i int, c WithQuery) bool {
 	}
 	w.byte('(')
 	w.statement(c.body)
+	if w.stopped("body", 0) {
+		return false
+	}
 	w.byte(')')
 	return w.cteSearchCycle(base.recursive, c.search, c.cycle)
 }
@@ -244,9 +260,15 @@ func (w *renderer) cycleLiteral(e Expr) bool {
 }
 
 func (w *renderer) foot(base statementBase) {
-	for _, s := range base.suffix {
+	if w.err != nil {
+		return
+	}
+	for i, s := range base.suffix {
 		w.byte(' ')
 		w.expr(s)
+		if w.stopped("suffix", i+1) {
+			return
+		}
 	}
 }
 func isDML(s Statement) bool {

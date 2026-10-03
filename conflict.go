@@ -210,6 +210,9 @@ func (c ConflictUpdate) Where(conditions ...Condition) ConflictUpdate {
 }
 
 func (w *renderer) conflict(c conflictClause) {
+	if w.err != nil {
+		return
+	}
 	w.text(" ON CONFLICT")
 	switch c.target {
 	case conflictAny:
@@ -247,6 +250,9 @@ func (w *renderer) conflict(c conflictClause) {
 				w.byte(' ')
 				w.identifierPath(e.opclass, false)
 			}
+			if w.stopped("index", i+1) {
+				return
+			}
 		}
 		w.byte(')')
 	case conflictConstraint:
@@ -256,21 +262,33 @@ func (w *renderer) conflict(c conflictClause) {
 		w.fail(ErrInvalid, "ON CONFLICT", "zero conflict clause")
 		return
 	}
+	if w.stopped("target", 0) {
+		return
+	}
 	if len(c.targetWhere) > 0 {
 		if !w.require(c.target == conflictColumns || c.target == conflictIndex, "ON CONFLICT", "index predicate requires index inference") {
 			return
 		}
 		w.text(" WHERE ")
 		w.conditions(c.targetWhere)
+		if w.stopped("target predicate", 0) {
+			return
+		}
 	}
 	if c.doNothing {
 		w.text(" DO NOTHING")
 	} else {
 		w.text(" DO UPDATE SET ")
 		w.assignments(c.updates)
+		if w.stopped("SET", 0) {
+			return
+		}
 		if len(c.where) > 0 {
 			w.text(" WHERE ")
 			w.conditions(c.where)
+			if w.stopped("WHERE", 0) {
+				return
+			}
 		}
 	}
 }

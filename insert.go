@@ -168,8 +168,14 @@ func (b *insertBase) validateTargets(w *renderer) bool {
 
 func (b *insertBase) appendHeader(w *renderer, assignments []Assignment, allowOverride bool) bool {
 	w.head(b.statementBase)
+	if w.err != nil {
+		return false
+	}
 	w.text("INSERT INTO ")
 	w.target(b.table, true)
+	if w.stopped("target", 0) {
+		return false
+	}
 	if len(assignments) > 0 {
 		w.text(" (")
 		for i, assignment := range assignments {
@@ -180,6 +186,9 @@ func (b *insertBase) appendHeader(w *renderer, assignments []Assignment, allowOv
 				w.text(", ")
 			}
 			w.assignmentTarget(assignment.target)
+			if w.stopped("target", i+1) {
+				return false
+			}
 		}
 		w.byte(')')
 	} else if b.targetsSelected {
@@ -189,6 +198,9 @@ func (b *insertBase) appendHeader(w *renderer, assignments []Assignment, allowOv
 				w.text(", ")
 			}
 			w.assignmentTarget(target)
+			if w.stopped("target", i+1) {
+				return false
+			}
 		}
 		w.byte(')')
 	}
@@ -196,6 +208,9 @@ func (b *insertBase) appendHeader(w *renderer, assignments []Assignment, allowOv
 		return false
 	}
 	w.overriding(b.overriding)
+	if w.stopped("OVERRIDING", 0) {
+		return false
+	}
 	w.byte(' ')
 	return true
 }
@@ -203,8 +218,14 @@ func (b *insertBase) appendHeader(w *renderer, assignments []Assignment, allowOv
 func (b *insertBase) appendTail(w *renderer) {
 	if b.conflict != nil {
 		w.conflict(*b.conflict)
+		if w.stopped("ON CONFLICT", 0) {
+			return
+		}
 	}
 	w.returning(b.returning, b.aliases)
+	if w.stopped("RETURNING", 0) {
+		return
+	}
 	w.foot(b.statementBase)
 }
 
@@ -224,6 +245,9 @@ func (b *InsertRows) append(w *renderer) {
 		return
 	}
 	w.writeValues(b.rows)
+	if w.stopped("VALUES", 0) {
+		return
+	}
 	b.base.appendTail(w)
 }
 
@@ -240,6 +264,9 @@ func (b *InsertSelect) append(w *renderer) {
 		return
 	}
 	w.statement(b.source)
+	if w.stopped("source", 0) {
+		return
+	}
 	b.base.appendTail(w)
 }
 
@@ -259,6 +286,9 @@ func (b *InsertAssignments) append(w *renderer) {
 			w.text(", ")
 		}
 		w.writeExpr(assignment.value)
+		if w.stopped("assignment", i+1) {
+			return
+		}
 	}
 	w.byte(')')
 	b.base.appendTail(w)

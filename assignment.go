@@ -165,6 +165,7 @@ func (w *renderer) validateAssignments(assignments []Assignment) bool {
 	}
 	for i, a := range assignments {
 		if a.row && !w.require(len(a.columns) > 0, "SET ROW", "requires columns") {
+			w.errorPath("assignment", i+1)
 			return false
 		}
 		for x := range assignmentWidth(a) {
@@ -178,6 +179,7 @@ func (w *renderer) validateAssignments(assignments []Assignment) bool {
 				for y := range end {
 					if sameIdentifier(col, assignmentColumn(prior, y)) {
 						w.fail(ErrInvalid, "SET", "duplicate assignment target")
+						w.errorPath("assignment", i+1)
 						return false
 					}
 				}
@@ -224,44 +226,74 @@ func (w *renderer) assignmentTarget(e Expr) {
 	}
 }
 func (w *renderer) assignments(assignments []Assignment) {
+	if w.err != nil {
+		return
+	}
 	if !w.validateAssignments(assignments) {
 		return
 	}
-	for i, a := range assignments {
+	for i := range assignments {
 		if i != 0 {
 			w.text(", ")
 		}
-		if a.row {
-			w.byte('(')
-			for j, c := range a.columns {
-				if j != 0 {
-					w.text(", ")
-				}
-				w.assignmentTarget(c)
-			}
-			w.text(") = ")
-			if a.query != nil {
-				width := statementWidth(a.query, w.options.MaxDepth)
-				if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "subquery projection width differs") {
-					return
-				}
-				w.byte('(')
-				w.statement(a.query)
-				w.byte(')')
-			} else {
-				if !w.require(a.value.kind == exprList && (a.value.text == sqlRow || a.value.text == ""), "SET ROW", "requires a row value or subquery") {
-					return
-				}
-				width := projectionWidth(ownedPayload[[]Expr](a.value.value))
-				if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "value count differs from target count or nil subquery") {
-					return
-				}
-				w.writeRow(a.value)
-			}
-		} else {
-			w.assignmentTarget(a.target)
-			w.text(" = ")
-			w.writeExpr(a.value)
+		w.assignment(&assignments[i])
+		if w.stopped("assignment", i+1) {
+			return
+		}
+	}
+}
+
+func (w *renderer) assignment(a *Assignment) {
+	if a.row {
+		w.rowAssignment(a)
+		return
+	}
+
+	w.assignmentTarget(a.target)
+	if w.stopped("target", 0) {
+		return
+	}
+	w.text(" = ")
+	w.writeExpr(a.value)
+	if w.stopped("value", 0) {
+		return
+	}
+}
+
+func (w *renderer) rowAssignment(a *Assignment) {
+	w.byte('(')
+	for j, c := range a.columns {
+		if j != 0 {
+			w.text(", ")
+		}
+		w.assignmentTarget(c)
+		if w.stopped("target", j+1) {
+			return
+		}
+	}
+	w.text(") = ")
+	if a.query != nil {
+		width := statementWidth(a.query, w.options.MaxDepth)
+		if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "subquery projection width differs") {
+			return
+		}
+		w.byte('(')
+		w.statement(a.query)
+		if w.stopped("subquery", 0) {
+			return
+		}
+		w.byte(')')
+	} else {
+		if !w.require(a.value.kind == exprList && (a.value.text == sqlRow || a.value.text == ""), "SET ROW", "requires a row value or subquery") {
+			return
+		}
+		width := projectionWidth(ownedPayload[[]Expr](a.value.value))
+		if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "value count differs from target count or nil subquery") {
+			return
+		}
+		w.writeRow(a.value)
+		if w.stopped("value", 0) {
+			return
 		}
 	}
 }
@@ -288,6 +320,9 @@ func New(column string) Expr {
 func MergeAction() Expr { return versionedCall(PostgreSQL17, "merge_action") }
 
 func (w *renderer) returning(expressions []Expr, aliases ReturningAliases) {
+	if w.err != nil {
+		return
+	}
 	if len(expressions) == 0 {
 		if aliases.Old != "" || aliases.New != "" {
 			w.fail(ErrInvalid, "RETURNING", "row aliases require a projection")

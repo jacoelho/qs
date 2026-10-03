@@ -82,14 +82,29 @@ func (b *DeleteBuilder) ReturningRows(aliases ReturningAliases) *DeleteBuilder {
 }
 func (b *DeleteBuilder) append(w *renderer) {
 	w.head(b.base)
+	if w.err != nil {
+		return
+	}
 	w.text("DELETE FROM ")
 	w.target(b.table, false)
+	if w.stopped("target", 0) {
+		return
+	}
 	if len(b.using) > 0 {
 		w.text(" USING ")
 		w.relations(b.using)
+		if w.stopped("USING", 0) {
+			return
+		}
 	}
 	w.mutationWhere(b.where, b.cursor, b.hasCursor, b.requireWhere)
+	if w.stopped("WHERE", 0) {
+		return
+	}
 	w.returning(b.returning, b.aliases)
+	if w.stopped("RETURNING", 0) {
+		return
+	}
 	w.foot(b.base)
 }
 

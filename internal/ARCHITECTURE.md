@@ -3,8 +3,8 @@
 This is the architecture entry point. [README.md](../README.md) owns public usage
 and caller contracts; the [corpus README](postgrescorpus/README.md) owns
 construction-support measurement and fixture maintenance. The
-[performance report](PERFORMANCE.md) records the write API and clone acceptance
-measurements.
+[performance report](PERFORMANCE.md) records correctness, diagnostics,
+construction and clone measurements, including unmet CPU budgets.
 
 ## Boundaries and representation
 
@@ -127,6 +127,13 @@ because question marks also occur in PostgreSQL grammar. Rendering never calls
 Options belong to each render. Syntax owners enforce selected feature/version
 thresholds. Parameter limits include prefix arguments; depth limits bound nested
 traversal and reject cycles. `RenderError` preserves context and wraps sentinels.
+Its error-owned path records
+static structural scopes, outermost first, with one-based indexes. Indexed child
+scopes close immediately; only the transition to the first error adds a step.
+Labels are formatted on failure, accumulated during unwinding, and reversed once
+at the append boundary. This avoids successful-render path allocation, shared
+scratch state, and a second traversal. The path is not a complete syntax tree;
+error text is presentation rather than a machine-readable contract.
 `ToSQL` discards partial output on failure. Append methods preserve original slice
 lengths and visible prefixes, clear appended argument references, and may change
 unused backing-array capacity. Cleanup covers written slots in both the original

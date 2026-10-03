@@ -303,11 +303,17 @@ func (w *renderer) functionRelationExpr(e Expr) {
 }
 
 func (w *renderer) relations(relations []Relation) {
+	if w.err != nil {
+		return
+	}
 	for i, relation := range relations {
 		if i != 0 {
 			w.text(", ")
 		}
 		w.relation(relation)
+		if w.stopped("relation", i+1) {
+			return
+		}
 	}
 }
 func (w *renderer) relation(r Relation) {
@@ -391,6 +397,9 @@ func (w *renderer) subqueryRelation(r Relation) bool {
 	}
 	w.byte('(')
 	w.statement(query)
+	if w.stopped("subquery", 0) {
+		return false
+	}
 	w.byte(')')
 	return true
 }
@@ -491,6 +500,9 @@ func (w *renderer) join(j *joinExpression) {
 	}
 	w.byte('(')
 	w.relation(j.left)
+	if w.stopped("left", 0) {
+		return
+	}
 	if j.natural {
 		w.text(" NATURAL")
 	}
@@ -510,9 +522,15 @@ func (w *renderer) join(j *joinExpression) {
 		return
 	}
 	w.relation(j.right)
+	if w.stopped("right", 0) {
+		return
+	}
 	if len(j.on) > 0 {
 		w.text(" ON ")
 		w.conditions(j.on)
+		if w.stopped("ON", 0) {
+			return
+		}
 	}
 	if len(j.using) > 0 {
 		w.text(" USING (")
