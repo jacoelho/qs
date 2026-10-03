@@ -92,16 +92,34 @@ func (b *UpdateBuilder) append(w *renderer) {
 		return
 	}
 	w.head(b.base)
+	if w.err != nil {
+		return
+	}
 	w.text("UPDATE ")
 	w.target(b.table, false)
+	if w.stopped("target", 0) {
+		return
+	}
 	w.text(" SET ")
 	w.assignments(b.set)
+	if w.stopped("SET", 0) {
+		return
+	}
 	if len(b.from) > 0 {
 		w.text(" FROM ")
 		w.relations(b.from)
+		if w.stopped("FROM", 0) {
+			return
+		}
 	}
 	w.mutationWhere(b.where, b.cursor, b.hasCursor, b.requireWhere)
+	if w.stopped("WHERE", 0) {
+		return
+	}
 	w.returning(b.returning, b.aliases)
+	if w.stopped("RETURNING", 0) {
+		return
+	}
 	w.foot(b.base)
 }
 func (w *renderer) mutationWhere(conditions []Condition, cursor string, hasCursor, required bool) {

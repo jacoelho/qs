@@ -311,13 +311,16 @@ func PrefixOperator(operator string, operand Expr) Expr {
 }
 
 func validOperator(op string) bool {
-	if op == "" || strings.Contains(op, "--") || strings.Contains(op, "/*") {
+	if op == "" || len(op) > 63 || op == "=>" || strings.Contains(op, "--") || strings.Contains(op, "/*") {
 		return false
 	}
 	for _, c := range op {
 		if !strings.ContainsRune("+-*/<>=~!@#%^&|`?", c) {
 			return false
 		}
+	}
+	if len(op) > 1 && (op[len(op)-1] == '+' || op[len(op)-1] == '-') && !strings.ContainsAny(op, "~!@#%^&|`?") {
+		return false
 	}
 	return true
 }
@@ -331,12 +334,16 @@ func QualifiedOperator(left Expr, schema, operator string, right Expr) Expr {
 }
 
 func (w *renderer) exprs(exprs []Expr, separator string) {
+	if w.err != nil {
+		return
+	}
 	for i, e := range exprs {
 		if i != 0 {
 			w.text(separator)
 		}
 		w.expr(e)
 		if w.err != nil {
+			w.errorPath("expression", i+1)
 			return
 		}
 	}
@@ -529,6 +536,13 @@ func (w *renderer) renderSubquery(e Expr) {
 	w.byte('(')
 	w.statement(n.query)
 	w.byte(')')
+	if w.err != nil {
+		if e.kind == exprSubquery {
+			w.errorPath("scalar subquery", 0)
+		} else {
+			w.errorPath("query operand", 0)
+		}
+	}
 }
 
 func (w *renderer) renderList(e Expr) {

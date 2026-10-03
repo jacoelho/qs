@@ -13,7 +13,8 @@ import (
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	a := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("a", "id")
 	b := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3)).As("b", "id")
 	for _, tc := range []struct {
@@ -27,7 +28,7 @@ func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 		{"natural", qs.NaturalJoin(a, b), [][2]int{{1, 1}, {2, 2}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qs.SelectCols("a.id", "b.id").FromExpr(tc.join).OrderBy(qs.Asc("a.id"), qs.Asc("b.id")).ToSQL()
+			sql, args, err := session.render(t, qs.SelectCols("a.id", "b.id").FromExpr(tc.join).OrderBy(qs.Asc("a.id"), qs.Asc("b.id")))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -59,12 +60,13 @@ func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 
 func TestUnboundedVarcharAgainstPostgres(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	const input = "abcdef'; ? $1"
-	sql, args, err := qs.Select(
+	sql, args, err := session.render(t, qs.Select(
 		qs.Param(input).Cast(qs.TypeNamed("pg_catalog", "varchar")),
 		qs.Param(input).Cast(qs.TypeVarchar(3)),
-	).ToSQL()
+	))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,11 +81,13 @@ func TestUnboundedVarcharAgainstPostgres(t *testing.T) {
 
 func TestJSONTableExistsAgainstPostgres(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	requireVersion(t, session, qs.PostgreSQL17)
 	table := qs.JSONTable(qs.JSONBParam(`[{"a":null},{}]`).Expr(), "$[*]",
 		qs.JSONOrdinality("n"), qs.JSONExistsColumn("has_a", qs.TypeBool).Path("$.a"),
 	).As("j")
-	sql, args, err := qs.SelectCols("has_a").FromExpr(table).OrderBy(qs.Asc("n")).ToSQL()
+	sql, args, err := session.render(t, qs.SelectCols("has_a").FromExpr(table).OrderBy(qs.Asc("n")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +118,8 @@ func TestJSONTableExistsAgainstPostgres(t *testing.T) {
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestRowMembershipAgainstPostgres(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	source := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3), qs.LiteralInt(4))
 	empty := qs.Select(qs.LiteralInt(1), qs.LiteralInt(2)).Where(qs.False())
 	match := qs.Tuple(qs.LiteralInt(1), qs.LiteralInt(2))
@@ -136,7 +141,7 @@ func TestRowMembershipAgainstPostgres(t *testing.T) {
 		{"null_not_in_empty", withNull.NotInQuery(empty), pgtype.Bool{Bool: true, Valid: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qs.Select(tc.condition.Expr()).ToSQL()
+			sql, args, err := session.render(t, qs.Select(tc.condition.Expr()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,6 +151,55 @@ func TestRowMembershipAgainstPostgres(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Fatalf("membership=%+v; want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
+func TestUnknownWidthMembershipAgainstPostgres(t *testing.T) {
+	t.Parallel()
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	querySource := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2))
+	relationSource := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3), qs.LiteralInt(4))
+	relation := qs.Subquery(relationSource, "r", "a", "b")
+	unknown := qs.Row(qs.Col("r").Fields())
+	known := qs.Row(qs.LiteralInt(1), qs.LiteralInt(2))
+	for _, tc := range []struct {
+		name      string
+		condition qs.Condition
+		want      []bool
+	}{
+		{"unknown_left_in_query", unknown.InQuery(querySource), []bool{true, false}},
+		{"unknown_left_not_in_query", unknown.NotInQuery(querySource), []bool{false, true}},
+		{"known_left_in_unknown_list", known.In(unknown), []bool{true, false}},
+		{"known_left_not_in_unknown_list", known.NotIn(unknown), []bool{false, true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			query := qs.Select(tc.condition.Expr()).FromExpr(relation)
+			sql, args, err := session.render(t, query)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := conn.Query(ctx, sql, args...)
+			if err != nil {
+				t.Fatalf("%s: %v", sql, err)
+			}
+			defer rows.Close()
+			var got []bool
+			for rows.Next() {
+				var value bool
+				if err := rows.Scan(&value); err != nil {
+					t.Fatal(err)
+				}
+				got = append(got, value)
+			}
+			if err := rows.Err(); err != nil {
+				t.Fatalf("%s: %v", sql, err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("membership=%v; want %v", got, tc.want)
 			}
 		})
 	}

@@ -239,12 +239,18 @@ func (w *renderer) frameOrder(s WindowSpec, orderCount int) bool {
 }
 
 func (w *renderer) window(s WindowSpec) {
+	if w.err != nil {
+		return
+	}
 	separator := false
 	if s.base != "" {
 		if !w.require(len(s.partition) == 0, "WINDOW", "an inherited window cannot add PARTITION BY") {
 			return
 		}
 		w.identifierPart(s.base)
+		if w.stopped("base window", 0) {
+			return
+		}
 		separator = true
 	}
 	if len(s.partition) != 0 {
@@ -253,6 +259,9 @@ func (w *renderer) window(s WindowSpec) {
 		}
 		w.text("PARTITION BY ")
 		w.exprs(s.partition, ", ")
+		if w.stopped("PARTITION BY", 0) {
+			return
+		}
 		separator = true
 	}
 	if len(s.order) != 0 {
@@ -261,6 +270,9 @@ func (w *renderer) window(s WindowSpec) {
 		}
 		w.text("ORDER BY ")
 		w.orders(s.order)
+		if w.stopped("ORDER BY", 0) {
+			return
+		}
 		separator = true
 	}
 	if s.frame != frameNone {
@@ -287,11 +299,20 @@ func (w *renderer) window(s WindowSpec) {
 		if s.shorthand {
 			w.byte(' ')
 			w.bound(s.start)
+			if w.stopped("frame start", 0) {
+				return
+			}
 		} else {
 			w.text(" BETWEEN ")
 			w.bound(s.start)
+			if w.stopped("frame start", 0) {
+				return
+			}
 			w.text(" AND ")
 			w.bound(s.end)
+			if w.stopped("frame end", 0) {
+				return
+			}
 		}
 	}
 	if s.hasExclude {

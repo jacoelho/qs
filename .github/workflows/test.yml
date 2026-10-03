@@ -20,12 +20,18 @@ jobs:
           cache: false
       - run: make golangci-lint
       - run: make test
+      - run: make race
   postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        postgres: [12, 13, 14, 15, 16, 17, 18]
     services:
       postgres:
-        image: postgres:18
+        image: postgres:${{ matrix.postgres }}
         env:
           POSTGRES_USER: qs
           POSTGRES_PASSWORD: qs

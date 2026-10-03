@@ -1076,6 +1076,10 @@ func (w *renderer) jsonArrayQueryConstructor(p *jsonArrayQueryPayload) {
 }
 
 func (w *renderer) jsonParse(p *jsonParsePayload) {
+	w.feature(PostgreSQL17, "JSON")
+	if w.err != nil {
+		return
+	}
 	w.text("JSON(")
 	w.jsonInput(p.value)
 	w.jsonUnique(p.unique, "JSON")
@@ -1083,12 +1087,20 @@ func (w *renderer) jsonParse(p *jsonParsePayload) {
 }
 
 func (w *renderer) jsonScalar(p *jsonScalarPayload) {
+	w.feature(PostgreSQL17, "JSON_SCALAR")
+	if w.err != nil {
+		return
+	}
 	w.text("JSON_SCALAR(")
 	w.expr(p.value)
 	w.byte(')')
 }
 
 func (w *renderer) jsonSerialize(p *jsonSerializePayload) {
+	w.feature(PostgreSQL17, "JSON_SERIALIZE")
+	if w.err != nil {
+		return
+	}
 	w.text("JSON_SERIALIZE(")
 	w.jsonInput(p.value)
 	w.jsonOutput(p.output, "JSON_SERIALIZE", true)

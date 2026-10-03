@@ -28,6 +28,14 @@ func Call(name string, arguments ...Expr) Expr {
 func builtin(name string, arguments ...Expr) Expr {
 	return Expr{kind: exprCall, text: name, value: &callExpression{args: cloneSlice(arguments), builtin: true}}
 }
+
+// builtinOwned constructs a builtin call from a freshly allocated argument
+// list. The private callers below allocate exact-sized lists, so copying them
+// again would only add construction work while callers of builtin remain
+// protected by its variadic-slice copy.
+func builtinOwned(name string, arguments []Expr) Expr {
+	return Expr{kind: exprCall, text: name, value: &callExpression{args: arguments, builtin: true}}
+}
 func versionedCall(version PostgreSQLVersion, name string, arguments ...Expr) Expr {
 	return Expr{kind: exprCall, text: name, value: &callExpression{args: cloneSlice(arguments), builtin: true, minimumVersion: version}}
 }
@@ -83,11 +91,17 @@ func (w *renderer) call(e Expr) {
 	n := ownedPayload[*callExpression](e.value)
 	if n.minimumVersion != 0 {
 		w.feature(n.minimumVersion, e.text)
+		if w.stopped("version", 0) {
+			return
+		}
 	}
 	if n.builtin {
 		w.text(e.text)
 	} else {
 		w.identifierPath(e.text, false)
+		if w.stopped("function name", 0) {
+			return
+		}
 	}
 	w.byte('(')
 	m := n.mods
@@ -95,9 +109,15 @@ func (w *renderer) call(e Expr) {
 		w.text("DISTINCT ")
 	}
 	w.exprs(n.args, ", ")
+	if w.stopped("arguments", 0) {
+		return
+	}
 	if m != nil && len(m.order) != 0 {
 		w.text(" ORDER BY ")
 		w.orders(m.order)
+		if w.stopped("ORDER BY", 0) {
+			return
+		}
 	}
 	w.byte(')')
 	if m == nil {
@@ -112,6 +132,9 @@ func (w *renderer) call(e Expr) {
 		}
 		w.text(" WITHIN GROUP (ORDER BY ")
 		w.orders(m.within)
+		if w.stopped("WITHIN GROUP", 0) {
+			return
+		}
 		w.byte(')')
 	}
 	w.aggregateTail(m.aggregateTail)
@@ -197,7 +220,10 @@ func Lag(expr Expr, offsetAndDefault ...Expr) Expr {
 	if len(offsetAndDefault) > 2 {
 		return invalidExpr("lag", "at most offset and default are accepted")
 	}
-	return builtin("lag", append([]Expr{expr}, offsetAndDefault...)...)
+	arguments := make([]Expr, 1+len(offsetAndDefault))
+	arguments[0] = expr
+	copy(arguments[1:], offsetAndDefault)
+	return builtinOwned("lag", arguments)
 }
 
 // Lead returns the lead window function with an optional offset and default.
@@ -205,7 +231,10 @@ func Lead(expr Expr, offsetAndDefault ...Expr) Expr {
 	if len(offsetAndDefault) > 2 {
 		return invalidExpr("lead", "at most offset and default are accepted")
 	}
-	return builtin("lead", append([]Expr{expr}, offsetAndDefault...)...)
+	arguments := make([]Expr, 1+len(offsetAndDefault))
+	arguments[0] = expr
+	copy(arguments[1:], offsetAndDefault)
+	return builtinOwned("lead", arguments)
 }
 
 // FirstValue returns the first_value window function.
@@ -219,7 +248,10 @@ func NthValue(expr, n Expr) Expr { return builtin("nth_value", expr, n) }
 
 // Coalesce returns the COALESCE(first, rest...) conditional expression.
 func Coalesce(first Expr, rest ...Expr) Expr {
-	return builtin("coalesce", append([]Expr{first}, rest...)...)
+	arguments := make([]Expr, 1+len(rest))
+	arguments[0] = first
+	copy(arguments[1:], rest)
+	return builtinOwned("coalesce", arguments)
 }
 
 // NullIf returns the NULLIF(value, other) conditional expression.
@@ -227,11 +259,19 @@ func NullIf(value, other Expr) Expr { return builtin("nullif", value, other) }
 
 // Greatest returns the GREATEST(first, rest...) conditional expression.
 func Greatest(first Expr, rest ...Expr) Expr {
-	return builtin("greatest", append([]Expr{first}, rest...)...)
+	arguments := make([]Expr, 1+len(rest))
+	arguments[0] = first
+	copy(arguments[1:], rest)
+	return builtinOwned("greatest", arguments)
 }
 
 // Least returns the LEAST(first, rest...) conditional expression.
-func Least(first Expr, rest ...Expr) Expr { return builtin("least", append([]Expr{first}, rest...)...) }
+func Least(first Expr, rest ...Expr) Expr {
+	arguments := make([]Expr, 1+len(rest))
+	arguments[0] = first
+	copy(arguments[1:], rest)
+	return builtinOwned("least", arguments)
+}
 
 // Concat returns concat(exprs...) as a function expression.
 func Concat(exprs ...Expr) Expr { return builtin("concat", exprs...) }
@@ -262,7 +302,10 @@ func Substring(expr, start Expr, length ...Expr) Expr {
 	if len(length) > 1 {
 		return invalidExpr("substring", "at most one length is accepted")
 	}
-	return builtin("substr", append([]Expr{expr, start}, length...)...)
+	arguments := make([]Expr, 2+len(length))
+	arguments[0], arguments[1] = expr, start
+	copy(arguments[2:], length)
+	return builtinOwned("substr", arguments)
 }
 
 // Abs returns abs(expr) as a function expression.
@@ -279,7 +322,10 @@ func Round(expr Expr, scale ...Expr) Expr {
 	if len(scale) > 1 {
 		return invalidExpr("round", "at most one scale is accepted")
 	}
-	return builtin("round", append([]Expr{expr}, scale...)...)
+	arguments := make([]Expr, 1+len(scale))
+	arguments[0] = expr
+	copy(arguments[1:], scale)
+	return builtinOwned("round", arguments)
 }
 
 // Power returns power(base, exponent) as a function expression.
@@ -308,7 +354,10 @@ func DateTrunc(precision, value Expr, zone ...Expr) Expr {
 	if len(zone) > 1 {
 		return invalidExpr("date_trunc", "at most one time zone is accepted")
 	}
-	return builtin("date_trunc", append([]Expr{precision, value}, zone...)...)
+	arguments := make([]Expr, 2+len(zone))
+	arguments[0], arguments[1] = precision, value
+	copy(arguments[2:], zone)
+	return builtinOwned("date_trunc", arguments)
 }
 
 // DateBin returns date_bin(stride, source, origin), available in PostgreSQL 14+.
@@ -321,7 +370,10 @@ func Age(left Expr, right ...Expr) Expr {
 	if len(right) > 1 {
 		return invalidExpr("age", "at most one second operand is accepted")
 	}
-	return builtin("age", append([]Expr{left}, right...)...)
+	arguments := make([]Expr, 1+len(right))
+	arguments[0] = left
+	copy(arguments[1:], right)
+	return builtinOwned("age", arguments)
 }
 
 // GenerateSeries returns generate_series(start, stop [, step]).
@@ -329,7 +381,10 @@ func GenerateSeries(start, stop Expr, step ...Expr) Expr {
 	if len(step) > 1 {
 		return invalidExpr("generate_series", "at most one step is accepted")
 	}
-	return builtin("generate_series", append([]Expr{start, stop}, step...)...)
+	arguments := make([]Expr, 2+len(step))
+	arguments[0], arguments[1] = start, stop
+	copy(arguments[2:], step)
+	return builtinOwned("generate_series", arguments)
 }
 
 // NamedArg returns a function argument using PostgreSQL's name => value syntax.

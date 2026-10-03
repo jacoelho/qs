@@ -1,6 +1,9 @@
 package qs
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 type relationKind uint8
 
@@ -122,13 +125,28 @@ func (r Relation) Repeatable(seed Expr) Relation {
 	return r
 }
 
-// Col refers to a named column using the relation's alias (when present).
+// Col refers to a literal column name using the relation's alias when present.
+// Dots and * in column are quoted; use Star for a relation wildcard.
 func (r Relation) Col(column string) Expr {
 	if r.alias != "" {
 		return Ident(r.alias, column)
 	}
 	if r.kind == relationTable {
-		return Col(r.name + "." + column)
+		parts := make(identifierParts, strings.Count(r.name, ".")+2)
+		name := r.name
+		for i := range parts[:len(parts)-1] {
+			part, rest, found := strings.Cut(name, ".")
+			if part == "" || part == "*" {
+				return invalidExpr("column", "invalid table path")
+			}
+			parts[i] = part
+			if !found {
+				parts[len(parts)-1] = column
+				return Expr{kind: exprIdentifierParts, value: parts}
+			}
+			name = rest
+		}
+		return Expr{kind: exprIdentifierParts, value: parts}
 	}
 	if r.kind == relationTableIdent {
 		base, ok := r.value.(identifierParts)
@@ -285,11 +303,17 @@ func (w *renderer) functionRelationExpr(e Expr) {
 }
 
 func (w *renderer) relations(relations []Relation) {
+	if w.err != nil {
+		return
+	}
 	for i, relation := range relations {
 		if i != 0 {
 			w.text(", ")
 		}
 		w.relation(relation)
+		if w.stopped("relation", i+1) {
+			return
+		}
 	}
 }
 func (w *renderer) relation(r Relation) {
@@ -373,6 +397,9 @@ func (w *renderer) subqueryRelation(r Relation) bool {
 	}
 	w.byte('(')
 	w.statement(query)
+	if w.stopped("subquery", 0) {
+		return false
+	}
 	w.byte(')')
 	return true
 }
@@ -473,6 +500,9 @@ func (w *renderer) join(j *joinExpression) {
 	}
 	w.byte('(')
 	w.relation(j.left)
+	if w.stopped("left", 0) {
+		return
+	}
 	if j.natural {
 		w.text(" NATURAL")
 	}
@@ -492,9 +522,15 @@ func (w *renderer) join(j *joinExpression) {
 		return
 	}
 	w.relation(j.right)
+	if w.stopped("right", 0) {
+		return
+	}
 	if len(j.on) > 0 {
 		w.text(" ON ")
 		w.conditions(j.on)
+		if w.stopped("ON", 0) {
+			return
+		}
 	}
 	if len(j.using) > 0 {
 		w.text(" USING (")

@@ -22,6 +22,9 @@ func BenchmarkToSQL(b *testing.B) {
 }
 func BenchmarkAppendSQLWarm(b *testing.B) {
 	q := benchQuery()
+	validateBenchmarkStatement(b, q, Options{},
+		`SELECT "id", "name", "created_at" FROM "users" WHERE ("active" = $1) AND ("id" IN ($2, $3, $4)) ORDER BY "created_at" DESC, "id" DESC LIMIT $5`,
+		true, 1, 2, 3, 50)
 	sql := make([]byte, 0, 1024)
 	args := make([]any, 0, 16)
 	b.ReportAllocs()
@@ -60,6 +63,9 @@ func BenchmarkClone(b *testing.B) {
 func BenchmarkAppendCTEWarm(b *testing.B) {
 	recent := CTE("recent", SelectCols("id").From("users").Where(Gt("created_at", 100)))
 	q := Select(Col("r.id"), CountAll().Over(Window().OrderBy(Asc("r.id")))).With(recent).FromExpr(recent.Ref().As("r")).Where(In("r.id", 1, 2, 3)).Limit(20)
+	validateBenchmarkStatement(b, q, Options{},
+		`WITH "recent" AS (SELECT "id" FROM "users" WHERE ("created_at" > $1)) SELECT "r"."id", count(*) OVER (ORDER BY "r"."id" ASC) FROM "recent" AS "r" WHERE ("r"."id" IN ($2, $3, $4)) LIMIT $5`,
+		100, 1, 2, 3, 20)
 	sql := make([]byte, 0, 2048)
 	args := make([]any, 0, 16)
 	b.ReportAllocs()

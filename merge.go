@@ -218,6 +218,9 @@ func (b *MergeBuilder) ReturningRows(aliases ReturningAliases) *MergeBuilder {
 
 func (b *MergeBuilder) append(w *renderer) {
 	w.feature(PostgreSQL15, "MERGE")
+	if w.stopped("version", 0) {
+		return
+	}
 	if !w.require(len(b.on) > 0 && len(b.branches) > 0, "MERGE", "requires ON and at least one WHEN branch") {
 		return
 	}
@@ -225,12 +228,24 @@ func (b *MergeBuilder) append(w *renderer) {
 		return
 	}
 	w.head(b.base)
+	if w.err != nil {
+		return
+	}
 	w.text("MERGE INTO ")
 	w.target(b.target, false)
+	if w.stopped("target", 0) {
+		return
+	}
 	w.text(" USING ")
 	w.relation(b.source)
+	if w.stopped("USING", 0) {
+		return
+	}
 	w.text(" ON ")
 	w.conditions(b.on)
+	if w.stopped("ON", 0) {
+		return
+	}
 	for i, m := range b.branches {
 		for j := range i {
 			if b.branches[j].kind == m.kind && len(b.branches[j].conditions) == 0 {
@@ -239,11 +254,17 @@ func (b *MergeBuilder) append(w *renderer) {
 			}
 		}
 		w.mergeBranch(m)
+		if w.stopped("WHEN", i+1) {
+			return
+		}
 	}
 	if len(b.returning) > 0 {
 		w.feature(PostgreSQL17, "MERGE RETURNING")
 	}
 	w.returning(b.returning, b.aliases)
+	if w.stopped("RETURNING", 0) {
+		return
+	}
 	w.foot(b.base)
 }
 func (w *renderer) mergeBranch(m MergeWhen) {
@@ -258,12 +279,18 @@ func (w *renderer) mergeBranch(m MergeWhen) {
 	case mergeUpdate:
 		w.text("UPDATE SET ")
 		w.assignments(m.set)
+		if w.stopped("SET", 0) {
+			return
+		}
 	case mergeDelete:
 		w.text("DELETE")
 	case mergeNothing:
 		w.text("DO NOTHING")
 	case mergeInsert:
 		w.mergeInsert(m)
+		if w.stopped("INSERT", 0) {
+			return
+		}
 	default:
 		w.fail(ErrInvalid, "MERGE WHEN", "missing action")
 	}
@@ -286,9 +313,15 @@ func (w *renderer) mergeMatch(m MergeWhen) bool {
 		w.fail(ErrInvalid, "MERGE WHEN", "zero or unknown match category")
 		return false
 	}
+	if w.stopped("match", 0) {
+		return false
+	}
 	if len(m.conditions) > 0 {
 		w.text(" AND ")
 		w.conditions(m.conditions)
+		if w.stopped("condition", 0) {
+			return false
+		}
 	}
 	w.text(" THEN ")
 	return true
@@ -348,12 +381,18 @@ func (w *renderer) mergeInsert(m MergeWhen) {
 				w.text(", ")
 			}
 			w.assignmentTarget(a.target)
+			if w.stopped("target", i+1) {
+				return
+			}
 		}
 		w.byte(')')
 	} else if len(m.columns) > 0 {
 		w.text(" (")
 		w.names(m.columns)
 		w.byte(')')
+	}
+	if w.stopped("targets", 0) {
+		return
 	}
 	if m.defaults {
 		if !w.require(m.overriding == overridingNone, "MERGE INSERT", "DEFAULT VALUES cannot specify OVERRIDING") {
@@ -363,6 +402,9 @@ func (w *renderer) mergeInsert(m MergeWhen) {
 		return
 	}
 	w.overriding(m.overriding)
+	if w.stopped("OVERRIDING", 0) {
+		return
+	}
 	w.text(" VALUES (")
 	if len(m.set) > 0 {
 		for i, a := range m.set {
@@ -370,6 +412,9 @@ func (w *renderer) mergeInsert(m MergeWhen) {
 				w.text(", ")
 			}
 			w.writeExpr(a.value)
+			if w.stopped("value", i+1) {
+				return
+			}
 		}
 	} else {
 		if len(m.columns) > 0 && !w.require(len(m.columns) == len(m.values), "MERGE INSERT", "column and value counts differ") {
@@ -380,6 +425,9 @@ func (w *renderer) mergeInsert(m MergeWhen) {
 				w.text(", ")
 			}
 			w.writeExpr(value.expr())
+			if w.stopped("value", i+1) {
+				return
+			}
 		}
 	}
 	w.byte(')')

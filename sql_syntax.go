@@ -337,6 +337,10 @@ func (w *renderer) sqlSubstringSimilar(n *sqlSyntaxExpression) {
 	if !w.require(len(n.args) == 3, "SUBSTRING", "requires value, pattern and escape") {
 		return
 	}
+	w.feature(PostgreSQL14, "SUBSTRING SIMILAR")
+	if w.err != nil {
+		return
+	}
 	w.text("SUBSTRING(")
 	w.expr(n.args[0])
 	w.text(" SIMILAR ")
@@ -359,6 +363,10 @@ func (w *renderer) sqlPosition(n *sqlSyntaxExpression) {
 
 func (w *renderer) sqlNormalize(n *sqlSyntaxExpression) {
 	if !w.require(len(n.args) == 1, "NORMALIZE", "requires one value") {
+		return
+	}
+	w.feature(PostgreSQL13, "NORMALIZE")
+	if w.err != nil {
 		return
 	}
 	w.text("NORMALIZE(")
@@ -406,6 +414,10 @@ func (w *renderer) sqlAtLocal(n *sqlSyntaxExpression) {
 	if !w.require(len(n.args) == 1, "AT LOCAL", "requires one value") {
 		return
 	}
+	w.feature(PostgreSQL17, "AT LOCAL")
+	if w.err != nil {
+		return
+	}
 	w.byte('(')
 	w.expr(n.args[0])
 	w.text(" AT LOCAL)")
@@ -444,6 +456,10 @@ func (w *renderer) sqlCollationFor(n *sqlSyntaxExpression) {
 
 func (w *renderer) sqlIsNormalized(n *sqlSyntaxExpression) {
 	if !w.require(len(n.args) == 1, "NORMALIZED", "requires one value") {
+		return
+	}
+	w.feature(PostgreSQL13, "NORMALIZED")
+	if w.err != nil {
 		return
 	}
 	if n.hasForm && !n.form.valid() {

@@ -1,3 +1,11 @@
+# Rendering and function construction
+
+Reusable rendering remains allocation-free in the established warm fixtures.
+The private owned-argument constructors remove one redundant argument-list
+allocation while preserving caller slice ownership. Diagnostics CPU acceptance
+remains unestablished against the correctness-fixed baseline; zero allocations
+do not establish CPU equivalence.
+
 # Write API and generated clone measurements
 
 This report records the acceptance measurements for concrete write values,

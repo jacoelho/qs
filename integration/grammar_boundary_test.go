@@ -12,7 +12,8 @@ import (
 
 func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	if _, err := conn.Exec(ctx, `BEGIN;
 		CREATE TEMP TABLE qs_grouping_setup (dummy integer);
 		CREATE DOMAIN pg_temp.qs_inner_array AS integer[];
@@ -39,7 +40,7 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 		bounds.Index(zero).Index(one).IsNull().Expr(),
 		pairs.Index(one).Parenthesized().Field("b"),
 	).From("qs_grouped_indirection")
-	sql, args, err := query.ToSQL()
+	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,7 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 	}
 
 	expanded := qs.Select(pairs.Index(one).Parenthesized().Fields().Parenthesized()).From("qs_grouped_indirection")
-	sql, args, err = expanded.ToSQL()
+	sql, args, err = session.render(t, expanded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,8 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestFunctionRelationCastsAgainstPostgres(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	sum := qs.LiteralInt(1).Add(qs.LiteralInt(2)).Cast(qs.TypeInt4)
 	for _, tc := range []struct {
 		name     string
@@ -81,7 +83,7 @@ func TestFunctionRelationCastsAgainstPostgres(t *testing.T) {
 		{"nested_parameter_cast", qs.TableFunc(qs.Param(3).Cast(qs.TypeInt4).Cast(qs.TypeInt8)).As("c", "v")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := qs.Select(qs.Col("v")).FromExpr(tc.relation).ToSQL()
+			sql, args, err := session.render(t, qs.Select(qs.Col("v")).FromExpr(tc.relation))
 			if err != nil {
 				t.Fatal(err)
 			}

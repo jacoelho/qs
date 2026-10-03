@@ -13,7 +13,8 @@ import (
 //nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
 func TestUUIDTypeExamples(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	const text = "550e8400-e29b-41d4-a716-446655440000"
 	want := pgtype.UUID{
 		Bytes: [16]byte{0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4, 0xa7, 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00},
@@ -34,7 +35,7 @@ func TestUUIDTypeExamples(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query, args, err := qs.Select(qs.Param(tc.value).Cast(qs.TypeUUID)).ToSQL()
+			query, args, err := session.render(t, qs.Select(qs.Param(tc.value).Cast(qs.TypeUUID)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +55,8 @@ func TestUUIDTypeExamples(t *testing.T) {
 
 func TestNestedCompositeTypeExample(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
 	if _, err := conn.Exec(ctx, `
 		CREATE TYPE pet AS (name text, age integer);
 		CREATE TYPE person AS (id uuid, pets pet[]);`); err != nil {
@@ -78,7 +80,7 @@ func TestNestedCompositeTypeExample(t *testing.T) {
 			{"Rex", int32(5)},
 		},
 	}
-	query, args, err := qs.Select(qs.Param(person).Cast(qs.TypeNamed("person"))).ToSQL()
+	query, args, err := session.render(t, qs.Select(qs.Param(person).Cast(qs.TypeNamed("person"))))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,16 +4,20 @@ package integration_test
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jacoelho/qs"
 )
 
 func TestSQLJSONNullAndAbsentPolicies(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	requireVersion(t, session, qs.PostgreSQL16)
 
 	query := qs.Select(
 		qs.JSONObject(qs.JSONPair(qs.Param("key").Cast(qs.TypeText), qs.NullExpr(qs.TypeInt4))).Expr().Cast(qs.TypeText),
@@ -25,7 +29,7 @@ func TestSQLJSONNullAndAbsentPolicies(t *testing.T) {
 		qs.JSONObjectAggregate(qs.Param("key").Cast(qs.TypeText), qs.NullExpr(qs.TypeInt4)).Expr().Cast(qs.TypeText),
 		qs.JSONObjectAggregate(qs.Param("key").Cast(qs.TypeText), qs.NullExpr(qs.TypeInt4)).AbsentOnNull().Expr().Cast(qs.TypeText),
 	)
-	sql, args, err := query.ToSQL()
+	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +52,9 @@ func TestSQLJSONNullAndAbsentPolicies(t *testing.T) {
 
 func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	requireVersion(t, session, qs.PostgreSQL16)
 
 	// JSON retains duplicate object members when uniqueness is omitted. Compare
 	// the encoded text here because duplicate members are intentionally lost by
@@ -59,7 +65,7 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 			qs.JSONPair(qs.Param("a").Cast(qs.TypeText), qs.Param(2).Cast(qs.TypeInt4)),
 		).Expr().Cast(qs.TypeText),
 	)
-	sql, args, err := duplicate.ToSQL()
+	sql, args, err := session.render(t, duplicate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,29 +76,57 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 	if text != `{"a" : 1, "a" : 2}` {
 		t.Fatalf("duplicate JSON object = %q; want duplicate members preserved", text)
 	}
+	requireDuplicateKey := func(err error) {
+		t.Helper()
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "22030" {
+			t.Fatalf("duplicate JSON object error = %v; want SQLSTATE 22030", err)
+		}
+	}
 
 	unique := qs.Select(qs.JSONObject(
 		qs.JSONPair(qs.Param("a").Cast(qs.TypeText), qs.Param(1).Cast(qs.TypeInt4)),
 		qs.JSONPair(qs.Param("a").Cast(qs.TypeText), qs.Param(2).Cast(qs.TypeInt4)),
 	).WithUniqueKeys().Expr())
-	sql, args, err = unique.ToSQL()
+	sql, args, err = session.render(t, unique)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := conn.QueryRow(ctx, sql, args...).Scan(&text); err == nil {
 		t.Fatal("WITH UNIQUE KEYS accepted duplicate dynamic keys")
+	} else {
+		requireDuplicateKey(err)
 	}
 
-	parsedUnique := qs.Select(qs.JSONParse(
-		qs.JSONInputExpr(qs.Param(`{"a":1,"a":2}`)).FormatJSON(),
-	).WithUniqueKeys().Expr())
-	sql, args, err = parsedUnique.ToSQL()
+	validUnique := qs.Select(qs.JSONObject(
+		qs.JSONPair(qs.Param("a").Cast(qs.TypeText), qs.Param(1).Cast(qs.TypeInt4)),
+		qs.JSONPair(qs.Param("b").Cast(qs.TypeText), qs.Param(2).Cast(qs.TypeInt4)),
+	).WithUniqueKeys().Expr().Cast(qs.TypeText))
+	sql, args, err = session.render(t, validUnique)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var parsed string
-	if err := conn.QueryRow(ctx, sql, args...).Scan(&parsed); err == nil {
-		t.Fatal("JSON(... WITH UNIQUE KEYS) accepted duplicate parsed keys")
+	if err := conn.QueryRow(ctx, sql, args...).Scan(&text); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	if text != `{"a" : 1, "b" : 2}` {
+		t.Fatalf("unique JSON object = %q; want unique members preserved", text)
+	}
+
+	if session.options.PostgreSQL >= qs.PostgreSQL17 {
+		parsedUnique := qs.Select(qs.JSONParse(
+			qs.JSONInputExpr(qs.Param(`{"a":1,"a":2}`)).FormatJSON(),
+		).WithUniqueKeys().Expr())
+		sql, args, err = session.render(t, parsedUnique)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var parsed string
+		if err := conn.QueryRow(ctx, sql, args...).Scan(&parsed); err == nil {
+			t.Fatal("JSON(... WITH UNIQUE KEYS) accepted duplicate parsed keys")
+		} else {
+			requireDuplicateKey(err)
+		}
 	}
 
 	// IS JSON reports duplicate-key validity without throwing; this is a
@@ -101,7 +135,7 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 		qs.IsJSON(qs.Param(`{"a":1,"a":2}`).Cast(qs.TypeText)).Expr(),
 		qs.IsJSON(qs.Param(`{"a":1,"a":2}`).Cast(qs.TypeText)).WithUniqueKeys().Expr(),
 	)
-	sql, args, err = predicate.ToSQL()
+	sql, args, err = session.render(t, predicate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +150,9 @@ func TestSQLJSONDuplicateKeySemantics(t *testing.T) {
 
 func TestSQLJSONArrayAggregateOrderingAndFilter(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	requireVersion(t, session, qs.PostgreSQL16)
 	if _, err := conn.Exec(ctx, `CREATE TEMP TABLE qs_json_constructor_values(v int, keep boolean);
 		INSERT INTO qs_json_constructor_values VALUES (3, true), (1, false), (5, true), (2, false)`); err != nil {
 		t.Fatal(err)
@@ -126,14 +162,14 @@ func TestSQLJSONArrayAggregateOrderingAndFilter(t *testing.T) {
 		OrderBy(qs.Desc("v")).
 		Filter(qs.Eq("keep", true)).
 		Expr().Cast(qs.TypeText)
-	if got := queryStrings(t, ctx, conn, qs.Select(array).From("qs_json_constructor_values")); !reflect.DeepEqual(got, []string{`[5, 3]`}) {
+	if got := queryStrings(t, session, qs.Select(array).From("qs_json_constructor_values")); !reflect.DeepEqual(got, []string{`[5, 3]`}) {
 		t.Fatalf("ordered filtered array aggregate = %#v; want [5, 3]", got)
 	}
 
 	object := qs.JSONObjectAggregate(qs.Col("v"), qs.Col("v")).
 		Filter(qs.Eq("keep", true)).
 		Expr().Cast(qs.TypeText)
-	got := queryStrings(t, ctx, conn, qs.Select(object).From("qs_json_constructor_values"))
+	got := queryStrings(t, session, qs.Select(object).From("qs_json_constructor_values"))
 	if len(got) != 1 {
 		t.Fatalf("object aggregate rows = %#v; want one row", got)
 	}
@@ -148,7 +184,9 @@ func TestSQLJSONArrayAggregateOrderingAndFilter(t *testing.T) {
 
 func TestSQLJSONParseScalarAndSerialize(t *testing.T) {
 	t.Parallel()
-	ctx, conn := connect(t)
+	session := connect(t)
+	ctx, conn := session.Context, session.Conn
+	requireVersion(t, session, qs.PostgreSQL17)
 
 	// JSON() parses a formatted value structurally, while JSON_SCALAR() treats
 	// ordinary text as one JSON string. JSON_SERIALIZE(FORMAT JSON) preserves
@@ -158,7 +196,7 @@ func TestSQLJSONParseScalarAndSerialize(t *testing.T) {
 		qs.JSONScalar(qs.Param(` [2,1] `).Cast(qs.TypeText)).Cast(qs.TypeText),
 		qs.JSONSerialize(qs.JSONInputExpr(qs.Param(` { "a" : 1 } `).Cast(qs.TypeText)).FormatJSON()).Returning(qs.TypeText).Expr(),
 	)
-	sql, args, err := query.ToSQL()
+	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)
 	}

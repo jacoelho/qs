@@ -76,12 +76,18 @@ func limitValue(n int) Expr {
 	return Param(n)
 }
 func (w *renderer) tail(t queryTail, allowLocks bool) {
+	if w.err != nil {
+		return
+	}
 	if !w.require(!t.hasLimit || !t.hasFetch, "pagination", "LIMIT and FETCH are mutually exclusive") {
 		return
 	}
 	if len(t.order) > 0 {
 		w.text(" ORDER BY ")
 		w.orders(t.order)
+		if w.stopped("ORDER BY", 0) {
+			return
+		}
 	}
 	if t.hasLimit {
 		w.text(" LIMIT ")
@@ -89,11 +95,17 @@ func (w *renderer) tail(t queryTail, allowLocks bool) {
 			w.text("ALL")
 		} else {
 			w.expr(t.limit)
+			if w.stopped("LIMIT", 0) {
+				return
+			}
 		}
 	}
 	if t.hasOffset {
 		w.text(" OFFSET ")
 		w.expr(t.offset)
+		if w.stopped("OFFSET", 0) {
+			return
+		}
 	}
 	if t.hasFetch {
 		if !w.require(t.fetchMode == OnlyRows || t.fetchMode == WithTies, "FETCH", "unknown mode") {
@@ -110,6 +122,9 @@ func (w *renderer) tail(t queryTail, allowLocks bool) {
 		}
 		w.text(" FETCH FIRST (")
 		w.expr(t.fetch)
+		if w.stopped("FETCH", 0) {
+			return
+		}
 		w.text(") ROWS ")
 		if t.fetchMode == WithTies {
 			w.text("WITH TIES")

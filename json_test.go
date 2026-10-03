@@ -116,6 +116,12 @@ func BenchmarkJSONAppendSQLWarm(b *testing.B) {
 		style PlaceholderStyle
 	}{{"Dollar", Dollar}, {"Question", Question}} {
 		b.Run(tc.name, func(b *testing.B) {
+			wantSQL := `SELECT ("payload" #>> (ARRAY[$1, $2, $3])::text[]) AS "name" FROM "events" WHERE ("payload" ?& (ARRAY[$4, $5])::text[]) AND ("payload" @> ($6)::jsonb) AND (((("payload" -> $7) -> ($8)::integer) ->> $9) = $10)`
+			if tc.style == Question {
+				wantSQL = benchmarkQuestionSQL(wantSQL, 10)
+			}
+			validateBenchmarkStatement(b, query, Options{PlaceholderStyle: tc.style}, wantSQL,
+				"items", "0", "name", "items", "active", `{"active":true}`, "items", int32(-1), "name", "Ada")
 			buf, args := make([]byte, 0, 2048), make([]any, 0, 16)
 			options := Options{PlaceholderStyle: tc.style}
 			b.ReportAllocs()

@@ -3,8 +3,8 @@
 This is the architecture entry point. [README.md](../README.md) owns public usage
 and caller contracts; the [corpus README](postgrescorpus/README.md) owns
 construction-support measurement and fixture maintenance. The
-[performance report](PERFORMANCE.md) records the write API and clone acceptance
-measurements.
+[performance report](PERFORMANCE.md) records correctness, diagnostics,
+construction and clone measurements, including unmet CPU budgets.
 
 ## Boundaries and representation
 
@@ -97,6 +97,10 @@ formats remain distinct. Assignment destinations have their own grammar.
 Parenthesized indirection preserves successive indexing and projection width.
 Window definitions validate local inheritance and effective frame ordering.
 Unknown widths remain unknown; all width consumers share a bounded inspector.
+Immutable row-list membership widths are checked at construction; live subquery
+widths are checked at rendering. Relation columns append a literal identifier
+component to a separately parsed table path, preserving the existing identifier
+representation.
 Row-width errors identify one-based row positions and expected/actual counts,
 never bound data. Unknown rows do not erase the preceding known width.
 
@@ -123,9 +127,18 @@ because question marks also occur in PostgreSQL grammar. Rendering never calls
 Options belong to each render. Syntax owners enforce selected feature/version
 thresholds. Parameter limits include prefix arguments; depth limits bound nested
 traversal and reject cycles. `RenderError` preserves context and wraps sentinels.
+Its error-owned path records
+static structural scopes, outermost first, with one-based indexes. Indexed child
+scopes close immediately; only the transition to the first error adds a step.
+Labels are formatted on failure, accumulated during unwinding, and reversed once
+at the append boundary. This avoids successful-render path allocation, shared
+scratch state, and a second traversal. The path is not a complete syntax tree;
+error text is presentation rather than a machine-readable contract.
 `ToSQL` discards partial output on failure. Append methods preserve original slice
 lengths and visible prefixes, clear appended argument references, and may change
-unused backing-array capacity.
+unused backing-array capacity. Cleanup covers written slots in both the original
+and final argument arrays. Its bound depends on the renderer appending arguments
+without shortening their length.
 
 Builders mutate; structural descriptors use value-style methods and own supplied
 lists. Private paths may consume freshly owned lists without another copy.

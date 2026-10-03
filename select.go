@@ -249,6 +249,9 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 		return
 	}
 	w.head(b.base)
+	if w.err != nil {
+		return
+	}
 	w.text("SELECT ")
 	switch b.distinct {
 	case selectAll:
@@ -260,22 +263,37 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 		}
 		w.text("DISTINCT ON (")
 		w.exprs(b.distinctOn, ", ")
+		if w.stopped("DISTINCT ON", 0) {
+			return
+		}
 		w.text(") ")
 	default:
 		w.fail(ErrInvalid, "SELECT", "unknown quantifier")
 		return
 	}
 	w.exprs(b.columns, ", ")
+	if w.stopped("projection", 0) {
+		return
+	}
 	if into != nil {
 		into.append(w)
+		if w.stopped("INTO", 0) {
+			return
+		}
 	}
 	if len(b.from) > 0 {
 		w.text(" FROM ")
 		w.relations(b.from)
+		if w.stopped("FROM", 0) {
+			return
+		}
 	}
 	if len(b.where) > 0 {
 		w.text(" WHERE ")
 		w.conditions(b.where)
+		if w.stopped("WHERE", 0) {
+			return
+		}
 	}
 	if b.groupDistinct && !w.require(len(b.group) > 0, "GROUP BY", "DISTINCT requires grouping expressions") {
 		return
@@ -287,10 +305,16 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 			w.text("DISTINCT ")
 		}
 		w.exprs(b.group, ", ")
+		if w.stopped("GROUP BY", 0) {
+			return
+		}
 	}
 	if len(b.having) > 0 {
 		w.text(" HAVING ")
 		w.conditions(b.having)
+		if w.stopped("HAVING", 0) {
+			return
+		}
 	}
 	if len(b.windows) > 0 {
 		if !w.validateWindows(b.windows) {
@@ -304,6 +328,9 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 			w.identifierPart(n.name)
 			w.text(" AS (")
 			w.window(n.spec)
+			if w.stopped("window", i+1) {
+				return
+			}
 			w.byte(')')
 		}
 	}

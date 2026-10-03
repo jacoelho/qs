@@ -64,10 +64,13 @@ func BenchmarkGrammarRoles(b *testing.B) {
 			})
 			for _, style := range []PlaceholderStyle{Dollar, Question} {
 				name := "AppendDollar"
+				wantSQL := fixture.sql
 				if style == Question {
 					name = "AppendQuestion"
+					wantSQL = benchmarkQuestionSQL(wantSQL, len(fixture.args))
 				}
 				b.Run(name, func(b *testing.B) {
+					validateBenchmarkStatement(b, statement, Options{PlaceholderStyle: style}, wantSQL, fixture.args...)
 					sql := make([]byte, 0, 1024)
 					args := make([]any, 0, 16)
 					b.ReportAllocs()

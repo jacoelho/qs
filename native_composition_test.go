@@ -56,10 +56,16 @@ func BenchmarkAppendWithNativeComposition(b *testing.B) {
 	for _, tc := range []struct {
 		name  string
 		style PlaceholderStyle
-	}{{"dollar", Dollar}, {"question", Question}} {
+		sql   string
+	}{
+		{"dollar", Dollar, `SELECT JSON_ARRAYAGG("x"."value" ORDER BY $1 ASC) FILTER (WHERE ("x"."value" <> $2)) OVER (PARTITION BY $3), ("x"."record")."key.name", SUBSTRING($4 FROM $5 FOR $6), (SELECT ($7)::text) FROM XMLTABLE(XMLNAMESPACES(($8)::text AS "n"), ($9) PASSING (($10)::xml) COLUMNS "value" text PATH $11 DEFAULT (SELECT ($12)::text)) AS "x" WHERE ("x"."value" = $13)`},
+		{"question", Question, `SELECT JSON_ARRAYAGG("x"."value" ORDER BY ? ASC) FILTER (WHERE ("x"."value" <> ?)) OVER (PARTITION BY ?), ("x"."record")."key.name", SUBSTRING(? FROM ? FOR ?), (SELECT (?)::text) FROM XMLTABLE(XMLNAMESPACES((?)::text AS "n"), (?) PASSING ((?)::xml) COLUMNS "value" text PATH ? DEFAULT (SELECT (?)::text)) AS "x" WHERE ("x"."value" = ?)`},
+	} {
 		b.Run(tc.name, func(b *testing.B) {
 			buf, args := make([]byte, 0, 2048), make([]any, 0, 32)
 			options := Options{PlaceholderStyle: tc.style}
+			validateBenchmarkStatement(b, query, options, tc.sql,
+				7, "excluded", "p", "abcd", 2, 1, "seed", "urn:qs", "/root/item", "<root/>", "value", "seed", "keep")
 			b.ReportAllocs()
 			for b.Loop() {
 				var err error

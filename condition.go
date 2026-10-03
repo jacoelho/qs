@@ -140,22 +140,22 @@ func IsNull(column string) Condition { return Col(column).IsNull() }
 func IsNotNull(column string) Condition { return Col(column).IsNotNull() }
 
 // Eq compares a named column with a bound value.
-func Eq[T any](column string, value T) Condition { return Col(column).Eq(value) }
+func Eq(column string, value any) Condition { return Col(column).Eq(value) }
 
 // Ne compares a named column with a bound value.
-func Ne[T any](column string, value T) Condition { return Col(column).Ne(value) }
+func Ne(column string, value any) Condition { return Col(column).Ne(value) }
 
 // Lt compares a named column with a bound value.
-func Lt[T any](column string, value T) Condition { return Col(column).Lt(value) }
+func Lt(column string, value any) Condition { return Col(column).Lt(value) }
 
 // Lte compares a named column with a bound value.
-func Lte[T any](column string, value T) Condition { return Col(column).Lte(value) }
+func Lte(column string, value any) Condition { return Col(column).Lte(value) }
 
 // Gt compares a named column with a bound value.
-func Gt[T any](column string, value T) Condition { return Col(column).Gt(value) }
+func Gt(column string, value any) Condition { return Col(column).Gt(value) }
 
 // Gte compares a named column with a bound value.
-func Gte[T any](column string, value T) Condition { return Col(column).Gte(value) }
+func Gte(column string, value any) Condition { return Col(column).Gte(value) }
 
 // EqColumns compares two named columns with equality.
 func EqColumns(left, right string) Condition { return Col(left).EqExpr(Col(right)) }
@@ -210,27 +210,27 @@ func Between[T any](column string, lower, upper T) Condition {
 	return Col(column).Between(lower, upper)
 }
 
-func inExpressions(left Expr, operator string, values []Expr, width int) Condition {
-	return inOwnedExpressions(left, operator, cloneSlice(values), width)
+func inExpressions(left Expr, operator string, values []Expr) Condition {
+	return inOwnedExpressions(left, operator, cloneSlice(values))
 }
 
 // inOwnedExpressions takes a private expression list. Public slice inputs must
 // be copied before crossing this boundary.
-func inOwnedExpressions(left Expr, operator string, values []Expr, width int) Condition {
+func inOwnedExpressions(left Expr, operator string, values []Expr) Condition {
 	if len(values) == 0 {
 		if operator == "NOT IN" {
 			return True()
 		}
 		return False()
 	}
-	return AsCondition(Expr{kind: exprMembership, text: operator, value: &membershipExpression{left: left, values: values, width: width}})
+	return AsCondition(Expr{kind: exprMembership, text: operator, value: &membershipExpression{left: left, values: values}})
 }
 func inValues[T any](left Expr, operator string, values []T) Condition {
 	exprs := make([]Expr, len(values))
 	for i := range values {
 		exprs[i] = Param(values[i])
 	}
-	return inOwnedExpressions(left, operator, exprs, 1)
+	return inOwnedExpressions(left, operator, exprs)
 }
 
 // In explicitly expands a homogeneous list for a named column. An empty list
@@ -251,10 +251,10 @@ func (e Expr) In(values ...any) Condition { return inValues(e, "IN", values) }
 func (e Expr) NotIn(values ...any) Condition { return inValues(e, "NOT IN", values) }
 
 // InExpr expands SQL expressions for e. An empty list is FALSE.
-func (e Expr) InExpr(values ...Expr) Condition { return inExpressions(e, "IN", values, 1) }
+func (e Expr) InExpr(values ...Expr) Condition { return inExpressions(e, "IN", values) }
 
 // NotInExpr expands SQL expressions for e. An empty list is TRUE.
-func (e Expr) NotInExpr(values ...Expr) Condition { return inExpressions(e, "NOT IN", values, 1) }
+func (e Expr) NotInExpr(values ...Expr) Condition { return inExpressions(e, "NOT IN", values) }
 
 // InQuery compares e with the one-column result of query.
 func (e Expr) InQuery(query Rowset) Condition { return inQuery(e, "IN", query, 1) }
@@ -269,27 +269,30 @@ func (w *renderer) membership(e Expr) {
 	n := ownedPayload[*membershipExpression](e.value)
 	w.byte('(')
 	w.expr(n.left)
+	if w.stopped("membership left", 0) {
+		return
+	}
 	w.byte(' ')
 	w.text(e.text)
 	w.text(" (")
 	if n.query != nil {
 		width := statementWidth(n.query, w.options.MaxDepth)
-		if width >= 0 && n.width != width {
+		if n.width >= 0 && width >= 0 && n.width != width {
 			w.fail(ErrInvalid, "IN", "subquery projection width differs from the left operand")
 			return
 		}
 		w.statement(n.query)
+		if w.stopped("membership subquery", 0) {
+			return
+		}
 	} else {
 		if !w.require(len(n.values) != 0, "IN", "nil subquery") {
 			return
 		}
-		for _, value := range n.values {
-			if n.width > 1 && (value.kind != exprList || len(ownedPayload[[]Expr](value.value)) != n.width) {
-				w.fail(ErrInvalid, "IN", "row widths differ")
-				return
-			}
-		}
 		w.exprs(n.values, ", ")
+		if w.stopped("membership values", 0) {
+			return
+		}
 	}
 	w.text("))")
 }
@@ -335,12 +338,15 @@ func EqAny(left, array Expr) Condition { return left.EqExpr(AnyArray(array)) }
 func EqAll(left, array Expr) Condition { return left.EqExpr(AllArray(array)) }
 
 func (w *renderer) conditions(conditions []Condition) {
+	if w.err != nil {
+		return
+	}
 	for i, c := range conditions {
 		if i != 0 {
 			w.text(" AND ")
 		}
 		w.expr(c.expr)
-		if w.err != nil {
+		if w.stopped("condition", i+1) {
 			return
 		}
 	}

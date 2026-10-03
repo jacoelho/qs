@@ -88,16 +88,28 @@ func (w *renderer) caseExpr(b *caseExpression) {
 	if b.simple {
 		w.byte(' ')
 		w.expr(b.operand)
+		if w.stopped("CASE operand", 0) {
+			return
+		}
 	}
-	for _, branch := range b.branches {
+	for i, branch := range b.branches {
 		w.text(" WHEN ")
 		w.expr(branch.when)
+		if w.stopped("CASE WHEN", i+1) {
+			return
+		}
 		w.text(" THEN ")
 		w.expr(branch.then)
+		if w.stopped("CASE THEN", i+1) {
+			return
+		}
 	}
 	if b.hasElse {
 		w.text(" ELSE ")
 		w.expr(b.otherwise)
+		if w.stopped("CASE ELSE", 0) {
+			return
+		}
 	}
 	w.text(" END")
 }
