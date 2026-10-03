@@ -151,7 +151,7 @@ func (b *ExplainBuilder) Format(format ExplainFormat) *ExplainBuilder {
 }
 func (b *ExplainBuilder) append(w *renderer) {
 	switch b.query.(type) {
-	case *SelectBuilder, *InsertBuilder, *UpdateBuilder, *DeleteBuilder, *MergeBuilder, *SetBuilder, *ValuesBuilder, *TableBuilder,
+	case *SelectBuilder, *InsertRows, *InsertSelect, *InsertAssignments, *InsertDefaults, *UpdateBuilder, *DeleteBuilder, *MergeBuilder, *SetBuilder, *ValuesBuilder, *TableBuilder,
 		*ExecuteBuilder, *CreateTableAsBuilder, *MaterializedViewBuilder, *DeclareCursorBuilder, *SelectIntoBuilder, *SQLStatement:
 	default:
 		w.fail(ErrInvalid, "EXPLAIN", "unsupported wrapped statement")

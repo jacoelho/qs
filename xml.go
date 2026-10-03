@@ -903,38 +903,3 @@ func (w *renderer) xmlTableColumns(columns []XMLTableColumn) {
 		}
 	}
 }
-
-func (c *cloneContext) xml(e Expr) Expr {
-	n := *ownedPayload[*xmlExpression](e.value)
-	n.items = c.xmlItems(n.items)
-	n.values = c.exprs(n.values)
-	n.value = c.expr(n.value)
-	n.path = c.expr(n.path)
-	n.document = c.expr(n.document)
-	n.version = c.expr(n.version)
-	return xmlExpr(n)
-}
-
-func (c *cloneContext) xmlItems(items []XMLItem) []XMLItem {
-	n := cloneSlice(items)
-	for i := range n {
-		n[i].value = c.expr(n[i].value)
-	}
-	return n
-}
-
-func (c *cloneContext) xmlTable(b XMLTableBuilder) *XMLTableBuilder {
-	b.rowPath = c.expr(b.rowPath)
-	b.document = c.expr(b.document)
-	b.namespaces = cloneSlice(b.namespaces)
-	for i := range b.namespaces {
-		b.namespaces[i].uri = c.expr(b.namespaces[i].uri)
-	}
-	b.columns = cloneSlice(b.columns)
-	for i := range b.columns {
-		column := &b.columns[i]
-		column.path = c.expr(column.path)
-		column.defaultExpr = c.expr(column.defaultExpr)
-	}
-	return &b
-}

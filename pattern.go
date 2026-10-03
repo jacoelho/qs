@@ -1,6 +1,11 @@
 package qs
 
-import "unicode/utf8"
+import (
+	"strings"
+	"unicode/utf8"
+)
+
+const likePrefixEscape = "!"
 
 // Like compares a named column with a bound LIKE pattern.
 func Like(column, pattern string) Condition { return Col(column).Like(pattern) }
@@ -14,6 +19,12 @@ func ILike(column, pattern string) Condition { return Col(column).ILike(pattern)
 // NotILike compares a named column with a bound pattern using NOT ILIKE.
 func NotILike(column, pattern string) Condition { return Col(column).NotILike(pattern) }
 
+// LikePrefix compares a named column with a literal prefix using LIKE.
+func LikePrefix(column, prefix string) Condition { return Col(column).LikePrefix(prefix) }
+
+// ILikePrefix compares a named column with a literal prefix using ILIKE.
+func ILikePrefix(column, prefix string) Condition { return Col(column).ILikePrefix(prefix) }
+
 // Like compares e with a bound LIKE pattern.
 func (e Expr) Like(pattern string) Condition { return compare(e, "LIKE", Param(pattern)) }
 
@@ -25,6 +36,20 @@ func (e Expr) ILike(pattern string) Condition { return compare(e, "ILIKE", Param
 
 // NotILike compares e with a bound pattern using NOT ILIKE.
 func (e Expr) NotILike(pattern string) Condition { return compare(e, "NOT ILIKE", Param(pattern)) }
+
+// LikePrefix compares e with a literal prefix using LIKE. It escapes !, %,
+// and _ with the fixed ! escape character and appends %, so an empty prefix
+// matches every non-NULL value.
+func (e Expr) LikePrefix(prefix string) Condition {
+	return e.Like(likePrefixPattern(prefix)).EscapeExpr(LiteralString(likePrefixEscape))
+}
+
+// ILikePrefix compares e with a literal prefix using ILIKE. It escapes !, %,
+// and _ with the fixed ! escape character and appends %, so an empty prefix
+// matches every non-NULL value.
+func (e Expr) ILikePrefix(prefix string) Condition {
+	return e.ILike(likePrefixPattern(prefix)).EscapeExpr(LiteralString(likePrefixEscape))
+}
 
 // LikeExpr compares e with a SQL expression using LIKE.
 func (e Expr) LikeExpr(pattern Expr) Condition { return compare(e, "LIKE", pattern) }
@@ -65,6 +90,20 @@ func (c Condition) EscapeExpr(character Expr) Condition {
 	}
 	e := c.expr
 	return AsCondition(Fragment(UnsafeSQL("("), e.node.left, UnsafeSQL(" "+e.text+" "), e.node.right, UnsafeSQL(" ESCAPE "), character, UnsafeSQL(")")))
+}
+
+func likePrefixPattern(prefix string) string {
+	var pattern strings.Builder
+	pattern.Grow(len(prefix) + 1)
+	for i := range len(prefix) {
+		switch prefix[i] {
+		case '!', '%', '_':
+			pattern.WriteString(likePrefixEscape)
+		}
+		pattern.WriteByte(prefix[i])
+	}
+	pattern.WriteByte('%')
+	return pattern.String()
 }
 
 // Regex compares e with a bound POSIX regular expression.

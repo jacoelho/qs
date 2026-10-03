@@ -63,12 +63,12 @@ func (d JSONBDocument) IsNotNull() Condition { return d.expr.IsNotNull() }
 
 // Set returns an assignment that stores a JSON value in this document target.
 func (d JSONDocument) Set(value JSONDocument) Assignment {
-	return assignTarget(d.expr, value.expr)
+	return assignTypedTarget(d.expr, Write(value.expr))
 }
 
 // Set returns an assignment that stores a JSONB value in this document target.
 func (d JSONBDocument) Set(value JSONBDocument) Assignment {
-	return assignTarget(d.expr, value.expr)
+	return assignTypedTarget(d.expr, Write(value.expr))
 }
 
 // Key returns the JSON value at a text object key.

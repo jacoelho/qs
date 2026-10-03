@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := test
 
-.PHONY: golangci-lint test race vet generate coverage benchmark integration postgres-corpus postgres-corpus-update
+.PHONY: golangci-lint test race vet generate generate-check clone-generate clone-check coverage benchmark integration postgres-corpus postgres-corpus-update
 
 POSTGRES_ROOT ?=
 POSTGRES_COMMIT := 630e607397424196a0a3ebb14a5658c2473ddadf
@@ -31,6 +31,17 @@ vet:
 	GOMAXPROCS=$(TEST_PROCS) go vet -p=2 ./...
 generate:
 	python3 scripts/generate.py
+	go run ./internal/clonegen
+
+generate-check:
+	python3 scripts/generate.py --check
+	go run ./internal/clonegen -check
+
+clone-generate:
+	go run ./internal/clonegen
+
+clone-check:
+	go run ./internal/clonegen -check
 coverage:
 	GOMAXPROCS=$(TEST_PROCS) go test -p=2 -parallel=8 -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out
@@ -41,7 +52,7 @@ integration:
 postgres-corpus:
 	@test -n "$(POSTGRES_ROOT)" || (echo 'Set POSTGRES_ROOT to the pinned PostgreSQL source directory.' >&2; exit 1)
 	GOMAXPROCS=$(TEST_PROCS) $(CORPUS_PYTHON) -m unittest discover -s scripts -p 'test_postgres_corpus.py'
-	GOMAXPROCS=$(TEST_PROCS) $(CORPUS_PYTHON) scripts/postgres_corpus.py "$(POSTGRES_ROOT)" --commit "$(POSTGRES_COMMIT)" --expected-sql-sha256 "$(POSTGRES_SQL_SHA256)" --report "$(CORPUS_REPORT)" --minimum-support 98 --minimum-planner-support 98 --minimum-shape-support 98 --minimum-planner-shape-support 98 $(if $(CORPUS_EXPORT),--export-go "$(CORPUS_EXPORT)")
+	GOMAXPROCS=$(TEST_PROCS) $(CORPUS_PYTHON) scripts/postgres_corpus.py "$(POSTGRES_ROOT)" --commit "$(POSTGRES_COMMIT)" --expected-sql-sha256 "$(POSTGRES_SQL_SHA256)" --report "$(CORPUS_REPORT)" --require-pinned-coverage $(if $(CORPUS_EXPORT),--export-go "$(CORPUS_EXPORT)")
 
 postgres-corpus-update: CORPUS_EXPORT := internal/postgrescorpus
 postgres-corpus-update: postgres-corpus

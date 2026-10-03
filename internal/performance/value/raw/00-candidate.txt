@@ -1,0 +1,14 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertConstruction/ordinary   	 2845767	       416.1 ns/op	     728 B/op	      10 allocs/op
+BenchmarkAPIInsertConstruction/mixed      	 3448104	       350.6 ns/op	     760 B/op	       6 allocs/op
+BenchmarkAPIInsertConstruction/bulk       	 1000000	      1188 ns/op	    2064 B/op	      20 allocs/op
+BenchmarkAPIInsertAssignmentsConstruction/chained         	 1256673	       949.4 ns/op	    2640 B/op	       5 allocs/op
+BenchmarkAPIInsertAssignmentsConstruction/one_call        	 2257215	       534.0 ns/op	    1568 B/op	       2 allocs/op
+BenchmarkAPITupleUpdateConstruction/bound                 	 2996712	       396.3 ns/op	     824 B/op	       7 allocs/op
+BenchmarkAPITupleUpdateConstruction/tuple_default         	 2978948	       392.1 ns/op	     824 B/op	       7 allocs/op
+BenchmarkAPIConflictConstruction/single_assignment        	 1630821	       731.5 ns/op	    1176 B/op	      15 allocs/op
+BenchmarkAPIConflictConstruction/multi_assignment         	 2155093	       542.6 ns/op	    1032 B/op	      11 allocs/op
+PASS

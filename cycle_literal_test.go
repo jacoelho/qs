@@ -60,7 +60,6 @@ func TestCycleRejectsNonConstants(t *testing.T) {
 		name string
 		expr Expr
 	}{
-		{"default", Default()},
 		{"current_date", CurrentDate()},
 		{"current_user", CurrentUser()},
 		{"parameter", Param(1)},

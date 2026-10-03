@@ -26,7 +26,7 @@ func TestPostgreSQLExpressions(t *testing.T) {
 		{"array_query", Select(ArrayFrom(SelectCols("id").From("users"))), `SELECT ARRAY(SELECT "id" FROM "users")`, nil},
 		{"array_empty", Select(Array().Cast(TypeArray(TypeInt4))), `SELECT (ARRAY[])::integer[]`, nil},
 		{"array_slice", Select(Col("a").Slice(Param(1), Param(3)), Col("a").SliceFrom(Param(2)), Col("a").SliceTo(Param(4))), `SELECT ("a")[$1:$2], ("a")[$3:], ("a")[:$4]`, []any{1, 3, 2, 4}},
-		{"array_assignment", Update("t").Set(Assign(Col("a").Index(Param(2)), Param(4))), `UPDATE "t" SET "a"[$1] = $2`, []any{2, 4}},
+		{"array_assignment", Update("t").Set(Assign(Col("a").Index(Param(2)), Write(Param(4)))), `UPDATE "t" SET "a"[$1] = $2`, []any{2, 4}},
 		{"range", Select(Star()).From("booking").Where(RangeOverlaps(Col("during"), TSTZRange(Param("2026-01-01"), Param("2026-02-01"), Param("[)")))), `SELECT * FROM "booking" WHERE ("during" && tstzrange($1, $2, $3))`, []any{"2026-01-01", "2026-02-01", "[)"}},
 		{"fulltext", SelectCols("id").From("docs").Where(TSMatches(Col("search"), WebsearchToTSQuery(Param("english"), Param("database builder")))).OrderBy(TSRank(Col("search"), PlainToTSQuery(Param("database"))).Desc()), `SELECT "id" FROM "docs" WHERE ("search" @@ websearch_to_tsquery($1, $2)) ORDER BY ts_rank("search", plainto_tsquery($3)) DESC`, []any{"english", "database builder", "database"}},
 		{"qualified_operator", Select(QualifiedOperator(Col("a"), "ext", "<->", Param("b"))), `SELECT ("a" OPERATOR("ext".<->) $1)`, []any{"b"}},
@@ -40,6 +40,18 @@ func TestPostgreSQLExpressions(t *testing.T) {
 		{"like_escape", Select(Like("name", `a\_%`).Escape(`\`).Expr()), `SELECT ("name" LIKE $1 ESCAPE $2)`, []any{`a\_%`, `\`}},
 	})
 }
+
+func TestQualifiedAssignmentTargets(t *testing.T) {
+	t.Parallel()
+
+	runCases(t, []renderCase{
+		{"assign_ident", Update("people").Set(Assign(Ident("profile", "age"), Write(Param(37)))), `UPDATE "people" SET "profile"."age" = $1`, []any{37}},
+		{"assign_col", Update("people").Set(Assign(Col("profile.age"), Write(Param(37)))), `UPDATE "people" SET "profile"."age" = $1`, []any{37}},
+		{"set_dotted", Update("people").Set(Set("profile.age", Write(Param(37)))), `UPDATE "people" SET "profile"."age" = $1`, []any{37}},
+		{"jsonb_field", Update("people").Set(JSONBExpr(Ident("p", "profile").Field("doc")).Set(JSONBParam("{}"))), `UPDATE "people" SET "profile"."doc" = ($1)::jsonb`, []any{"{}"}},
+	})
+}
+
 func TestPostgreSQLUtility(t *testing.T) {
 	t.Parallel()
 

@@ -26,26 +26,93 @@ func (b *SelectBuilder) AppendWith(sql []byte, args []any, options Options) ([]b
 }
 func (*SelectBuilder) rowset() {}
 
-func (*InsertBuilder) statement() {}
+func (*InsertRows) statement() {}
 
 // Clone returns a copy of b with its builder graph duplicated. Shared subqueries and cycles remain shared in the copy, while bound application values are shallow-copied. Do not mutate b concurrently with Clone.
-func (b *InsertBuilder) Clone() *InsertBuilder { return Clone(b) }
+func (b *InsertRows) Clone() *InsertRows { return Clone(b) }
 
 // ToSQL renders b with the default Options. It returns no SQL or arguments when rendering fails.
-func (b *InsertBuilder) ToSQL() (string, []any, error) { return ToSQL(b) }
+func (b *InsertRows) ToSQL() (string, []any, error) { return ToSQL(b) }
 
 // ToSQLWith renders b with options. It returns no SQL or arguments when rendering fails.
-func (b *InsertBuilder) ToSQLWith(options Options) (string, []any, error) {
-	return ToSQLWith(b, options)
-}
+func (b *InsertRows) ToSQLWith(options Options) (string, []any, error) { return ToSQLWith(b, options) }
 
 // AppendSQL appends b to caller-owned sql and args with the default Options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
-func (b *InsertBuilder) AppendSQL(sql []byte, args []any) ([]byte, []any, error) {
+func (b *InsertRows) AppendSQL(sql []byte, args []any) ([]byte, []any, error) {
 	return AppendSQL(sql, args, b)
 }
 
 // AppendWith appends b to caller-owned sql and args with options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
-func (b *InsertBuilder) AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error) {
+func (b *InsertRows) AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error) {
+	return AppendWith(sql, args, b, options)
+}
+
+func (*InsertSelect) statement() {}
+
+// Clone returns a copy of b with its builder graph duplicated. Shared subqueries and cycles remain shared in the copy, while bound application values are shallow-copied. Do not mutate b concurrently with Clone.
+func (b *InsertSelect) Clone() *InsertSelect { return Clone(b) }
+
+// ToSQL renders b with the default Options. It returns no SQL or arguments when rendering fails.
+func (b *InsertSelect) ToSQL() (string, []any, error) { return ToSQL(b) }
+
+// ToSQLWith renders b with options. It returns no SQL or arguments when rendering fails.
+func (b *InsertSelect) ToSQLWith(options Options) (string, []any, error) {
+	return ToSQLWith(b, options)
+}
+
+// AppendSQL appends b to caller-owned sql and args with the default Options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
+func (b *InsertSelect) AppendSQL(sql []byte, args []any) ([]byte, []any, error) {
+	return AppendSQL(sql, args, b)
+}
+
+// AppendWith appends b to caller-owned sql and args with options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
+func (b *InsertSelect) AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error) {
+	return AppendWith(sql, args, b, options)
+}
+
+func (*InsertAssignments) statement() {}
+
+// Clone returns a copy of b with its builder graph duplicated. Shared subqueries and cycles remain shared in the copy, while bound application values are shallow-copied. Do not mutate b concurrently with Clone.
+func (b *InsertAssignments) Clone() *InsertAssignments { return Clone(b) }
+
+// ToSQL renders b with the default Options. It returns no SQL or arguments when rendering fails.
+func (b *InsertAssignments) ToSQL() (string, []any, error) { return ToSQL(b) }
+
+// ToSQLWith renders b with options. It returns no SQL or arguments when rendering fails.
+func (b *InsertAssignments) ToSQLWith(options Options) (string, []any, error) {
+	return ToSQLWith(b, options)
+}
+
+// AppendSQL appends b to caller-owned sql and args with the default Options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
+func (b *InsertAssignments) AppendSQL(sql []byte, args []any) ([]byte, []any, error) {
+	return AppendSQL(sql, args, b)
+}
+
+// AppendWith appends b to caller-owned sql and args with options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
+func (b *InsertAssignments) AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error) {
+	return AppendWith(sql, args, b, options)
+}
+
+func (*InsertDefaults) statement() {}
+
+// Clone returns a copy of b with its builder graph duplicated. Shared subqueries and cycles remain shared in the copy, while bound application values are shallow-copied. Do not mutate b concurrently with Clone.
+func (b *InsertDefaults) Clone() *InsertDefaults { return Clone(b) }
+
+// ToSQL renders b with the default Options. It returns no SQL or arguments when rendering fails.
+func (b *InsertDefaults) ToSQL() (string, []any, error) { return ToSQL(b) }
+
+// ToSQLWith renders b with options. It returns no SQL or arguments when rendering fails.
+func (b *InsertDefaults) ToSQLWith(options Options) (string, []any, error) {
+	return ToSQLWith(b, options)
+}
+
+// AppendSQL appends b to caller-owned sql and args with the default Options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
+func (b *InsertDefaults) AppendSQL(sql []byte, args []any) ([]byte, []any, error) {
+	return AppendSQL(sql, args, b)
+}
+
+// AppendWith appends b to caller-owned sql and args with options. Parameter numbering starts after the existing arguments; an error leaves the input slices unchanged.
+func (b *InsertDefaults) AppendWith(sql []byte, args []any, options Options) ([]byte, []any, error) {
 	return AppendWith(sql, args, b, options)
 }
 

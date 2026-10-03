@@ -1,0 +1,922 @@
+[
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        947.5,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        581.7,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        752.0,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        570.4,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1004.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        587.6,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        777.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        563.7,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        962.3,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        608.0,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        792.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        561.6,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        988.8,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        598.8,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        763.6,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        565.3,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        946.0,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        595.4,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        858.2,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        613.7,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1016.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        580.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        1933.0,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        2608.0,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        3844.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        648.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        746.1,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        533.1,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        923.8,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        561.4,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        726.0,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        522.5,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        958.0,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        563.8,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        725.0,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        540.4,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1005.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        585.3,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        741.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        543.7,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1099.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        686.9,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        782.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        673.8,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        977.8,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        663.3,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        786.5,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        546.9,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1347.0,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        2182.0,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        2742.0,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        1852.0,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1012.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        612.6,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        751.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        560.4,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1012.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        591.3,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        811.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        588.9,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        987.7,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        575.9,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        799.4,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        567.7,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        948.2,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        562.4,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        728.6,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        538.0,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1066.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        568.2,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        778.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        536.7,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1012.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        568.4,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        930.1,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        556.5,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        944.9,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        577.5,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        744.8,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        528.6,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        943.2,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        567.8,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        734.9,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        544.4,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        978.9,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        602.5,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        760.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        534.5,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        986.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        560.4,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        803.7,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        577.1,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        972.7,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        568.8,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        743.6,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        550.4,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        941.5,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        570.8,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        736.1,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        538.8,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        981.1,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        566.7,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        771.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        550.0,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1017.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        559.4,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        763.9,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        544.7,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        941.5,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        555.2,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        824.8,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        555.8,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        959.5,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        569.3,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        741.1,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        545.0,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1006.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        631.2,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        761.6,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        710.8,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1042.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        635.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        833.8,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        638.2,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1034.0,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        587.5,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        767.4,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        559.4,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1070.0,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        703.3,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        723.3,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        532.4,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        985.7,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        590.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        748.4,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        549.9,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        1015.0,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        573.6,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        748.9,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        649.0,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        937.2,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        564.6,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        722.9,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        533.9,
+        1144,
+        12
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        944.4,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        570.0,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        739.3,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        532.6,
+        1144,
+        12
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        961.7,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        558.5,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        730.2,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        535.6,
+        1032,
+        11
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        999.9,
+        2640,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        573.1,
+        1568,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        791.5,
+        1176,
+        15
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        544.0,
+        1032,
+        11
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAssignmentsConstruction/chained": [
+        880.0,
+        2704,
+        5
+      ],
+      "BenchmarkAPIInsertAssignmentsConstruction/one_call": [
+        564.4,
+        1632,
+        2
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        751.4,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        522.2,
+        1144,
+        12
+      ]
+    }
+  }
+]

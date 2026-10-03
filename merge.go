@@ -24,7 +24,7 @@ type MergeWhen struct {
 	conditions []Condition
 	set        []Assignment
 	columns    []string
-	values     []Expr
+	values     []WriteValue
 	kind       matchKind
 	byTarget   bool
 	action     mergeAction
@@ -111,10 +111,10 @@ func (m MergeNotMatched) ThenInsert(assignments ...Assignment) MergeWhen {
 }
 
 // ThenInsertValues owns both lists; their widths must match at rendering.
-func (m MergeNotMatched) ThenInsertValues(columns []string, values ...Expr) MergeWhen {
+func (m MergeNotMatched) ThenInsertValues(columns []string, first WriteValue, rest ...WriteValue) MergeWhen {
 	branch := m.notMatched.complete(mergeInsert)
 	branch.columns = cloneSlice(columns)
-	branch.values = cloneSlice(values)
+	branch.values = ownedWriteValues(first, rest)
 	return branch
 }
 
@@ -151,10 +151,10 @@ func (m MergeInsertOverride) ThenInsert(assignments ...Assignment) MergeWhen {
 }
 
 // ThenInsertValues owns both lists and preserves the selected identity policy.
-func (m MergeInsertOverride) ThenInsertValues(columns []string, values ...Expr) MergeWhen {
+func (m MergeInsertOverride) ThenInsertValues(columns []string, first WriteValue, rest ...WriteValue) MergeWhen {
 	branch := m.insertOverride.complete(mergeInsert)
 	branch.columns = cloneSlice(columns)
-	branch.values = cloneSlice(values)
+	branch.values = ownedWriteValues(first, rest)
 	branch.overriding = m.overriding
 	return branch
 }
@@ -369,13 +369,18 @@ func (w *renderer) mergeInsert(m MergeWhen) {
 			if i != 0 {
 				w.text(", ")
 			}
-			w.expr(a.value)
+			w.writeExpr(a.value)
 		}
 	} else {
 		if len(m.columns) > 0 && !w.require(len(m.columns) == len(m.values), "MERGE INSERT", "column and value counts differ") {
 			return
 		}
-		w.exprs(m.values, ", ")
+		for i, value := range m.values {
+			if i != 0 {
+				w.text(", ")
+			}
+			w.writeExpr(value.expr())
+		}
 	}
 	w.byte(')')
 }

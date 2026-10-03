@@ -2,6 +2,36 @@
 
 package qs
 
+// Columns selects an immutable ordinary INSERT target-column list before choosing a source.
+func (t InsertTarget) Columns(first string, rest ...string) InsertColumnsTarget {
+	return newInsertColumnsTarget(t.table, first, rest)
+}
+
+// Targets selects an immutable INSERT target-expression list before choosing a source.
+func (t InsertTarget) Targets(first Expr, rest ...Expr) InsertColumnsTarget {
+	return newInsertExprTarget(t.table, first, rest)
+}
+
+// ValuesSlice selects one direct value row and copies its structural slice; empty rows fail at render time.
+func (t InsertColumnsTarget) ValuesSlice(values []WriteValue) *InsertRows {
+	b := &InsertRows{base: t.base()}
+	return b.ValuesSlice(values)
+}
+
+// Values selects a direct INSERT value-row source and returns its completed role.
+func (t InsertColumnsTarget) Values(first WriteValue, rest ...WriteValue) *InsertRows {
+	b := &InsertRows{base: t.base()}
+	return b.Values(first, rest...)
+}
+
+// From selects an INSERT rowset source and returns its completed role.
+func (t InsertColumnsTarget) From(source Rowset) *InsertSelect {
+	return &InsertSelect{base: t.base(), source: source}
+}
+
+// DefaultValues selects the INSERT target table's server-side defaults and returns its completed role.
+func (t InsertColumnsTarget) DefaultValues() *InsertDefaults { return &InsertDefaults{base: t.base()} }
+
 // With appends ctes to b in order, mutates b, and returns b. Duplicate CTE names are reported when b is rendered.
 func (b *SelectBuilder) With(ctes ...WithQuery) *SelectBuilder {
 	b.base.with = append(b.base.with, ctes...)
@@ -116,27 +146,249 @@ func (b *SelectBuilder) Lock(clauses ...LockClause) *SelectBuilder {
 }
 
 // With appends ctes to b in order, mutates b, and returns b. Duplicate CTE names are reported when b is rendered.
-func (b *InsertBuilder) With(ctes ...WithQuery) *InsertBuilder {
+func (b *InsertRows) With(ctes ...WithQuery) *InsertRows {
 	b.base.with = append(b.base.with, ctes...)
 	return b
 }
 
 // WithRecursive marks b as using WITH RECURSIVE, appends ctes in order, mutates b, and returns b.
-func (b *InsertBuilder) WithRecursive(ctes ...WithQuery) *InsertBuilder {
+func (b *InsertRows) WithRecursive(ctes ...WithQuery) *InsertRows {
 	b.base.recursive = true
 	b.base.with = append(b.base.with, ctes...)
 	return b
 }
 
 // Prefix appends parts before b's statement body, mutates b, and returns b.
-func (b *InsertBuilder) Prefix(parts ...Expr) *InsertBuilder {
+func (b *InsertRows) Prefix(parts ...Expr) *InsertRows {
 	b.base.prefix = append(b.base.prefix, parts...)
 	return b
 }
 
 // Suffix appends parts after b's statement body, mutates b, and returns b.
-func (b *InsertBuilder) Suffix(parts ...Expr) *InsertBuilder {
+func (b *InsertRows) Suffix(parts ...Expr) *InsertRows {
 	b.base.suffix = append(b.base.suffix, parts...)
+	return b
+}
+
+// Into replaces the INSERT target table, mutates b, and returns b.
+func (b *InsertRows) Into(table string) *InsertRows { b.base.table = Table(table); return b }
+
+// OverridingSystemValue allows explicit values for GENERATED ALWAYS identities, mutates b, and returns b.
+func (b *InsertRows) OverridingSystemValue() *InsertRows {
+	b.base.overriding = overridingSystemValue
+	return b
+}
+
+// OverridingUserValue requests generated identity values in place of supplied values, mutates b, and returns b.
+func (b *InsertRows) OverridingUserValue() *InsertRows {
+	b.base.overriding = overridingUserValue
+	return b
+}
+
+// OnConflict sets the completed ON CONFLICT action, mutates b, and returns b.
+func (b *InsertRows) OnConflict[C conflictAction](conflict C) *InsertRows {
+	setInsertConflict(&b.base, conflict)
+	return b
+}
+
+// Returning appends expressions to the RETURNING projection, mutates b, and returns b.
+func (b *InsertRows) Returning(expressions ...Expr) *InsertRows {
+	b.base.returning = append(b.base.returning, expressions...)
+	return b
+}
+
+// ReturningCols appends named columns to the RETURNING projection, mutates b, and returns b.
+func (b *InsertRows) ReturningCols(columns ...string) *InsertRows {
+	insertReturningCols(&b.base, columns...)
+	return b
+}
+
+// ReturningRows replaces the OLD and NEW RETURNING row aliases, mutates b, and returns b.
+func (b *InsertRows) ReturningRows(aliases ReturningAliases) *InsertRows {
+	b.base.aliases = aliases
+	return b
+}
+
+// With appends ctes to b in order, mutates b, and returns b. Duplicate CTE names are reported when b is rendered.
+func (b *InsertSelect) With(ctes ...WithQuery) *InsertSelect {
+	b.base.with = append(b.base.with, ctes...)
+	return b
+}
+
+// WithRecursive marks b as using WITH RECURSIVE, appends ctes in order, mutates b, and returns b.
+func (b *InsertSelect) WithRecursive(ctes ...WithQuery) *InsertSelect {
+	b.base.recursive = true
+	b.base.with = append(b.base.with, ctes...)
+	return b
+}
+
+// Prefix appends parts before b's statement body, mutates b, and returns b.
+func (b *InsertSelect) Prefix(parts ...Expr) *InsertSelect {
+	b.base.prefix = append(b.base.prefix, parts...)
+	return b
+}
+
+// Suffix appends parts after b's statement body, mutates b, and returns b.
+func (b *InsertSelect) Suffix(parts ...Expr) *InsertSelect {
+	b.base.suffix = append(b.base.suffix, parts...)
+	return b
+}
+
+// Into replaces the INSERT target table, mutates b, and returns b.
+func (b *InsertSelect) Into(table string) *InsertSelect { b.base.table = Table(table); return b }
+
+// OverridingSystemValue allows explicit values for GENERATED ALWAYS identities, mutates b, and returns b.
+func (b *InsertSelect) OverridingSystemValue() *InsertSelect {
+	b.base.overriding = overridingSystemValue
+	return b
+}
+
+// OverridingUserValue requests generated identity values in place of supplied values, mutates b, and returns b.
+func (b *InsertSelect) OverridingUserValue() *InsertSelect {
+	b.base.overriding = overridingUserValue
+	return b
+}
+
+// OnConflict sets the completed ON CONFLICT action, mutates b, and returns b.
+func (b *InsertSelect) OnConflict[C conflictAction](conflict C) *InsertSelect {
+	setInsertConflict(&b.base, conflict)
+	return b
+}
+
+// Returning appends expressions to the RETURNING projection, mutates b, and returns b.
+func (b *InsertSelect) Returning(expressions ...Expr) *InsertSelect {
+	b.base.returning = append(b.base.returning, expressions...)
+	return b
+}
+
+// ReturningCols appends named columns to the RETURNING projection, mutates b, and returns b.
+func (b *InsertSelect) ReturningCols(columns ...string) *InsertSelect {
+	insertReturningCols(&b.base, columns...)
+	return b
+}
+
+// ReturningRows replaces the OLD and NEW RETURNING row aliases, mutates b, and returns b.
+func (b *InsertSelect) ReturningRows(aliases ReturningAliases) *InsertSelect {
+	b.base.aliases = aliases
+	return b
+}
+
+// With appends ctes to b in order, mutates b, and returns b. Duplicate CTE names are reported when b is rendered.
+func (b *InsertAssignments) With(ctes ...WithQuery) *InsertAssignments {
+	b.base.with = append(b.base.with, ctes...)
+	return b
+}
+
+// WithRecursive marks b as using WITH RECURSIVE, appends ctes in order, mutates b, and returns b.
+func (b *InsertAssignments) WithRecursive(ctes ...WithQuery) *InsertAssignments {
+	b.base.recursive = true
+	b.base.with = append(b.base.with, ctes...)
+	return b
+}
+
+// Prefix appends parts before b's statement body, mutates b, and returns b.
+func (b *InsertAssignments) Prefix(parts ...Expr) *InsertAssignments {
+	b.base.prefix = append(b.base.prefix, parts...)
+	return b
+}
+
+// Suffix appends parts after b's statement body, mutates b, and returns b.
+func (b *InsertAssignments) Suffix(parts ...Expr) *InsertAssignments {
+	b.base.suffix = append(b.base.suffix, parts...)
+	return b
+}
+
+// Into replaces the INSERT target table, mutates b, and returns b.
+func (b *InsertAssignments) Into(table string) *InsertAssignments {
+	b.base.table = Table(table)
+	return b
+}
+
+// OverridingSystemValue allows explicit values for GENERATED ALWAYS identities, mutates b, and returns b.
+func (b *InsertAssignments) OverridingSystemValue() *InsertAssignments {
+	b.base.overriding = overridingSystemValue
+	return b
+}
+
+// OverridingUserValue requests generated identity values in place of supplied values, mutates b, and returns b.
+func (b *InsertAssignments) OverridingUserValue() *InsertAssignments {
+	b.base.overriding = overridingUserValue
+	return b
+}
+
+// OnConflict sets the completed ON CONFLICT action, mutates b, and returns b.
+func (b *InsertAssignments) OnConflict[C conflictAction](conflict C) *InsertAssignments {
+	setInsertConflict(&b.base, conflict)
+	return b
+}
+
+// Returning appends expressions to the RETURNING projection, mutates b, and returns b.
+func (b *InsertAssignments) Returning(expressions ...Expr) *InsertAssignments {
+	b.base.returning = append(b.base.returning, expressions...)
+	return b
+}
+
+// ReturningCols appends named columns to the RETURNING projection, mutates b, and returns b.
+func (b *InsertAssignments) ReturningCols(columns ...string) *InsertAssignments {
+	insertReturningCols(&b.base, columns...)
+	return b
+}
+
+// ReturningRows replaces the OLD and NEW RETURNING row aliases, mutates b, and returns b.
+func (b *InsertAssignments) ReturningRows(aliases ReturningAliases) *InsertAssignments {
+	b.base.aliases = aliases
+	return b
+}
+
+// With appends ctes to b in order, mutates b, and returns b. Duplicate CTE names are reported when b is rendered.
+func (b *InsertDefaults) With(ctes ...WithQuery) *InsertDefaults {
+	b.base.with = append(b.base.with, ctes...)
+	return b
+}
+
+// WithRecursive marks b as using WITH RECURSIVE, appends ctes in order, mutates b, and returns b.
+func (b *InsertDefaults) WithRecursive(ctes ...WithQuery) *InsertDefaults {
+	b.base.recursive = true
+	b.base.with = append(b.base.with, ctes...)
+	return b
+}
+
+// Prefix appends parts before b's statement body, mutates b, and returns b.
+func (b *InsertDefaults) Prefix(parts ...Expr) *InsertDefaults {
+	b.base.prefix = append(b.base.prefix, parts...)
+	return b
+}
+
+// Suffix appends parts after b's statement body, mutates b, and returns b.
+func (b *InsertDefaults) Suffix(parts ...Expr) *InsertDefaults {
+	b.base.suffix = append(b.base.suffix, parts...)
+	return b
+}
+
+// Into replaces the INSERT target table, mutates b, and returns b.
+func (b *InsertDefaults) Into(table string) *InsertDefaults { b.base.table = Table(table); return b }
+
+// OnConflict sets the completed ON CONFLICT action, mutates b, and returns b.
+func (b *InsertDefaults) OnConflict[C conflictAction](conflict C) *InsertDefaults {
+	setInsertConflict(&b.base, conflict)
+	return b
+}
+
+// Returning appends expressions to the RETURNING projection, mutates b, and returns b.
+func (b *InsertDefaults) Returning(expressions ...Expr) *InsertDefaults {
+	b.base.returning = append(b.base.returning, expressions...)
+	return b
+}
+
+// ReturningCols appends named columns to the RETURNING projection, mutates b, and returns b.
+func (b *InsertDefaults) ReturningCols(columns ...string) *InsertDefaults {
+	insertReturningCols(&b.base, columns...)
+	return b
+}
+
+// ReturningRows replaces the OLD and NEW RETURNING row aliases, mutates b, and returns b.
+func (b *InsertDefaults) ReturningRows(aliases ReturningAliases) *InsertDefaults {
+	b.base.aliases = aliases
 	return b
 }
 

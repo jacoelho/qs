@@ -1,0 +1,1722 @@
+[
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        569.9,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        808.4,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        964.9,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        526.3,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        553.0,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        874.1,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        391.3,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        897.9,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        555.9,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        817.0,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        990.4,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        541.0,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        545.9,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        884.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        378.4,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        872.3,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        559.4,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        819.4,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        967.3,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        536.7,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        557.5,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        882.2,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        375.5,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        896.0,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        562.5,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        812.7,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        972.3,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        532.5,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        548.1,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        880.0,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        387.7,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        884.1,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        550.2,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        809.6,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        962.9,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        514.2,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        555.9,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        869.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        384.7,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        884.8,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        530.2,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        796.4,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        954.4,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        518.5,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        547.9,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        872.7,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        370.9,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        869.2,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        536.5,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        811.8,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        970.9,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        525.7,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        542.4,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        876.2,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        376.4,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        867.0,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        554.4,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        806.2,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        985.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        521.6,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        565.1,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        883.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        394.4,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        926.5,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        560.4,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        821.2,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        976.7,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        535.0,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        579.1,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        965.2,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        460.0,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        928.3,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        565.6,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        847.0,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1048.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        544.6,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        562.7,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        933.6,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        384.1,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        899.4,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        565.0,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        828.2,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        982.4,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        545.4,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        544.6,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        896.7,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        397.0,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        909.5,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        568.6,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        804.2,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        970.9,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        534.5,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        560.8,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        880.5,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        404.7,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        900.1,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        550.1,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        822.8,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        976.6,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        521.1,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        574.3,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        889.2,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        398.4,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        931.5,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        555.9,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        838.3,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1012.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        550.5,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        565.4,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        922.8,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        388.7,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        914.4,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        573.4,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        849.5,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1029.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        554.7,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        571.8,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        922.8,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        393.9,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        943.2,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        559.6,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        828.3,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        975.9,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        533.9,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        573.2,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        875.8,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        392.2,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        887.5,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        572.0,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        782.4,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        960.3,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        524.2,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        548.1,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        898.4,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        391.6,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        897.3,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        540.4,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        791.2,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        968.6,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        531.3,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        549.7,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        899.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        382.4,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        876.2,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        554.9,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        828.2,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        972.2,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        537.6,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        562.6,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        888.2,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        388.2,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        893.5,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        555.2,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        824.7,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        987.9,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        519.8,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        581.3,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        884.1,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        395.3,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        926.2,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        563.5,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        825.4,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        975.3,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        525.6,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        565.1,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        885.1,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        400.9,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        904.3,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        544.1,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        831.4,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        987.7,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        534.1,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        561.6,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        893.7,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        378.1,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        901.8,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        552.7,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        813.7,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1036.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        539.2,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        547.8,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        909.7,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        381.8,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        881.2,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        561.7,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        819.5,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        972.7,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        531.7,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        567.6,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        875.8,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        398.8,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        911.3,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        561.5,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        822.8,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        980.1,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        523.3,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        578.0,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        883.7,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        391.3,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        921.0,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        541.9,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        816.3,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1011.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        540.2,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        554.4,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        920.0,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        376.4,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        887.7,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        563.3,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        807.3,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1021.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        544.7,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        545.6,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        898.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        384.6,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        865.3,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        570.8,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        822.6,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        969.3,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        541.1,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        559.1,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        885.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        401.7,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        893.6,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        557.1,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        834.9,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        974.7,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        530.4,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        577.5,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        874.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        393.3,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        904.6,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        535.1,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        827.3,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        984.4,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        530.3,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        556.2,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        890.6,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        376.6,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        895.3,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        546.1,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        817.1,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        990.4,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        535.9,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        543.0,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        896.3,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        379.8,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        873.4,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        567.8,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        810.0,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        990.7,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        531.0,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        560.4,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        905.7,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        398.8,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        889.9,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        564.0,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        820.8,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        978.1,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        527.4,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        572.1,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        878.4,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        396.2,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        913.0,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        542.2,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        825.4,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        993.9,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        529.9,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        560.7,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        887.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        373.9,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        902.5,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        541.7,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        814.9,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1003.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        534.4,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        549.9,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        907.2,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        382.5,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        890.5,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        557.6,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        802.3,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        983.2,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        533.8,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        554.8,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        889.9,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        390.6,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        888.2,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        549.9,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        801.7,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1090.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        546.0,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        585.9,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        882.6,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        396.2,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        951.6,
+        1296,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        558.8,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        831.9,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1004.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        539.6,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        560.0,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        899.8,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        383.1,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        933.0,
+        1296,
+        8
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        543.3,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        832.8,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        1012.0,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        548.7,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        565.9,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        907.7,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        382.5,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        888.8,
+        1296,
+        8
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPICloneXMLJSON/flat_xml": [
+        552.4,
+        1040,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_xml": [
+        817.6,
+        1728,
+        6
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_xml": [
+        994.6,
+        1688,
+        9
+      ],
+      "BenchmarkAPICloneXMLJSON/flat_json": [
+        528.6,
+        888,
+        5
+      ],
+      "BenchmarkAPICloneXMLJSON/nested_json": [
+        552.0,
+        976,
+        7
+      ],
+      "BenchmarkAPICloneXMLJSON/shared_cte_json": [
+        889.4,
+        1472,
+        10
+      ],
+      "BenchmarkAPICloneBoundedCycle": [
+        395.1,
+        624,
+        3
+      ],
+      "BenchmarkClone": [
+        896.4,
+        1296,
+        8
+      ]
+    }
+  }
+]

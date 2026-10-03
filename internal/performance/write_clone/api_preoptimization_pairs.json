@@ -1,0 +1,1462 @@
+[
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        392.7,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        331.6,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1164.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        201.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        228.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        687.7,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        390.2,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        395.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        239.7,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        229.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        720.2,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        523.4,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        336.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        304.6,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        425.1,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        348.8,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1284.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        212.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        247.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        707.3,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        396.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        401.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        232.6,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        229.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        792.9,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        568.9,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        349.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        322.9,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        445.7,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        352.6,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1299.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        214.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        243.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        719.3,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        403.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        397.4,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        240.0,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        224.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        774.0,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        580.3,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        351.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        316.0,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        408.3,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        336.4,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1165.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        208.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        227.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        678.8,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        422.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        395.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        239.2,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        234.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        736.4,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        552.8,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        340.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        298.3,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        406.3,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        336.1,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1163.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        208.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        233.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        689.5,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        422.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        401.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        249.7,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        243.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        727.0,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        546.7,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        356.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        293.2,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        463.0,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        358.2,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1260.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        230.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        252.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        692.5,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        430.2,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        400.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        233.4,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        244.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        768.9,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        574.3,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        376.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        315.4,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        446.1,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        368.5,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1304.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        219.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        245.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        699.1,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        410.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        403.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        232.2,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        231.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        785.1,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        568.0,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        366.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        318.1,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        413.4,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        342.4,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1150.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        204.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        234.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        676.1,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        403.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        409.2,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        236.3,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        234.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        749.6,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        535.7,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        338.3,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        306.9,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        408.4,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        342.7,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1215.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        208.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        238.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        704.2,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        419.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        420.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        248.0,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        236.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        761.3,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        560.9,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        346.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        315.8,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        458.3,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        363.6,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1350.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        221.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        253.3,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        750.5,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        414.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        417.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        247.5,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        230.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        813.0,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        598.5,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        359.3,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        334.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        462.7,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        359.8,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1349.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        229.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        246.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        750.8,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        425.2,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        407.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        244.5,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        236.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        796.4,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        606.7,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        367.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        329.5,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        419.5,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        347.4,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1192.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        222.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        233.3,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        700.1,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        427.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        402.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        236.6,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        240.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        712.8,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        542.6,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        360.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        295.2,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        420.6,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        346.3,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1127.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        217.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        236.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        673.1,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        420.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        407.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        239.0,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        246.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        727.8,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        529.2,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        365.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        296.6,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        440.2,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        373.2,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1261.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        221.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        260.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        707.5,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        425.9,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        419.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        238.3,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        241.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        804.8,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        583.8,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        378.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        319.5,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        453.4,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        377.5,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1316.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        222.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        259.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        719.9,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        425.8,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        424.3,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        239.8,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        237.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        812.1,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        581.4,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        375.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        328.2,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        404.7,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        356.5,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1207.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        201.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        226.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        702.2,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        389.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        396.3,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        239.8,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        230.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        721.0,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        527.4,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        337.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        300.9,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        400.1,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        329.1,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1157.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        204.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        227.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        695.3,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        398.3,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        390.5,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        242.6,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        231.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        717.0,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        557.9,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        340.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        297.8,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        473.6,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        347.1,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1296.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        232.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        240.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        704.3,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        411.2,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        392.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        235.0,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        230.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        756.4,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        587.0,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        369.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        311.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        464.9,
+        776,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        365.2,
+        760,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1265.0,
+        2256,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        231.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        244.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        698.3,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        433.7,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        400.0,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        235.6,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        243.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        766.0,
+        1224,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        585.4,
+        1080,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        370.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        316.1,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertConstruction/ordinary": [
+        390.3,
+        840,
+        11
+      ],
+      "BenchmarkAPIInsertConstruction/mixed": [
+        335.0,
+        824,
+        6
+      ],
+      "BenchmarkAPIInsertConstruction/bulk": [
+        1132.0,
+        2320,
+        22
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        203.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        232.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        671.9,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateConstruction/bound": [
+        393.6,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateConstruction/tuple_default": [
+        397.1,
+        824,
+        7
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/bound": [
+        234.0,
+        0,
+        0
+      ],
+      "BenchmarkAPITupleUpdateAppendSQLWarm/tuple_default": [
+        229.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictConstruction/single_assignment": [
+        709.4,
+        1288,
+        16
+      ],
+      "BenchmarkAPIConflictConstruction/multi_assignment": [
+        515.9,
+        1144,
+        12
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/single_assignment": [
+        335.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIConflictAppendSQLWarm/multi_assignment": [
+        298.9,
+        0,
+        0
+      ]
+    }
+  }
+]
