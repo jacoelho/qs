@@ -559,6 +559,56 @@ each branch, while `CaseOf` compares branches with a single operand.
 
 ## Use PostgreSQL types and drivers
 
+### Reuse result declarations
+
+The `github.com/jacoelho/qs/projection` companion package associates result
+expressions with caller-defined metadata. `Named` adds an SQL alias and records
+that string; pass the expressions directly to existing builders:
+
+```go
+package documents
+
+import (
+    "github.com/jacoelho/qs"
+    "github.com/jacoelho/qs/projection"
+)
+
+var documentColumns = projection.New(
+    projection.Named(qs.Col("d.id"), "id"),
+    projection.Named(qs.Col("d.payload"), "payload"),
+)
+
+func documentQuery(tenantID string) *qs.SelectBuilder {
+    p := documentColumns.With(
+        projection.Named(qs.JSONBCol("d.payload").TextKey("country").Expr(), "country"),
+    )
+    return qs.Select(p.Expressions()...).
+        FromExpr(qs.Table("documents").As("d")).
+        Where(qs.Eq("d.tenant_id", tenantID)).Limit(100)
+}
+```
+
+`With` preserves the original declaration. For metadata other than string labels,
+use `projection.Output(expr, metadata)` and read `p.Metadata()`. `Output` leaves
+the expression unchanged, so aliases are optional. The package copies slice
+positions; metadata objects and nested query builders remain shared.
+
+Expressions must produce one result column and keep the qualifiers required by
+their query scope. `Named` requires an unaliased expression and adds rather than
+replaces an alias. Projection does not validate SQL types, actual labels or
+mapping destinations. Duplicate metadata and labels are permitted.
+
+Attach expressions to an otherwise empty SELECT/RETURNING list to describe the
+whole result; independent output changes can break correspondence. Empty
+projections are valid containers: empty SELECT fails rendering, while empty
+RETURNING adds nothing. Establish nonempty output before executing DML that
+must return rows.
+
+For one-off queries, ordinary `expr.As("label")` is sufficient. The
+[executable projection examples](projection/example_test.go) demonstrate reuse
+and defined metadata keys, JSONB, CTEs and RETURNING. Scanning and JSON decoding
+stay in the application.
+
 ### Cast a value
 
 Use `Cast` when SQL requires an explicit type:
@@ -840,6 +890,7 @@ Use these references for more information:
 
 - [Executable examples](example_test.go): examples with expected SQL and arguments.
 - `go doc .`: the full exported API.
+- `go doc ./projection`: reusable result declarations and their ownership contracts.
 - [Architecture guide](internal/ARCHITECTURE.md): boundaries, ownership, and design decisions.
 - [Performance report](internal/PERFORMANCE.md): measurements and performance limits.
 - [PostgreSQL corpus](internal/postgrescorpus/README.md): construction measurements and fixture maintenance.
