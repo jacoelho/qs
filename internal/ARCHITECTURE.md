@@ -6,6 +6,9 @@ construction-support measurement and fixture maintenance. The
 [performance report](PERFORMANCE.md) records correctness, diagnostics,
 construction and clone measurements, including unmet CPU budgets.
 
+The [projection package documentation](../projection/doc.go) owns the result
+declaration contract.
+
 ## Boundaries and representation
 
 The core constructs PostgreSQL SQL and arguments. It has no execution, scanning,
@@ -14,6 +17,20 @@ dependencies. The separate `integration/` module owns pgx and replaces its qs
 dependency with the local checkout. Tagged database tests run and lint through
 that module; root module tests need no database driver. Callers own connections,
 transactions, argument encoding and database authorization.
+
+The `projection` companion imports qs; the core never imports it. One private
+ordered column list owns each expression/opaque-metadata association. Construction,
+extension and extraction own slice positions, while nested graphs and application
+objects remain shallow. `Named` delegates aliasing to `Expr.As` and records the
+declared string; generic metadata is never interpreted, validated or invoked.
+The collection accepts empty declarations and leaves usability to the consuming
+query context. It proves neither result width nor whole-query mapping correctness.
+Callers own one-column inputs, SQL scope, complete output attachment and result
+interpretation. Alias replacement, uniqueness validation, query wrappers and
+driver-specific scanning would introduce different owners and were rejected.
+Driver-independent [examples](../projection/example_test.go) live alongside the
+package and run with its tests. No mapper dependency or separate example module
+is needed.
 
 `Statement` and `Rowset` are sealed interfaces. SELECT, VALUES, TABLE and set
 operations are rowsets; DML is Statement-only even with RETURNING. Query utility
