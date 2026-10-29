@@ -1,0 +1,17 @@
+--- cumulative/render.go
++++ revised/render.go
+@@ -217,13 +217,13 @@
+ 		w.statementErrorPath(s)
+ 		return
+ 	}
+-	defer func() { w.depth-- }()
+ 	outerHasWindow := w.hasWindow
+ 	w.hasWindow = false
+ 	w.statementDepth++
+ 	defer func() {
+ 		w.statementDepth--
+ 		w.hasWindow = outerHasWindow
++		w.depth--
+ 	}()
+ 	w.dispatchStatement(s)
+ 	if w.err != nil {

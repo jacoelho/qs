@@ -1,0 +1,262 @@
+[
+  {
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        626.1,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1343.0,
+        4704,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        295.0,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        939.8,
+        3680,
+        5
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        284.1,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        982.9,
+        3680,
+        5
+      ]
+    },
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        657.1,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1288.0,
+        4704,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        645.5,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1346.0,
+        4704,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        259.6,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        968.9,
+        3680,
+        5
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        286.9,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1057.0,
+        3680,
+        5
+      ]
+    },
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        640.2,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1415.0,
+        4704,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        662.9,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1309.0,
+        4704,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        269.5,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        908.3,
+        3680,
+        5
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        271.5,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        904.1,
+        3680,
+        5
+      ]
+    },
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        596.7,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1260.0,
+        4704,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        613.4,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1267.0,
+        4704,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        267.3,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        885.5,
+        3680,
+        5
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        282.6,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        919.7,
+        3680,
+        5
+      ]
+    },
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        616.5,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1278.0,
+        4704,
+        8
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        631.1,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1275.0,
+        4704,
+        8
+      ]
+    },
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        275.3,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        909.5,
+        3680,
+        5
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkArchitectureProjection/Concat": [
+        275.4,
+        1152,
+        1
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        926.2,
+        3680,
+        5
+      ]
+    },
+    "baseline": {
+      "BenchmarkArchitectureProjection/Concat": [
+        634.2,
+        2176,
+        4
+      ],
+      "BenchmarkArchitectureProjection/ConcatAndSelect": [
+        1293.0,
+        4704,
+        8
+      ]
+    }
+  }
+]

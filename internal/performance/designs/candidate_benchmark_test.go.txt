@@ -1,0 +1,187 @@
+package qs_test
+
+import (
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/jacoelho/qs"
+	"github.com/jacoelho/qs/projection"
+)
+
+var (
+	designStatement   qs.Statement
+	designSQL         string
+	designBytes       []byte
+	designArgs        []any
+	designExpressions []qs.Expr
+	designMetadata    []string
+	designProjection  projection.Projection[string]
+)
+
+func designCTE() qs.Statement {
+	recent := qs.CTE("recent", qs.SelectCols("id", "tenant_id", "created_at", "state").
+		From("events").Where(qs.Eq("tenant_id", 7), qs.Gt("created_at", 1000)))
+	return qs.Select(qs.Col("r.tenant_id"), qs.CountAll().As("total"), qs.Max(qs.Col("r.created_at")).As("latest")).
+		With(recent).FromExpr(recent.Ref().As("r")).
+		Where(qs.Or(qs.Eq("r.state", "queued"), qs.Eq("r.state", "running")), qs.Gt("r.id", 10)).
+		GroupBy("r.tenant_id").OrderBy(qs.Desc("total")).Limit(20)
+}
+
+func designBulk() qs.Statement {
+	q := qs.InsertInto("events").Columns("id", "name", "active").Values(qs.Value(0), qs.Value("event"), qs.Value(true))
+	for i := 1; i < 100; i++ {
+		q.Values(qs.Value(i), qs.Value("event"), qs.Value(true))
+	}
+	return q
+}
+
+func designColumns() projection.Projection[string] {
+	return projection.New(
+		projection.Named(qs.Col("id"), "id"), projection.Named(qs.Col("tenant_id"), "tenant_id"),
+		projection.Named(qs.Col("kind"), "kind"), projection.Named(qs.Col("state"), "state"),
+		projection.Named(qs.Col("attempt"), "attempt"), projection.Named(qs.Col("created_at"), "created_at"),
+		projection.Named(qs.Col("scheduled_at"), "scheduled_at"), projection.Named(qs.Col("priority"), "priority"),
+	)
+}
+
+func designCheck(b *testing.B, q qs.Statement, wantSQL string, wantArgs []any) {
+	b.Helper()
+	sql, args, err := q.ToSQL()
+	if err != nil || sql != wantSQL || !reflect.DeepEqual(args, wantArgs) {
+		b.Fatalf("fixture: SQL=%q args=%#v error=%v; want %q %#v", sql, args, err, wantSQL, wantArgs)
+	}
+}
+
+func BenchmarkDesignQueries(b *testing.B) {
+	const cteSQL = `WITH "recent" AS (SELECT "id", "tenant_id", "created_at", "state" FROM "events" WHERE ("tenant_id" = $1) AND ("created_at" > $2)) SELECT "r"."tenant_id", count(*) AS "total", max("r"."created_at") AS "latest" FROM "recent" AS "r" WHERE (("r"."state" = $3) OR ("r"."state" = $4)) AND ("r"."id" > $5) GROUP BY "r"."tenant_id" ORDER BY "total" DESC LIMIT $6`
+	rows := make([]string, 100)
+	bulkArgs := make([]any, 0, 300)
+	for i := range rows {
+		rows[i] = fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3)
+		bulkArgs = append(bulkArgs, i, "event", true)
+	}
+	bulkSQL := `INSERT INTO "events" ("id", "name", "active") VALUES ` + strings.Join(rows, ", ")
+	for _, fixture := range []struct {
+		name  string
+		build func() qs.Statement
+		sql   string
+		args  []any
+	}{
+		{"CTE", designCTE, cteSQL, []any{7, 1000, "queued", "running", 10, 20}},
+		{"Bulk100", designBulk, bulkSQL, bulkArgs},
+	} {
+		b.Run(fixture.name, func(b *testing.B) {
+			q := fixture.build()
+			designCheck(b, q, fixture.sql, fixture.args)
+			b.Run("Construct", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					designStatement = fixture.build()
+				}
+			})
+			b.Run("ConstructAndToSQL", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					var err error
+					designSQL, designArgs, err = fixture.build().ToSQL()
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+			b.Run("AppendWarm", func(b *testing.B) {
+				sql := make([]byte, 0, len(fixture.sql))
+				args := make([]any, 0, len(fixture.args))
+				b.ReportAllocs()
+				for b.Loop() {
+					var err error
+					sql, args, err = q.AppendSQL(sql[:0], args[:0])
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+				designBytes, designArgs = sql, args
+			})
+		})
+	}
+}
+
+func BenchmarkDesignProjection(b *testing.B) {
+	p := designColumns()
+	wantMetadata := []string{"id", "tenant_id", "kind", "state", "attempt", "created_at", "scheduled_at", "priority"}
+	const wantSQL = `SELECT "id" AS "id", "tenant_id" AS "tenant_id", "kind" AS "kind", "state" AS "state", "attempt" AS "attempt", "created_at" AS "created_at", "scheduled_at" AS "scheduled_at", "priority" AS "priority"`
+	designCheck(b, qs.Select(p.Expressions()...), wantSQL, nil)
+	if !reflect.DeepEqual(p.Metadata(), wantMetadata) {
+		b.Fatal("projection metadata changed")
+	}
+	for _, capacity := range []int{0, 8} {
+		expressions, metadata := designAppendProjection(p, make([]qs.Expr, 0, capacity), make([]string, 0, capacity))
+		designCheck(b, qs.Select(expressions...), wantSQL, nil)
+		if !reflect.DeepEqual(metadata, wantMetadata) {
+			b.Fatal("appended projection metadata changed")
+		}
+	}
+	b.Run("Construct", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			designProjection = designColumns()
+		}
+	})
+	b.Run("Owned", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			designExpressions, designMetadata = p.Expressions(), p.Metadata()
+		}
+	})
+	b.Run("Select", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			designStatement = qs.Select(p.Expressions()...)
+			designMetadata = p.Metadata()
+		}
+	})
+	b.Run("AppendNil", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			designExpressions, designMetadata = designAppendProjection(p, nil, nil)
+		}
+	})
+	b.Run("AppendWarm", func(b *testing.B) {
+		expressions := make([]qs.Expr, 0, 8)
+		metadata := make([]string, 0, 8)
+		b.ReportAllocs()
+		for b.Loop() {
+			expressions, metadata = designAppendProjection(p, expressions[:0], metadata[:0])
+		}
+		designExpressions, designMetadata = expressions, metadata
+	})
+	b.Run("AppendSelectWarm", func(b *testing.B) {
+		expressions := make([]qs.Expr, 0, 8)
+		metadata := make([]string, 0, 8)
+		b.ReportAllocs()
+		for b.Loop() {
+			expressions, metadata = designAppendProjection(p, expressions[:0], metadata[:0])
+			designStatement = qs.Select(expressions...)
+		}
+		designMetadata = metadata
+	})
+	b.Run("AppendSQLWarm", func(b *testing.B) {
+		q := qs.Select(p.Expressions()...)
+		sql := make([]byte, 0, len(wantSQL))
+		b.ReportAllocs()
+		for b.Loop() {
+			var err error
+			sql, _, err = q.AppendSQL(sql[:0], nil)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+		designBytes = sql
+	})
+}
+
+func designAppendProjection(p projection.Projection[string], expressions []qs.Expr, metadata []string) ([]qs.Expr, []string) {
+	return p.AppendExpressions(expressions), p.AppendMetadata(metadata)
+}

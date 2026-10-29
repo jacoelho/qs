@@ -1,0 +1,855 @@
+diff --git a/assignment.go b/assignment.go
+index 606c4f0..4ba2d76 100644
+--- a/assignment.go
++++ b/assignment.go
+@@ -95,7 +95,9 @@ func unqualifiedTarget(column Expr) Expr {
+ 		if len(parts) > 0 {
+ 			column = Ident(parts[len(parts)-1])
+ 		}
+-	case exprField, exprSubscript:
++	case exprField:
++		column.value = &unaryExpression{unqualifiedTarget(column.unary())}
++	case exprSubscript:
+ 		n := *column.node
+ 		n.left = unqualifiedTarget(n.left)
+ 		column.node = &n
+@@ -199,7 +201,7 @@ func (w *renderer) assignmentTarget(e Expr) {
+ 	case exprIdentifierParts:
+ 		w.identifierParts(e)
+ 	case exprField:
+-		w.assignmentTarget(e.node.left)
++		w.assignmentTarget(e.unary())
+ 		w.byte('.')
+ 		w.identifierPart(e.text)
+ 	case exprSubscript:
+diff --git a/benchmark_test.go b/benchmark_test.go
+index a31211e..9ae61c1 100644
+--- a/benchmark_test.go
++++ b/benchmark_test.go
+@@ -78,3 +78,19 @@ func BenchmarkAppendCTEWarm(b *testing.B) {
+ 	}
+ 	benchmarkArgs = args
+ }
++
++func BenchmarkAppendQuotedIdentifiersWarm(b *testing.B) {
++	q := Select(Ident(`odd"name`), Ident(`"leading`), Ident(`trailing"`), Ident(`two""quotes`)).From("events")
++	validateBenchmarkStatement(b, q, Options{},
++		`SELECT "odd""name", """leading", "trailing""", "two""""quotes" FROM "events"`)
++	sql := make([]byte, 0, 256)
++	b.ReportAllocs()
++	for b.Loop() {
++		var err error
++		sql, _, err = q.AppendSQL(sql[:0], nil)
++		if err != nil {
++			b.Fatal(err)
++		}
++	}
++	apiBenchmarkBytes = sql
++}
+diff --git a/clone_generated.go b/clone_generated.go
+index f5ecd3f..8f748c1 100644
+--- a/clone_generated.go
++++ b/clone_generated.go
+@@ -1353,6 +1353,20 @@ func (c *cloneContext) clonePtrsubqueryExpression(v *subqueryExpression) *subque
+ 	return &n
+ }
+ 
++func (c *cloneContext) cloneValueunaryExpression(v unaryExpression) unaryExpression {
++	n := v
++	n.expr = c.expr(v.expr)
++	return n
++}
++
++func (c *cloneContext) clonePtrunaryExpression(v *unaryExpression) *unaryExpression {
++	if v == nil {
++		return nil
++	}
++	n := c.cloneValueunaryExpression(*v)
++	return &n
++}
++
+ func (c *cloneContext) cloneValueversionedExpression(v versionedExpression) versionedExpression {
+ 	n := v
+ 	n.expr = c.expr(v.expr)
+@@ -1402,7 +1416,7 @@ func (c *cloneContext) expr(e Expr) Expr {
+ func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
+ 	switch kind {
+ 	case exprAlias:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprBetween:
+ 		return c.clonePtrbetweenExpression(ownedPayload[*betweenExpression](value))
+ 	case exprBinary:
+@@ -1414,13 +1428,13 @@ func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
+ 	case exprCast:
+ 		return c.clonePtrcastExpression(ownedPayload[*castExpression](value))
+ 	case exprCollate:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprExists:
+ 		return c.clonePtrsubqueryExpression(ownedPayload[*subqueryExpression](value))
+ 	case exprField:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprFields:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprFragment:
+ 		return c.cloneExprs(ownedPayload[[]Expr](value))
+ 	case exprGroup:
+@@ -1444,11 +1458,11 @@ func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
+ 	case exprParameter:
+ 		return value
+ 	case exprPostfix:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprPrefix:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprQuantified:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprRaw:
+ 		return value
+ 	case exprSQLJSON:
+@@ -1458,7 +1472,7 @@ func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
+ 	case exprSlice:
+ 		return c.clonePtrsliceExpression(ownedPayload[*sliceExpression](value))
+ 	case exprSpecialCall:
+-		return value
++		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
+ 	case exprStringLiteral:
+ 		return value
+ 	case exprSubquery:
+diff --git a/composite_test.go b/composite_test.go
+index b1d2d0b..cbaf50c 100644
+--- a/composite_test.go
++++ b/composite_test.go
+@@ -61,14 +61,13 @@ func TestCompositeSlicesAndCloneIsolation(t *testing.T) {
+ 	insertTargets[0] = Col("changed")
+ 	checkSQL(t, insert, `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2)`, "Ada", 36)
+ 
+-	original := Update("people").Set(AssignRow([]Expr{
+-		Col("person").Field("first_name"),
+-		Col("person").Field("age"),
+-	}, WriteTuple(Write(Param("Ada")), Write(Param(36)))))
++	aliasChild := Select(Param("before"))
++	original := Select(Scalar(aliasChild).As("value"))
+ 	cloned := Clone(original)
+-	cloned.set[0].columns[0].node.left.text = "other"
+-	checkSQL(t, original, `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, "Ada", 36)
+-	checkSQL(t, cloned, `UPDATE "people" SET ("other"."first_name", "person"."age") = ($1, $2)`, "Ada", 36)
++	aliasChild.Reset()
++	aliasChild.Columns(Param("after"))
++	checkSQL(t, original, `SELECT (SELECT $1) AS "value"`, "after")
++	checkSQL(t, cloned, `SELECT (SELECT $1) AS "value"`, "before")
+ 
+ 	child := Select(Col("source"))
+ 	withChild := InsertInto("archive").Columns("value").From(child)
+diff --git a/condition.go b/condition.go
+index a686629..8d543e9 100644
+--- a/condition.go
++++ b/condition.go
+@@ -310,13 +310,13 @@ func NotExists(query Rowset) Condition { return Not(Exists(query)) }
+ // AnyArray returns a quantified operand for comparison with any element of an
+ // SQL array expression.
+ func AnyArray(array Expr) Expr {
+-	return Expr{kind: exprQuantified, text: "ANY", node: &expression{left: array}}
++	return Expr{kind: exprQuantified, text: "ANY", value: &unaryExpression{array}}
+ }
+ 
+ // AllArray returns a quantified operand for comparison with every element of
+ // an SQL array expression.
+ func AllArray(array Expr) Expr {
+-	return Expr{kind: exprQuantified, text: "ALL", node: &expression{left: array}}
++	return Expr{kind: exprQuantified, text: "ALL", value: &unaryExpression{array}}
+ }
+ 
+ // AnyQuery returns a quantified operand for comparison with any row from a
+diff --git a/doc.go b/doc.go
+index aa7c501..3687724 100644
+--- a/doc.go
++++ b/doc.go
+@@ -12,6 +12,9 @@
+ // From or DefaultValues; assignment sources select Set directly on the target.
+ // Each source creates an independent completed statement with source-specific
+ // methods. Column selectors own an immutable list shared between completions.
++// Roles and required arguments prevent invalid grammar combinations and omitted
++// operands. Dynamic lists, zero descriptors and live subqueries still require
++// render validation; a Statement is not proof of database validity.
+ //
+ // Builders are mutable: use Clone before branching and do not mutate a builder
+ // while another goroutine renders it. Expressions and relations are immutable
+diff --git a/errors_test.go b/errors_test.go
+index 713e8cd..a244fbf 100644
+--- a/errors_test.go
++++ b/errors_test.go
+@@ -61,6 +61,7 @@ func TestInvalidConstruction(t *testing.T) {
+ 		{"order_zero", Select(LiteralInt(1)).OrderBy(Order{})}, {"ordinal_zero", Select(LiteralInt(1)).OrderBy(Ordinal(0).Asc())},
+ 		{"lock_distinct", Select(Star()).From("t").Distinct().Lock(ForUpdate())},
+ 		{"lock_group", Select(Col("id")).From("t").GroupBy("id").Lock(ForUpdate())},
++		{"lock_having", Select(Col("id")).From("t").Having(True()).Lock(ForUpdate())},
+ 		{"lock_zero", Select(Star()).From("t").Lock(LockClause{})},
+ 		{"join_no_from", Select(Star()).Join("t", True())},
+ 		{"subquery_nil", Select(Star()).FromExpr(Subquery(nil, "s"))},
+diff --git a/example_test.go b/example_test.go
+index 9e1df01..49a3082 100644
+--- a/example_test.go
++++ b/example_test.go
+@@ -31,17 +31,33 @@ func ExampleCTE() {
+ 
+ func ExampleNull() {
+ 	type Patch struct{ Email qs.Optional[qs.Null[string]] }
+-	patch := Patch{Email: qs.Some(qs.NullOf[string]())}
+-	q := qs.Update("users").Where(qs.Eq("id", 42))
+-	if patch.Email.Present {
+-		q.Set(qs.SetNullable("email", patch.Email.Value))
++	for _, patch := range []Patch{
++		{},
++		{Email: qs.Some(qs.NullOf[string]())},
++		{Email: qs.Some(qs.NonNull("ana@example.test"))},
++	} {
++		var assignments []qs.Assignment
++		if patch.Email.Present {
++			assignments = append(assignments, qs.SetNullable("email", patch.Email.Value))
++		}
++		// The application chooses no-op behavior for an absent patch.
++		if len(assignments) == 0 {
++			fmt.Println("no changes")
++			continue
++		}
++		query, args, err := qs.Update("users").Set(assignments...).Where(qs.Eq("id", 42)).ToSQL()
++		if err != nil {
++			panic(err)
++		}
++		fmt.Println(query)
++		fmt.Println(args)
+ 	}
+-	query, args, err := q.ToSQL()
+-	fmt.Println(query)
+-	fmt.Println(args, err)
+ 	// Output:
++	// no changes
++	// UPDATE "users" SET "email" = $1 WHERE ("id" = $2)
++	// [<nil> 42]
+ 	// UPDATE "users" SET "email" = $1 WHERE ("id" = $2)
+-	// [<nil> 42] <nil>
++	// [ana@example.test 42]
+ }
+ 
+ func ExampleInsertInto() {
+diff --git a/expr.go b/expr.go
+index c1a0409..80390f6 100644
+--- a/expr.go
++++ b/expr.go
+@@ -57,6 +57,10 @@ type Expr struct {
+ }
+ 
+ type expression struct{ left, right Expr }
++type unaryExpression struct{ expr Expr }
++
++func (e Expr) unary() Expr { return ownedPayload[*unaryExpression](e.value).expr }
++
+ type invalidExpression struct{ clause, detail string }
+ type castExpression struct {
+ 	expr Expr
+@@ -180,7 +184,7 @@ type SQLStatement struct{ expr Expr }
+ 
+ // As aliases an expression with a validated SQL identifier.
+ func (e Expr) As(alias string) Expr {
+-	return Expr{kind: exprAlias, text: alias, node: &expression{left: e}}
++	return Expr{kind: exprAlias, text: alias, value: &unaryExpression{e}}
+ }
+ 
+ // Cast adds an explicit PostgreSQL type cast to an expression.
+@@ -191,18 +195,18 @@ func (e Expr) Cast(typ DataType) Expr {
+ // Field selects one literal field name from a composite value. Col("a.b")
+ // instead refers to a qualified column; these have different PostgreSQL rules.
+ func (e Expr) Field(name string) Expr {
+-	return Expr{kind: exprField, text: name, node: &expression{left: e}}
++	return Expr{kind: exprField, text: name, value: &unaryExpression{e}}
+ }
+ 
+ // Fields expands a composite value in PostgreSQL expression-list positions.
+ // Its width is unknown until PostgreSQL resolves the composite type.
+ func (e Expr) Fields() Expr {
+-	return Expr{kind: exprFields, node: &expression{left: e}}
++	return Expr{kind: exprFields, value: &unaryExpression{e}}
+ }
+ 
+ // Collate applies a PostgreSQL collation name to an expression.
+ func (e Expr) Collate(name string) Expr {
+-	return Expr{kind: exprCollate, text: name, node: &expression{left: e}}
++	return Expr{kind: exprCollate, text: name, value: &unaryExpression{e}}
+ }
+ 
+ // Scalar requires one projected column when the projection width is known.
+@@ -215,10 +219,10 @@ func binary(left Expr, operator string, right Expr) Expr {
+ 	return Expr{kind: exprBinary, text: operator, node: &expression{left, right}}
+ }
+ func prefix(operator string, right Expr) Expr {
+-	return Expr{kind: exprPrefix, text: operator, node: &expression{right: right}}
++	return Expr{kind: exprPrefix, text: operator, value: &unaryExpression{right}}
+ }
+ func postfix(left Expr, operator string) Expr {
+-	return Expr{kind: exprPostfix, text: operator, node: &expression{left: left}}
++	return Expr{kind: exprPostfix, text: operator, value: &unaryExpression{left}}
+ }
+ func listExpr(prefix string, items []Expr) Expr {
+ 	return Expr{kind: exprList, text: prefix, value: cloneSlice(items)}
+@@ -477,13 +481,13 @@ func (w *renderer) renderPrefix(e Expr) {
+ 	w.byte('(')
+ 	w.text(e.text)
+ 	w.byte(' ')
+-	w.expr(e.node.right)
++	w.expr(e.unary())
+ 	w.byte(')')
+ }
+ 
+ func (w *renderer) renderPostfix(e Expr) {
+ 	w.byte('(')
+-	w.expr(e.node.left)
++	w.expr(e.unary())
+ 	w.byte(' ')
+ 	w.text(e.text)
+ 	w.byte(')')
+@@ -500,7 +504,7 @@ func (w *renderer) renderFragment(e Expr) {
+ }
+ 
+ func (w *renderer) renderAlias(e Expr) {
+-	w.expr(e.node.left)
++	w.expr(e.unary())
+ 	w.text(" AS ")
+ 	w.identifierPart(e.text)
+ }
+@@ -514,7 +518,7 @@ func (w *renderer) renderCast(e Expr) {
+ }
+ 
+ func (w *renderer) renderField(e Expr) {
+-	w.indirectionBase(e.node.left)
++	w.indirectionBase(e.unary())
+ 	w.byte('.')
+ 	if e.kind == exprField {
+ 		w.identifierPart(e.text)
+@@ -577,7 +581,7 @@ func (w *renderer) renderBetween(e Expr) {
+ func (w *renderer) renderQuantified(e Expr) {
+ 	w.text(e.text)
+ 	w.byte('(')
+-	w.expr(e.node.left)
++	w.expr(e.unary())
+ 	w.byte(')')
+ }
+ 
+@@ -604,7 +608,7 @@ func (w *renderer) renderSlice(e Expr) {
+ 
+ func (w *renderer) renderCollate(e Expr) {
+ 	w.byte('(')
+-	w.expr(e.node.left)
++	w.expr(e.unary())
+ 	w.text(" COLLATE ")
+ 	w.identifierPath(e.text, false)
+ 	w.byte(')')
+diff --git a/function.go b/function.go
+index 1417ba9..83d5636 100644
+--- a/function.go
++++ b/function.go
+@@ -490,7 +490,7 @@ func Extract(part DatePart, expr Expr) Expr {
+ 	default:
+ 		return invalidExpr("EXTRACT", "unknown date part")
+ 	}
+-	return Expr{kind: exprSpecialCall, text: name, node: &expression{left: expr}}
++	return Expr{kind: exprSpecialCall, text: name, value: &unaryExpression{expr}}
+ }
+ 
+ // ExtractNamed preserves one of PostgreSQL's accepted EXTRACT field aliases
+@@ -506,7 +506,7 @@ func ExtractNamed(part string, expr Expr) Expr {
+ 		"timezone", "timezone_hour", "timezone_minute", "timezone_h", "timezone_m",
+ 		"microseconds", "microsecond", "microsec", "milliseconds", "millisecond",
+ 		"decade", "century", "millennium", "julian":
+-		return Expr{kind: exprSpecialCall, text: part, node: &expression{left: expr}}
++		return Expr{kind: exprSpecialCall, text: part, value: &unaryExpression{expr}}
+ 	default:
+ 		return invalidExpr("EXTRACT", "unknown date part")
+ 	}
+@@ -516,6 +516,6 @@ func (w *renderer) specialCall(e Expr) {
+ 	w.text("EXTRACT(")
+ 	w.text(e.text)
+ 	w.text(" FROM ")
+-	w.expr(e.node.left)
++	w.expr(e.unary())
+ 	w.byte(')')
+ }
+diff --git a/identifier.go b/identifier.go
+index 4d1e5ab..4eaa688 100644
+--- a/identifier.go
++++ b/identifier.go
+@@ -31,11 +31,15 @@ func (w *renderer) identifierPart(s string) {
+ 		return
+ 	}
+ 	w.byte('"')
+-	for i := range len(s) {
+-		if s[i] == '"' {
+-			w.byte('"')
++	for {
++		i := strings.IndexByte(s, '"')
++		if i < 0 {
++			w.text(s)
++			break
+ 		}
+-		w.byte(s[i])
++		w.text(s[:i+1])
++		w.byte('"')
++		s = s[i+1:]
+ 	}
+ 	w.byte('"')
+ }
+diff --git a/internal/clonegen/main.go b/internal/clonegen/main.go
+index b89cde7..59991b6 100644
+--- a/internal/clonegen/main.go
++++ b/internal/clonegen/main.go
+@@ -208,6 +208,7 @@ func (c *cloneContext) rowset(s Rowset) Rowset { return s }
+ }
+ 
+ func newGenerator(info *packageInfo) *generator {
++	const unaryPayload = "*unaryExpression"
+ 	return &generator{
+ 		info:    info,
+ 		visited: make(map[string]bool),
+@@ -221,28 +222,28 @@ func newGenerator(info *packageInfo) *generator {
+ 			"exprKeyword":         policyShallow,
+ 			"exprStringLiteral":   policyShallow,
+ 			"exprBinary":          policyShallow,
+-			"exprPrefix":          policyShallow,
+-			"exprPostfix":         policyShallow,
++			"exprPrefix":          unaryPayload,
++			"exprPostfix":         unaryPayload,
+ 			"exprGroup":           policyExprSlice,
+ 			"exprFragment":        policyExprSlice,
+-			"exprAlias":           policyShallow,
++			"exprAlias":           unaryPayload,
+ 			"exprCast":            "*castExpression",
+ 			"exprCall":            "*callExpression",
+-			"exprSpecialCall":     policyShallow,
++			"exprSpecialCall":     unaryPayload,
+ 			"exprSubquery":        "*subqueryExpression",
+ 			"exprExists":          "*subqueryExpression",
+ 			"exprList":            policyExprSlice,
+ 			"exprMembership":      "*membershipExpression",
+ 			"exprBetween":         "*betweenExpression",
+ 			"exprCase":            "*caseExpression",
+-			"exprQuantified":      policyShallow,
++			"exprQuantified":      unaryPayload,
+ 			"exprSubscript":       policyShallow,
+ 			"exprSlice":           "*sliceExpression",
+-			"exprCollate":         policyShallow,
++			"exprCollate":         unaryPayload,
+ 			"exprSQLJSON":         "*JSONQueryBuilder",
+ 			"exprVersioned":       "*versionedExpression",
+-			"exprField":           policyShallow,
+-			"exprFields":          policyShallow,
++			"exprField":           unaryPayload,
++			"exprFields":          unaryPayload,
+ 			"exprSQLSyntax":       "*sqlSyntaxExpression",
+ 			"exprXML":             "*xmlExpression",
+ 			"exprJSONConstructor": "*jsonConstructor",
+@@ -278,15 +279,7 @@ func newGenerator(info *packageInfo) *generator {
+ 			"exprKeyword":       policyNil,
+ 			"exprStringLiteral": policyNil,
+ 			"exprBinary":        policyNil,
+-			"exprPrefix":        policyNil,
+-			"exprPostfix":       policyNil,
+-			"exprAlias":         policyNil,
+-			"exprSpecialCall":   policyNil,
+-			"exprQuantified":    policyNil,
+ 			"exprSubscript":     policyNil,
+-			"exprCollate":       policyNil,
+-			"exprField":         policyNil,
+-			"exprFields":        policyNil,
+ 		},
+ 	}
+ }
+diff --git a/projection/doc.go b/projection/doc.go
+index 0fa3132..d02e866 100644
+--- a/projection/doc.go
++++ b/projection/doc.go
+@@ -29,4 +29,10 @@
+ // shallow: application objects, metadata pointers and nested query builders remain
+ // shared. Reads can run concurrently while those reachable values and graphs are
+ // stable. This package performs no I/O and owns no resources or background work.
++//
++// AppendExpressions and AppendMetadata append into caller-owned slices for repeated
++// extraction. They preserve prefixes and reuse available capacity. Empty projections
++// return the destination unchanged. Reusing destinations does not mutate a projection;
++// callers coordinate reuse with consumers of the returned slices. Select copies its
++// expression positions, so its input storage can be reused after construction.
+ package projection
+diff --git a/projection/example_test.go b/projection/example_test.go
+index 3985ea2..dee2f99 100644
+--- a/projection/example_test.go
++++ b/projection/example_test.go
+@@ -45,6 +45,31 @@ func ExampleOutput() {
+ 	// [document-id document-payload]
+ }
+ 
++func ExampleConcat() {
++	userFields := func(user qs.Relation, prefix string) projection.Projection[string] {
++		return projection.New(
++			projection.Named(user.Col("id"), prefix+"_id"),
++			projection.Named(user.Col("name"), prefix+"_name"),
++		)
++	}
++	employee := qs.Table("users").As("employee")
++	manager := qs.Table("users").As("manager")
++	p := projection.Concat(userFields(employee, "employee"), userFields(manager, "manager"))
++	text, args, err := qs.Select(p.Expressions()...).FromExpr(
++		qs.LeftJoin(employee, manager).On(employee.Col("manager_id").EqExpr(manager.Col("id"))),
++	).ToSQL()
++	if err != nil {
++		panic(err)
++	}
++	fmt.Println(text)
++	fmt.Println(args)
++	fmt.Println(p.Metadata())
++	// Output:
++	// SELECT "employee"."id" AS "employee_id", "employee"."name" AS "employee_name", "manager"."id" AS "manager_id", "manager"."name" AS "manager_name" FROM ("users" AS "employee" LEFT JOIN "users" AS "manager" ON ("employee"."manager_id" = "manager"."id"))
++	// []
++	// [employee_id employee_name manager_id manager_name]
++}
++
+ func ExampleProjection_returning() {
+ 	p := projection.New(
+ 		projection.Named(qs.Col("d.id"), "id"),
+@@ -81,3 +106,21 @@ func ExampleProjection_cte() {
+ 	// WITH "recent" AS (SELECT "id", "payload" FROM "documents" ORDER BY "id" DESC LIMIT $1) SELECT "r"."id" AS "id", ("r"."payload" ->> $2) AS "country" FROM "recent" AS "r"
+ 	// [10 country]
+ }
++
++func ExampleProjection_AppendExpressions() {
++	p := projection.New(projection.Named(qs.Col("id"), "id"))
++	columns := make([]qs.Expr, 0, 4)
++	columns = p.AppendExpressions(columns[:0])
++	query := qs.Select(columns...).From("documents")
++	// SELECT owns its column positions, so extraction storage can be reused.
++	columns[0] = qs.Col("other")
++	text, args, err := query.ToSQL()
++	if err != nil {
++		panic(err)
++	}
++	fmt.Println(text, args)
++	fmt.Println(p.AppendMetadata([]string{"prefix"}))
++	// Output:
++	// SELECT "id" AS "id" FROM "documents" []
++	// [prefix id]
++}
+diff --git a/projection/projection.go b/projection/projection.go
+index 9ff62b7..2e5cc09 100644
+--- a/projection/projection.go
++++ b/projection/projection.go
+@@ -38,6 +38,22 @@ func New[M any](columns ...Column[M]) Projection[M] {
+ 	return Projection[M]{columns: slices.Clone(columns)}
+ }
+ 
++// Concat combines projections in argument order with independent column positions.
++// It preserves complete expression/metadata pairs, including duplicates. Empty
++// projections contribute no columns; no arguments produce an empty projection.
++// Nested queries, application values and metadata contents remain shallow.
++func Concat[M any](parts ...Projection[M]) Projection[M] {
++	var count int
++	for _, part := range parts {
++		count += len(part.columns)
++	}
++	columns := make([]Column[M], 0, count)
++	for _, part := range parts {
++		columns = append(columns, part.columns...)
++	}
++	return Projection[M]{columns: columns}
++}
++
+ // With returns a projection with more appended, copying column positions into
+ // independent storage. It leaves p unchanged. Empty input preserves its content.
+ func (p Projection[M]) With(more ...Column[M]) Projection[M] {
+@@ -58,6 +74,18 @@ func (p Projection[M]) Expressions() []qs.Expr {
+ 	return expressions
+ }
+ 
++// AppendExpressions appends declared expressions in order to dst, preserving its
++// prefix and reusing capacity when available. Returned slice positions belong to
++// the caller; nested queries and application values remain shared. An empty
++// projection returns dst unchanged, including its nilness.
++func (p Projection[M]) AppendExpressions(dst []qs.Expr) []qs.Expr {
++	dst = slices.Grow(dst, len(p.columns))
++	for _, column := range p.columns {
++		dst = append(dst, column.expression)
++	}
++	return dst
++}
++
+ // Metadata returns the associated metadata in order, with owned slice positions.
+ // Metadata contents remain shallow and are never invoked or validated. Empty slice
+ // nilness is unspecified.
+@@ -68,3 +96,15 @@ func (p Projection[M]) Metadata() []M {
+ 	}
+ 	return metadata
+ }
++
++// AppendMetadata appends associated metadata in order to dst, preserving its
++// prefix and reusing capacity when available. Returned slice positions belong to
++// the caller; metadata contents remain shallow and are never invoked or validated.
++// An empty projection returns dst unchanged, including its nilness.
++func (p Projection[M]) AppendMetadata(dst []M) []M {
++	dst = slices.Grow(dst, len(p.columns))
++	for _, column := range p.columns {
++		dst = append(dst, column.metadata)
++	}
++	return dst
++}
+diff --git a/projection/projection_test.go b/projection/projection_test.go
+index d4a6d5d..82e5d37 100644
+--- a/projection/projection_test.go
++++ b/projection/projection_test.go
+@@ -80,6 +80,120 @@ func TestWithKeepsBaseAndSiblingsIndependent(t *testing.T) {
+ 	}
+ }
+ 
++func TestConcatKeepsPairsOrdered(t *testing.T) {
++	t.Parallel()
++
++	left := projection.New(
++		projection.Output(qs.Param("left"), "shared"),
++		projection.Output(qs.Col("id"), "id"),
++	)
++	right := projection.New(projection.Output(qs.Param("right"), "shared"))
++	var zero projection.Projection[string]
++	parts := []projection.Projection[string]{left, zero, right, left}
++	p := projection.Concat(parts...)
++	parts[0] = projection.New(projection.Named(qs.Col("changed"), "changed"))
++	expressions, metadata := p.Expressions(), p.Metadata()
++	expressions[0], metadata[0] = qs.Col("changed"), "changed"
++
++	checkSQL(t, qs.Select(p.Expressions()...), `SELECT $1, "id", $2, $3, "id"`, "left", "right", "left")
++	if want := []string{"shared", "id", "shared", "shared", "id"}; !slices.Equal(p.Metadata(), want) {
++		t.Fatalf("metadata = %v, want %v", p.Metadata(), want)
++	}
++	checkSQL(t, qs.Select(left.Expressions()...), `SELECT $1, "id"`, "left")
++	if !slices.Equal(left.Metadata(), []string{"shared", "id"}) {
++		t.Fatalf("input metadata changed: %v", left.Metadata())
++	}
++}
++
++func TestConcatRetainsLiveContents(t *testing.T) {
++	t.Parallel()
++
++	child := qs.Select(qs.Param("original"))
++	key := fieldKey("original")
++	p := projection.Concat(
++		projection.New(projection.Output(qs.Scalar(child), &key)),
++		projection.New(projection.Output(qs.Param(9), (*fieldKey)(nil))),
++	)
++	child.RemoveColumns().Columns(qs.Param("live"))
++	key = "updated"
++	checkSQL(t, qs.Select(p.Expressions()...), `SELECT (SELECT $1), $2`, "live", 9)
++	if got := p.Metadata(); len(got) != 2 || got[0] != &key || *got[0] != "updated" || got[1] != nil {
++		t.Fatalf("metadata did not retain shallow contents: %v", got)
++	}
++}
++
++func TestAppendPreservesPrefixAndOwnsPositions(t *testing.T) {
++	t.Parallel()
++	for _, tc := range []struct {
++		name     string
++		prefix   bool
++		capacity int
++	}{
++		{"nil", false, 0},
++		{"empty_reused", false, 4},
++		{"prefix_reused", true, 4},
++		{"prefix_grows", true, 1},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			t.Parallel()
++			p := projection.New(
++				projection.Output(qs.Col("id"), "id"),
++				projection.Output(qs.Param(7).As("status"), "state"),
++			)
++			var expressions []qs.Expr
++			var metadata []string
++			if tc.capacity > 0 {
++				expressions = make([]qs.Expr, 0, tc.capacity)
++				metadata = make([]string, 0, tc.capacity)
++			}
++			wantSQL := `SELECT "id", $1 AS "status"`
++			wantMetadata := []string{"id", "state"}
++			if tc.prefix {
++				expressions = append(expressions, qs.Col("prefix"))
++				metadata = append(metadata, "prefix")
++				wantSQL = `SELECT "prefix", "id", $1 AS "status"`
++				wantMetadata = []string{"prefix", "id", "state"}
++			}
++			prefixLen := len(expressions)
++			expressions = p.AppendExpressions(expressions)
++			metadata = p.AppendMetadata(metadata)
++			checkSQL(t, qs.Select(expressions...), wantSQL, 7)
++			if !slices.Equal(metadata, wantMetadata) {
++				t.Fatalf("metadata = %v, want %v", metadata, wantMetadata)
++			}
++			expressions[prefixLen] = qs.Col("changed")
++			metadata[prefixLen] = "changed"
++			checkSQL(t, qs.Select(p.Expressions()...), `SELECT "id", $1 AS "status"`, 7)
++			if !slices.Equal(p.Metadata(), []string{"id", "state"}) {
++				t.Fatalf("appended positions alias projection: %v", p.Metadata())
++			}
++		})
++	}
++}
++
++func TestEmptyAppendPreservesDestination(t *testing.T) {
++	t.Parallel()
++	var p projection.Projection[string]
++	if p.AppendExpressions(nil) != nil || p.AppendMetadata(nil) != nil {
++		t.Fatal("empty append changed nil destination")
++	}
++	expressions := make([]qs.Expr, 1, 3)
++	expressions[0] = qs.Col("prefix")
++	metadata := make([]string, 1, 3)
++	metadata[0] = "prefix"
++	gotExpressions, gotMetadata := p.AppendExpressions(expressions), p.AppendMetadata(metadata)
++	if len(gotExpressions) != 1 || cap(gotExpressions) != 3 || &gotExpressions[0] != &expressions[0] {
++		t.Fatal("empty append changed expression destination")
++	}
++	if len(gotMetadata) != 1 || cap(gotMetadata) != 3 || &gotMetadata[0] != &metadata[0] {
++		t.Fatal("empty append changed metadata destination")
++	}
++	checkSQL(t, qs.Select(gotExpressions...), `SELECT "prefix"`)
++	if gotMetadata[0] != "prefix" {
++		t.Fatal("empty append changed prefix")
++	}
++}
++
+ func TestMetadataRemainsShallowAndOpaque(t *testing.T) {
+ 	t.Parallel()
+ 
+@@ -92,9 +206,10 @@ func TestMetadataRemainsShallowAndOpaque(t *testing.T) {
+ 	metadata := p.Metadata()
+ 	metadata[0] = nil
+ 	key = "updated"
+-	got := p.Metadata()
+-	if len(got) != 3 || got[0] != &key || got[1] != &key || got[2] != nil || *got[0] != "updated" {
+-		t.Fatalf("metadata did not retain shallow pointer values: %v", got)
++	for _, got := range [][]*fieldKey{p.Metadata(), p.AppendMetadata(nil)} {
++		if len(got) != 3 || got[0] != &key || got[1] != &key || got[2] != nil || *got[0] != "updated" {
++			t.Fatalf("metadata did not retain shallow pointer values: %v", got)
++		}
+ 	}
+ 
+ 	callback := func() { t.Fatal("projection invoked metadata") }
+@@ -116,16 +231,22 @@ func TestNestedQueriesStayLive(t *testing.T) {
+ 
+ 	child := qs.SelectCols("id").From("documents")
+ 	p := projection.New(projection.Output(qs.Scalar(child), fieldKey("id")))
++	extracted := p.AppendExpressions(nil)
+ 	child.Where(qs.Eq("status", "draft"))
+ 	checkSQL(t, qs.Select(p.Expressions()...),
+ 		`SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
++	checkSQL(t, qs.Select(extracted...),
++		`SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
+ }
+ 
+ func TestEmptyAndDeferredValidation(t *testing.T) {
+ 	t.Parallel()
+ 
+ 	var zero projection.Projection[string]
+-	for _, p := range []projection.Projection[string]{zero, projection.New[string](), zero.With()} {
++	for _, p := range []projection.Projection[string]{
++		zero, projection.New[string](), zero.With(),
++		projection.Concat[string](), projection.Concat(zero, projection.New[string]()),
++	} {
+ 		if len(p.Expressions()) != 0 || len(p.Metadata()) != 0 {
+ 			t.Fatal("empty projection has content")
+ 		}
+diff --git a/render.go b/render.go
+index 02d3e1b..aa8ea29 100644
+--- a/render.go
++++ b/render.go
+@@ -6,8 +6,10 @@ import (
+ 	"strconv"
+ )
+ 
+-// Statement is a complete query. It is sealed to keep rendering and parameter
+-// ownership in one place. Use StatementSQL for trusted extensions.
++// Statement describes a SQL statement; it does not prove that its inputs are valid.
++// Rendering checks structure and returns an error for invalid input. PostgreSQL
++// owns schema and SQL type validation. The interface is sealed to keep rendering
++// and parameter ownership in one place. Use StatementSQL for trusted extensions.
+ type Statement interface {
+ 	// ToSQL renders owned SQL and arguments with default options.
+ 	ToSQL() (string, []any, error)
+diff --git a/safety_test.go b/safety_test.go
+index 5b6e442..94f96f5 100644
+--- a/safety_test.go
++++ b/safety_test.go
+@@ -137,6 +137,10 @@ func TestGenericTypeChecks(t *testing.T) {
+ 		{"write_row_conversion", `_ = qs.WriteRowValue(qs.Default())`, false},
+ 		{"write_row_first_required", `_ = qs.WriteRow()`, false},
+ 		{"write_tuple_second_required", `_ = qs.WriteTuple(qs.Write(qs.Param(1)))`, false},
++		{"set_row_first_required", `_ = qs.SetRow([]string{"id"})`, false},
++		{"coalesce_first_required", `_ = qs.Coalesce()`, false},
++		{"greatest_first_required", `_ = qs.Greatest()`, false},
++		{"least_first_required", `_ = qs.Least()`, false},
+ 		{"insert_value_requires_write", `_ = qs.InsertInto("users").Values(qs.Param(1))`, false},
+ 		{"insert_values_first_required", `_ = qs.InsertInto("users").Values()`, false},
+ 		{"insert_set_first_required", `_ = qs.InsertInto("users").Set()`, false},
+@@ -221,6 +225,8 @@ func TestGenericTypeChecks(t *testing.T) {
+ 		{"merge_source_actions", `_ = qs.NotMatchedBySource().ThenUpdate(qs.Set("v",qs.Write(qs.Param(1)))); _ = qs.NotMatchedBySource().ThenDelete(); _ = qs.NotMatchedBySource().ThenDoNothing()`, true},
+ 		{"merge_insert_actions", `_ = qs.NotMatched().ThenInsert(qs.Set("v",qs.Write(qs.Param(1)))); _ = qs.NotMatched().ThenInsertValues([]string{"v"},qs.Write(qs.Param(2))); _ = qs.NotMatched().ThenInsertDefault(); _ = qs.NotMatched().ThenDoNothing()`, true},
+ 		{"merge_target_actions", `_ = qs.NotMatchedByTarget().ThenInsert(qs.Set("v",qs.Write(qs.Param(1)))); _ = qs.NotMatchedByTarget().ThenInsertValues([]string{"v"},qs.Write(qs.Param(2))); _ = qs.NotMatchedByTarget().ThenInsertDefault(); _ = qs.NotMatchedByTarget().ThenDoNothing()`, true},
++		{"merge_insert_value_required", `_ = qs.NotMatched().ThenInsertValues([]string{"v"})`, false},
++		{"merge_target_insert_value_required", `_ = qs.NotMatchedByTarget().ThenInsertValues([]string{"v"})`, false},
+ 		{"merge_overrides", `_ = qs.NotMatched().And(qs.True()).OverridingSystemValue().ThenInsert(qs.Set("v",qs.Write(qs.Param(1)))); _ = qs.NotMatchedByTarget().OverridingUserValue().ThenInsertValues([]string{"v"},qs.Write(qs.Param(2)))`, true},
+ 		{"merge_matched_insert", `_ = qs.Matched().ThenInsert(qs.Set("v",qs.Write(qs.Param(1))))`, false},
+ 		{"merge_source_insert", `_ = qs.NotMatchedBySource().ThenInsert(qs.Set("v",qs.Write(qs.Param(1))))`, false},
+diff --git a/select.go b/select.go
+index 9a6784e..f571eba 100644
+--- a/select.go
++++ b/select.go
+@@ -334,7 +334,9 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
+ 			w.byte(')')
+ 		}
+ 	}
+-	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0 && len(b.windows) == 0)
++	// An unused WINDOW definition does not prevent row locking. PostgreSQL
++	// determines actual aggregate/window-function legality, including inline OVER.
++	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0)
+ 	w.foot(b.base)
+ }
+ 
+diff --git a/set.go b/set.go
+index f78d069..12a1608 100644
+--- a/set.go
++++ b/set.go
+@@ -293,7 +293,7 @@ func projectionWidth(exprs []Expr) int {
+ func unknownProjection(e Expr) bool {
+ 	for {
+ 		if e.kind == exprAlias {
+-			e = e.node.left
++			e = e.unary()
+ 			continue
+ 		}
+ 		if e.kind == exprGroup {
+diff --git a/window_fidelity_test.go b/window_fidelity_test.go
+index 6e1cf7b..3a53529 100644
+--- a/window_fidelity_test.go
++++ b/window_fidelity_test.go
+@@ -5,6 +5,13 @@ import (
+ 	"testing"
+ )
+ 
++func TestUnusedWindowAllowsRowLocking(t *testing.T) {
++	t.Parallel()
++	query := SelectCols("id").From("jobs").
++		Window("unused", Window().OrderBy(Asc("id"))).Lock(ForUpdate())
++	checkSQL(t, query, `SELECT "id" FROM "jobs" WINDOW "unused" AS (ORDER BY "id" ASC) FOR UPDATE`)
++}
++
+ func TestWindowShorthandRendering(t *testing.T) {
+ 	t.Parallel()
+ 

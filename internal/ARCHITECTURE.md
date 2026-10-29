@@ -9,6 +9,14 @@ construction and clone measurements, including unmet CPU budgets.
 The [projection package documentation](../projection/doc.go) owns the result
 declaration contract.
 
+The [project review](PROJECT_REVIEW.md) records production query comparisons,
+selected improvements and their verification.
+The [query design comparison](QUERY_DESIGNS.md) records alternatives for query
+representation and projection extraction, including rejected ownership models.
+The [construction safety decision](COLLECTION_DESIGN.md) compares six collection
+architectures with jOOQ and Go alternatives, retains compile-time grammar guards,
+and owns the projection composition decision.
+
 ## Boundaries and representation
 
 The core constructs PostgreSQL SQL and arguments. It has no execution, scanning,
@@ -32,6 +40,11 @@ Driver-independent [examples](../projection/example_test.go) live alongside the
 package and run with its tests. No mapper dependency or separate example module
 is needed.
 
+One paired column list remains authoritative. The [query design comparison](QUERY_DESIGNS.md)
+owns extraction and allocation choices; the [construction safety decision](COLLECTION_DESIGN.md)
+owns composition and relation-taking factories. Public method contracts belong
+to the projection package documentation linked above.
+
 `Statement` and `Rowset` are sealed interfaces. SELECT, VALUES, TABLE and set
 operations are rowsets; DML is Statement-only even with RETURNING. Query utility
 wrappers retain their source rowset and own destination options. SELECT INTO
@@ -45,6 +58,13 @@ representation and renderer. Go payload types do not prove SQL types or schema
 validity. Finite grammar states use named enums; unknown states fail validation.
 Constructors own tag/payload agreement; one checked private accessor enforces
 that invariant. Public nil and foreign inputs retain boundary validation.
+
+All composite expressions use the tagged payload slot. Unary kinds store one
+child in `unaryExpression`; binary expressions and subscripts store two in
+`expression`. There is no separate node pointer in every Expr. Each kind has one
+representation, with no fallback or cache. Rendering and generated cloning use
+the same checked payload contract. Assignment normalization copies payloads
+before changing their children; bound application values remain shallow.
 
 CASE uses distinct searched/simple builders with inline private payloads. `End`
 stamps the role and snapshots branches. MERGE category selectors produce terminal
@@ -196,6 +216,14 @@ nil rowsets, names, unknown widths and row assignments supplied to INSERT
 assignment sources retain runtime checks. The write roles prevent DEFAULT from
 entering general expressions through the public typed API; trusted SQL remains
 an intentional escape.
+
+SELECT locking rejects structural DISTINCT, GROUP BY and HAVING clauses. An
+unused named WINDOW is compatible with locking. Rendering records structural
+OVER use in the current statement and checks it after ORDER BY and pagination,
+before emitting locks. Statement entry saves and clears this flag; exit restores
+the parent scope, so scalar subqueries and CTEs cannot change outer eligibility.
+SELECT INTO retains its source's scope. Opaque SQL, aggregate classification and
+locks propagated into FROM subqueries remain server-validated.
 
 Identifiers are quoted; values bind unless an explicit literal is selected.
 Unsafe fragments are trusted code. `RequireWhere` is a structural guard and

@@ -1,0 +1,149 @@
+{
+  "BenchmarkDesignProjection/Construct": {
+    "effect_percent": -18.47922322585039,
+    "ci95_percent": [
+      -20.731589025555365,
+      -16.162857761798456
+    ],
+    "baseline_ns": 525.25,
+    "candidate_ns": 429.9,
+    "baseline_bytes_allocs": [
+      [
+        1280,
+        9
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        896,
+        9
+      ]
+    ]
+  },
+  "BenchmarkDesignProjection/Owned": {
+    "effect_percent": 1.7579044646155573,
+    "ci95_percent": [
+      -0.7460757633665392,
+      4.325055161980577
+    ],
+    "baseline_ns": 205.25,
+    "candidate_ns": 203.35000000000002,
+    "baseline_bytes_allocs": [
+      [
+        512,
+        2
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        512,
+        2
+      ]
+    ]
+  },
+  "BenchmarkDesignProjection/Select": {
+    "effect_percent": 2.2871928956743375,
+    "ci95_percent": [
+      -0.027601409916082065,
+      4.655584721708018
+    ],
+    "baseline_ns": 439.70000000000005,
+    "candidate_ns": 438.6,
+    "baseline_bytes_allocs": [
+      [
+        1376,
+        4
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1376,
+        4
+      ]
+    ]
+  },
+  "BenchmarkDesignProjection/AppendNil": {
+    "effect_percent": -42.56147343245277,
+    "ci95_percent": [
+      -44.34286022382427,
+      -40.72307079525748
+    ],
+    "baseline_ns": 394.8,
+    "candidate_ns": 224.25,
+    "baseline_bytes_allocs": [
+      [
+        1024,
+        4
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        512,
+        2
+      ]
+    ]
+  },
+  "BenchmarkDesignProjection/AppendWarm": {
+    "effect_percent": -89.76157947658727,
+    "ci95_percent": [
+      -89.94285281544046,
+      -89.5770388072699
+    ],
+    "baseline_ns": 303.25,
+    "candidate_ns": 30.67,
+    "baseline_bytes_allocs": [
+      [
+        512,
+        2
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "BenchmarkDesignProjection/AppendSelectWarm": {
+    "effect_percent": -34.49995896341152,
+    "ci95_percent": [
+      -36.2695409106022,
+      -32.68124163711695
+    ],
+    "baseline_ns": 486.5,
+    "candidate_ns": 316.8,
+    "baseline_bytes_allocs": [
+      [
+        1376,
+        4
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        864,
+        2
+      ]
+    ]
+  },
+  "BenchmarkDesignProjection/AppendSQLWarm": {
+    "effect_percent": -0.2384952117372602,
+    "ci95_percent": [
+      -1.4689464379311246,
+      1.0073218322907576
+    ],
+    "baseline_ns": 398.0,
+    "candidate_ns": 397.4,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  }
+}

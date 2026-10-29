@@ -1,0 +1,180 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  292747	      1009 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	  134406	      2213 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  381452	       805.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   40383	      7325 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	   15220	     20048 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   45472	      6535 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  836460	       348.6 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	 1939093	       155.3 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	11454734	        26.45 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  831187	       360.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  596188	       436.4 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  999666	       300.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  430717	       651.1 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  280045	      1059 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	  138438	      2229 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  374576	       803.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   39867	      7342 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	   15259	     19526 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   46771	      6512 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  752924	       348.6 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	 1864556	       157.1 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	11054745	        26.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  808742	       369.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  561910	       478.1 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  944187	       311.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  398902	       716.8 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  283310	      1051 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	  131784	      2284 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  374385	       795.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   39537	      7484 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	   15302	     19689 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   46152	      6483 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  799084	       352.9 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	 1896163	       156.6 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	11042690	        26.81 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  829206	       364.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  573388	       441.7 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  971083	       308.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  434155	       654.1 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  286797	      1018 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	  135109	      2231 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  389396	       803.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   38694	      7526 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	   15170	     19746 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   46533	      6711 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  439106	       773.7 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	  936414	       329.6 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	10340414	        31.72 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  685590	       424.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  270015	      1069 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  726325	       359.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  244035	      1383 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  122536	      2381 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	   60280	      4840 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  347208	       978.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   14469	     20081 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	    5614	     48248 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   39052	      7648 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  352310	       814.7 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	  956378	       352.2 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	 9785559	        30.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  633903	       444.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  252176	      1123 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  785572	       382.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  208774	      1324 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  235950	      1711 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	   61802	      5390 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  309880	       973.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   14070	     20722 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	    7783	     49685 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   37513	      7834 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  329283	       921.4 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	  941434	       376.2 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	 9421900	        31.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  718153	       418.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  281682	      1140 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  607974	       449.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  175772	      1599 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  114139	      2472 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	   59371	      5254 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  295890	       991.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   17224	     17734 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	    6320	     42427 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   39915	      7809 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  401542	       806.6 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	  874029	       382.5 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	 9505755	        30.93 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  696297	       414.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  259977	      1082 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  840511	       356.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  191425	      1539 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  265083	      2480 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	   57901	      5897 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  276799	      1013 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   14661	     20423 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	    9378	     48429 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   27171	     10842 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  564328	       971.7 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	  606734	       569.4 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	 7343889	        39.16 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  520945	       586.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  260511	      1216 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  564007	       504.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  182887	      1779 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  220615	      2696 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	   62053	      6025 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  259612	       971.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   15536	     19123 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	    7378	     46777 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   36013	      8186 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  462795	       833.4 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	  918074	       383.6 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	 9095674	        34.52 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  648343	       464.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  258840	      1030 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  770774	       364.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  187034	      1554 ns/op	    1248 B/op	      12 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  137385	      2368 ns/op	    2560 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	   70479	      4710 ns/op	    3840 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  303955	       984.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   16434	     18016 ns/op	   20864 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	    5754	     45819 ns/op	   37248 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   38673	      8251 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  409633	       800.4 ns/op	     832 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	 1000000	       336.3 ns/op	     448 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	 8790499	        30.32 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  762073	       424.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  268646	      1063 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  859465	       360.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  292110	      1391 ns/op	    1248 B/op	      12 allocs/op
+PASS

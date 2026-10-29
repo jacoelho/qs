@@ -1,0 +1,23 @@
+{
+  "BenchmarkDesignBinarySubscript/AppendWarm": {
+    "effect_percent": -5.30750409933268,
+    "ci95_percent": [
+      -13.24129339658549,
+      3.3518033052950287
+    ],
+    "baseline_ns": 310.45,
+    "candidate_ns": 308.8,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  }
+}

@@ -1,0 +1,331 @@
+--- a/integration/production_patterns_test.go
++++ b/integration/production_patterns_test.go
+@@ -0,0 +1,199 @@
++//go:build postgres
++
++package integration_test
++
++import (
++	"reflect"
++	"testing"
++	"time"
++
++	"github.com/jacoelho/qs"
++)
++
++func TestUnusedWindowAllowsRowLock(t *testing.T) {
++	t.Parallel()
++	session := connect(t)
++	if _, err := session.Exec(session, `CREATE TEMP TABLE jobs (id integer PRIMARY KEY);
++		INSERT INTO jobs VALUES (42)`); err != nil {
++		t.Fatal(err)
++	}
++	statement := qs.SelectCols("id").From("jobs").
++		Window("unused", qs.Window().OrderBy(qs.Asc("id"))).
++		Lock(qs.ForUpdate())
++	sql, args, err := session.render(t, statement)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var id int
++	if err := session.QueryRow(session, sql, args...).Scan(&id); err != nil {
++		t.Fatalf("%s: %v", sql, err)
++	}
++	if id != 42 {
++		t.Fatalf("got id %d; want 42", id)
++	}
++}
++
++// River combines array-fed insertion with partial-index conflict inference:
++// https://github.com/riverqueue/river/blob/5c2d873192b4fb41c4b1320341f28408751532d5/riverdriver/riverpgxv5/internal/dbsqlc/river_job.sql#L278-L336
++func TestColumnarPartialIndexUpsert(t *testing.T) {
++	t.Parallel()
++	session := connect(t)
++	if _, err := session.Exec(session, `CREATE TEMP TABLE jobs (
++		id integer NOT NULL, name text NOT NULL, deleted_at timestamptz);
++		CREATE UNIQUE INDEX jobs_active_id ON jobs (id) WHERE deleted_at IS NULL;
++		INSERT INTO jobs VALUES (1, 'old', NULL),
++			(1, 'archived one', '2024-01-01'), (2, 'archived two', '2024-01-01')`); err != nil {
++		t.Fatal(err)
++	}
++	upsert := func(ids []int32, names []string) *qs.InsertSelect {
++		return qs.InsertInto("jobs").Columns("id", "name").From(qs.Select(
++			qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
++			qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
++		)).OnConflict(qs.ConflictColumns("id").TargetWhere(qs.IsNull("deleted_at")).
++			DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
++			ReturningCols("id", "name")
++	}
++	sql, args, err := session.render(t, upsert([]int32{1, 2, 3}, []string{"updated", "new two", "new three"}))
++	if err != nil {
++		t.Fatal(err)
++	}
++	rows, err := session.Query(session, sql, args...)
++	if err != nil {
++		t.Fatalf("%s: %v", sql, err)
++	}
++	defer rows.Close()
++	got := make(map[int]string)
++	count := 0
++	for rows.Next() {
++		var id int
++		var name string
++		if err := rows.Scan(&id, &name); err != nil {
++			t.Fatal(err)
++		}
++		got[id] = name
++		count++
++	}
++	if err := rows.Err(); err != nil {
++		t.Fatal(err)
++	}
++	want := map[int]string{1: "updated", 2: "new two", 3: "new three"}
++	if count != 3 || !reflect.DeepEqual(got, want) {
++		t.Fatalf("got %d rows %#v; want %#v", count, got, want)
++	}
++	archived := queryStrings(t, session, qs.SelectCols("name").From("jobs").
++		Where(qs.IsNotNull("deleted_at")).OrderBy(qs.Asc("id")))
++	if !reflect.DeepEqual(archived, []string{"archived one", "archived two"}) {
++		t.Fatalf("archived rows changed: %#v", archived)
++	}
++	sql, args, err = session.render(t, upsert([]int32{}, []string{}))
++	if err != nil {
++		t.Fatal(err)
++	}
++	result, err := session.Exec(session, sql, args...)
++	if err != nil {
++		t.Fatalf("%s: %v", sql, err)
++	}
++	if result.RowsAffected() != 0 {
++		t.Fatalf("empty input affected %d rows", result.RowsAffected())
++	}
++}
++
++// Coder pages parent rows before correlated lateral aggregation:
++// https://github.com/coder/coder/blob/1acacc9c307e5d30e8b85fd4b821770a40422d85/coderd/database/queries/aibridge.sql#L354-L559
++func TestPaginateBeforeLateralAggregation(t *testing.T) {
++	t.Parallel()
++	session := connect(t)
++	if _, err := session.Exec(session, `CREATE TEMP TABLE parents (id integer PRIMARY KEY);
++		CREATE TEMP TABLE events (parent_id integer NOT NULL, amount integer NOT NULL);
++		CREATE TEMP TABLE comments (parent_id integer NOT NULL, body text NOT NULL);
++		INSERT INTO parents VALUES (1), (2), (3), (4);
++		INSERT INTO events VALUES (1, 100), (1, 200), (1, 300),
++			(2, 11), (2, 12), (2, 1), (4, 400);
++		INSERT INTO comments VALUES (1, 'outside page'),
++			(2, 'first'), (2, 'second'), (4, 'after page')`); err != nil {
++		t.Fatal(err)
++	}
++	page := qs.CTE("page", qs.SelectCols("id").From("parents").
++		Where(qs.Gt("id", 1)).OrderBy(qs.Asc("id")).Limit(2))
++	summary := qs.Select(
++		qs.Sum(qs.Col("amount")).Filter(qs.Gt("amount", 10)).As("total"),
++		qs.CountAll().As("entries"),
++	).From("events").Where(qs.EqColumns("events.parent_id", "page.id")).
++		GroupBy("events.parent_id")
++	comments := qs.Select(qs.CountAll().As("entries")).From("comments").
++		Where(qs.EqColumns("comments.parent_id", "page.id")).GroupBy("comments.parent_id")
++	statement := qs.Select(qs.Col("page.id"),
++		qs.Coalesce(qs.Col("summary.total"), qs.LiteralInt(0)),
++		qs.Coalesce(qs.Col("summary.entries"), qs.LiteralInt(0)),
++		qs.Coalesce(qs.Col("comment_summary.entries"), qs.LiteralInt(0)),
++	).With(page).FromExpr(page.Ref()).
++		LeftJoinExpr(qs.Lateral(summary.As("summary")), qs.True()).
++		LeftJoinExpr(qs.Lateral(comments.As("comment_summary")), qs.True()).
++		OrderBy(qs.Asc("page.id"))
++	sql, args, err := session.render(t, statement)
++	if err != nil {
++		t.Fatal(err)
++	}
++	rows, err := session.Query(session, sql, args...)
++	if err != nil {
++		t.Fatalf("%s: %v", sql, err)
++	}
++	defer rows.Close()
++	var got [][4]int64
++	for rows.Next() {
++		var row [4]int64
++		if err := rows.Scan(&row[0], &row[1], &row[2], &row[3]); err != nil {
++			t.Fatal(err)
++		}
++		got = append(got, row)
++	}
++	if err := rows.Err(); err != nil {
++		t.Fatal(err)
++	}
++	want := [][4]int64{{2, 23, 3, 2}, {3, 0, 0, 0}}
++	if !reflect.DeepEqual(got, want) {
++		t.Fatalf("got page %#v; want %#v", got, want)
++	}
++}
++
++func TestGroupParameterizedExpressionByOrdinal(t *testing.T) {
++	t.Parallel()
++	session := connect(t)
++	if _, err := session.Exec(session, `CREATE TEMP TABLE events (created_at timestamptz NOT NULL);
++		INSERT INTO events VALUES ('2024-01-01 01:00:00+00'),
++			('2024-01-01 23:00:00+00'), ('2024-01-02 12:00:00+00')`); err != nil {
++		t.Fatal(err)
++	}
++	bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
++	statement := qs.Select(bucket.As("bucket"), qs.CountAll()).From("events").
++		GroupByExpr(qs.Ordinal(1)).OrderBy(qs.Ordinal(1).Asc())
++	sql, args, err := session.render(t, statement)
++	if err != nil {
++		t.Fatal(err)
++	}
++	rows, err := session.Query(session, sql, args...)
++	if err != nil {
++		t.Fatalf("%s: %v", sql, err)
++	}
++	defer rows.Close()
++	type dayCount struct {
++		day   string
++		count int64
++	}
++	var got []dayCount
++	for rows.Next() {
++		var day time.Time
++		var count int64
++		if err := rows.Scan(&day, &count); err != nil {
++			t.Fatal(err)
++		}
++		got = append(got, dayCount{day: day.UTC().Format(time.DateOnly), count: count})
++	}
++	if err := rows.Err(); err != nil {
++		t.Fatal(err)
++	}
++	want := []dayCount{{"2024-01-01", 2}, {"2024-01-02", 1}}
++	if !reflect.DeepEqual(got, want) {
++		t.Fatalf("got %#v; want %#v", got, want)
++	}
++}
+--- a/production_query_example_test.go
++++ b/production_query_example_test.go
+@@ -0,0 +1,43 @@
++package qs_test
++
++import (
++	"fmt"
++
++	"github.com/jacoelho/qs"
++)
++
++func ExampleInsertInto_arrayUpsert() {
++	// The driver encodes each array. Keep lengths equal and bound batch size.
++	ids := []int32{42, 43}
++	names := []string{"Ana", "Ben"}
++	rows := qs.Select(
++		qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
++		qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
++	)
++	query, args, err := qs.InsertInto("users").Columns("id", "name").From(rows).
++		OnConflict(qs.ConflictColumns("id").TargetWhere(qs.IsNull("deleted_at")).
++			DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
++		ReturningCols("id", "name").ToSQL()
++	if err != nil {
++		panic(err)
++	}
++	fmt.Println(query)
++	fmt.Println(args)
++	// Output:
++	// INSERT INTO "users" ("id", "name") SELECT unnest(($1)::integer[]), unnest(($2)::text[]) ON CONFLICT ("id") WHERE ("deleted_at" IS NULL) DO UPDATE SET "name" = "excluded"."name" RETURNING "id", "name"
++	// [[42 43] [Ana Ben]]
++}
++
++func ExampleSelectBuilder_GroupByExpr_parameterized() {
++	bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
++	query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).From("events").
++		GroupByExpr(qs.Ordinal(1)).OrderBy(qs.Ordinal(1).Asc()).ToSQL()
++	if err != nil {
++		panic(err)
++	}
++	fmt.Println(query)
++	fmt.Println(args)
++	// Output:
++	// SELECT date_trunc($1, "created_at") AS "bucket", count(*) FROM "events" GROUP BY 1 ORDER BY 1 ASC
++	// [day]
++}
+--- a/benchmark_test.go
++++ b/benchmark_test.go
+@@ -78,3 +78,19 @@
+ 	}
+ 	benchmarkArgs = args
+ }
++
++func BenchmarkAppendQuotedIdentifiersWarm(b *testing.B) {
++	q := Select(Ident(`odd"name`), Ident(`"leading`), Ident(`trailing"`), Ident(`two""quotes`)).From("events")
++	validateBenchmarkStatement(b, q, Options{},
++		`SELECT "odd""name", """leading", "trailing""", "two""""quotes" FROM "events"`)
++	sql := make([]byte, 0, 256)
++	b.ReportAllocs()
++	for b.Loop() {
++		var err error
++		sql, _, err = q.AppendSQL(sql[:0], nil)
++		if err != nil {
++			b.Fatal(err)
++		}
++	}
++	apiBenchmarkBytes = sql
++}
+--- a/errors_test.go
++++ b/errors_test.go
+@@ -61,6 +61,7 @@
+ 		{"order_zero", Select(LiteralInt(1)).OrderBy(Order{})}, {"ordinal_zero", Select(LiteralInt(1)).OrderBy(Ordinal(0).Asc())},
+ 		{"lock_distinct", Select(Star()).From("t").Distinct().Lock(ForUpdate())},
+ 		{"lock_group", Select(Col("id")).From("t").GroupBy("id").Lock(ForUpdate())},
++		{"lock_having", Select(Col("id")).From("t").Having(True()).Lock(ForUpdate())},
+ 		{"lock_zero", Select(Star()).From("t").Lock(LockClause{})},
+ 		{"join_no_from", Select(Star()).Join("t", True())},
+ 		{"subquery_nil", Select(Star()).FromExpr(Subquery(nil, "s"))},
+--- a/identifier.go
++++ b/identifier.go
+@@ -31,11 +31,15 @@
+ 		return
+ 	}
+ 	w.byte('"')
+-	for i := range len(s) {
+-		if s[i] == '"' {
+-			w.byte('"')
++	for {
++		i := strings.IndexByte(s, '"')
++		if i < 0 {
++			w.text(s)
++			break
+ 		}
+-		w.byte(s[i])
++		w.text(s[:i+1])
++		w.byte('"')
++		s = s[i+1:]
+ 	}
+ 	w.byte('"')
+ }
+--- a/select.go
++++ b/select.go
+@@ -334,7 +334,9 @@
+ 			w.byte(')')
+ 		}
+ 	}
+-	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0 && len(b.windows) == 0)
++	// An unused WINDOW definition does not prevent row locking. PostgreSQL
++	// determines actual aggregate/window-function legality, including inline OVER.
++	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0)
+ 	w.foot(b.base)
+ }
+ 
+--- a/window_fidelity_test.go
++++ b/window_fidelity_test.go
+@@ -4,6 +4,13 @@
+ 	"errors"
+ 	"testing"
+ )
++
++func TestUnusedWindowAllowsRowLocking(t *testing.T) {
++	t.Parallel()
++	query := SelectCols("id").From("jobs").
++		Window("unused", Window().OrderBy(Asc("id"))).Lock(ForUpdate())
++	checkSQL(t, query, `SELECT "id" FROM "jobs" WINDOW "unused" AS (ORDER BY "id" ASC) FOR UPDATE`)
++}
+ 
+ func TestWindowShorthandRendering(t *testing.T) {
+ 	t.Parallel()

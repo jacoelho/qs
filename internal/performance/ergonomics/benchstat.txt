@@ -1,0 +1,21 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+                                       │ internal/performance/ergonomics/baseline-concat.txt │ internal/performance/ergonomics/candidate-concat.txt │
+                                       │                       sec/op                        │            sec/op             vs base                │
+ArchitectureProjection/Concat                                                    632.7n ± 4%                    275.4n ± 4%  -56.48% (p=0.000 n=10)
+ArchitectureProjection/ConcatAndSelect                                          1290.5n ± 4%                    923.0n ± 6%  -28.48% (p=0.000 n=10)
+geomean                                                                          903.6n                         504.1n       -44.21%
+
+                                       │ internal/performance/ergonomics/baseline-concat.txt │ internal/performance/ergonomics/candidate-concat.txt │
+                                       │                        B/op                         │             B/op              vs base                │
+ArchitectureProjection/Concat                                                   2.125Ki ± 0%                   1.125Ki ± 0%  -47.06% (p=0.000 n=10)
+ArchitectureProjection/ConcatAndSelect                                          4.594Ki ± 0%                   3.594Ki ± 0%  -21.77% (p=0.000 n=10)
+geomean                                                                         3.124Ki                        2.011Ki       -35.64%
+
+                                       │ internal/performance/ergonomics/baseline-concat.txt │ internal/performance/ergonomics/candidate-concat.txt │
+                                       │                      allocs/op                      │          allocs/op            vs base                │
+ArchitectureProjection/Concat                                                     4.000 ± 0%                     1.000 ± 0%  -75.00% (p=0.000 n=10)
+ArchitectureProjection/ConcatAndSelect                                            8.000 ± 0%                     5.000 ± 0%  -37.50% (p=0.000 n=10)
+geomean                                                                           5.657                          2.236       -60.47%

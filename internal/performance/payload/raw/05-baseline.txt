@@ -1,0 +1,18 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignQueries/CTE/Construct         	  211892	      3245 ns/op	    2816 B/op	      26 allocs/op
+BenchmarkDesignQueries/CTE/ConstructAndToSQL 	   50337	      5854 ns/op	    4096 B/op	      30 allocs/op
+BenchmarkDesignQueries/CTE/AppendWarm        	  271830	      1195 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignQueries/Bulk100/Construct     	   13779	     22228 ns/op	   22480 B/op	     116 allocs/op
+BenchmarkDesignQueries/Bulk100/ConstructAndToSQL         	    7747	     50878 ns/op	   38864 B/op	     128 allocs/op
+BenchmarkDesignQueries/Bulk100/AppendWarm                	   36594	      8161 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/Construct                      	  371616	       869.6 ns/op	     896 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned                          	  964383	       373.4 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendWarm                     	 9219244	        32.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm                  	  662142	       444.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Construct                 	  273996	      1224 ns/op	    1392 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm                	  853310	       356.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone                     	  155967	      1739 ns/op	    1392 B/op	      12 allocs/op
+PASS

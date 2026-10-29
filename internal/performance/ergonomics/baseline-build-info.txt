@@ -1,0 +1,13 @@
+/private/tmp/qs-ergonomics-review/baseline-projection.test: go1.27.3
+	path	github.com/jacoelho/qs.test
+	mod	github.com/jacoelho/qs	(devel)	
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=arm64
+	build	GOOS=darwin
+	build	GOARM64=v8.0

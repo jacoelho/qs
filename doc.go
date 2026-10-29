@@ -12,6 +12,9 @@
 // From or DefaultValues; assignment sources select Set directly on the target.
 // Each source creates an independent completed statement with source-specific
 // methods. Column selectors own an immutable list shared between completions.
+// Roles and required arguments prevent invalid grammar combinations and omitted
+// operands. Dynamic lists, zero descriptors and live subqueries still require
+// render validation; a Statement is not proof of database validity.
 //
 // Builders are mutable: use Clone before branching and do not mutate a builder
 // while another goroutine renders it. Expressions and relations are immutable

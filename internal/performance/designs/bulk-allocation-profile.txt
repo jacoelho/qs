@@ -1,0 +1,30 @@
+File: baseline.test
+Type: alloc_space
+Time: 2026-10-29 19:58:24 GMT
+Showing nodes accounting for 1997.17MB, 99.58% of 2005.68MB total
+Dropped 24 nodes (cum <= 10.03MB)
+      flat  flat%   sum%        cum   cum%
+  743.60MB 37.07% 37.07%   743.60MB 37.07%  github.com/jacoelho/qs.ownedWriteValues (inline)
+  452.91MB 22.58% 59.66%   592.65MB 29.55%  github.com/jacoelho/qs.(*renderer).bind
+  396.57MB 19.77% 79.43%  1140.17MB 56.85%  github.com/jacoelho/qs.(*InsertRows).Values (inline)
+  139.73MB  6.97% 86.40%   139.73MB  6.97%  internal/strconv.AppendUint
+  124.64MB  6.21% 92.61%   124.64MB  6.21%  github.com/jacoelho/qs.(*renderer).text (inline)
+  113.20MB  5.64% 98.25%   830.49MB 41.41%  github.com/jacoelho/qs.ToSQLWith
+   19.01MB  0.95% 99.20%    27.51MB  1.37%  github.com/jacoelho/qs.InsertColumnsTarget.Values (inline)
+    7.50MB  0.37% 99.58%       14MB   0.7%  github.com/jacoelho/qs.newInsertColumnsTarget
+         0     0% 99.58%   830.49MB 41.41%  github.com/jacoelho/qs.(*InsertRows).ToSQL
+         0     0% 99.58%   717.29MB 35.76%  github.com/jacoelho/qs.(*InsertRows).append
+         0     0% 99.58%   717.29MB 35.76%  github.com/jacoelho/qs.(*renderer).dispatchStatement
+         0     0% 99.58%   592.65MB 29.55%  github.com/jacoelho/qs.(*renderer).expr
+         0     0% 99.58%   717.29MB 35.76%  github.com/jacoelho/qs.(*renderer).statement
+         0     0% 99.58%   592.65MB 29.55%  github.com/jacoelho/qs.(*renderer).writeExpr (inline)
+         0     0% 99.58%   717.29MB 35.76%  github.com/jacoelho/qs.(*renderer).writeValues
+         0     0% 99.58%   717.29MB 35.76%  github.com/jacoelho/qs.AppendWith
+         0     0% 99.58%       14MB   0.7%  github.com/jacoelho/qs.InsertTarget.Columns (inline)
+         0     0% 99.58%   830.49MB 41.41%  github.com/jacoelho/qs.ToSQL (inline)
+         0     0% 99.58%  2003.67MB 99.90%  github.com/jacoelho/qs_test.BenchmarkDesignQueries.func1.2
+         0     0% 99.58%  1173.18MB 58.49%  github.com/jacoelho/qs_test.designBulk
+         0     0% 99.58%   139.73MB  6.97%  internal/strconv.AppendInt
+         0     0% 99.58%   139.73MB  6.97%  strconv.AppendInt (inline)
+         0     0% 99.58%  2004.68MB   100%  testing.(*B).run1.func1
+         0     0% 99.58%  2004.68MB   100%  testing.(*B).runN

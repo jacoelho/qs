@@ -1,0 +1,170 @@
+{
+  "BenchmarkAPIInsertAppendSQLWarm/ordinary": {
+    "effect_percent": -4.5634330756719095,
+    "ci95_percent": [
+      -5.228211832979974,
+      -3.893991213396476
+    ],
+    "baseline_ns": 218.25,
+    "candidate_ns": 207.35,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "BenchmarkAPIInsertAppendSQLWarm/mixed": {
+    "effect_percent": -8.385274136234855,
+    "ci95_percent": [
+      -9.559059932958279,
+      -7.196254385777995
+    ],
+    "baseline_ns": 245.9,
+    "candidate_ns": 224.2,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "BenchmarkAPIInsertAppendSQLWarm/bulk": {
+    "effect_percent": -0.8328762690926922,
+    "ci95_percent": [
+      -2.3903376789681805,
+      0.7494360211728279
+    ],
+    "baseline_ns": 699.2,
+    "candidate_ns": 698.75,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "BenchmarkToSQL": {
+    "effect_percent": -1.1776129371425839,
+    "ci95_percent": [
+      -4.35150442865481,
+      2.1015973797178114
+    ],
+    "baseline_ns": 554.4000000000001,
+    "candidate_ns": 548.1500000000001,
+    "baseline_bytes_allocs": [
+      [
+        528,
+        3
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        528,
+        3
+      ]
+    ]
+  },
+  "BenchmarkAppendSQLWarm": {
+    "effect_percent": -8.711993104930743,
+    "ci95_percent": [
+      -9.506156107312574,
+      -7.910860624325622
+    ],
+    "baseline_ns": 365.5,
+    "candidate_ns": 333.45,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "BenchmarkConstructAndToSQL": {
+    "effect_percent": 0.17315944991091486,
+    "ci95_percent": [
+      -2.8324704402176804,
+      3.2717608406772456
+    ],
+    "baseline_ns": 1157.0,
+    "candidate_ns": 1153.5,
+    "baseline_bytes_allocs": [
+      [
+        1824,
+        11
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        1824,
+        11
+      ]
+    ]
+  },
+  "BenchmarkAppendCTEWarm": {
+    "effect_percent": -2.40035799839152,
+    "ci95_percent": [
+      -3.325078443739207,
+      -1.4667923645680763
+    ],
+    "baseline_ns": 503.4,
+    "candidate_ns": 489.35,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "BenchmarkAppendQuotedIdentifiersWarm": {
+    "effect_percent": -1.7851559345516865,
+    "ci95_percent": [
+      -3.0121540032422143,
+      -0.5426350522024183
+    ],
+    "baseline_ns": 204.95,
+    "candidate_ns": 200.05,
+    "baseline_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ],
+    "candidate_bytes_allocs": [
+      [
+        0,
+        0
+      ]
+    ]
+  }
+}

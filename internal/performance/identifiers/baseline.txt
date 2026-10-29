@@ -1,0 +1,130 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1368223	       218.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1224807	       244.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  443608	       694.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  607768	       537.3 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  834056	       364.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  255577	      1151 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  617018	       506.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1468023	       203.4 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1381732	       216.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1238673	       242.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  422038	       691.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  587754	       548.6 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  788539	       372.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  254204	      1168 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  584107	       495.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1480233	       203.4 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1377208	       219.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1228512	       245.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  423745	       703.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  580101	       560.2 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  836372	       365.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  241640	      1155 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  599564	       500.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1460235	       204.8 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1356079	       220.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1214271	       246.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  390230	       714.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  582415	       566.5 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  763665	       368.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  247472	      1159 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  586189	       503.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1464596	       203.6 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1352908	       221.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1214950	       247.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  410608	       705.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  565962	       565.9 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  779878	       365.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  238383	      1187 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  588259	       503.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1478173	       203.2 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1370982	       218.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1220871	       245.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  440035	       695.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  572086	       563.0 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  806938	       369.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  238356	      1161 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  567826	       505.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1416291	       207.2 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1392586	       217.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1000000	       250.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  431990	       697.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  609718	       527.2 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  808752	       361.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  274240	      1117 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  606447	       503.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1451960	       206.4 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1391952	       217.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1238011	       242.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  435884	       723.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  614628	       518.7 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  829473	       362.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  269776	      1076 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  616347	       508.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1414136	       209.6 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1362037	       220.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1225864	       246.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  435055	       693.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  588139	       547.7 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  790339	       362.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  246061	      1160 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  614035	       497.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1454293	       205.7 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1391956	       215.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1216896	       246.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  428576	       701.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  573370	       560.7 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  778083	       367.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  260913	      1153 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  602550	       496.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1456030	       205.1 ns/op	       0 B/op	       0 allocs/op
+PASS

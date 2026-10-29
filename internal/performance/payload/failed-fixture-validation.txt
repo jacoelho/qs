@@ -1,0 +1,6 @@
+Command: ['/private/tmp/qs-payload-review/baseline.test', '-test.run=^$', '-test.bench=^BenchmarkDesignBinarySubscript$', '-test.benchmem', '-test.benchtime=1x', '-test.cpu=1']
+--- FAIL: BenchmarkDesignBinarySubscript
+    performance_design_benchmark_test.go:196: fixture: SQL="SELECT ((\"a\" + $1) * (\"b\" - $2)) AS \"total\", (\"matrix\")[$3][$4] AS \"cell\" FROM \"samples\" WHERE (\"id\" = $5)" args=[]interface {}{1, 2, 3, 4, 5} error=<nil>; want "SELECT ((\"a\" + $1) * (\"b\" - $2)) AS \"total\", \"matrix\"[$3][$4] AS \"cell\" FROM \"samples\" WHERE (\"id\" = $5)" []interface {}{1, 2, 3, 4, 5}
+FAIL
+
+Exit: 1

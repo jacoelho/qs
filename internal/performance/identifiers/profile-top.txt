@@ -1,0 +1,73 @@
+File: baseline.test
+Type: cpu
+Time: 2026-10-29 19:43:58 GMT
+Duration: 3.72s, Total samples = 3.27s (87.94%)
+Showing nodes accounting for 3.21s, 98.17% of 3.27s total
+Dropped 7 nodes (cum <= 0.02s)
+      flat  flat%   sum%        cum   cum%
+     0.49s 14.98% 14.98%      0.49s 14.98%  github.com/jacoelho/qs.(*renderer).byte (inline)
+     0.34s 10.40% 25.38%      0.34s 10.40%  internal/bytealg.IndexByteString
+     0.33s 10.09% 35.47%      1.11s 33.94%  github.com/jacoelho/qs.(*renderer).identifierPart
+     0.19s  5.81% 41.28%      0.19s  5.81%  unicode/utf8.ValidString
+     0.15s  4.59% 45.87%      1.83s 55.96%  github.com/jacoelho/qs.(*renderer).expr
+     0.13s  3.98% 49.85%      0.29s  8.87%  github.com/jacoelho/qs.(*renderer).bind
+     0.12s  3.67% 53.52%      0.12s  3.67%  runtime.memmove
+     0.11s  3.36% 56.88%      0.15s  4.59%  github.com/jacoelho/qs.(*renderer).text (inline)
+     0.10s  3.06% 59.94%      1.18s 36.09%  github.com/jacoelho/qs.(*renderer).exprs
+     0.09s  2.75% 62.69%      3.11s 95.11%  github.com/jacoelho/qs.(*SelectBuilder).appendInto
+     0.08s  2.45% 65.14%      0.23s  7.03%  internal/stringslite.Cut
+     0.07s  2.14% 67.28%      0.07s  2.14%  github.com/jacoelho/qs.(*renderer).enter (inline)
+     0.07s  2.14% 69.42%      3.21s 98.17%  github.com/jacoelho/qs.AppendWith
+     0.06s  1.83% 71.25%      0.52s 15.90%  github.com/jacoelho/qs.(*renderer).relation
+     0.06s  1.83% 73.09%      0.15s  4.59%  internal/strconv.AppendUint
+     0.05s  1.53% 74.62%      1.09s 33.33%  github.com/jacoelho/qs.(*renderer).identifierPath
+     0.05s  1.53% 76.15%      0.11s  3.36%  github.com/jacoelho/qs.(*renderer).relationAlias
+     0.05s  1.53% 77.68%      3.14s 96.02%  github.com/jacoelho/qs.(*renderer).statement
+     0.04s  1.22% 78.90%      1.10s 33.64%  github.com/jacoelho/qs.(*renderer).conditions
+     0.04s  1.22% 80.12%      0.31s  9.48%  github.com/jacoelho/qs.(*renderer).relationBody
+     0.04s  1.22% 81.35%      0.56s 17.13%  github.com/jacoelho/qs.(*renderer).relations
+     0.04s  1.22% 82.57%      0.04s  1.22%  github.com/jacoelho/qs.(*renderer).statement.func1
+     0.04s  1.22% 83.79%      0.04s  1.22%  github.com/jacoelho/qs.(*renderer).stopped (inline)
+     0.04s  1.22% 85.02%      0.10s  3.06%  github.com/jacoelho/qs.(*renderer).tail
+     0.04s  1.22% 86.24%      0.27s  8.26%  github.com/jacoelho/qs.(*renderer).window
+     0.04s  1.22% 87.46%      1.29s 39.45%  github.com/jacoelho/qs.(*renderer).withClause
+     0.03s  0.92% 88.38%      0.03s  0.92%  github.com/jacoelho/qs.(*renderer).foot
+     0.03s  0.92% 89.30%      0.19s  5.81%  github.com/jacoelho/qs.(*renderer).order
+     0.03s  0.92% 90.21%      0.23s  7.03%  github.com/jacoelho/qs.(*renderer).orders
+     0.03s  0.92% 91.13%      0.03s  0.92%  github.com/jacoelho/qs.unknownProjection
+     0.02s  0.61% 91.74%      0.30s  9.17%  github.com/jacoelho/qs.(*renderer).aggregateTail
+     0.02s  0.61% 92.35%      0.02s  0.61%  github.com/jacoelho/qs.(*renderer).expr.func1
+     0.02s  0.61% 92.97%      1.31s 40.06%  github.com/jacoelho/qs.(*renderer).head
+     0.02s  0.61% 93.58%      0.02s  0.61%  github.com/jacoelho/qs.(*renderer).relationSample
+     0.02s  0.61% 94.19%      0.15s  4.59%  internal/stringslite.Index
+     0.02s  0.61% 94.80%      0.36s 11.01%  internal/stringslite.IndexByte (inline)
+     0.01s  0.31% 95.11%      0.42s 12.84%  github.com/jacoelho/qs.(*renderer).call
+     0.01s  0.31% 95.41%      0.10s  3.06%  github.com/jacoelho/qs.(*renderer).identifierParts
+     0.01s  0.31% 95.72%      0.68s 20.80%  github.com/jacoelho/qs.(*renderer).membership
+     0.01s  0.31% 96.02%      0.32s  9.79%  github.com/jacoelho/qs.(*renderer).renderBinary
+     0.01s  0.31% 96.33%      1.25s 38.23%  github.com/jacoelho/qs.(*renderer).withQuery
+     0.01s  0.31% 96.64%      3.22s 98.47%  github.com/jacoelho/qs.BenchmarkAppendCTEWarm
+     0.01s  0.31% 96.94%      0.16s  4.89%  internal/strconv.AppendInt
+     0.01s  0.31% 97.25%      0.02s  0.61%  runtime.(*timer).unlockAndRun
+     0.01s  0.31% 97.55%      0.03s  0.92%  runtime.(*timers).run
+     0.01s  0.31% 97.86%      0.02s  0.61%  runtime.globrunqgetbatch
+     0.01s  0.31% 98.17%      0.04s  1.22%  slices.IndexFunc[go.shape.[]github.com/jacoelho/qs.Expr,go.shape.struct { github.com/jacoelho/qs.value interface {}; github.com/jacoelho/qs.node *github.com/jacoelho/qs.expression; github.com/jacoelho/qs.text string; github.com/jacoelho/qs.kind github.com/jacoelho/qs.exprKind }] (inline)
+         0     0% 98.17%      3.21s 98.17%  github.com/jacoelho/qs.(*SelectBuilder).AppendSQL
+         0     0% 98.17%      3.11s 95.11%  github.com/jacoelho/qs.(*SelectBuilder).append (inline)
+         0     0% 98.17%      3.11s 95.11%  github.com/jacoelho/qs.(*renderer).dispatchStatement
+         0     0% 98.17%      3.21s 98.17%  github.com/jacoelho/qs.AppendSQL (inline)
+         0     0% 98.17%      0.04s  1.22%  github.com/jacoelho/qs.projectionWidth (inline)
+         0     0% 98.17%      0.04s  1.22%  github.com/jacoelho/qs.statementWidth
+         0     0% 98.17%      0.03s  0.92%  runtime.(*timers).check
+         0     0% 98.17%      0.05s  1.53%  runtime.findRunnable
+         0     0% 98.17%      0.05s  1.53%  runtime.gopreempt_m (inline)
+         0     0% 98.17%      0.05s  1.53%  runtime.goschedImpl
+         0     0% 98.17%      0.05s  1.53%  runtime.morestack
+         0     0% 98.17%      0.05s  1.53%  runtime.newstack
+         0     0% 98.17%      0.05s  1.53%  runtime.schedule
+         0     0% 98.17%      0.04s  1.22%  slices.ContainsFunc[go.shape.[]github.com/jacoelho/qs.Expr,go.shape.struct { github.com/jacoelho/qs.value interface {}; github.com/jacoelho/qs.node *github.com/jacoelho/qs.expression; github.com/jacoelho/qs.text string; github.com/jacoelho/qs.kind github.com/jacoelho/qs.exprKind }] (inline)
+         0     0% 98.17%      0.16s  4.89%  strconv.AppendInt (inline)
+         0     0% 98.17%      0.23s  7.03%  strings.Cut (inline)
+         0     0% 98.17%      0.24s  7.34%  strings.IndexByte (inline)
+         0     0% 98.17%      3.22s 98.47%  testing.(*B).run1.func1
+         0     0% 98.17%      3.22s 98.47%  testing.(*B).runN

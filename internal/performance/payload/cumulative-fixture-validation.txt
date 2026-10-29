@@ -1,0 +1,8 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignBinarySubscript/Construct         	       1	      5500 ns/op	    1248 B/op	      12 allocs/op
+BenchmarkDesignBinarySubscript/AppendWarm        	       1	     93666 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDesignBinarySubscript/Clone             	       1	     28208 ns/op	    1248 B/op	      12 allocs/op
+PASS

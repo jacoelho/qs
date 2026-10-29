@@ -130,6 +130,9 @@ even with RETURNING, so use a CTE to compose them with another query.
 `Field[T]` keeps operands typed, `Null[T]` represents nullable values, and
 `Optional[T]` distinguishes absent values from present ones. The
 [executable examples](example_test.go) show how to use them together.
+For sparse updates, assemble assignments first and choose explicitly whether an
+all-absent patch is a no-op or an error. A present NULL remains an assignment;
+it is not absence. qs rejects an UPDATE with no assignments.
 
 ### Select literal column names
 
@@ -370,6 +373,30 @@ Empty column lists and empty rows fail at render time. For positional
 insertion, omit the column selector; `ValuesSlice` can start a positional
 INSERT or append rows to a completed row INSERT.
 
+### Insert columnar batches
+
+For data already arranged in columns, bind one array per column and expand them
+with `Unnest`. This keeps the parameter count proportional to columns:
+
+```go
+ids := []int32{42, 43}
+names := []string{"Ana", "Ben"}
+rows := qs.Select(
+    qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
+    qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
+)
+query, args, err := qs.InsertInto("users").Columns("id", "name").From(rows).ToSQL()
+```
+
+The driver encodes the arrays. Supply equal lengths: PostgreSQL
+[pads shorter results with NULL](https://www.postgresql.org/docs/18/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET);
+qs does not inspect bound application data. Empty arrays insert
+no rows. Bound batch size according to data volume; fewer parameters do not
+reduce the payload size. For larger loads, consider the driver's COPY support.
+The [executable upsert example](production_query_example_test.go) combines this
+shape with partial-index conflict inference and RETURNING. Its table needs a
+unique index on `id WHERE deleted_at IS NULL`.
+
 ### Update a row
 
 ```go
@@ -557,6 +584,31 @@ the table reference used to join the CTE's result.
 are already complete. For conditional expressions, `Case` uses conditions for
 each branch, while `CaseOf` compares branches with a single operand.
 
+### Group a parameterized expression
+
+Each occurrence of `Param` receives a new placeholder, even when the same `Expr`
+is reused. Repeating `date_trunc($1, created_at)` as
+`date_trunc($2, created_at)` in GROUP BY does not identify the same grouping
+expression to PostgreSQL. Reference the SELECT position instead:
+
+```go
+bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
+query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).From("events").
+    GroupByExpr(qs.Ordinal(1)).OrderBy(qs.Ordinal(1).Asc()).ToSQL()
+```
+
+This binds `"day"` once. Keep the ordinal aligned with the projection order.
+
+### Enrich a page with child aggregates
+
+To page parents independently of their child counts, select the page in a CTE,
+then attach a correlated aggregate with `LeftJoinExpr(qs.Lateral(...), qs.True())`.
+Aggregate each child collection separately to avoid multiplying rows across
+collections. Apply an outer ORDER BY as well; CTE ordering does not guarantee
+final result order. The [database examples](integration/production_patterns_test.go)
+exercise two collections and a parent with no children. Indexes and query plans
+remain application concerns.
+
 ## Use PostgreSQL types and drivers
 
 ### Reuse result declarations
@@ -593,6 +645,13 @@ use `projection.Output(expr, metadata)` and read `p.Metadata()`. `Output` leaves
 the expression unchanged, so aliases are optional. The package copies slice
 positions; metadata objects and nested query builders remain shared.
 
+Use `projection.Concat(left, right)` to combine existing declarations. It copies
+complete expression/metadata pairs in order, preserving duplicates; empty inputs
+contribute no columns. For aliases and self-joins, use a factory that accepts a
+`qs.Relation` and creates columns with `relation.Col(name)`. The
+[self-join example](projection/example_test.go) gives each relation its own
+qualification and output labels without rewriting expression graphs.
+
 Expressions must produce one result column and keep the qualifiers required by
 their query scope. `Named` requires an unaliased expression and adds rather than
 replaces an alias. Projection does not validate SQL types, actual labels or
@@ -608,6 +667,21 @@ For one-off queries, ordinary `expr.As("label")` is sufficient. The
 [executable projection examples](projection/example_test.go) demonstrate reuse
 and defined metadata keys, JSONB, CTEs and RETURNING. Scanning and JSON decoding
 stay in the application.
+
+For repeated extraction, reuse caller-owned slices:
+
+```go
+expressions = p.AppendExpressions(expressions[:0])
+metadata = p.AppendMetadata(metadata[:0])
+q := qs.Select(expressions...).From("documents")
+```
+
+Both append methods preserve any existing prefix and copy positions in declaration
+order; contents stay shallow. Empty projections leave the destination unchanged,
+including nilness. With sufficient capacity extraction needs no new buffer, but
+`Select` still copies its column positions. Keep `Expressions()` and `Metadata()`
+for one-shot owned results. Coordinate buffer reuse with consumers; SELECT input
+storage can be reused after construction because the builder owns its positions.
 
 ### Cast a value
 
@@ -893,6 +967,8 @@ Use these references for more information:
 - `go doc ./projection`: reusable result declarations and their ownership contracts.
 - [Architecture guide](internal/ARCHITECTURE.md): boundaries, ownership, and design decisions.
 - [Performance report](internal/PERFORMANCE.md): measurements and performance limits.
+- [Project review](internal/PROJECT_REVIEW.md): production query comparisons, findings and validation.
+- [Query design comparison](internal/QUERY_DESIGNS.md): 18 alternatives assessed for ergonomics, correctness and cost.
 - [PostgreSQL corpus](internal/postgrescorpus/README.md): construction measurements and fixture maintenance.
 
 The pinned corpus verifies 28,111 of 28,197 query occurrences, measuring 99.70%

@@ -1,0 +1,31 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+                                 │ internal/performance/payload/revised-baseline.txt │ internal/performance/payload/revised-candidate.txt │
+                                 │                      sec/op                       │           sec/op             vs base               │
+DesignQueries/CTE/AppendWarm                                           996.8n ±  92%                  967.4n ±  9%       ~ (p=0.739 n=10)
+DesignQueries/Bulk100/AppendWarm                                       8.459µ ±  99%                  8.041µ ± 13%       ~ (p=0.529 n=10)
+DesignProjection/AppendSQLWarm                                         463.6n ± 176%                  432.8n ±  9%       ~ (p=0.190 n=10)
+DesignBinarySubscript/AppendWarm                                       404.7n ± 104%                  365.6n ± 24%       ~ (p=0.165 n=10)
+geomean                                                                1.121µ                         1.053µ        -6.08%
+
+                                 │ internal/performance/payload/revised-baseline.txt │ internal/performance/payload/revised-candidate.txt │
+                                 │                       B/op                        │           B/op             vs base                 │
+DesignQueries/CTE/AppendWarm                                            0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+DesignQueries/Bulk100/AppendWarm                                        0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+DesignProjection/AppendSQLWarm                                          0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+DesignBinarySubscript/AppendWarm                                        0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                            ²                              +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                 │ internal/performance/payload/revised-baseline.txt │ internal/performance/payload/revised-candidate.txt │
+                                 │                     allocs/op                     │         allocs/op          vs base                 │
+DesignQueries/CTE/AppendWarm                                            0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+DesignQueries/Bulk100/AppendWarm                                        0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+DesignProjection/AppendSQLWarm                                          0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+DesignBinarySubscript/AppendWarm                                        0.000 ± 0%                    0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                            ²                              +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean

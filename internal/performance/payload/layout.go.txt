@@ -1,0 +1,15 @@
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "github.com/jacoelho/qs"
+    "github.com/jacoelho/qs/projection"
+)
+
+func main() {
+    for _, value := range []any{qs.Expr{}, qs.Condition{}, qs.WriteValue{}, qs.Assignment{}, projection.Column[string]{}} {
+        typ := reflect.TypeOf(value)
+        fmt.Printf("%s: size=%d align=%d\n", typ, typ.Size(), typ.Align())
+    }
+}

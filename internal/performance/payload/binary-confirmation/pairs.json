@@ -1,0 +1,162 @@
+[
+  {
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        310.4,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        309.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        313.1,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        311.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        308.8,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        310.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        308.5,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        310.5,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        385.2,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        328.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        307.7,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        308.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        309.7,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        308.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        309.2,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        310.5,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        445.7,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        307.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        307.8,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignBinarySubscript/AppendWarm": [
+        309.2,
+        0,
+        0
+      ]
+    }
+  }
+]

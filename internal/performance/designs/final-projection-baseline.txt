@@ -1,0 +1,120 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  602020	       560.8 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1482825	       205.0 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  740679	       442.8 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  799209	       407.0 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       306.2 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  641407	       512.3 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  701412	       404.4 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  642782	       520.6 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1520948	       191.6 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  899583	       409.2 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  756627	       401.0 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       293.2 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  650259	       483.2 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  742772	       391.6 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  611293	       520.5 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1464945	       206.5 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  721681	       441.7 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  784818	       392.8 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       303.2 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  634998	       489.8 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  758380	       398.5 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  676570	       527.8 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1442730	       207.4 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  686119	       424.6 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  853089	       381.3 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       296.8 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  721167	       457.4 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  735578	       404.8 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  653778	       501.7 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1562758	       191.2 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  822292	       399.3 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  831052	       369.5 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       294.4 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  735819	       449.6 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  719172	       405.2 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  630925	       530.3 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1458224	       205.7 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  689516	       439.8 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  784484	       397.1 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       303.3 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  638138	       495.3 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  750601	       396.5 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  667544	       536.9 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1453544	       206.1 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  695866	       442.9 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  875581	       393.6 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       303.7 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  639430	       492.1 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  750758	       397.5 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  700273	       536.3 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1458782	       205.5 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  709743	       439.6 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  794140	       396.5 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       305.4 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  669038	       492.2 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  745618	       391.3 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  690388	       522.7 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1537580	       197.9 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  761380	       441.5 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  819420	       396.0 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       304.7 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  651848	       476.0 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  754700	       400.2 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkDesignProjection/Construct         	  664200	       459.3 ns/op	    1280 B/op	       9 allocs/op
+BenchmarkDesignProjection/Owned             	 1650816	       179.9 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/Select            	  863443	       356.6 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendNil         	  928803	       334.1 ns/op	    1024 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendWarm        	 1000000	       272.8 ns/op	     512 B/op	       2 allocs/op
+BenchmarkDesignProjection/AppendSelectWarm  	  796750	       406.4 ns/op	    1376 B/op	       4 allocs/op
+BenchmarkDesignProjection/AppendSQLWarm     	  773802	       384.9 ns/op	       0 B/op	       0 allocs/op
+PASS

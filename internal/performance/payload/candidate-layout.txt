@@ -1,0 +1,5 @@
+qs.Expr: size=40 align=8
+qs.Condition: size=40 align=8
+qs.WriteValue: size=40 align=8
+qs.Assignment: size=128 align=8
+projection.Column[string]: size=56 align=8

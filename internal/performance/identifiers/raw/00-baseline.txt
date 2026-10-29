@@ -1,0 +1,13 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jacoelho/qs
+cpu: Apple M2 Max
+BenchmarkAPIInsertAppendSQLWarm/ordinary         	 1368223	       218.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/mixed            	 1224807	       244.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAPIInsertAppendSQLWarm/bulk             	  443608	       694.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkToSQL                                   	  607768	       537.3 ns/op	     528 B/op	       3 allocs/op
+BenchmarkAppendSQLWarm                           	  834056	       364.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConstructAndToSQL                       	  255577	      1151 ns/op	    1824 B/op	      11 allocs/op
+BenchmarkAppendCTEWarm                           	  617018	       506.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendQuotedIdentifiersWarm             	 1468023	       203.4 ns/op	       0 B/op	       0 allocs/op
+PASS

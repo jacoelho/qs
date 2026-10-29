@@ -1,0 +1,1362 @@
+[
+  {
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1334.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2663.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        831.2,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9861.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23621.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6687.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        476.0,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        173.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        364.8,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        332.3,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        278.5,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        430.7,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        373.6,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1322.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2761.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        838.9,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9827.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23672.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6709.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        393.5,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        201.2,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        395.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        207.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        28.86,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        280.6,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        371.9,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1308.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2734.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        830.8,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9700.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23955.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6739.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        402.3,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        201.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        404.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        211.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.2,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        282.4,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        375.8,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1302.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2497.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        844.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9934.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23609.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6812.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        489.0,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        185.6,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        377.1,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        343.2,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        280.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        446.9,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        384.5,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1291.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2620.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        855.6,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9641.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23531.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6838.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        486.2,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        175.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        355.7,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        334.5,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        268.1,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        407.2,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        374.5,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1297.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2667.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        834.5,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9129.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        22468.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6796.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        372.4,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        200.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        388.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        193.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        28.92,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        266.5,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        377.4,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1355.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2722.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        861.1,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        10172.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        24286.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6935.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        403.5,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        216.8,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        428.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        207.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.45,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        307.0,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        377.6,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1373.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2887.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        861.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        10294.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        25192.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6953.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        534.1,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        199.5,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        411.0,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        377.4,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        292.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        456.9,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        382.4,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1421.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2722.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        865.7,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9818.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23707.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6836.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        495.5,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        189.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        407.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        362.4,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        282.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        443.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        387.3,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1220.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2667.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        852.9,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9627.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23768.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6914.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        405.0,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        201.1,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        411.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        212.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.94,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        273.1,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        383.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1307.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2702.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        854.2,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9734.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23719.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6872.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        395.5,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        201.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        418.1,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        199.5,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.64,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        274.1,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        385.9,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1332.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2757.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        866.5,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9641.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        24480.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6800.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        504.1,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        197.6,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        412.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        374.4,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        296.1,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        452.0,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        382.4,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1501.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2798.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        846.5,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        10054.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        24708.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6856.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        482.0,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        183.8,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        368.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        348.2,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        274.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        412.2,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        379.7,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1300.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2765.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        940.4,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9887.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23734.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6942.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        423.1,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        198.8,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        382.8,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        202.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.41,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        281.7,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        383.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1336.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2741.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        858.9,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9539.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23381.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6918.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        388.5,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        195.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        380.1,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        196.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.7,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        267.2,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        385.3,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1274.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2744.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        861.4,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9495.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23654.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6880.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        474.5,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        177.1,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        368.7,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        344.2,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        274.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        416.2,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        385.7,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1259.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2757.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        866.7,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9702.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23673.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6827.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        481.7,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        179.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        368.9,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        363.9,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        283.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        423.5,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        384.3,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1328.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2699.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        851.5,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9464.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23562.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6896.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        387.9,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        199.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        396.1,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        196.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.51,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        269.0,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        383.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1322.0,
+        2816,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2754.0,
+        4096,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        856.7,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9496.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23049.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6903.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        384.2,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        198.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        396.7,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        199.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.38,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        266.9,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        387.8,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignQueries/CTE/Construct": [
+        1302.0,
+        2912,
+        26
+      ],
+      "BenchmarkDesignQueries/CTE/ConstructAndToSQL": [
+        2632.0,
+        4192,
+        30
+      ],
+      "BenchmarkDesignQueries/CTE/AppendWarm": [
+        864.8,
+        0,
+        0
+      ],
+      "BenchmarkDesignQueries/Bulk100/Construct": [
+        9494.0,
+        22480,
+        116
+      ],
+      "BenchmarkDesignQueries/Bulk100/ConstructAndToSQL": [
+        23130.0,
+        38864,
+        128
+      ],
+      "BenchmarkDesignQueries/Bulk100/AppendWarm": [
+        6863.0,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/Construct": [
+        483.7,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        177.8,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        378.2,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        345.7,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        276.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        418.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        388.4,
+        0,
+        0
+      ]
+    }
+  }
+]

@@ -1,0 +1,862 @@
+[
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        218.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        244.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        694.3,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        537.3,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        364.8,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1151.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        506.7,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        203.4,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        207.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        223.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        698.4,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        544.8,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        335.9,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1168.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        486.3,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        198.5,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        206.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        225.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        702.4,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        549.9,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        338.6,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1190.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        487.2,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        199.8,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        216.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        242.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        691.1,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        548.6,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        372.4,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1168.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        495.2,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        203.4,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        219.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        245.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        703.6,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        560.2,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        365.4,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1155.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        500.8,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        204.8,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        209.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        224.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        695.2,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        552.5,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        337.3,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1191.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        496.0,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        199.4,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        215.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        223.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        690.1,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        534.9,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        333.5,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1173.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        489.8,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        199.0,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        220.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        246.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        714.3,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        566.5,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        368.5,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1159.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        503.2,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        203.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        221.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        247.1,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        705.9,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        565.9,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        365.6,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1187.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        503.7,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        203.2,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        211.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        221.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        679.6,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        522.5,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        331.1,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1139.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        496.0,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        200.8,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        206.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        231.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        699.5,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        548.6,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        331.9,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1145.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        486.3,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        200.3,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        218.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        245.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        695.1,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        563.0,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        369.8,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1161.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        505.9,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        207.2,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        217.3,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        250.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        697.4,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        527.2,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        361.3,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1117.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        503.6,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        206.4,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        209.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        223.3,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        703.9,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        548.8,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        333.4,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1145.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        487.1,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        199.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        206.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        225.5,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        693.1,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        547.7,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        333.3,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1162.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        488.9,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        204.8,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        217.3,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        242.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        723.4,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        518.7,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        362.7,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1076.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        508.8,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        209.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        220.4,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        246.7,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        693.2,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        547.7,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        362.3,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1160.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        497.2,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        205.7,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        207.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        224.2,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        699.1,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        556.3,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        336.3,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1122.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        492.8,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        211.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        205.8,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        228.6,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        699.2,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        523.9,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        329.9,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1073.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        491.0,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        203.4,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkAPIInsertAppendSQLWarm/ordinary": [
+        215.9,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/mixed": [
+        246.0,
+        0,
+        0
+      ],
+      "BenchmarkAPIInsertAppendSQLWarm/bulk": [
+        701.0,
+        0,
+        0
+      ],
+      "BenchmarkToSQL": [
+        560.7,
+        528,
+        3
+      ],
+      "BenchmarkAppendSQLWarm": [
+        367.3,
+        0,
+        0
+      ],
+      "BenchmarkConstructAndToSQL": [
+        1153.0,
+        1824,
+        11
+      ],
+      "BenchmarkAppendCTEWarm": [
+        496.9,
+        0,
+        0
+      ],
+      "BenchmarkAppendQuotedIdentifiersWarm": [
+        205.1,
+        0,
+        0
+      ]
+    }
+  }
+]

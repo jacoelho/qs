@@ -1,0 +1,762 @@
+[
+  {
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        560.8,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        205.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        442.8,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        407.0,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        306.2,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        512.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        404.4,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        420.1,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        207.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        449.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        226.6,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.88,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        315.5,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        398.3,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        419.1,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        202.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        433.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        227.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.13,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        318.2,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        401.4,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        520.6,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        191.6,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        409.2,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        401.0,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        293.2,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        483.2,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        391.6,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        520.5,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        206.5,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        441.7,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        392.8,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        303.2,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        489.8,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        398.5,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        436.0,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        205.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        443.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        226.2,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.56,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        316.5,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        395.8,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        433.2,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        205.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        434.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        226.1,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.81,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        313.0,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        396.1,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        527.8,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        207.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        424.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        381.3,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        296.8,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        457.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        404.8,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        501.7,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        191.2,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        399.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        369.5,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        294.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        449.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        405.2,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        430.5,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        203.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        436.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        223.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.71,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        317.1,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        400.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        435.8,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        206.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        443.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        225.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.72,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        317.7,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        399.4,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        530.3,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        205.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        439.8,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        397.1,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        303.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        495.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        396.5,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        536.9,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        206.1,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        442.9,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        393.6,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        303.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        492.1,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        397.5,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        429.3,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        203.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        437.9,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        223.3,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.63,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        318.8,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        396.5,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        424.7,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        200.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        439.9,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        211.0,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.73,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        324.2,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        401.3,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        536.3,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        205.5,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        439.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        396.5,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        305.4,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        492.2,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        391.3,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        522.7,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        197.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        441.5,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        396.0,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        304.7,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        476.0,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        400.2,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        430.9,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        201.2,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        439.3,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        223.5,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        30.54,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        315.3,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        391.0,
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "candidate": {
+      "BenchmarkDesignProjection/Construct": [
+        390.1,
+        896,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        193.8,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        373.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        207.6,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        29.63,
+        0,
+        0
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        257.6,
+        864,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        385.4,
+        0,
+        0
+      ]
+    },
+    "baseline": {
+      "BenchmarkDesignProjection/Construct": [
+        459.3,
+        1280,
+        9
+      ],
+      "BenchmarkDesignProjection/Owned": [
+        179.9,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/Select": [
+        356.6,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendNil": [
+        334.1,
+        1024,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendWarm": [
+        272.8,
+        512,
+        2
+      ],
+      "BenchmarkDesignProjection/AppendSelectWarm": [
+        406.4,
+        1376,
+        4
+      ],
+      "BenchmarkDesignProjection/AppendSQLWarm": [
+        384.9,
+        0,
+        0
+      ]
+    }
+  }
+]
