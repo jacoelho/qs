@@ -31,17 +31,33 @@ func ExampleCTE() {
 
 func ExampleNull() {
 	type Patch struct{ Email qs.Optional[qs.Null[string]] }
-	patch := Patch{Email: qs.Some(qs.NullOf[string]())}
-	q := qs.Update("users").Where(qs.Eq("id", 42))
-	if patch.Email.Present {
-		q.Set(qs.SetNullable("email", patch.Email.Value))
+	for _, patch := range []Patch{
+		{},
+		{Email: qs.Some(qs.NullOf[string]())},
+		{Email: qs.Some(qs.NonNull("ana@example.test"))},
+	} {
+		var assignments []qs.Assignment
+		if patch.Email.Present {
+			assignments = append(assignments, qs.SetNullable("email", patch.Email.Value))
+		}
+		// The application chooses no-op behavior for an absent patch.
+		if len(assignments) == 0 {
+			fmt.Println("no changes")
+			continue
+		}
+		query, args, err := qs.Update("users").Set(assignments...).Where(qs.Eq("id", 42)).ToSQL()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(query)
+		fmt.Println(args)
 	}
-	query, args, err := q.ToSQL()
-	fmt.Println(query)
-	fmt.Println(args, err)
 	// Output:
+	// no changes
 	// UPDATE "users" SET "email" = $1 WHERE ("id" = $2)
-	// [<nil> 42] <nil>
+	// [<nil> 42]
+	// UPDATE "users" SET "email" = $1 WHERE ("id" = $2)
+	// [ana@example.test 42]
 }
 
 func ExampleInsertInto() {
