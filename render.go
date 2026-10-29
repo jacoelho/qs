@@ -6,8 +6,10 @@ import (
 	"strconv"
 )
 
-// Statement is a complete query. It is sealed to keep rendering and parameter
-// ownership in one place. Use StatementSQL for trusted extensions.
+// Statement describes a SQL statement; it does not prove that its inputs are valid.
+// Rendering checks structure and returns an error for invalid input. PostgreSQL
+// owns schema and SQL type validation. The interface is sealed to keep rendering
+// and parameter ownership in one place. Use StatementSQL for trusted extensions.
 type Statement interface {
 	// ToSQL renders owned SQL and arguments with default options.
 	ToSQL() (string, []any, error)
@@ -83,6 +85,7 @@ type renderer struct {
 	options        Options
 	depth          int
 	statementDepth int
+	hasWindow      bool // Structural OVER encountered in the current statement.
 }
 
 func normalOptions(o Options) Options {
@@ -214,9 +217,14 @@ func (w *renderer) statement(s Statement) {
 		w.statementErrorPath(s)
 		return
 	}
-	defer func() { w.depth-- }()
+	outerHasWindow := w.hasWindow
+	w.hasWindow = false
 	w.statementDepth++
-	defer func() { w.statementDepth-- }()
+	defer func() {
+		w.statementDepth--
+		w.hasWindow = outerHasWindow
+		w.depth--
+	}()
 	w.dispatchStatement(s)
 	if w.err != nil {
 		w.statementErrorPath(s)

@@ -334,7 +334,9 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 			w.byte(')')
 		}
 	}
-	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0 && len(b.windows) == 0)
+	// An unused WINDOW definition does not prevent row locking. The tail checks
+	// structural OVER use after ORDER BY and pagination expressions are rendered.
+	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0)
 	w.foot(b.base)
 }
 

@@ -11,6 +11,9 @@ func (w *renderer) aggregateTail(t aggregateTail) {
 	if w.err != nil {
 		return
 	}
+	if t.window != nil || t.windowName != "" {
+		w.hasWindow = true
+	}
 	if len(t.filter) != 0 {
 		w.text(" FILTER (WHERE ")
 		w.conditions(t.filter)
