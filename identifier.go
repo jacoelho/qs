@@ -31,11 +31,15 @@ func (w *renderer) identifierPart(s string) {
 		return
 	}
 	w.byte('"')
-	for i := range len(s) {
-		if s[i] == '"' {
-			w.byte('"')
+	for {
+		i := strings.IndexByte(s, '"')
+		if i < 0 {
+			w.text(s)
+			break
 		}
-		w.byte(s[i])
+		w.text(s[:i+1])
+		w.byte('"')
+		s = s[i+1:]
 	}
 	w.byte('"')
 }

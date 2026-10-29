@@ -51,12 +51,15 @@ const (
 // for trusted syntax. It represents a SQL expression, not a schema proof.
 type Expr struct {
 	value any
-	node  *expression
 	text  string
 	kind  exprKind
 }
 
 type expression struct{ left, right Expr }
+type unaryExpression struct{ expr Expr }
+
+func (e Expr) unary() Expr { return ownedPayload[*unaryExpression](e.value).expr }
+
 type invalidExpression struct{ clause, detail string }
 type castExpression struct {
 	expr Expr
@@ -180,7 +183,7 @@ type SQLStatement struct{ expr Expr }
 
 // As aliases an expression with a validated SQL identifier.
 func (e Expr) As(alias string) Expr {
-	return Expr{kind: exprAlias, text: alias, node: &expression{left: e}}
+	return Expr{kind: exprAlias, text: alias, value: &unaryExpression{e}}
 }
 
 // Cast adds an explicit PostgreSQL type cast to an expression.
@@ -191,18 +194,18 @@ func (e Expr) Cast(typ DataType) Expr {
 // Field selects one literal field name from a composite value. Col("a.b")
 // instead refers to a qualified column; these have different PostgreSQL rules.
 func (e Expr) Field(name string) Expr {
-	return Expr{kind: exprField, text: name, node: &expression{left: e}}
+	return Expr{kind: exprField, text: name, value: &unaryExpression{e}}
 }
 
 // Fields expands a composite value in PostgreSQL expression-list positions.
 // Its width is unknown until PostgreSQL resolves the composite type.
 func (e Expr) Fields() Expr {
-	return Expr{kind: exprFields, node: &expression{left: e}}
+	return Expr{kind: exprFields, value: &unaryExpression{e}}
 }
 
 // Collate applies a PostgreSQL collation name to an expression.
 func (e Expr) Collate(name string) Expr {
-	return Expr{kind: exprCollate, text: name, node: &expression{left: e}}
+	return Expr{kind: exprCollate, text: name, value: &unaryExpression{e}}
 }
 
 // Scalar requires one projected column when the projection width is known.
@@ -212,13 +215,13 @@ func Scalar(query Rowset) Expr {
 }
 
 func binary(left Expr, operator string, right Expr) Expr {
-	return Expr{kind: exprBinary, text: operator, node: &expression{left, right}}
+	return Expr{kind: exprBinary, text: operator, value: &expression{left, right}}
 }
 func prefix(operator string, right Expr) Expr {
-	return Expr{kind: exprPrefix, text: operator, node: &expression{right: right}}
+	return Expr{kind: exprPrefix, text: operator, value: &unaryExpression{right}}
 }
 func postfix(left Expr, operator string) Expr {
-	return Expr{kind: exprPostfix, text: operator, node: &expression{left: left}}
+	return Expr{kind: exprPostfix, text: operator, value: &unaryExpression{left}}
 }
 func listExpr(prefix string, items []Expr) Expr {
 	return Expr{kind: exprList, text: prefix, value: cloneSlice(items)}
@@ -269,7 +272,7 @@ func (e Expr) AtTimeZone(zone Expr) Expr { return binary(e, "AT TIME ZONE", zone
 // Index is PostgreSQL subscripting (SQL arrays are conventionally 1-based).
 // Index returns a PostgreSQL subscript expression for e and index.
 func (e Expr) Index(index Expr) Expr {
-	return Expr{kind: exprSubscript, node: &expression{left: e, right: index}}
+	return Expr{kind: exprSubscript, value: &expression{left: e, right: index}}
 }
 
 // Slice returns a PostgreSQL slice with both lower and upper bounds.
@@ -464,12 +467,13 @@ func (w *renderer) renderStringLiteral(value string) {
 }
 
 func (w *renderer) renderBinary(e Expr) {
+	n := ownedPayload[*expression](e.value)
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(n.left)
 	w.byte(' ')
 	w.text(e.text)
 	w.byte(' ')
-	w.expr(e.node.right)
+	w.expr(n.right)
 	w.byte(')')
 }
 
@@ -477,13 +481,13 @@ func (w *renderer) renderPrefix(e Expr) {
 	w.byte('(')
 	w.text(e.text)
 	w.byte(' ')
-	w.expr(e.node.right)
+	w.expr(e.unary())
 	w.byte(')')
 }
 
 func (w *renderer) renderPostfix(e Expr) {
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.byte(' ')
 	w.text(e.text)
 	w.byte(')')
@@ -500,7 +504,7 @@ func (w *renderer) renderFragment(e Expr) {
 }
 
 func (w *renderer) renderAlias(e Expr) {
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.text(" AS ")
 	w.identifierPart(e.text)
 }
@@ -514,7 +518,7 @@ func (w *renderer) renderCast(e Expr) {
 }
 
 func (w *renderer) renderField(e Expr) {
-	w.indirectionBase(e.node.left)
+	w.indirectionBase(e.unary())
 	w.byte('.')
 	if e.kind == exprField {
 		w.identifierPart(e.text)
@@ -577,14 +581,15 @@ func (w *renderer) renderBetween(e Expr) {
 func (w *renderer) renderQuantified(e Expr) {
 	w.text(e.text)
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.byte(')')
 }
 
 func (w *renderer) renderSubscript(e Expr) {
-	w.indirectionBase(e.node.left)
+	n := ownedPayload[*expression](e.value)
+	w.indirectionBase(n.left)
 	w.byte('[')
-	w.expr(e.node.right)
+	w.expr(n.right)
 	w.byte(']')
 }
 
@@ -604,7 +609,7 @@ func (w *renderer) renderSlice(e Expr) {
 
 func (w *renderer) renderCollate(e Expr) {
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.text(" COLLATE ")
 	w.identifierPath(e.text, false)
 	w.byte(')')

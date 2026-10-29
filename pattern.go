@@ -133,7 +133,8 @@ func (c Condition) EscapeExpr(character Expr) Condition {
 		return AsCondition(invalidExpr("ESCAPE", "requires a pattern predicate"))
 	}
 	e := c.expr
-	return AsCondition(Fragment(UnsafeSQL("("), e.node.left, UnsafeSQL(" "+e.text+" "), e.node.right, UnsafeSQL(" ESCAPE "), character, UnsafeSQL(")")))
+	n := ownedPayload[*expression](e.value)
+	return AsCondition(Fragment(UnsafeSQL("("), n.left, UnsafeSQL(" "+e.text+" "), n.right, UnsafeSQL(" ESCAPE "), character, UnsafeSQL(")")))
 }
 
 func literalLikePattern(text string, mode literalLikeMode) string {

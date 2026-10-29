@@ -490,7 +490,7 @@ func Extract(part DatePart, expr Expr) Expr {
 	default:
 		return invalidExpr("EXTRACT", "unknown date part")
 	}
-	return Expr{kind: exprSpecialCall, text: name, node: &expression{left: expr}}
+	return Expr{kind: exprSpecialCall, text: name, value: &unaryExpression{expr}}
 }
 
 // ExtractNamed preserves one of PostgreSQL's accepted EXTRACT field aliases
@@ -506,7 +506,7 @@ func ExtractNamed(part string, expr Expr) Expr {
 		"timezone", "timezone_hour", "timezone_minute", "timezone_h", "timezone_m",
 		"microseconds", "microsecond", "microsec", "milliseconds", "millisecond",
 		"decade", "century", "millennium", "julian":
-		return Expr{kind: exprSpecialCall, text: part, node: &expression{left: expr}}
+		return Expr{kind: exprSpecialCall, text: part, value: &unaryExpression{expr}}
 	default:
 		return invalidExpr("EXTRACT", "unknown date part")
 	}
@@ -516,6 +516,6 @@ func (w *renderer) specialCall(e Expr) {
 	w.text("EXTRACT(")
 	w.text(e.text)
 	w.text(" FROM ")
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.byte(')')
 }

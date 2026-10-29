@@ -310,13 +310,13 @@ func NotExists(query Rowset) Condition { return Not(Exists(query)) }
 // AnyArray returns a quantified operand for comparison with any element of an
 // SQL array expression.
 func AnyArray(array Expr) Expr {
-	return Expr{kind: exprQuantified, text: "ANY", node: &expression{left: array}}
+	return Expr{kind: exprQuantified, text: "ANY", value: &unaryExpression{array}}
 }
 
 // AllArray returns a quantified operand for comparison with every element of
 // an SQL array expression.
 func AllArray(array Expr) Expr {
-	return Expr{kind: exprQuantified, text: "ALL", node: &expression{left: array}}
+	return Expr{kind: exprQuantified, text: "ALL", value: &unaryExpression{array}}
 }
 
 // AnyQuery returns a quantified operand for comparison with any row from a

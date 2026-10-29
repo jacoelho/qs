@@ -78,3 +78,19 @@ func BenchmarkAppendCTEWarm(b *testing.B) {
 	}
 	benchmarkArgs = args
 }
+
+func BenchmarkAppendQuotedIdentifiersWarm(b *testing.B) {
+	q := Select(Ident(`odd"name`), Ident(`"leading`), Ident(`trailing"`), Ident(`two""quotes`)).From("events")
+	validateBenchmarkStatement(b, q, Options{},
+		`SELECT "odd""name", """leading", "trailing""", "two""""quotes" FROM "events"`)
+	sql := make([]byte, 0, 256)
+	b.ReportAllocs()
+	for b.Loop() {
+		var err error
+		sql, _, err = q.AppendSQL(sql[:0], nil)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+	apiBenchmarkBytes = sql
+}
