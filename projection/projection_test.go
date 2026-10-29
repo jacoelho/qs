@@ -80,6 +80,132 @@ func TestWithKeepsBaseAndSiblingsIndependent(t *testing.T) {
 	}
 }
 
+func TestConcatKeepsPairsOrdered(t *testing.T) {
+	t.Parallel()
+
+	left := projection.New(
+		projection.Output(qs.Param("left"), "shared"),
+		projection.Output(qs.Col("id"), "id"),
+	)
+	right := projection.New(projection.Output(qs.Param("right"), "shared"))
+	var zero projection.Projection[string]
+	parts := []projection.Projection[string]{left, zero, right, left}
+	p := projection.Concat(parts...)
+	parts[0] = projection.New(projection.Named(qs.Col("changed"), "changed"))
+	expressions, metadata := p.Expressions(), p.Metadata()
+	expressions[0], metadata[0] = qs.Col("changed"), "changed"
+
+	checkSQL(t, qs.Select(p.Expressions()...), `SELECT $1, "id", $2, $3, "id"`, "left", "right", "left")
+	if want := []string{"shared", "id", "shared", "shared", "id"}; !slices.Equal(p.Metadata(), want) {
+		t.Fatalf("metadata = %v, want %v", p.Metadata(), want)
+	}
+	checkSQL(t, qs.Select(left.Expressions()...), `SELECT $1, "id"`, "left")
+	if !slices.Equal(left.Metadata(), []string{"shared", "id"}) {
+		t.Fatalf("input metadata changed: %v", left.Metadata())
+	}
+}
+
+func TestConcatRetainsLiveContents(t *testing.T) {
+	t.Parallel()
+
+	child := qs.Select(qs.Param("original"))
+	key := fieldKey("original")
+	p := projection.Concat(
+		projection.New(projection.Output(qs.Scalar(child), &key)),
+		projection.New(projection.Output(qs.Param(9), (*fieldKey)(nil))),
+	)
+	child.RemoveColumns().Columns(qs.Param("live"))
+	key = "updated"
+	checkSQL(t, qs.Select(p.Expressions()...), `SELECT (SELECT $1), $2`, "live", 9)
+	if got := p.Metadata(); len(got) != 2 || got[0] != &key || *got[0] != "updated" || got[1] != nil {
+		t.Fatalf("metadata did not retain shallow contents: %v", got)
+	}
+}
+
+func TestAppendPreservesPrefixAndOwnsPositions(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		prefix   bool
+		capacity int
+	}{
+		{"nil", false, 0},
+		{"empty_reused", false, 4},
+		{"prefix_reused", true, 4},
+		{"prefix_grows", true, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			p := projection.New(
+				projection.Output(qs.Col("id"), "id"),
+				projection.Output(qs.Param(7).As("status"), "state"),
+			)
+			var expressions []qs.Expr
+			var metadata []string
+			if tc.capacity > 0 {
+				expressions = make([]qs.Expr, 0, tc.capacity)
+				metadata = make([]string, 0, tc.capacity)
+			}
+			wantSQL := `SELECT "id", $1 AS "status"`
+			wantMetadata := []string{"id", "state"}
+			if tc.prefix {
+				expressions = append(expressions, qs.Col("prefix"))
+				metadata = append(metadata, "prefix")
+				wantSQL = `SELECT "prefix", "id", $1 AS "status"`
+				wantMetadata = []string{"prefix", "id", "state"}
+			}
+			prefixLen := len(expressions)
+			var expressionStorage *qs.Expr
+			var metadataStorage *string
+			if cap(expressions)-len(expressions) >= 2 {
+				expressionStorage = &expressions[:cap(expressions)][0]
+				metadataStorage = &metadata[:cap(metadata)][0]
+			}
+			expressions = p.AppendExpressions(expressions)
+			metadata = p.AppendMetadata(metadata)
+			if expressionStorage != nil && &expressions[0] != expressionStorage {
+				t.Fatal("append discarded available expression capacity")
+			}
+			if metadataStorage != nil && &metadata[0] != metadataStorage {
+				t.Fatal("append discarded available metadata capacity")
+			}
+			checkSQL(t, qs.Select(expressions...), wantSQL, 7)
+			if !slices.Equal(metadata, wantMetadata) {
+				t.Fatalf("metadata = %v, want %v", metadata, wantMetadata)
+			}
+			expressions[prefixLen] = qs.Col("changed")
+			metadata[prefixLen] = "changed"
+			checkSQL(t, qs.Select(p.Expressions()...), `SELECT "id", $1 AS "status"`, 7)
+			if !slices.Equal(p.Metadata(), []string{"id", "state"}) {
+				t.Fatalf("appended positions alias projection: %v", p.Metadata())
+			}
+		})
+	}
+}
+
+func TestEmptyAppendPreservesDestination(t *testing.T) {
+	t.Parallel()
+	var p projection.Projection[string]
+	if p.AppendExpressions(nil) != nil || p.AppendMetadata(nil) != nil {
+		t.Fatal("empty append changed nil destination")
+	}
+	expressions := make([]qs.Expr, 1, 3)
+	expressions[0] = qs.Col("prefix")
+	metadata := make([]string, 1, 3)
+	metadata[0] = "prefix"
+	gotExpressions, gotMetadata := p.AppendExpressions(expressions), p.AppendMetadata(metadata)
+	if len(gotExpressions) != 1 || cap(gotExpressions) != 3 || &gotExpressions[0] != &expressions[0] {
+		t.Fatal("empty append changed expression destination")
+	}
+	if len(gotMetadata) != 1 || cap(gotMetadata) != 3 || &gotMetadata[0] != &metadata[0] {
+		t.Fatal("empty append changed metadata destination")
+	}
+	checkSQL(t, qs.Select(gotExpressions...), `SELECT "prefix"`)
+	if gotMetadata[0] != "prefix" {
+		t.Fatal("empty append changed prefix")
+	}
+}
+
 func TestMetadataRemainsShallowAndOpaque(t *testing.T) {
 	t.Parallel()
 
@@ -92,9 +218,10 @@ func TestMetadataRemainsShallowAndOpaque(t *testing.T) {
 	metadata := p.Metadata()
 	metadata[0] = nil
 	key = "updated"
-	got := p.Metadata()
-	if len(got) != 3 || got[0] != &key || got[1] != &key || got[2] != nil || *got[0] != "updated" {
-		t.Fatalf("metadata did not retain shallow pointer values: %v", got)
+	for _, got := range [][]*fieldKey{p.Metadata(), p.AppendMetadata(nil)} {
+		if len(got) != 3 || got[0] != &key || got[1] != &key || got[2] != nil || *got[0] != "updated" {
+			t.Fatalf("metadata did not retain shallow pointer values: %v", got)
+		}
 	}
 
 	callback := func() { t.Fatal("projection invoked metadata") }
@@ -116,8 +243,11 @@ func TestNestedQueriesStayLive(t *testing.T) {
 
 	child := qs.SelectCols("id").From("documents")
 	p := projection.New(projection.Output(qs.Scalar(child), fieldKey("id")))
+	extracted := p.AppendExpressions(nil)
 	child.Where(qs.Eq("status", "draft"))
 	checkSQL(t, qs.Select(p.Expressions()...),
+		`SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
+	checkSQL(t, qs.Select(extracted...),
 		`SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
 }
 
@@ -125,7 +255,10 @@ func TestEmptyAndDeferredValidation(t *testing.T) {
 	t.Parallel()
 
 	var zero projection.Projection[string]
-	for _, p := range []projection.Projection[string]{zero, projection.New[string](), zero.With()} {
+	for _, p := range []projection.Projection[string]{
+		zero, projection.New[string](), zero.With(),
+		projection.Concat[string](), projection.Concat(zero, projection.New[string]()),
+	} {
 		if len(p.Expressions()) != 0 || len(p.Metadata()) != 0 {
 			t.Fatal("empty projection has content")
 		}

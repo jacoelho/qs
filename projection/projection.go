@@ -38,6 +38,22 @@ func New[M any](columns ...Column[M]) Projection[M] {
 	return Projection[M]{columns: slices.Clone(columns)}
 }
 
+// Concat combines projections in argument order with independent column positions.
+// It preserves complete expression/metadata pairs, including duplicates. Empty
+// projections contribute no columns; no arguments produce an empty projection.
+// Nested queries, application values and metadata contents remain shallow.
+func Concat[M any](parts ...Projection[M]) Projection[M] {
+	var count int
+	for _, part := range parts {
+		count += len(part.columns)
+	}
+	columns := make([]Column[M], 0, count)
+	for _, part := range parts {
+		columns = append(columns, part.columns...)
+	}
+	return Projection[M]{columns: columns}
+}
+
 // With returns a projection with more appended, copying column positions into
 // independent storage. It leaves p unchanged. Empty input preserves its content.
 func (p Projection[M]) With(more ...Column[M]) Projection[M] {
@@ -58,6 +74,18 @@ func (p Projection[M]) Expressions() []qs.Expr {
 	return expressions
 }
 
+// AppendExpressions appends declared expressions in order to dst, preserving its
+// prefix and reusing capacity when available. Returned slice positions belong to
+// the caller; nested queries and application values remain shared. An empty
+// projection returns dst unchanged, including its nilness.
+func (p Projection[M]) AppendExpressions(dst []qs.Expr) []qs.Expr {
+	dst = slices.Grow(dst, len(p.columns))
+	for _, column := range p.columns {
+		dst = append(dst, column.expression)
+	}
+	return dst
+}
+
 // Metadata returns the associated metadata in order, with owned slice positions.
 // Metadata contents remain shallow and are never invoked or validated. Empty slice
 // nilness is unspecified.
@@ -67,4 +95,16 @@ func (p Projection[M]) Metadata() []M {
 		metadata[i] = column.metadata
 	}
 	return metadata
+}
+
+// AppendMetadata appends associated metadata in order to dst, preserving its
+// prefix and reusing capacity when available. Returned slice positions belong to
+// the caller; metadata contents remain shallow and are never invoked or validated.
+// An empty projection returns dst unchanged, including its nilness.
+func (p Projection[M]) AppendMetadata(dst []M) []M {
+	dst = slices.Grow(dst, len(p.columns))
+	for _, column := range p.columns {
+		dst = append(dst, column.metadata)
+	}
+	return dst
 }

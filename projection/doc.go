@@ -29,4 +29,10 @@
 // shallow: application objects, metadata pointers and nested query builders remain
 // shared. Reads can run concurrently while those reachable values and graphs are
 // stable. This package performs no I/O and owns no resources or background work.
+//
+// AppendExpressions and AppendMetadata append into caller-owned slices for repeated
+// extraction. They preserve prefixes and reuse available capacity. Empty projections
+// return the destination unchanged. Reusing destinations does not mutate a projection;
+// callers coordinate reuse with consumers of the returned slices. Select copies its
+// expression positions, so its input storage can be reused after construction.
 package projection
