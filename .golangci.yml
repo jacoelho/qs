@@ -122,6 +122,7 @@ linters:
           allow:
             - $gostd
             - github.com/jacoelho/qs$
+            - github.com/jacoelho/qs/projection$
             - github.com/jackc/pgx/v5$
             - github.com/jackc/pgx/v5/
 

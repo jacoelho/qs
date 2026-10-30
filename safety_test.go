@@ -18,28 +18,33 @@ import (
 func TestCoreHasNoReflectionUnsafeOrExternalImports(t *testing.T) {
 	t.Parallel()
 
-	entries, err := os.ReadDir(".")
-	if err != nil {
-		t.Fatal(err)
-	}
 	fset := token.NewFileSet()
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		f, err := parser.ParseFile(fset, name, nil, parser.ImportsOnly)
+	for _, dir := range []string{".", "projection"} {
+		entries, err := os.ReadDir(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, spec := range f.Imports {
-			path, err := strconv.Unquote(spec.Path.Value)
+		for _, entry := range entries {
+			name := filepath.Join(dir, entry.Name())
+			if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+				continue
+			}
+			f, err := parser.ParseFile(fset, name, nil, parser.ImportsOnly)
 			if err != nil {
 				t.Fatal(err)
 			}
-			first, _, _ := strings.Cut(path, "/")
-			if path == "reflect" || path == "unsafe" || path == "database/sql" || path == "context" || strings.Contains(first, ".") {
-				t.Errorf("%s imports forbidden core dependency %s", name, path)
+			for _, spec := range f.Imports {
+				path, err := strconv.Unquote(spec.Path.Value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if path == "github.com/jacoelho/qs" {
+					continue
+				}
+				first, _, _ := strings.Cut(path, "/")
+				if path == "reflect" || path == "unsafe" || path == "database/sql" || path == "context" || strings.Contains(first, ".") {
+					t.Errorf("%s imports forbidden core dependency %s", name, path)
+				}
 			}
 		}
 	}

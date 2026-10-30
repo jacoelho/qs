@@ -16,25 +16,61 @@ dependency with the local checkout. Tagged database tests run and lint through
 that module; root module tests need no database driver. Callers own connections,
 transactions, argument encoding and database authorization.
 
-The `projection` companion imports qs; the core never imports it. One private
-ordered column list owns each expression/opaque-metadata association. Construction,
-extension and extraction own slice positions, while nested graphs and application
-objects remain shallow. `Named` delegates aliasing to `Expr.As` and records the
-declared string; generic metadata is never interpreted, validated or invoked.
-The collection accepts empty declarations and leaves usability to the consuming
-query context. It proves neither result width nor whole-query mapping correctness.
-Callers own one-column inputs, SQL scope, complete output attachment and result
-interpretation. Alias replacement, uniqueness validation, query wrappers and
-driver-specific scanning would introduce different owners and were rejected.
-Driver-independent [examples](../projection/example_test.go) live alongside the
-package and run with its tests. No mapper dependency or separate example module
-is needed.
+The `projection` companion imports qs; the core never imports it. A projection
+owns the ordered pairing of expressions and destinations, and `Scan` drives the
+caller's scan function: it performs no I/O and imports no driver, reflection or
+`database/sql`. Callers still own execution, connections and SQL scope. Reading is
+positional, so it proves neither result width nor type agreement; the driver reports
+those when a row is scanned.
 
-Owned `Expressions` and `Metadata` allocate exactly sized results; the
-`AppendExpressions` and `AppendMetadata` variants grow caller storage. Routing
-owned extraction through append-with-nil was rejected because it measured
-slower. Public method contracts belong to the projection package documentation
-linked above.
+Flat columns read straight into their destination. Nullable columns, `EmbedNull`
+groups and `Map` add per-row cells that run after the row is read, and only those
+pay for them. This gives `Column` two read modes: flat, the driver owns NULL; in a
+group, the group owns it, because presence is unknown until the whole row is read.
+A group decides presence from what the driver wrote and never inspects Go types.
+For non-Scanner destinations that signal is a nil `**T`, so `ColumnNull` and a group
+`Column` are by construction the hand-written read `var v *T; rows.Scan(&v)`, with
+that read's limits on each driver, and integration tests compare against it. A
+non-NULL value the driver decodes to nil, as pgx does for JSON `null`, counts as NULL.
+Driver guards against borrowed memory see only `**T`. Declaration catches what it can
+by type name and printed value: pointer `T`, which would reach pgx as `***T` and change
+json and jsonb values; `sql.RawBytes` and `pgtype.DriverBytes`; `pgtype.CompositeFields`
+and `pgtype.Multirange`, which panic in the codec; and initialised or unstable targets.
+This is best effort, since the package imports neither reflect nor pgx: a defined type
+or another driver's equivalent passes and fails as the hand-written read does. Reading
+`*T` instead needs a `Scan(any)` read, which loses native codecs and needs reflection
+to assign `T`. Inside a group a Scanner destination receives only non-NULL values
+through a probing cell, which keeps a write-through target reachable, at the cost of
+pgx's native codec: such a read can differ from a flat one, in value as well as error.
+
+All destination checks run at declaration: `Column` and `Embed` call their dest on a
+zero value, and `EmbedNull` runs inner's dests in a declaring pass, where a dest under
+`Embed` receives what that `Embed` returned. A panic at Scan would come before `Row.Scan`, the only closer of a pgx
+`QueryRow` and the only release of a pooled one, and a recover around a failed driver
+read leaves the connection unusable. Expressions render before any query, so a
+declaration panic holds no connection. Scan itself checks nothing, so a
+non-deterministic accessor is outside the contract rather than detected.
+
+Rejected alternatives:
+
+- Go-type NULL inference in `EmbedNull`: needs reflection and guesses at driver and
+  Scanner ownership of NULL.
+- Recovering an accessor panic before the row is read, draining the row with no-op
+  Scanners and re-panicking: a second path for a programmer error, still failing at
+  the first row rather than at declaration.
+- Double-pointer `EmbedNull` and redeclared pointer buffers: callers restate each
+  LEFT JOIN side, and `**T` names a field shape rather than optionality.
+- All-setter columns: every column allocates.
+- Fixed-arity combinators and dry-run mappers: arity caps and swappable arguments, or
+  expressions rebuilt per row with branches on the row undetected.
+- Recovering driver panics at a group boundary: `database/sql` holds its lock without
+  a deferred unlock, so `Row.Scan` deadlocks before recover runs.
+- Opaque metadata (the previous design): the package never used the pairing, so
+  every caller wrote the binding and scan code.
+
+Driver-independent [examples](../projection/example_test.go) live alongside the
+package and run with its tests; driver behaviour is tested in `integration/`.
+Public contracts belong to the projection package documentation linked above.
 
 `Statement` and `Rowset` are sealed interfaces. SELECT, VALUES, TABLE and set
 operations are rowsets; DML is Statement-only even with RETURNING. Query utility

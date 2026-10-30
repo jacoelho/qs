@@ -696,9 +696,10 @@ remain application concerns.
 
 ### Reuse result declarations
 
-The `github.com/jacoelho/qs/projection` companion package associates result
-expressions with caller-defined metadata. `Named` adds an SQL alias and records
-that string; pass the expressions directly to existing builders:
+The `github.com/jacoelho/qs/projection` companion package declares result columns
+together with where each one is read. One declaration owns output order,
+destinations and nesting, and drives both the query's output list and the scan of
+each row:
 
 ```go
 package documents
@@ -708,63 +709,102 @@ import (
     "github.com/jacoelho/qs/projection"
 )
 
-var documentColumns = projection.New(
-    projection.Named(qs.Col("d.id"), "id"),
-    projection.Named(qs.Col("d.payload"), "payload"),
-)
+type User struct {
+    ID    int64
+    Name  string
+    Email *string
+}
 
-func documentQuery(tenantID string) *qs.SelectBuilder {
-    p := documentColumns.With(
-        projection.Named(qs.JSONBCol("d.payload").TextKey("country").Expr(), "country"),
+type Row struct {
+    Employee User
+    Manager  *User
+}
+
+func users(r qs.Relation, prefix string) projection.Projection[User] {
+    return projection.New(
+        projection.Column(r.Col("id").As(prefix+"id"), func(u *User) *int64 { return &u.ID }),
+        projection.Column(r.Col("name").As(prefix+"name"), func(u *User) *string { return &u.Name }),
+        projection.ColumnNull(r.Col("email").As(prefix+"email"), func(u *User, v *string) { u.Email = v }),
     )
-    return qs.Select(p.Expressions()...).
-        FromExpr(qs.Table("documents").As("d")).
-        Where(qs.Eq("d.tenant_id", tenantID)).Limit(100)
+}
+
+func employees() (*qs.SelectBuilder, projection.Projection[Row]) {
+    employee := qs.Table("users").As("employee")
+    manager := qs.Table("users").As("manager")
+    p := projection.New(
+        projection.Embed(users(employee, ""), func(r *Row) *User { return &r.Employee }),
+        projection.EmbedNull(users(manager, "manager_"), func(r *Row, u *User) { r.Manager = u }),
+    )
+    query := qs.Select(p.Expressions()...).FromExpr(
+        qs.LeftJoin(employee, manager).On(employee.Col("manager_id").EqExpr(manager.Col("id"))),
+    )
+    return query, p
 }
 ```
 
-`With` preserves the original declaration. For metadata other than string labels,
-use `projection.Output(expr, metadata)` and read `p.Metadata()`. `Output` leaves
-the expression unchanged, so aliases are optional. The package copies slice
-positions; metadata objects and nested query builders remain shared.
+Read each row by passing your driver's scan function; `p.Scan(rows.Scan)` returns a
+`Row`. qs still performs no I/O and imports no driver.
 
-Use `projection.Concat(left, right)` to combine existing declarations. It copies
-complete expression/metadata pairs in order, preserving duplicates; empty inputs
-contribute no columns. For aliases and self-joins, use a factory that accepts a
-`qs.Relation` and creates columns with `relation.Col(name)`. The
-[self-join example](projection/example_test.go) gives each relation its own
-qualification and output labels without rewriting expression graphs.
+- `Column` reads a required column. Its destination can be a Scanner that writes
+  into the row.
+- `ColumnNull` reads a nullable column and passes nil on NULL. Its `T` must work
+  from a zero value, so a write-through Scanner cannot be used; hold the value in
+  the Scanner and unwrap it in the setter.
+- `Embed` nests a declaration in a field. `EmbedNull` nests it as an optional group,
+  so one declaration serves both sides of a LEFT JOIN.
+- `Map` transforms a declaration's value after the row is read. It runs while the
+  result set is open and receives no context, so keep it CPU-only.
+- `New` concatenates declarations in order.
 
-Expressions must produce one result column and keep the qualifiers required by
-their query scope. `Named` requires an unaliased expression and adds rather than
-replaces an alias. Projection does not validate SQL types, actual labels or
-mapping destinations. Duplicate metadata and labels are permitted.
+An `EmbedNull` group is absent when all its columns are NULL, so a matched row with
+only NULLs in the selected columns looks like no match. In a present group, NULL in
+a `Column` returns an error matching `projection.ErrNull` that names the column.
+This differs from flat reads: `Column` accepts NULL outside a group when `T` can
+hold it, such as `*string`, so declare nullable columns with `ColumnNull`.
 
-Attach expressions to an otherwise empty SELECT/RETURNING list to describe the
-whole result; independent output changes can break correspondence. Empty
-projections are valid containers: empty SELECT fails rendering, while empty
-RETURNING adds nothing. Establish nonempty output before executing DML that
-must return rows.
+`ColumnNull`, and a `Column` in a group whose `T` is not a Scanner, read as
+`var v *T; rows.Scan(&v)` does, with that read's limits on each driver:
 
-For one-off queries, ordinary `expr.As("label")` is sufficient. The
-[executable projection examples](projection/example_test.go) demonstrate reuse
-and defined metadata keys, JSONB, CTEs and RETURNING. Scanning and JSON decoding
-stay in the application.
+- `T` must decode from its zero value, so a `Column` there must return a stable
+  address holding a zero value.
+- `T` must own its memory.
+- Presence is what the driver reports through a nil pointer, which depends on driver
+  and `T`. pgx v5.11 reports nil for `'null'::jsonb` into a `string` or a map, which
+  then reads as NULL: an absent group, `ErrNull`, or nil from `ColumnNull`. A `Column` with a Scanner `T`
+  keeps it present; `ColumnNull` cannot.
 
-For repeated extraction, reuse caller-owned slices:
+A Scanner `T` in a group reads through `Scan(any)`, with NULL withheld from it. On
+pgx that bypasses its native codec, so a read outside a group can differ: an error
+where the codec would convert, or another value.
 
-```go
-expressions = p.AppendExpressions(expressions[:0])
-metadata = p.AppendMetadata(metadata[:0])
-q := qs.Select(expressions...).From("documents")
-```
+`ColumnNull` and group `Column`s panic at declaration on a pointer `T` (use
+`ColumnNull[string]` rather than `*string`), `sql.RawBytes`, `pgtype.DriverBytes`,
+`pgtype.CompositeFields` and `pgtype.Multirange`. A non-Scanner group `Column` also panics
+on an unstable or initialised target. Detection is best effort: a defined type over one of
+these passes, and then fails as the hand-written read does, including a pgx panic or
+a database/sql hang.
 
-Both append methods preserve any existing prefix and copy positions in declaration
-order; contents stay shallow. Empty projections leave the destination unchanged,
-including nilness. With sufficient capacity extraction needs no new buffer, but
-`Select` still copies its column positions. Keep `Expressions()` and `Metadata()`
-for one-shot owned results. Coordinate buffer reuse with consumers; SELECT input
-storage can be reused after construction because the builder owns its positions.
+`Column` and `Embed` accessors run on a zero value at declaration and panic if they
+return nil, so they must tolerate one and be deterministic. A `Column` accessor must
+not depend on another accessor's allocation: put nested pointers behind `Embed`, and
+allocate only if nil, since `Embed`s sharing a pointer would otherwise replace it.
+
+Attach `p.Expressions()` to an otherwise empty SELECT or RETURNING list. Scanning is
+positional: other output changes break the correspondence, and a reorder of equal
+width can go unnoticed. SQL types are not checked against `T`, and convertible
+types are coerced by the driver. A width mismatch fails only when a row is scanned.
+Each expression must produce one result column. Empty projections are valid
+containers: empty SELECT fails rendering, while empty RETURNING adds nothing.
+Establish nonempty output before executing DML that must return rows.
+`qs.SelectNoColumns` separately expresses an intentional zero-column SELECT.
+
+Declarations are immutable and safe to share, so declare one once per alias and reuse
+it rather than rebuilding it per query.
+
+For one-off queries with unique column names, ordinary `expr.As("label")` and your
+driver's struct mapping are sufficient. The
+[executable projection examples](projection/example_test.go) demonstrate self-joins,
+`Map`, JSONB and RETURNING.
 
 ### Cast a value
 

@@ -1,68 +1,79 @@
 package projection_test
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/jacoelho/qs"
 	"github.com/jacoelho/qs/projection"
 )
 
-func benchmarkColumns(names ...string) projection.Projection[string] {
-	outputs := make([]projection.Column[string], len(names))
-	for i, name := range names {
-		outputs[i] = projection.Named(qs.Col(name), name)
+func discardScan(...any) error { return nil }
+
+func fillScan(dest ...any) error {
+	id, name := int64(1), "ada"
+	for _, d := range dest {
+		switch target := d.(type) {
+		case **int64:
+			*target = &id
+		case **string:
+			*target = &name
+		}
 	}
-	return projection.New(outputs...)
+	return nil
 }
 
-// BenchmarkProjection compares owned extraction with appending into reused
-// storage, and measures composing two projections into one SELECT list.
-// b.Loop keeps the results of calls in the loop body alive.
-func BenchmarkProjection(b *testing.B) {
-	left := benchmarkColumns("id", "tenant_id", "kind", "state", "attempt", "created_at", "scheduled_at", "priority")
-	right := benchmarkColumns("name", "email", "active", "payload", "queue", "locked_at", "updated_at", "version")
-	composed := projection.Concat(left, right)
-	checkSQL(b, qs.Select(composed.Expressions()...), `SELECT "id" AS "id", "tenant_id" AS "tenant_id", "kind" AS "kind", "state" AS "state", "attempt" AS "attempt", "created_at" AS "created_at", "scheduled_at" AS "scheduled_at", "priority" AS "priority", "name" AS "name", "email" AS "email", "active" AS "active", "payload" AS "payload", "queue" AS "queue", "locked_at" AS "locked_at", "updated_at" AS "updated_at", "version" AS "version"`)
-	if want := []string{"id", "tenant_id", "kind", "state", "attempt", "created_at", "scheduled_at", "priority", "name", "email", "active", "payload", "queue", "locked_at", "updated_at", "version"}; !slices.Equal(composed.Metadata(), want) {
-		b.Fatalf("metadata = %v, want %v", composed.Metadata(), want)
+// BenchmarkScan measures per-row cost with a stub scan, excluding the driver.
+func BenchmarkScan(b *testing.B) {
+	type flat struct {
+		ID         int64
+		Name       string
+		Email      *string
+		Department *string
 	}
+	required := projection.New(
+		projection.Column(qs.Col("id"), func(f *flat) *int64 { return &f.ID }),
+		projection.Column(qs.Col("name"), func(f *flat) *string { return &f.Name }),
+		projection.Column(qs.Col("email"), func(f *flat) **string { return &f.Email }),
+	)
+	nullable := projection.New(
+		projection.Column(qs.Col("id"), func(f *flat) *int64 { return &f.ID }),
+		projection.Column(qs.Col("name"), func(f *flat) *string { return &f.Name }),
+		projection.ColumnNull(qs.Col("email"), func(f *flat, v *string) { f.Email = v }),
+	)
+	group := employees()
 
-	b.Run("Owned", func(b *testing.B) {
+	b.Run("Column", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			left.Expressions()
-			left.Metadata()
+			_, _ = required.Scan(discardScan)
 		}
 	})
-	b.Run("AppendNil", func(b *testing.B) {
+	b.Run("ColumnNull", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			left.AppendExpressions(nil)
-			left.AppendMetadata(nil)
+			_, _ = nullable.Scan(discardScan)
 		}
 	})
-	b.Run("AppendWarm", func(b *testing.B) {
-		expressions := make([]qs.Expr, 0, 8)
-		metadata := make([]string, 0, 8)
+	b.Run("GroupPresent", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			expressions = left.AppendExpressions(expressions[:0])
-			metadata = left.AppendMetadata(metadata[:0])
+			_, _ = group.Scan(fillScan)
 		}
 	})
-	b.Run("Concat", func(b *testing.B) {
+	b.Run("GroupAbsent", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			projection.Concat(left, right)
+			_, _ = group.Scan(discardScan)
 		}
 	})
-	b.Run("ConcatAndSelect", func(b *testing.B) {
-		b.ReportAllocs()
-		for b.Loop() {
-			p := projection.Concat(left, right)
-			qs.Select(p.Expressions()...)
-			p.Metadata()
-		}
-	})
+}
+
+func BenchmarkCompose(b *testing.B) {
+	left := users(qs.Table("users").As("e"), "")
+	right := users(qs.Table("users").As("m"), "manager_")
+	b.ReportAllocs()
+	for b.Loop() {
+		p := projection.New(left, right)
+		qs.Select(p.Expressions()...)
+	}
 }
