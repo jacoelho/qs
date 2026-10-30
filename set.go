@@ -293,7 +293,7 @@ func projectionWidth(exprs []Expr) int {
 func unknownProjection(e Expr) bool {
 	for {
 		if e.kind == exprAlias {
-			e = e.node.left
+			e = e.unary()
 			continue
 		}
 		if e.kind == exprGroup {

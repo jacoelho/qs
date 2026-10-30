@@ -5,6 +5,58 @@ import (
 	"testing"
 )
 
+func TestUnusedWindowAllowsRowLocking(t *testing.T) {
+	t.Parallel()
+	query := SelectCols("id").From("jobs").
+		Window("unused", Window().OrderBy(Asc("id"))).Lock(ForUpdate())
+	checkSQL(t, query, `SELECT "id" FROM "jobs" WINDOW "unused" AS (ORDER BY "id" ASC) FOR UPDATE`)
+}
+
+func TestWindowUseRejectsRowLocking(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		stmt Statement
+	}{
+		{"inline", Select(RowNumber().Over(Window())).From("jobs").Lock(ForUpdate())},
+		{"named_alias", Select(RowNumber().OverNamed("w").As("position")).From("jobs").Window("w", Window()).Lock(ForUpdate())},
+		{"json_aggregate", Select(JSONArrayAggregate(Col("id")).Over(Window()).Expr()).From("jobs").Lock(ForUpdate())},
+		{"select_order", SelectCols("id").From("jobs").OrderBy(RowNumber().Over(Window()).Asc()).Lock(ForUpdate())},
+		{"table_order", TableRows("jobs").OrderBy(RowNumber().Over(Window()).Asc()).Lock(ForUpdate())},
+		{"outer_use_survives_child", Select(RowNumber().Over(Window()), Scalar(Select(Param(7)))).From("jobs").Lock(ForUpdate())},
+		{"nested_lock", Select(Scalar(Select(RowNumber().Over(Window())).From("jobs").Lock(ForUpdate())))},
+		{"select_into", Select(RowNumber().Over(Window())).From("jobs").Lock(ForUpdate()).Into("window_result")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			checkError(t, tc.stmt, ErrInvalid)
+		})
+	}
+}
+
+func TestNestedWindowUseDoesNotRejectOuterRowLock(t *testing.T) {
+	t.Parallel()
+
+	checkSQL(t, Select(Col("id"), Scalar(Select(RowNumber().Over(Window())))).From("jobs").Lock(ForUpdate()),
+		`SELECT "id", (SELECT row_number() OVER ()) FROM "jobs" FOR UPDATE`)
+	ranked := CTE("ranked", Select(RowNumber().Over(Window()).As("position")))
+	checkSQL(t, SelectCols("id").With(ranked).From("jobs").
+		Where(Exists(SelectCols("position").FromExpr(ranked.Ref()))).Lock(ForUpdate()),
+		`WITH "ranked" AS (SELECT row_number() OVER () AS "position") SELECT "id" FROM "jobs" WHERE EXISTS (SELECT "position" FROM "ranked") FOR UPDATE`)
+}
+
+func TestOrderWindowLockFailurePreservesAppendPrefixes(t *testing.T) {
+	t.Parallel()
+
+	query := Select(Param("rendered before failure")).From("jobs").
+		OrderBy(RowNumber().Over(Window()).Asc()).Lock(ForUpdate())
+	sql, args, err := query.AppendSQL([]byte("prefix "), []any{"existing"})
+	if !errors.Is(err, ErrInvalid) || string(sql) != "prefix " || len(args) != 1 || args[0] != "existing" {
+		t.Fatalf("window lock rollback: sql=%q args=%#v err=%v", sql, args, err)
+	}
+}
+
 func TestWindowShorthandRendering(t *testing.T) {
 	t.Parallel()
 

@@ -61,14 +61,13 @@ func TestCompositeSlicesAndCloneIsolation(t *testing.T) {
 	insertTargets[0] = Col("changed")
 	checkSQL(t, insert, `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2)`, "Ada", 36)
 
-	original := Update("people").Set(AssignRow([]Expr{
-		Col("person").Field("first_name"),
-		Col("person").Field("age"),
-	}, WriteTuple(Write(Param("Ada")), Write(Param(36)))))
+	aliasChild := Select(Param("before"))
+	original := Select(Scalar(aliasChild).As("value"))
 	cloned := Clone(original)
-	cloned.set[0].columns[0].node.left.text = "other"
-	checkSQL(t, original, `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, "Ada", 36)
-	checkSQL(t, cloned, `UPDATE "people" SET ("other"."first_name", "person"."age") = ($1, $2)`, "Ada", 36)
+	aliasChild.Reset()
+	aliasChild.Columns(Param("after"))
+	checkSQL(t, original, `SELECT (SELECT $1) AS "value"`, "after")
+	checkSQL(t, cloned, `SELECT (SELECT $1) AS "value"`, "before")
 
 	child := Select(Col("source"))
 	withChild := InsertInto("archive").Columns("value").From(child)
@@ -80,4 +79,48 @@ func TestCompositeSlicesAndCloneIsolation(t *testing.T) {
 	source.columns[0].text = "changed"
 	checkSQL(t, withChild, `INSERT INTO "archive" ("value") SELECT "source"`)
 	checkSQL(t, childClone, `INSERT INTO "archive" ("value") SELECT "changed"`)
+}
+
+func TestUnaryExpressionsCloneLiveChildren(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		wrap func(Expr) Expr
+		sql  string
+	}{
+		{"field", func(e Expr) Expr { return e.Field("name") }, `SELECT ((SELECT $1))."name"`},
+		{"fields", func(e Expr) Expr { return e.Fields() }, `SELECT ((SELECT $1)).*`},
+		{"collate", func(e Expr) Expr { return e.Collate("C") }, `SELECT ((SELECT $1) COLLATE "C")`},
+		{"prefix", func(e Expr) Expr { return PrefixOperator("-", e) }, `SELECT (- (SELECT $1))`},
+		{"postfix", func(e Expr) Expr { return e.IsNull().Expr() }, `SELECT ((SELECT $1) IS NULL)`},
+		{"quantified", func(e Expr) Expr { return Col("id").EqExpr(AnyArray(e)).Expr() }, `SELECT ("id" = ANY((SELECT $1)))`},
+		{"special_call", func(e Expr) Expr { return ExtractNamed("year", e) }, `SELECT EXTRACT(year FROM (SELECT $1))`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			child := Select(Param("before"))
+			original := Select(tc.wrap(Scalar(child)))
+			cloned := Clone(original)
+			child.RemoveColumns().Columns(Param("after"))
+			checkSQL(t, original, tc.sql, "after")
+			checkSQL(t, cloned, tc.sql, "before")
+		})
+	}
+}
+
+func TestAssignRowCloneKeepsFieldTargetChildIndependent(t *testing.T) {
+	t.Parallel()
+
+	index := Select(Param(1))
+	original := Update("people").Set(AssignRow(
+		[]Expr{Col("profiles").Index(Scalar(index)).Field("name"), Col("age")},
+		WriteTuple(Value("Ada"), Value(36)),
+	))
+	cloned := Clone(original)
+	index.RemoveColumns().Columns(Param(2))
+	const sql = `UPDATE "people" SET ("profiles"[(SELECT $1)]."name", "age") = ($2, $3)`
+	checkSQL(t, original, sql, 2, "Ada", 36)
+	checkSQL(t, cloned, sql, 1, "Ada", 36)
 }

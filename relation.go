@@ -17,6 +17,10 @@ const (
 	relationSQL
 	relationJSONTable
 	relationXMLTable
+	// relationMatching holds the live *SelectBuilder of CountRows, rendered
+	// without its cursor, pagination, locks or sort; ORDER BY expressions that
+	// may change the rows move into its projection.
+	relationMatching
 )
 
 type joinKind uint8
@@ -370,6 +374,8 @@ func (w *renderer) relationBody(r Relation) (aliasRendered, ok bool) {
 		w.jsonTable(ownedPayload[*JSONTableBuilder](r.value))
 	case relationXMLTable:
 		w.xmlTable(ownedPayload[*XMLTableBuilder](r.value))
+	case relationMatching:
+		return false, w.matchingRelation(ownedPayload[*SelectBuilder](r.value))
 	default:
 		w.fail(ErrInvalid, "FROM", "zero relation")
 		return false, false

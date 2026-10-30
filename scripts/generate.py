@@ -178,6 +178,13 @@ fluent_method_docs = {
     ),
 }
 
+# Builder-specific documentation replaces the shared entry for one method.
+type_method_docs = {
+    ('SelectBuilder', 'RemoveOrderBy'): (
+        "clears b's ORDER BY list and SeekAfter cursor, mutates b, and returns b."
+    ),
+}
+
 
 lines = [header]
 for t in all_types:
@@ -222,7 +229,7 @@ lines.append('\n')
 for t in builders:
     def method(name, args, body, result=None):
         doc_name = name.split('[', 1)[0]
-        doc(lines, doc_name, fluent_method_docs[doc_name])
+        doc(lines, doc_name, type_method_docs.get((t, doc_name), fluent_method_docs[doc_name]))
         lines.append(f'func (b *{t}) {name}({args}) {result or "*"+t} {{ {body} }}\n')
     method('With','ctes ...WithQuery','b.base.with=append(b.base.with,ctes...); return b')
     if t != 'MergeBuilder': method('WithRecursive','ctes ...WithQuery','b.base.recursive=true; b.base.with=append(b.base.with,ctes...); return b')
@@ -240,7 +247,7 @@ for t in builders:
     if t in rowsets:
         method('As','alias string,columns ...string','return Subquery(b,alias,columns...)','Relation')
         method('OrderBy','terms ...Order','b.tail.order=append(b.tail.order,terms...); return b')
-        method('RemoveOrderBy','','clear(b.tail.order); b.tail.order=b.tail.order[:0]; return b')
+        method('RemoveOrderBy','','clear(b.tail.order); b.tail.order=b.tail.order[:0]; '+('b.cursor.clear(); ' if t=='SelectBuilder' else '')+'return b')
         method('Limit','count int','return b.LimitExpr(limitValue(count))')
         method('LimitExpr','count Expr','b.tail.limit=count; b.tail.hasLimit=true; b.tail.limitAll=false; return b')
         method('RemoveLimit','','b.tail.limit=Expr{}; b.tail.hasLimit=false; b.tail.limitAll=false; return b')

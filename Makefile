@@ -46,7 +46,7 @@ coverage:
 	GOMAXPROCS=$(TEST_PROCS) go test -p=2 -parallel=8 -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out
 benchmark:
-	go test -run='^$$' -bench=. -benchmem -count=3 .
+	go test -run='^$$' -bench=. -benchmem -count=3 . ./projection
 integration:
 	cd integration && GOMAXPROCS=$(TEST_PROCS) go test -tags postgres -p=2 -parallel=8 -timeout 5m -v ./...
 postgres-corpus:

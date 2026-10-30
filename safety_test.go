@@ -86,6 +86,17 @@ func TestGenericTypeChecks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	checkClient := func(t *testing.T, body string) error {
+		t.Helper()
+		src := `package client; import "github.com/jacoelho/qs"; func run(){` + body + `}`
+		f, parseErr := parser.ParseFile(fset, "client.go", src, 0)
+		if parseErr != nil {
+			t.Fatal(parseErr)
+		}
+		c := types.Config{Importer: localImporter{pkg, standard}}
+		_, checkErr := c.Check("client", fset, []*ast.File{f}, nil)
+		return checkErr
+	}
 	cases := []struct {
 		name, body string
 		valid      bool
@@ -266,15 +277,29 @@ func TestGenericTypeChecks(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			src := `package client; import "github.com/jacoelho/qs"; func run(){` + tc.body + `}`
-			f, err := parser.ParseFile(fset, "client.go", src, 0)
-			if err != nil {
-				t.Fatal(err)
-			}
-			c := types.Config{Importer: localImporter{pkg, standard}}
-			_, err = c.Check("client", fset, []*ast.File{f}, nil)
+			err := checkClient(t, tc.body)
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%t, type-check error=%v", tc.valid, err)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name, valid, missing string
+	}{
+		{"set_row_first_required", `_ = qs.SetRow([]string{"id"}, qs.Value(1))`, `_ = qs.SetRow([]string{"id"})`},
+		{"coalesce_first_required", `_ = qs.Coalesce(qs.Col("id"))`, `_ = qs.Coalesce()`},
+		{"greatest_first_required", `_ = qs.Greatest(qs.Col("id"))`, `_ = qs.Greatest()`},
+		{"least_first_required", `_ = qs.Least(qs.Col("id"))`, `_ = qs.Least()`},
+		{"merge_insert_value_required", `_ = qs.NotMatched().ThenInsertValues([]string{"v"}, qs.Value(1))`, `_ = qs.NotMatched().ThenInsertValues([]string{"v"})`},
+		{"merge_target_insert_value_required", `_ = qs.NotMatchedByTarget().ThenInsertValues([]string{"v"}, qs.Value(1))`, `_ = qs.NotMatchedByTarget().ThenInsertValues([]string{"v"})`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := checkClient(t, tc.valid); err != nil {
+				t.Fatalf("required operand supplied: %v", err)
+			}
+			err := checkClient(t, tc.missing)
+			if err == nil || !strings.Contains(err.Error(), "not enough arguments") {
+				t.Fatalf("missing operand: want arity error, got %v", err)
 			}
 		})
 	}

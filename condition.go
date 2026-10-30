@@ -7,7 +7,10 @@ type Condition struct{ expr Expr }
 // Expr returns the underlying boolean expression.
 func (c Condition) Expr() Expr { return c.expr }
 
-// AsCondition treats an expression as a SQL condition.
+// AsCondition treats an expression as a SQL condition. When qs combines a
+// condition from UnsafeSQL or Fragment with another condition, in a WHERE,
+// HAVING or ON list, with a SeekAfter cursor, or through And, Or or Not, it
+// parenthesizes that condition. A lone condition renders verbatim.
 func AsCondition(expr Expr) Condition { return Condition{expr} }
 
 // True returns a condition that is always TRUE.
@@ -23,7 +26,7 @@ func And(conditions ...Condition) Condition { return junction(" AND ", true, con
 func Or(conditions ...Condition) Condition { return junction(" OR ", false, conditions) }
 
 // Not negates a condition while preserving SQL three-valued logic.
-func Not(condition Condition) Condition { return AsCondition(prefix("NOT", condition.expr)) }
+func Not(condition Condition) Condition { return AsCondition(prefix("NOT", condition.bounded())) }
 
 // And combines c with each condition in other. With no other conditions, it
 // returns c unchanged.
@@ -52,34 +55,56 @@ func (c Condition) junction(operator string, other []Condition) Condition {
 		return c
 	}
 	values := make([]Expr, 1+len(other))
-	values[0] = c.expr
+	values[0] = c.bounded()
 	for i := range other {
-		values[i+1] = other[i].expr
+		values[i+1] = other[i].bounded()
 	}
 	return AsCondition(Expr{kind: exprGroup, text: operator, value: values})
+}
+
+// bounded returns the condition as an operand that qs combines with another.
+// Structural conditions render their own parentheses. Trusted SQL does not, so
+// an OR inside it would otherwise bind to the neighbouring operand.
+func (c Condition) bounded() Expr {
+	if c.expr.opaque() {
+		return c.expr.Parenthesized()
+	}
+	return c.expr
 }
 
 func compare(left Expr, operator string, right Expr) Condition {
 	return AsCondition(binary(left, operator, right))
 }
 
-// Eq compares e with a bound value using SQL equality.
-func (e Expr) Eq(value any) Condition { return e.EqExpr(parameter(value)) }
+// comparand binds a value-taking comparison operand. Untyped nil would bind SQL
+// NULL, which never compares true and is almost always a bug, so it fails
+// rendering instead of silently removing rows. Typed nil pointers and driver
+// values encoding NULL are indistinguishable from data here and still bind.
+func comparand(value any) Expr {
+	if value == nil {
+		return invalidExpr("comparison", "untyped nil would bind SQL NULL, which never compares true")
+	}
+	return parameter(value)
+}
+
+// Eq compares e with a bound value using SQL equality. Untyped nil fails
+// rendering with ErrInvalid; use IsNull for a NULL test.
+func (e Expr) Eq(value any) Condition { return e.EqExpr(comparand(value)) }
 
 // Ne compares e with a bound value using SQL inequality.
-func (e Expr) Ne(value any) Condition { return e.NeExpr(parameter(value)) }
+func (e Expr) Ne(value any) Condition { return e.NeExpr(comparand(value)) }
 
 // Lt compares e with a bound value using SQL less-than.
-func (e Expr) Lt(value any) Condition { return e.LtExpr(parameter(value)) }
+func (e Expr) Lt(value any) Condition { return e.LtExpr(comparand(value)) }
 
 // Lte compares e with a bound value using SQL less-than-or-equal.
-func (e Expr) Lte(value any) Condition { return e.LteExpr(parameter(value)) }
+func (e Expr) Lte(value any) Condition { return e.LteExpr(comparand(value)) }
 
 // Gt compares e with a bound value using SQL greater-than.
-func (e Expr) Gt(value any) Condition { return e.GtExpr(parameter(value)) }
+func (e Expr) Gt(value any) Condition { return e.GtExpr(comparand(value)) }
 
 // Gte compares e with a bound value using SQL greater-than-or-equal.
-func (e Expr) Gte(value any) Condition { return e.GteExpr(parameter(value)) }
+func (e Expr) Gte(value any) Condition { return e.GteExpr(comparand(value)) }
 
 // EqExpr compares e with another SQL expression using equality.
 func (e Expr) EqExpr(other Expr) Condition { return compare(e, "=", other) }
@@ -139,7 +164,8 @@ func IsNull(column string) Condition { return Col(column).IsNull() }
 // IsNotNull tests whether a named column is not SQL NULL.
 func IsNotNull(column string) Condition { return Col(column).IsNotNull() }
 
-// Eq compares a named column with a bound value.
+// Eq compares a named column with a bound value. Untyped nil fails rendering
+// with ErrInvalid; use IsNull for a NULL test.
 func Eq(column string, value any) Condition { return Col(column).Eq(value) }
 
 // Ne compares a named column with a bound value.
@@ -179,12 +205,12 @@ func between(value Expr, operator string, lower, upper Expr) Condition {
 
 // Between checks whether e lies inclusively between two bound values.
 func (e Expr) Between(lower, upper any) Condition {
-	return e.BetweenExpr(parameter(lower), parameter(upper))
+	return e.BetweenExpr(comparand(lower), comparand(upper))
 }
 
 // NotBetween checks whether e lies outside two inclusive bound values.
 func (e Expr) NotBetween(lower, upper any) Condition {
-	return e.NotBetweenExpr(parameter(lower), parameter(upper))
+	return e.NotBetweenExpr(comparand(lower), comparand(upper))
 }
 
 // BetweenExpr checks e against two SQL expressions using BETWEEN.
@@ -228,7 +254,7 @@ func inOwnedExpressions(left Expr, operator string, values []Expr) Condition {
 func inValues[T any](left Expr, operator string, values []T) Condition {
 	exprs := make([]Expr, len(values))
 	for i := range values {
-		exprs[i] = Param(values[i])
+		exprs[i] = comparand(values[i])
 	}
 	return inOwnedExpressions(left, operator, exprs)
 }
@@ -310,13 +336,13 @@ func NotExists(query Rowset) Condition { return Not(Exists(query)) }
 // AnyArray returns a quantified operand for comparison with any element of an
 // SQL array expression.
 func AnyArray(array Expr) Expr {
-	return Expr{kind: exprQuantified, text: "ANY", node: &expression{left: array}}
+	return Expr{kind: exprQuantified, text: "ANY", value: &unaryExpression{array}}
 }
 
 // AllArray returns a quantified operand for comparison with every element of
 // an SQL array expression.
 func AllArray(array Expr) Expr {
-	return Expr{kind: exprQuantified, text: "ALL", node: &expression{left: array}}
+	return Expr{kind: exprQuantified, text: "ALL", value: &unaryExpression{array}}
 }
 
 // AnyQuery returns a quantified operand for comparison with any row from a
@@ -338,6 +364,26 @@ func EqAny(left, array Expr) Condition { return left.EqExpr(AnyArray(array)) }
 func EqAll(left, array Expr) Condition { return left.EqExpr(AllArray(array)) }
 
 func (w *renderer) conditions(conditions []Condition) {
+	w.conjunction(conditions, len(conditions) > 1)
+}
+
+// bounded renders e as one operand of an operator that qs adds. Trusted SQL
+// carries no precedence boundary of its own, so it is parenthesized.
+func (w *renderer) bounded(e Expr) {
+	if !e.opaque() {
+		w.expr(e)
+		return
+	}
+	w.byte('(')
+	w.expr(e)
+	w.byte(')')
+}
+
+// conjunction renders conditions joined by AND. A combined conjunction, which
+// has more than one conjunct including any that the caller appends, renders
+// each opaque condition as a bounded operand. A lone opaque condition stays
+// verbatim, so trusted syntax such as CURRENT OF remains valid.
+func (w *renderer) conjunction(conditions []Condition, combined bool) {
 	if w.err != nil {
 		return
 	}
@@ -345,7 +391,11 @@ func (w *renderer) conditions(conditions []Condition) {
 		if i != 0 {
 			w.text(" AND ")
 		}
-		w.expr(c.expr)
+		if combined {
+			w.bounded(c.expr)
+		} else {
+			w.expr(c.expr)
+		}
 		if w.stopped("condition", i+1) {
 			return
 		}

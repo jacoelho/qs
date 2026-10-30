@@ -133,7 +133,7 @@ func (w *renderer) tail(t queryTail, allowLocks bool) {
 		}
 	}
 	if len(t.locks) > 0 {
-		if !w.require(allowLocks, "locking", "not allowed for this query") {
+		if !w.require(allowLocks && !w.hasWindow, "locking", "not allowed for this query") {
 			return
 		}
 		for _, l := range t.locks {

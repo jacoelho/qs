@@ -104,10 +104,13 @@ Select the constructor that matches the input:
 | Server default at a write destination | `Default()` | Renders `DEFAULT` |
 
 Comparison helpers such as `Eq` bind application values, while `EqExpr` compares
-a column with an expression. For SQL NULL tests, use `IsNull`:
-`Eq("id", nil)` binds a nil argument and does not produce `IS NULL`.
+a column with an expression. For SQL NULL tests, use `IsNull` or `IsNotNull`.
+A comparison with SQL NULL is never true, so comparison operands, including `In` lists,
+`Between` bounds, row values, and `SeekAfter` cursors, reject untyped nil:
+`Eq("id", nil)` fails rendering with `ErrInvalid` rather than selecting no rows.
+A typed nil, such as `(*int)(nil)`, still binds.
 
-`Param` and scalar comparison helpers accept `any`, including untyped nil:
+`Param`, `Value`, and `ParamNull` bind untyped nil as SQL NULL:
 
 ```go
 query, args, err := qs.Select(qs.Param(nil).Cast(qs.TypeText)).ToSQL()
@@ -130,6 +133,9 @@ even with RETURNING, so use a CTE to compose them with another query.
 `Field[T]` keeps operands typed, `Null[T]` represents nullable values, and
 `Optional[T]` distinguishes absent values from present ones. The
 [executable examples](example_test.go) show how to use them together.
+For sparse updates, assemble assignments first and choose explicitly whether an
+all-absent patch is a no-op or an error. A present NULL remains an assignment;
+it is not absence. qs rejects an UPDATE with no assignments.
 
 ### Select literal column names
 
@@ -149,6 +155,13 @@ column named `"*"`. To select a qualified column path, use top-level
 application-authored SQL with qs expressions. Keep request values in bind
 parameters and never pass request text to these constructors. Raw fragments do
 not bind placeholders written directly in the SQL text.
+
+When qs combines a trusted condition with another, it parenthesizes the trusted
+condition. This applies to two `Where` conditions, a `SeekAfter` cursor, and
+`And`, `Or` and `Not`. `Where(qs.AsCondition(qs.UnsafeSQL("a OR b")))` with a
+cursor renders `WHERE (a OR b) AND (...)`. Other operators render trusted SQL
+verbatim, so call `Parenthesized` where its operators could bind to a
+neighbouring operand.
 
 Database authorization remains your application's responsibility, including
 database roles, row-level security (RLS), tenant context, and transactions.
@@ -267,7 +280,8 @@ Arguments: `[10 20 [staff active] al% 20]`.
 
 `TypedExpr[int64]` lets Go enforce the type of values passed to `id.In`, which
 produces FALSE for an empty list. `ArrayParam` binds a single array argument
-and casts it to `text[]`, leaving array encoding to the driver.
+and casts it to `text[]`, leaving array encoding to the driver. A nil slice
+binds an empty array rather than NULL, so `= ANY` is FALSE and `<> ALL` is TRUE.
 
 Choose the text comparison form according to your application's matching
 requirements. `LOWER(column) LIKE` and PostgreSQL `ILIKE` can give different
@@ -275,7 +289,9 @@ results for some locales and Unicode input, and Go's `strings.ToLower` can
 differ from PostgreSQL `LOWER`.
 
 `count(*) OVER ()` adds the count to each returned row, so an empty page has no
-row from which to read it.
+row from which to read it, and after a `SeekAfter` cursor it counts only the
+remaining rows. [Count matching rows](#count-matching-rows) with `CountRows`
+instead.
 
 ### Add limits and offsets
 
@@ -304,15 +320,85 @@ a limit or offset.
 call. Use `RemoveLimit` and `RemoveOffset` to clear the corresponding clauses.
 
 For predictable page boundaries, choose an ordering with a unique final key.
-Offset pagination can still shift as rows change between requests. For a query
-ordered by ID, you can instead use the last returned ID as a cursor:
+Offset pagination can still shift as rows change between requests, and the
+server still reads every skipped row.
+
+### Page with a keyset cursor
+
+`SeekAfter` continues after the last row of the previous page. Pass that row's
+ORDER BY key values, one per term:
 
 ```go
-page := base.Clone().
-    Where(qs.Gt("id", lastSeenID)).
-    OrderBy(qs.Asc("id")).
-    Limit(10)
+order := []qs.Order{qs.Desc("users.created_at"), qs.Desc("users.id")}
+next := base.Clone().
+    OrderBy(order...).
+    SeekAfter(lastCreatedAt, lastID).
+    Limit(20)
 ```
+
+```sql
+SELECT "id" FROM "users"
+WHERE ("active" = $1) AND (("users"."created_at", "users"."id") < ($2, $3))
+ORDER BY "users"."created_at" DESC, "users"."id" DESC LIMIT $4
+```
+
+The cursor follows every other WHERE condition, whatever the call order.
+Uniform directions render one row comparison, which a B-tree index on the keys
+in ORDER BY order can serve. Mixed directions render an equivalent disjunction
+that binds earlier keys again: three keys bind seven arguments.
+
+Rendering fails with `ErrInvalid` when the cursor width differs from the ORDER
+BY width, when a term uses NULLS FIRST/LAST, USING, or an ordinal, when a key is
+a bare name, or when the query uses DISTINCT ON. ORDER BY resolves a bare name
+to a same-named output column first, including a derived one such as the `a`
+that `SELECT a::text` produces, while WHERE resolves it to the input column.
+Qualified names and other expressions resolve the same way in both clauses, so
+qualify column keys: `qs.Desc("users.id")`, or `users.Col("id").Desc()` for a
+`Relation`. Name a USING join with `UsingAs` and a `Derived` relation with `As`
+to qualify their columns. Keys are evaluated in WHERE, so they cannot be output
+aliases, aggregates, or window functions; wrap such a query with `Subquery` and
+page the outer SELECT by its alias-qualified columns. Page set operations,
+VALUES, and TABLE the same way. Trusted SQL and `Fragment` keys are compared in
+parentheses, so `NOT archived` keeps its meaning, but qs does not inspect them:
+they must not render a bare name or an integer. qs cannot inspect the schema:
+pages are complete and disjoint only when every key is NOT NULL and the last key
+is unique.
+
+For the previous page, reverse each term, seek after the first row of the
+current page, and reverse the fetched rows:
+
+```go
+previous := base.Clone().
+    OrderBy(order[0].Reverse(), order[1].Reverse()).
+    SeekAfter(firstCreatedAt, firstID).
+    Limit(20)
+```
+
+`RemoveOrderBy` and `Reset` remove the cursor, and `Clone` copies it.
+
+### Count matching rows
+
+`CountRows` counts the rows a query selects without its cursor and pagination:
+
+```go
+total := qs.CountRows(next)
+```
+
+```sql
+SELECT count(*) FROM (SELECT "id" FROM "users" WHERE ("active" = $1)) AS "matching"
+```
+
+The count omits the `SeekAfter` cursor, LIMIT, OFFSET, FETCH, and row locks,
+and keeps WITH, DISTINCT, GROUP BY, and HAVING. It does not sort, but ORDER BY
+expressions other than column names, ordinals, and bound values move into the
+counted projection as `qs_order_N` columns, so a set-returning function such as
+`unnest(tags)` or an aggregate such as `count(*)` still changes the rows.
+DISTINCT ON and GROUP BY must not name columns `qs_order_N`. Volatile moved
+expressions run for every counted row, and a trusted SQL term naming an output
+column can fail, so order by the aliased expression. The count renders the
+query live, so filters added later also apply; count `query.Clone()` for a fixed
+query. The count is a separate statement that agrees with the pages only when
+both run in one REPEATABLE READ or SERIALIZABLE transaction.
 
 ## Write rows and handle conflicts
 
@@ -369,6 +455,30 @@ references to nested statements and leaving bound application objects shared.
 Empty column lists and empty rows fail at render time. For positional
 insertion, omit the column selector; `ValuesSlice` can start a positional
 INSERT or append rows to a completed row INSERT.
+
+### Insert columnar batches
+
+For data already arranged in columns, bind one array per column and expand them
+with `Unnest`. This keeps the parameter count proportional to columns:
+
+```go
+ids := []int32{42, 43}
+names := []string{"Ana", "Ben"}
+rows := qs.Select(
+    qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
+    qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
+)
+query, args, err := qs.InsertInto("users").Columns("id", "name").From(rows).ToSQL()
+```
+
+The driver encodes the arrays. Supply equal lengths: PostgreSQL
+[pads shorter results with NULL](https://www.postgresql.org/docs/18/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET);
+qs does not inspect bound application data. Empty arrays insert
+no rows. Bound batch size according to data volume; fewer parameters do not
+reduce the payload size. For larger loads, consider the driver's COPY support.
+The [executable upsert example](production_query_example_test.go) combines this
+shape with partial-index conflict inference and RETURNING. Its table needs a
+unique index on `id WHERE deleted_at IS NULL`.
 
 ### Update a row
 
@@ -557,6 +667,31 @@ the table reference used to join the CTE's result.
 are already complete. For conditional expressions, `Case` uses conditions for
 each branch, while `CaseOf` compares branches with a single operand.
 
+### Group a parameterized expression
+
+Each occurrence of `Param` receives a new placeholder, even when the same `Expr`
+is reused. Repeating `date_trunc($1, created_at)` as
+`date_trunc($2, created_at)` in GROUP BY does not identify the same grouping
+expression to PostgreSQL. Reference the SELECT position instead:
+
+```go
+bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
+query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).From("events").
+    GroupByExpr(qs.Ordinal(1)).OrderBy(qs.Ordinal(1).Asc()).ToSQL()
+```
+
+This binds `"day"` once. Keep the ordinal aligned with the projection order.
+
+### Enrich a page with child aggregates
+
+To page parents independently of their child counts, select the page in a CTE,
+then attach a correlated aggregate with `LeftJoinExpr(qs.Lateral(...), qs.True())`.
+Aggregate each child collection separately to avoid multiplying rows across
+collections. Apply an outer ORDER BY as well; CTE ordering does not guarantee
+final result order. The [database examples](integration/production_patterns_test.go)
+exercise two collections and a parent with no children. Indexes and query plans
+remain application concerns.
+
 ## Use PostgreSQL types and drivers
 
 ### Reuse result declarations
@@ -593,6 +728,13 @@ use `projection.Output(expr, metadata)` and read `p.Metadata()`. `Output` leaves
 the expression unchanged, so aliases are optional. The package copies slice
 positions; metadata objects and nested query builders remain shared.
 
+Use `projection.Concat(left, right)` to combine existing declarations. It copies
+complete expression/metadata pairs in order, preserving duplicates; empty inputs
+contribute no columns. For aliases and self-joins, use a factory that accepts a
+`qs.Relation` and creates columns with `relation.Col(name)`. The
+[self-join example](projection/example_test.go) gives each relation its own
+qualification and output labels without rewriting expression graphs.
+
 Expressions must produce one result column and keep the qualifiers required by
 their query scope. `Named` requires an unaliased expression and adds rather than
 replaces an alias. Projection does not validate SQL types, actual labels or
@@ -608,6 +750,21 @@ For one-off queries, ordinary `expr.As("label")` is sufficient. The
 [executable projection examples](projection/example_test.go) demonstrate reuse
 and defined metadata keys, JSONB, CTEs and RETURNING. Scanning and JSON decoding
 stay in the application.
+
+For repeated extraction, reuse caller-owned slices:
+
+```go
+expressions = p.AppendExpressions(expressions[:0])
+metadata = p.AppendMetadata(metadata[:0])
+q := qs.Select(expressions...).From("documents")
+```
+
+Both append methods preserve any existing prefix and copy positions in declaration
+order; contents stay shallow. Empty projections leave the destination unchanged,
+including nilness. With sufficient capacity extraction needs no new buffer, but
+`Select` still copies its column positions. Keep `Expressions()` and `Metadata()`
+for one-shot owned results. Coordinate buffer reuse with consumers; SELECT input
+storage can be reused after construction because the builder owns its positions.
 
 ### Cast a value
 
@@ -830,8 +987,7 @@ example with `clear(argBuffer)` before the next append.
 Successful appends can avoid allocations when the query is prebuilt and the
 buffers have enough capacity. Construction, cloning, owned output, and
 failures have separate costs, so this is not a zero-allocation guarantee for
-every query. The [performance report](internal/PERFORMANCE.md) documents the
-measurements and their limits.
+every query.
 
 ### Control query lifetime
 
@@ -892,7 +1048,6 @@ Use these references for more information:
 - `go doc .`: the full exported API.
 - `go doc ./projection`: reusable result declarations and their ownership contracts.
 - [Architecture guide](internal/ARCHITECTURE.md): boundaries, ownership, and design decisions.
-- [Performance report](internal/PERFORMANCE.md): measurements and performance limits.
 - [PostgreSQL corpus](internal/postgrescorpus/README.md): construction measurements and fixture maintenance.
 
 The pinned corpus verifies 28,111 of 28,197 query occurrences, measuring 99.70%

@@ -68,7 +68,7 @@ func rowValues(values []any) RowExpr {
 	}
 	exprs := make([]Expr, len(values))
 	for i, v := range values {
-		exprs[i] = parameter(v)
+		exprs[i] = comparand(v)
 	}
 	return RowExpr{expr: Expr{kind: exprList, text: sqlRow, value: exprs}, width: len(exprs)}
 }

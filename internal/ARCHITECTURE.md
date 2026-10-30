@@ -2,9 +2,7 @@
 
 This is the architecture entry point. [README.md](../README.md) owns public usage
 and caller contracts; the [corpus README](postgrescorpus/README.md) owns
-construction-support measurement and fixture maintenance. The
-[performance report](PERFORMANCE.md) records correctness, diagnostics,
-construction and clone measurements, including unmet CPU budgets.
+construction-support measurement and fixture maintenance.
 
 The [projection package documentation](../projection/doc.go) owns the result
 declaration contract.
@@ -32,6 +30,12 @@ Driver-independent [examples](../projection/example_test.go) live alongside the
 package and run with its tests. No mapper dependency or separate example module
 is needed.
 
+Owned `Expressions` and `Metadata` allocate exactly sized results; the
+`AppendExpressions` and `AppendMetadata` variants grow caller storage. Routing
+owned extraction through append-with-nil was rejected because it measured
+slower. Public method contracts belong to the projection package documentation
+linked above.
+
 `Statement` and `Rowset` are sealed interfaces. SELECT, VALUES, TABLE and set
 operations are rowsets; DML is Statement-only even with RETURNING. Query utility
 wrappers retain their source rowset and own destination options. SELECT INTO
@@ -45,6 +49,13 @@ representation and renderer. Go payload types do not prove SQL types or schema
 validity. Finite grammar states use named enums; unknown states fail validation.
 Constructors own tag/payload agreement; one checked private accessor enforces
 that invariant. Public nil and foreign inputs retain boundary validation.
+
+All composite expressions use the tagged payload slot. Unary kinds store one
+child in `unaryExpression`; binary expressions and subscripts store two in
+`expression`. There is no separate node pointer in every Expr. Each kind has one
+representation, with no fallback or cache. Rendering and generated cloning use
+the same checked payload contract. Assignment normalization copies payloads
+before changing their children; bound application values remain shallow.
 
 CASE uses distinct searched/simple builders with inline private payloads. `End`
 stamps the role and snapshots branches. MERGE category selectors produce terminal
@@ -134,10 +145,15 @@ builder and `ESCAPE` policy have one owner without a new node representation.
 
 One renderer owns buffers, arguments, options, limits and the first error. It
 traverses in emitted SQL order, including nested statements. Parameter nodes bind
-values and emit their placeholder. `Param(any)` retains dynamic value types
-and admits untyped nil; a generic type parameter would establish no additional
-invariant. Parameters remain shallow; identifiers, literals, operators and trusted
-fragments are never rewritten. SQL-string placeholder replacement was rejected
+values and emit their placeholder. `Param(any)` retains dynamic value types;
+a generic type parameter would establish no additional invariant. `Param`,
+`Value` and `ParamNull` bind untyped nil as NULL. Comparison, membership, range,
+row-value and keyset operands reject it when rendered, because SQL NULL never
+compares true; typed nil values remain indistinguishable from data. A nil
+`ArrayParam` slice binds an empty array, matching empty `In`/`NotIn` lists.
+Parameters remain shallow; identifiers, literals, operators and trusted
+fragments are never rewritten, although a combined trusted condition is
+parenthesized as described under validation and security limits. SQL-string placeholder replacement was rejected
 because question marks also occur in PostgreSQL grammar. Rendering never calls
 `driver.Valuer`, resolves a schema or independently renders subquery strings.
 
@@ -164,6 +180,35 @@ memoization, preserving shared children and cycles, but bound application values
 remain shallow. Automatic attachment snapshots add composition costs; validation
 caches would need invalidation for every live mutation.
 
+ORDER BY is the only ordering owner. `SelectBuilder` owns its keyset cursor
+values; rendering derives the predicate from the final ORDER BY terms and appends
+it as the last WHERE conjunct, so later ORDER BY, DISTINCT ON or cursor changes
+are validated where they take effect. `RemoveOrderBy` and `Reset` clear the cursor,
+because its values mean nothing under another ordering. `CountRows` holds its
+query live in a private relation kind. That relation renders the query in its
+own statement scope without ORDER BY, cursor, LIMIT, OFFSET, FETCH or locks; it
+keeps the suffix, whose relation to the omitted clauses qs cannot know. Clone
+maps it through the same statement memoization as other references.
+
+ORDER BY is not inert: PostgreSQL evaluates an expression missing from the
+projection as a hidden output column, so a set-returning function there
+multiplies rows and an aggregate makes the query grouped. qs cannot tell those
+from other calls, so the count appends ORDER BY expressions to the counted
+projection, after the existing columns so ordinal references keep their
+positions. A hidden column has no name, but an appended one would take its
+function, column or field name, which DISTINCT ON and GROUP BY resolve against:
+DISTINCT ON could pick the moved term instead of the input column and miscount
+silently, and either clause could fail as ambiguous. Each appended expression
+is therefore aliased `qs_order_N`, N being its ORDER BY position. PostgreSQL 18
+drops unused outputs that are neither volatile nor set-returning, so no sort or
+extra evaluation remains for ordinary keys. Names, ordinals and bound values
+are skipped, after discarding grouping parentheses as PostgreSQL does and
+version requirements, which render nothing: they cannot change the rows, and a
+name or ordinal may refer to an output column that the projection cannot see.
+SELECT DISTINCT is skipped because its ORDER BY expressions already appear in
+the projection. Keyset key validation classifies terms the same way, so `(1)`
+and `0x1` are ordinals and `("x")` may name an output column there too.
+
 The standard-library clone generator discovers statement roots and traverses
 actual Go field types. Generated walkers register statement identities before
 recursion. One semantic policy classifies erased expression/JSON payloads and
@@ -183,7 +228,9 @@ bound-value lifetime through execution.
 Reusable rendering can avoid allocations with preconstructed nodes, stable
 interface values and adequate destination capacity. Construction, cloning, owned
 output and failures have separate costs. Benchmark and allocation tests own
-measurable budgets; there is no universal zero-allocation promise.
+measurable budgets; there is no universal zero-allocation promise. No CPU budget
+is enforced: shared-host noise left the window-lock guard's CPU cost
+unresolved, and the measurements are retained in commit `7651862`.
 
 ## Validation and security limits
 
@@ -197,14 +244,46 @@ assignment sources retain runtime checks. The write roles prevent DEFAULT from
 entering general expressions through the public typed API; trusted SQL remains
 an intentional escape.
 
+Required-first and required-two signatures keep literal collections nonempty
+and write tuples at least two elements wide, including `Coalesce`, `Greatest`,
+`Least`, `SetRow` and MERGE insertion operands. Unrestricted
+variadics were rejected because their shorter dynamic calls admit empty grammar
+completions; compile-negative cases in `safety_test.go` enforce the policy.
+
+SELECT locking rejects structural DISTINCT, GROUP BY and HAVING clauses. An
+unused named WINDOW is compatible with locking. Rendering records structural
+OVER use in the current statement and checks it after ORDER BY and pagination,
+before emitting locks. Statement entry saves and clears this flag; exit restores
+the parent scope, so scalar subqueries, CTEs and counted relations cannot change
+outer eligibility.
+SELECT INTO retains its source's scope. Opaque SQL, aggregate classification and
+locks propagated into FROM subqueries remain server-validated.
+
+Keyset rendering checks cursor width, ASC/DESC terms without NULLS or USING,
+DISTINCT ON, and keys that are ordinals, bound values or bare names. PostgreSQL
+resolves an ORDER BY term against output column names, explicit or derived,
+only when it is a bare name or an integer; every other term resolves against
+input columns, as the WHERE cursor does. Rejecting bare names therefore keeps
+both clauses on the same values without reading the projection. Trusted SQL and
+`Fragment` keys are not inspected. It cannot prove that keys are NOT NULL or
+that the last key is unique; rows violating those assumptions are skipped or
+repeated across pages.
+
 Identifiers are quoted; values bind unless an explicit literal is selected.
-Unsafe fragments are trusted code. `RequireWhere` is a structural guard and
+Unsafe fragments are trusted code. `Condition` owns their boolean boundary: an
+`UnsafeSQL` or `Fragment` condition is parenthesized where qs combines it with
+another condition, which covers condition lists including the keyset conjunct,
+`And`/`Or` members and `Not`. Keyset rendering likewise parenthesizes a trusted
+ORDER BY term where it becomes a comparison operand. A lone trusted condition
+and trusted operands of caller-written operators render verbatim, because
+wrapping `= ANY(...)` produces invalid SQL. qs's own composite conditions, `LIKE ... ESCAPE` and `OPERATOR(...)`, are
+structural groups rather than fragments, so this rule never wraps them twice. `RequireWhere` is a structural guard and
 accepts WHERE TRUE; it is not authorization. Transactions, roles, RLS and tenant
 context belong to the execution boundary. TRUNCATE is not filtered by RLS.
 
 ## Evaluated API boundaries
 
-These 30 evaluations record selected representations and constraints. Deferred
+These 36 evaluations record selected representations and constraints. Deferred
 alternatives are not supported APIs or implementation commitments.
 
 | # | Boundary | Decision or constraint |
@@ -239,3 +318,9 @@ alternatives are not supported APIs or implementation commitments.
 | 28 | Ordered-set calls | Narrow known helpers; custom function classification stays server-owned. |
 | 29 | Version ownership | Syntax owners and per-render options; reject global registries and version-bound graphs. |
 | 30 | Live/frozen graphs | Explicit generated graph copying; reject reflection, serialization, automatic snapshots, immutable-subtree sharing and mutation-sensitive caches. |
+| 31 | Keyset ownership | Builder-owned `SeekAfter`, derived from ORDER BY at render. Reject a separate keyset value (a second owner drifts from ORDER BY), typed arity (runtime-selected keys defeat it), `SeekBefore` (under the same ORDER BY and LIMIT it returns the first page) and the expansion without a leading bound (an index cannot bound the scan). |
+| 32 | Ordering direction | `Order.Reverse` involution, including NULLS; reject a `Direction` enum that cannot reverse whole terms. |
+| 33 | Count derivation | Live `CountRows` relation that appends ORDER BY expressions other than names, ordinals and bound values to the counted projection as `qs_order_N`. Reject the Clone/Remove recipe (cannot remove locks and relies on callers removing every clause), `RemovePagination` (a manual snapshot that mutates the page), snapshots (miss later filters), projection replacement (miscounts DISTINCT and GROUP BY), keeping ORDER BY (PostgreSQL keeps subquery sorts), rejecting terms qs cannot classify (breaks ordinary keys such as `lower(name)`) and detecting aggregates or set-returning functions by name (qs cannot classify `Call` or trusted SQL, so misses would miscount silently). Unaliased appended expressions are rejected because their default output names can capture DISTINCT ON and GROUP BY references. Trusted SQL naming an output column fails in PostgreSQL instead of counting wrongly. |
+| 34 | Comparison NULL | Reject untyped nil in comparison operands; binding it made comparisons silently false. |
+| 35 | Array NULL | Nil `ArrayParam` slices bind `{}`; NULL arrays require `NullExpr(TypeArray(...))`. |
+| 36 | Keyset key resolution | Reject bare-name keys while a cursor is active; callers qualify keys or page a `Subquery`. Reject deriving output labels as PostgreSQL does (version-specific, such as `?column?` for `true` in 18, and blind to trusted SQL and `(c).*`), accepting bare keys under a provably safe projection (a select-list change elsewhere would invalidate the cursor), qualifying bare keys automatically (rewrites identifiers and is ambiguous across joins), filtering in a wrapping query (keys must be output columns, and an unflattened subquery loses the index seek) and rewrapping bare keys in a no-op expression (`COALESCE(a)` sorts without the index). |

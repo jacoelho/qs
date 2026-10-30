@@ -39,3 +39,13 @@ func TestParamPreservesDynamicValueTypes(t *testing.T) {
 		t.Fatalf("Param function value: SQL=%q args=%#v err=%v", sql, args, err)
 	}
 }
+
+func TestArrayParamBindsNilSliceAsEmptyArray(t *testing.T) {
+	t.Parallel()
+	var ids []int
+	sql, args, err := qs.SelectCols("id").From("users").Where(qs.EqAny(qs.Col("id"), qs.ArrayParam(ids, qs.TypeInt4))).ToSQL()
+	want := `SELECT "id" FROM "users" WHERE ("id" = ANY(($1)::integer[]))`
+	if err != nil || sql != want || !reflect.DeepEqual(args, []any{[]int{}}) {
+		t.Fatalf("SQL=%q args=%#v err=%v; want SQL=%q and one empty []int", sql, args, err, want)
+	}
+}

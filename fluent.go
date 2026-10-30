@@ -68,10 +68,11 @@ func (b *SelectBuilder) OrderBy(terms ...Order) *SelectBuilder {
 	return b
 }
 
-// RemoveOrderBy clears b's ORDER BY list, mutates b, and returns b.
+// RemoveOrderBy clears b's ORDER BY list and SeekAfter cursor, mutates b, and returns b.
 func (b *SelectBuilder) RemoveOrderBy() *SelectBuilder {
 	clear(b.tail.order)
 	b.tail.order = b.tail.order[:0]
+	b.cursor.clear()
 	return b
 }
 

@@ -260,6 +260,7 @@ func (c *cloneContext) cloneSelectBuilder(b *SelectBuilder) *SelectBuilder {
 	for i1 := range n.distinctOn {
 		n.distinctOn[i1] = c.expr(b.distinctOn[i1])
 	}
+	n.cursor = c.clonePtrkeysetCursor(b.cursor)
 	n.tail = c.cloneValuequeryTail(b.tail)
 	n.base = c.cloneValuestatementBase(b.base)
 	return &n
@@ -1179,6 +1180,23 @@ func (c *cloneContext) clonePtrjsonSerializePayload(v *jsonSerializePayload) *js
 	return &n
 }
 
+func (c *cloneContext) cloneValuekeysetCursor(v keysetCursor) keysetCursor {
+	n := v
+	n.values = cloneSlice(v.values)
+	for i1 := range n.values {
+		n.values[i1] = c.expr(v.values[i1])
+	}
+	return n
+}
+
+func (c *cloneContext) clonePtrkeysetCursor(v *keysetCursor) *keysetCursor {
+	if v == nil {
+		return nil
+	}
+	n := c.cloneValuekeysetCursor(*v)
+	return &n
+}
+
 func (c *cloneContext) cloneValuematerializedViewDestination(v materializedViewDestination) materializedViewDestination {
 	n := v
 	n.columns = cloneSlice(v.columns)
@@ -1353,6 +1371,20 @@ func (c *cloneContext) clonePtrsubqueryExpression(v *subqueryExpression) *subque
 	return &n
 }
 
+func (c *cloneContext) cloneValueunaryExpression(v unaryExpression) unaryExpression {
+	n := v
+	n.expr = c.expr(v.expr)
+	return n
+}
+
+func (c *cloneContext) clonePtrunaryExpression(v *unaryExpression) *unaryExpression {
+	if v == nil {
+		return nil
+	}
+	n := c.cloneValueunaryExpression(*v)
+	return &n
+}
+
 func (c *cloneContext) cloneValueversionedExpression(v versionedExpression) versionedExpression {
 	n := v
 	n.expr = c.expr(v.expr)
@@ -1394,7 +1426,6 @@ func (c *cloneContext) clonePtrxmlExpression(v *xmlExpression) *xmlExpression {
 
 func (c *cloneContext) expr(e Expr) Expr {
 	n := e
-	n.node = c.clonePtrexpression(e.node)
 	n.value = c.cloneExprPayload(e.kind, e.value)
 	return n
 }
@@ -1402,11 +1433,11 @@ func (c *cloneContext) expr(e Expr) Expr {
 func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
 	switch kind {
 	case exprAlias:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprBetween:
 		return c.clonePtrbetweenExpression(ownedPayload[*betweenExpression](value))
 	case exprBinary:
-		return value
+		return c.clonePtrexpression(ownedPayload[*expression](value))
 	case exprCall:
 		return c.clonePtrcallExpression(ownedPayload[*callExpression](value))
 	case exprCase:
@@ -1414,13 +1445,13 @@ func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
 	case exprCast:
 		return c.clonePtrcastExpression(ownedPayload[*castExpression](value))
 	case exprCollate:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprExists:
 		return c.clonePtrsubqueryExpression(ownedPayload[*subqueryExpression](value))
 	case exprField:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprFields:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprFragment:
 		return c.cloneExprs(ownedPayload[[]Expr](value))
 	case exprGroup:
@@ -1444,11 +1475,11 @@ func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
 	case exprParameter:
 		return value
 	case exprPostfix:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprPrefix:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprQuantified:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprRaw:
 		return value
 	case exprSQLJSON:
@@ -1458,13 +1489,13 @@ func (c *cloneContext) cloneExprPayload(kind exprKind, value any) any {
 	case exprSlice:
 		return c.clonePtrsliceExpression(ownedPayload[*sliceExpression](value))
 	case exprSpecialCall:
-		return value
+		return c.clonePtrunaryExpression(ownedPayload[*unaryExpression](value))
 	case exprStringLiteral:
 		return value
 	case exprSubquery:
 		return c.clonePtrsubqueryExpression(ownedPayload[*subqueryExpression](value))
 	case exprSubscript:
-		return value
+		return c.clonePtrexpression(ownedPayload[*expression](value))
 	case exprVersioned:
 		return c.clonePtrversionedExpression(ownedPayload[*versionedExpression](value))
 	case exprXML:
@@ -1501,6 +1532,8 @@ func (c *cloneContext) cloneRelationPayload(kind relationKind, value any) any {
 		return c.clonePtrJSONTableBuilder(ownedPayload[*JSONTableBuilder](value))
 	case relationJoin:
 		return c.clonePtrjoinExpression(ownedPayload[*joinExpression](value))
+	case relationMatching:
+		return ownedPayload[*SelectBuilder](c.statement(ownedPayload[*SelectBuilder](value)))
 	case relationRowsFrom:
 		n := cloneSlice(ownedPayload[[]RecordFunction](value))
 		for i := range n {

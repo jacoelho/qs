@@ -208,6 +208,7 @@ func (c *cloneContext) rowset(s Rowset) Rowset { return s }
 }
 
 func newGenerator(info *packageInfo) *generator {
+	const unaryPayload = "*unaryExpression"
 	return &generator{
 		info:    info,
 		visited: make(map[string]bool),
@@ -220,29 +221,29 @@ func newGenerator(info *packageInfo) *generator {
 			"exprLiteral":         policyShallow,
 			"exprKeyword":         policyShallow,
 			"exprStringLiteral":   policyShallow,
-			"exprBinary":          policyShallow,
-			"exprPrefix":          policyShallow,
-			"exprPostfix":         policyShallow,
+			"exprBinary":          "*expression",
+			"exprPrefix":          unaryPayload,
+			"exprPostfix":         unaryPayload,
 			"exprGroup":           policyExprSlice,
 			"exprFragment":        policyExprSlice,
-			"exprAlias":           policyShallow,
+			"exprAlias":           unaryPayload,
 			"exprCast":            "*castExpression",
 			"exprCall":            "*callExpression",
-			"exprSpecialCall":     policyShallow,
+			"exprSpecialCall":     unaryPayload,
 			"exprSubquery":        "*subqueryExpression",
 			"exprExists":          "*subqueryExpression",
 			"exprList":            policyExprSlice,
 			"exprMembership":      "*membershipExpression",
 			"exprBetween":         "*betweenExpression",
 			"exprCase":            "*caseExpression",
-			"exprQuantified":      policyShallow,
-			"exprSubscript":       policyShallow,
+			"exprQuantified":      unaryPayload,
+			"exprSubscript":       "*expression",
 			"exprSlice":           "*sliceExpression",
-			"exprCollate":         policyShallow,
+			"exprCollate":         unaryPayload,
 			"exprSQLJSON":         "*JSONQueryBuilder",
 			"exprVersioned":       "*versionedExpression",
-			"exprField":           policyShallow,
-			"exprFields":          policyShallow,
+			"exprField":           unaryPayload,
+			"exprFields":          unaryPayload,
 			"exprSQLSyntax":       "*sqlSyntaxExpression",
 			"exprXML":             "*xmlExpression",
 			"exprJSONConstructor": "*jsonConstructor",
@@ -257,6 +258,7 @@ func newGenerator(info *packageInfo) *generator {
 			"relationSQL":        policyExpr,
 			"relationJSONTable":  "*JSONTableBuilder",
 			"relationXMLTable":   "*XMLTableBuilder",
+			"relationMatching":   "*SelectBuilder",
 		},
 		jsonPayload: map[string]string{
 			"jsonObjectConstructor":     "*jsonObjectConstructorPayload",
@@ -277,16 +279,6 @@ func newGenerator(info *packageInfo) *generator {
 			"exprLiteral":       policyNil,
 			"exprKeyword":       policyNil,
 			"exprStringLiteral": policyNil,
-			"exprBinary":        policyNil,
-			"exprPrefix":        policyNil,
-			"exprPostfix":       policyNil,
-			"exprAlias":         policyNil,
-			"exprSpecialCall":   policyNil,
-			"exprQuantified":    policyNil,
-			"exprSubscript":     policyNil,
-			"exprCollate":       policyNil,
-			"exprField":         policyNil,
-			"exprFields":        policyNil,
 		},
 	}
 }
@@ -1239,7 +1231,11 @@ func (g *generator) emitUnionWalkers(b *bytes.Buffer) {
 			fmt.Fprintln(b, "\t\tfor i := range n { n[i] = c.cloneValueRecordFunction(n[i]) }")
 			fmt.Fprintln(b, "\t\treturn n")
 		default:
-			if pointer, ok := strings.CutPrefix(payload, "*"); ok {
+			if pointer, ok := strings.CutPrefix(payload, "*"); ok && isRoot(g.info.roots, pointer) {
+				// Statement payloads share the memoized graph copy, so a builder
+				// reached twice is cloned once.
+				fmt.Fprintf(b, "\t\treturn ownedPayload[%s](c.statement(ownedPayload[%s](value)))\n", payload, payload)
+			} else if ok {
 				fmt.Fprintf(b, "\t\treturn c.clonePtr%s(ownedPayload[%s](value))\n", pointer, payload)
 			} else {
 				fmt.Fprintf(b, "\t\treturn c.cloneValue%s(ownedPayload[%s](value))\n", payload, payload)

@@ -61,6 +61,7 @@ func TestInvalidConstruction(t *testing.T) {
 		{"order_zero", Select(LiteralInt(1)).OrderBy(Order{})}, {"ordinal_zero", Select(LiteralInt(1)).OrderBy(Ordinal(0).Asc())},
 		{"lock_distinct", Select(Star()).From("t").Distinct().Lock(ForUpdate())},
 		{"lock_group", Select(Col("id")).From("t").GroupBy("id").Lock(ForUpdate())},
+		{"lock_having", Select(Col("id")).From("t").Having(True()).Lock(ForUpdate())},
 		{"lock_zero", Select(Star()).From("t").Lock(LockClause{})},
 		{"join_no_from", Select(Star()).Join("t", True())},
 		{"subquery_nil", Select(Star()).FromExpr(Subquery(nil, "s"))},

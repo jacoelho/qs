@@ -51,12 +51,15 @@ const (
 // for trusted syntax. It represents a SQL expression, not a schema proof.
 type Expr struct {
 	value any
-	node  *expression
 	text  string
 	kind  exprKind
 }
 
 type expression struct{ left, right Expr }
+type unaryExpression struct{ expr Expr }
+
+func (e Expr) unary() Expr { return ownedPayload[*unaryExpression](e.value).expr }
+
 type invalidExpression struct{ clause, detail string }
 type castExpression struct {
 	expr Expr
@@ -112,8 +115,14 @@ func ParamNull[T any](value Null[T]) Expr {
 }
 
 // ArrayParam binds one driver-encoded array, with an explicit PostgreSQL cast.
-// The driver must support encoding []T; qs does not convert or copy the slice.
+// A nil slice binds an empty array, never SQL NULL, so that ANY, ALL and NOT
+// agree with In and NotIn on an empty list; use NullExpr(TypeArray(element))
+// for a NULL array. The driver must support encoding []T. qs does not copy a
+// non-nil slice, which must not be mutated before execution completes.
 func ArrayParam[T any](values []T, element DataType) Expr {
+	if values == nil {
+		values = []T{}
+	}
 	return Param(values).Cast(TypeArray(element))
 }
 
@@ -152,10 +161,13 @@ func LiteralString(value string) Expr { return Expr{kind: exprStringLiteral, tex
 
 // UnsafeSQL accepts trusted SQL syntax. It does not process placeholders or
 // parse statements. Never pass request data or manually numbered bind slots.
+// Operators render it verbatim; use Parenthesized when its own operators could
+// bind to a neighbouring operand. See AsCondition for combined conditions.
 func UnsafeSQL(trusted string) Expr { return Expr{kind: exprRaw, text: trusted} }
 
 // Fragment concatenates expressions with no implicit separators or parentheses.
 // SQL syntax must be explicit UnsafeSQL parts; values remain Param expressions.
+// See AsCondition for the boundary qs adds when it combines conditions.
 func Fragment(parts ...Expr) Expr {
 	if len(parts) == 0 {
 		return invalidExpr("fragment", "empty SQL fragment")
@@ -170,6 +182,37 @@ func (e Expr) Parenthesized() Expr {
 	return Expr{kind: exprGroup, value: []Expr{e}}
 }
 
+// orderTermSyntax returns the expression PostgreSQL parses for an ORDER BY
+// term. Its parser discards grouping parentheses around a single expression,
+// and version requirements render nothing, so ORDER BY (0x1) is still an
+// ordinal and ORDER BY ("x") may still name an output column.
+func orderTermSyntax(e Expr) Expr {
+	for {
+		switch e.kind {
+		case exprGroup:
+			parts := ownedPayload[[]Expr](e.value)
+			if len(parts) != 1 {
+				return e
+			}
+			e = parts[0]
+		case exprVersioned:
+			e = ownedPayload[*versionedExpression](e.value).expr
+		default:
+			return e
+		}
+	}
+}
+
+// enclosed concatenates parts inside one pair of parentheses. Structural forms
+// spelled with trusted syntax use it rather than Fragment so that they carry
+// their own precedence boundary.
+func enclosed(parts ...Expr) Expr {
+	return Expr{kind: exprGroup, value: cloneSlice(parts)}
+}
+
+// opaque reports whether e is trusted SQL without its own precedence boundary.
+func (e Expr) opaque() bool { return e.kind == exprRaw || e.kind == exprFragment }
+
 // StatementSQL is an extension point for trusted statement syntax, not a parser.
 // It intentionally does not implement Rowset; subqueries should be structural.
 func StatementSQL(parts ...Expr) *SQLStatement { return &SQLStatement{expr: Fragment(parts...)} }
@@ -180,7 +223,7 @@ type SQLStatement struct{ expr Expr }
 
 // As aliases an expression with a validated SQL identifier.
 func (e Expr) As(alias string) Expr {
-	return Expr{kind: exprAlias, text: alias, node: &expression{left: e}}
+	return Expr{kind: exprAlias, text: alias, value: &unaryExpression{e}}
 }
 
 // Cast adds an explicit PostgreSQL type cast to an expression.
@@ -191,18 +234,18 @@ func (e Expr) Cast(typ DataType) Expr {
 // Field selects one literal field name from a composite value. Col("a.b")
 // instead refers to a qualified column; these have different PostgreSQL rules.
 func (e Expr) Field(name string) Expr {
-	return Expr{kind: exprField, text: name, node: &expression{left: e}}
+	return Expr{kind: exprField, text: name, value: &unaryExpression{e}}
 }
 
 // Fields expands a composite value in PostgreSQL expression-list positions.
 // Its width is unknown until PostgreSQL resolves the composite type.
 func (e Expr) Fields() Expr {
-	return Expr{kind: exprFields, node: &expression{left: e}}
+	return Expr{kind: exprFields, value: &unaryExpression{e}}
 }
 
 // Collate applies a PostgreSQL collation name to an expression.
 func (e Expr) Collate(name string) Expr {
-	return Expr{kind: exprCollate, text: name, node: &expression{left: e}}
+	return Expr{kind: exprCollate, text: name, value: &unaryExpression{e}}
 }
 
 // Scalar requires one projected column when the projection width is known.
@@ -212,13 +255,13 @@ func Scalar(query Rowset) Expr {
 }
 
 func binary(left Expr, operator string, right Expr) Expr {
-	return Expr{kind: exprBinary, text: operator, node: &expression{left, right}}
+	return Expr{kind: exprBinary, text: operator, value: &expression{left, right}}
 }
 func prefix(operator string, right Expr) Expr {
-	return Expr{kind: exprPrefix, text: operator, node: &expression{right: right}}
+	return Expr{kind: exprPrefix, text: operator, value: &unaryExpression{right}}
 }
 func postfix(left Expr, operator string) Expr {
-	return Expr{kind: exprPostfix, text: operator, node: &expression{left: left}}
+	return Expr{kind: exprPostfix, text: operator, value: &unaryExpression{left}}
 }
 func listExpr(prefix string, items []Expr) Expr {
 	return Expr{kind: exprList, text: prefix, value: cloneSlice(items)}
@@ -269,7 +312,7 @@ func (e Expr) AtTimeZone(zone Expr) Expr { return binary(e, "AT TIME ZONE", zone
 // Index is PostgreSQL subscripting (SQL arrays are conventionally 1-based).
 // Index returns a PostgreSQL subscript expression for e and index.
 func (e Expr) Index(index Expr) Expr {
-	return Expr{kind: exprSubscript, node: &expression{left: e, right: index}}
+	return Expr{kind: exprSubscript, value: &expression{left: e, right: index}}
 }
 
 // Slice returns a PostgreSQL slice with both lower and upper bounds.
@@ -330,7 +373,7 @@ func QualifiedOperator(left Expr, schema, operator string, right Expr) Expr {
 	if !validOperator(operator) {
 		return invalidExpr("operator", "invalid symbolic operator")
 	}
-	return Fragment(UnsafeSQL("("), left, UnsafeSQL(" OPERATOR("), Ident(schema), UnsafeSQL("."+operator+") "), right, UnsafeSQL(")"))
+	return enclosed(left, UnsafeSQL(" OPERATOR("), Ident(schema), UnsafeSQL("."+operator+") "), right)
 }
 
 func (w *renderer) exprs(exprs []Expr, separator string) {
@@ -464,12 +507,13 @@ func (w *renderer) renderStringLiteral(value string) {
 }
 
 func (w *renderer) renderBinary(e Expr) {
+	n := ownedPayload[*expression](e.value)
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(n.left)
 	w.byte(' ')
 	w.text(e.text)
 	w.byte(' ')
-	w.expr(e.node.right)
+	w.expr(n.right)
 	w.byte(')')
 }
 
@@ -477,13 +521,13 @@ func (w *renderer) renderPrefix(e Expr) {
 	w.byte('(')
 	w.text(e.text)
 	w.byte(' ')
-	w.expr(e.node.right)
+	w.expr(e.unary())
 	w.byte(')')
 }
 
 func (w *renderer) renderPostfix(e Expr) {
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.byte(' ')
 	w.text(e.text)
 	w.byte(')')
@@ -500,7 +544,7 @@ func (w *renderer) renderFragment(e Expr) {
 }
 
 func (w *renderer) renderAlias(e Expr) {
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.text(" AS ")
 	w.identifierPart(e.text)
 }
@@ -514,7 +558,7 @@ func (w *renderer) renderCast(e Expr) {
 }
 
 func (w *renderer) renderField(e Expr) {
-	w.indirectionBase(e.node.left)
+	w.indirectionBase(e.unary())
 	w.byte('.')
 	if e.kind == exprField {
 		w.identifierPart(e.text)
@@ -577,14 +621,15 @@ func (w *renderer) renderBetween(e Expr) {
 func (w *renderer) renderQuantified(e Expr) {
 	w.text(e.text)
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.byte(')')
 }
 
 func (w *renderer) renderSubscript(e Expr) {
-	w.indirectionBase(e.node.left)
+	n := ownedPayload[*expression](e.value)
+	w.indirectionBase(n.left)
 	w.byte('[')
-	w.expr(e.node.right)
+	w.expr(n.right)
 	w.byte(']')
 }
 
@@ -604,7 +649,7 @@ func (w *renderer) renderSlice(e Expr) {
 
 func (w *renderer) renderCollate(e Expr) {
 	w.byte('(')
-	w.expr(e.node.left)
+	w.expr(e.unary())
 	w.text(" COLLATE ")
 	w.identifierPath(e.text, false)
 	w.byte(')')

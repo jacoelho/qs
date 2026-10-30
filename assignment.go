@@ -95,10 +95,12 @@ func unqualifiedTarget(column Expr) Expr {
 		if len(parts) > 0 {
 			column = Ident(parts[len(parts)-1])
 		}
-	case exprField, exprSubscript:
-		n := *column.node
+	case exprField:
+		column.value = &unaryExpression{unqualifiedTarget(column.unary())}
+	case exprSubscript:
+		n := *ownedPayload[*expression](column.value)
 		n.left = unqualifiedTarget(n.left)
-		column.node = &n
+		column.value = &n
 	case exprSlice:
 		n := *ownedPayload[*sliceExpression](column.value)
 		n.value = unqualifiedTarget(n.value)
@@ -199,13 +201,14 @@ func (w *renderer) assignmentTarget(e Expr) {
 	case exprIdentifierParts:
 		w.identifierParts(e)
 	case exprField:
-		w.assignmentTarget(e.node.left)
+		w.assignmentTarget(e.unary())
 		w.byte('.')
 		w.identifierPart(e.text)
 	case exprSubscript:
-		w.assignmentTarget(e.node.left)
+		n := ownedPayload[*expression](e.value)
+		w.assignmentTarget(n.left)
 		w.byte('[')
-		w.expr(e.node.right)
+		w.expr(n.right)
 		w.byte(']')
 	case exprSlice:
 		n := ownedPayload[*sliceExpression](e.value)
