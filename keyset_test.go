@@ -41,6 +41,10 @@ func TestSeekAfterRendersKeysetPredicate(t *testing.T) {
 			`SELECT "t"."y" AS "x" FROM "t" WHERE ("t"."x" > $1) ORDER BY "t"."x" ASC`, []any{1}},
 		{"alias_without_cursor", Select(Col("a").As("x")).From("t").OrderBy(Asc("x")),
 			`SELECT "a" AS "x" FROM "t" ORDER BY "x" ASC`, nil},
+		{"parenthesized_alias_of_same_column", Select(Col("x").Parenthesized().As("x")).From("t").OrderBy(Asc("x")).SeekAfter(1),
+			`SELECT ("x") AS "x" FROM "t" WHERE ("x" > $1) ORDER BY "x" ASC`, []any{1}},
+		{"parenthesized_key_beside_alias", Select(Col("a").As("x")).From("t").OrderBy(Col("id").Parenthesized().Asc()).SeekAfter(1),
+			`SELECT "a" AS "x" FROM "t" WHERE (("id") > $1) ORDER BY ("id") ASC`, []any{1}},
 	})
 }
 
@@ -84,6 +88,13 @@ func TestSeekAfterRejectsUnpageableOrdering(t *testing.T) {
 		{"alias_of_other_expression", Select(Col("a").As("x")).From("t").OrderBy(Asc("x")).SeekAfter(1), "keyset"},
 		{"alias_of_computed_expression", Select(Col("a").Add(Param(1)).As("x")).From("t").OrderBy(Ident("x").Asc()).SeekAfter(1), "keyset"},
 		{"alias_of_qualified_column", Select(Col("t.x").As("x")).From("t").OrderBy(Asc("x")).SeekAfter(1), "keyset"},
+		// PostgreSQL discards grouping parentheses, so (1) is still an ordinal and
+		// ("x") still resolves to an output column in ORDER BY.
+		{"parenthesized_ordinal", page(Ordinal(1).Parenthesized().Asc()).SeekAfter(1), "keyset"},
+		{"doubly_parenthesized_ordinal", page(Ordinal(1).Parenthesized().Parenthesized().Asc()).SeekAfter(1), "keyset"},
+		{"parenthesized_bound_value_key", page(Param(1).Parenthesized().Asc()).SeekAfter(1), "keyset"},
+		{"parenthesized_alias_of_other_expression", Select(Col("a").As("x")).From("t").OrderBy(Ident("x").Parenthesized().Asc()).SeekAfter(1), "keyset"},
+		{"alias_of_other_parenthesized_column", Select(Col("a").Parenthesized().As("x")).From("t").OrderBy(Asc("x")).SeekAfter(1), "keyset"},
 		{"nil_first_value", page(Asc("a"), Asc("id")).SeekAfter(nil, 1), "comparison"},
 		{"nil_rest_value", page(Asc("a"), Asc("id")).SeekAfter(1, nil), "comparison"},
 	} {

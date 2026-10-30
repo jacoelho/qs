@@ -182,6 +182,20 @@ func (e Expr) Parenthesized() Expr {
 	return Expr{kind: exprGroup, value: []Expr{e}}
 }
 
+// unparenthesized strips grouping parentheses around a single expression.
+// PostgreSQL's parser discards them, so ORDER BY (1) is still an ordinal and
+// ORDER BY ("x") may still name an output column.
+func unparenthesized(e Expr) Expr {
+	for e.kind == exprGroup {
+		parts := ownedPayload[[]Expr](e.value)
+		if len(parts) != 1 {
+			break
+		}
+		e = parts[0]
+	}
+	return e
+}
+
 // enclosed concatenates parts inside one pair of parentheses. Structural forms
 // spelled with trusted syntax use it rather than Fragment so that they carry
 // their own precedence boundary.

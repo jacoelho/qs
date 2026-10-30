@@ -18,7 +18,8 @@ const (
 	relationJSONTable
 	relationXMLTable
 	// relationMatching holds the live *SelectBuilder of CountRows, rendered
-	// without its ORDER BY, cursor, pagination and locks.
+	// without its cursor, pagination, locks or sort; ORDER BY expressions that
+	// may change the rows move into its projection.
 	relationMatching
 )
 

@@ -41,6 +41,7 @@ func TestRenderErrorStructuralPaths(t *testing.T) {
 		{"keyset_cursor", Select(LiteralInt(1)).From("t").OrderBy(Asc("private_a"), Asc("private_b")).SeekAfter("private_value", nil), []string{"SELECT", "WHERE", "keyset", "cursor[2]"}},
 		{"keyset_width", Select(LiteralInt(1)).From("t").OrderBy(Asc("private_a")).SeekAfter("private_value", 2), []string{"SELECT", "WHERE", "keyset"}},
 		{"count_rows", CountRows(Select(LiteralInt(1), Expr{}).From("private_t")), []string{"SELECT", "FROM", "relation[1]", "subquery", "SELECT", "projection", "expression[2]"}},
+		{"count_rows_order", CountRows(Select(LiteralInt(1)).From("private_t").OrderBy(Asc("private_a"), Expr{}.Asc(), Asc("private_b"))), []string{"SELECT", "FROM", "relation[1]", "subquery", "SELECT", "ORDER BY", "order[2]"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

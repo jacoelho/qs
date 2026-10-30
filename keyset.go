@@ -23,19 +23,20 @@ func (c *keysetCursor) clear() {
 // order, for keyset pagination. Pass the ORDER BY key values of the last row of
 // the previous page, one per term; each call replaces the cursor. Rendering
 // fails with ErrInvalid unless the cursor width equals the ORDER BY width and
-// every term is an ASC or DESC expression without NULLS FIRST/LAST, USING or an
-// ordinal. It also fails for DISTINCT ON, and when a bare column key names an
-// output alias of a different expression; page such queries by wrapping them
-// with Subquery. Set operations, VALUES and TABLE are paged the same way.
+// every term is an ASC or DESC expression over rows, not an ordinal or bound
+// value, without NULLS FIRST/LAST or USING. It also fails for DISTINCT ON, and
+// when a bare column key names an output alias of a different expression; page
+// such queries by wrapping them with Subquery. Set operations, VALUES and TABLE
+// are paged the same way.
 //
 // qs cannot check the schema. Pages are complete and disjoint only when every
 // key is NOT NULL and the last term is unique, such as a primary key. Keys are
 // evaluated in WHERE, where output aliases, aggregates and window functions are
 // unavailable, and window functions in the projection see only rows after the
 // cursor. Trusted SQL keys are compared in parentheses, and qs cannot check
-// whether they name an output alias. Untyped nil fails rendering. A typed nil
-// binds NULL: rows that tie with the cursor on every earlier key are skipped,
-// and a NULL first key selects no rows.
+// whether they are ordinals or name an output alias. Untyped nil fails
+// rendering. A typed nil binds NULL: rows that tie with the cursor on every
+// earlier key are skipped, and a NULL first key selects no rows.
 //
 // Uniform directions render one row comparison, ("a", "b") > ($1, $2), which a
 // B-tree index on the keys in that order can serve. Mixed directions expand to
@@ -97,10 +98,11 @@ func (b *SelectBuilder) keysetTerm(w *renderer, term Order) {
 	if !w.require(term.nulls == defaultNulls, "keyset", "order term cannot set NULLS FIRST or NULLS LAST; keys must be NOT NULL") {
 		return
 	}
-	if !w.require(term.expr.kind != exprLiteral && term.expr.kind != exprParameter, "keyset", "order term must be an expression over rows, not an ordinal or bound value") {
+	key := unparenthesized(term.expr)
+	if !w.require(key.kind != exprLiteral && key.kind != exprParameter, "keyset", "order term must be an expression over rows, not an ordinal or bound value") {
 		return
 	}
-	name, bare := bareIdentifier(term.expr)
+	name, bare := bareIdentifier(key)
 	if !bare {
 		return
 	}
@@ -108,7 +110,7 @@ func (b *SelectBuilder) keysetTerm(w *renderer, term Order) {
 		if column.kind != exprAlias || column.text != name {
 			continue
 		}
-		if aliased, ok := bareIdentifier(column.unary()); !ok || aliased != name {
+		if aliased, ok := bareIdentifier(unparenthesized(column.unary())); !ok || aliased != name {
 			// ORDER BY resolves a bare name to the output column, but WHERE
 			// resolves it to an input column, so the pages would follow a
 			// different ordering than the cursor.

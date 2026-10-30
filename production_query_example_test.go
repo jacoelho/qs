@@ -51,7 +51,8 @@ func ExampleSelectBuilder_SeekAfter() {
 	// Seek after the first row shown in reverse order, then reverse the rows.
 	previous := feed.Clone().OrderBy(order[0].Reverse(), order[1].Reverse()).
 		SeekAfter(int64(1700000500), int64(61)).Limit(20)
-	// The count ignores ORDER BY, the cursor and LIMIT.
+	// The count omits the ORDER BY clause, the cursor and LIMIT. Column keys
+	// cannot change the rows, so none move into the counted projection.
 	total := qs.CountRows(next)
 	for _, q := range []*qs.SelectBuilder{next, previous, total} {
 		query, args, err := q.ToSQL()

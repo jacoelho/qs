@@ -243,7 +243,7 @@ func (b *SelectBuilder) append(w *renderer) {
 // is supplied by SelectIntoBuilder so SELECT remains a composable Rowset and
 // never retains destination state itself.
 func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
-	b.appendRows(w, into, b.cursor)
+	b.appendRows(w, into, b.cursor, nil)
 	if w.err != nil {
 		return
 	}
@@ -254,8 +254,10 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 }
 
 // appendRows renders everything before ORDER BY: the rows that ordering and
-// pagination select from, or that CountRows counts when cursor is nil.
-func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cursor *keysetCursor) {
+// pagination select from, or that CountRows counts when cursor is nil. The
+// projection is followed by the order expressions that may change those rows;
+// CountRows passes ORDER BY there because it omits the clause itself.
+func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cursor *keysetCursor, order []Order) {
 	if !w.require(len(b.columns) > 0 || b.noColumns, "SELECT", "requires a projection or SelectNoColumns") {
 		return
 	}
@@ -287,6 +289,10 @@ func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cur
 	}
 	w.exprs(b.columns, ", ")
 	if w.stopped("projection", 0) {
+		return
+	}
+	b.appendOrderExprs(w, order)
+	if w.err != nil {
 		return
 	}
 	if into != nil {

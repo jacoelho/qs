@@ -354,9 +354,9 @@ different expression. Keys are evaluated in WHERE, so they cannot refer to
 output aliases, aggregates, or window functions; wrap such a query with
 `Subquery` and page the outer SELECT. Page set operations, VALUES, and TABLE the
 same way. A trusted SQL key is compared in parentheses, so `NOT archived` keeps
-its meaning, but qs cannot check whether it names an output alias.
-qs cannot inspect the schema: pages are complete and
-disjoint only when every key is NOT NULL and the last key is unique.
+its meaning, but qs cannot check whether it is an ordinal or names an output
+alias. qs cannot inspect the schema: pages are complete and disjoint only when
+every key is NOT NULL and the last key is unique.
 
 For the previous page, reverse each term, seek after the first row of the
 current page, and reverse the fetched rows:
@@ -372,7 +372,7 @@ previous := base.Clone().
 
 ### Count matching rows
 
-`CountRows` counts the rows a query selects before ordering and pagination:
+`CountRows` counts the rows a query selects without its cursor and pagination:
 
 ```go
 total := qs.CountRows(next)
@@ -382,9 +382,15 @@ total := qs.CountRows(next)
 SELECT count(*) FROM (SELECT "id" FROM "users" WHERE ("active" = $1)) AS "matching"
 ```
 
-The count omits ORDER BY, the `SeekAfter` cursor, LIMIT, OFFSET, FETCH, and
-row locks, and keeps WITH, DISTINCT, GROUP BY, and HAVING. It renders the query
-live, so filters added later also apply; count `query.Clone()` for a fixed
+The count omits the `SeekAfter` cursor, LIMIT, OFFSET, FETCH, and row locks,
+and keeps WITH, DISTINCT, GROUP BY, and HAVING. It does not sort, but ORDER BY
+expressions other than column names, ordinals, and bound values move into the
+counted projection as `qs_order_N` columns, so a set-returning function such as
+`unnest(tags)` or an aggregate such as `count(*)` still changes the rows.
+DISTINCT ON and GROUP BY must not name columns `qs_order_N`. Volatile moved
+expressions run for every counted row, and a trusted SQL term naming an output
+column can fail, so order by the aliased expression. The count renders the
+query live, so filters added later also apply; count `query.Clone()` for a fixed
 query. The count is a separate statement that agrees with the pages only when
 both run in one REPEATABLE READ or SERIALIZABLE transaction.
 

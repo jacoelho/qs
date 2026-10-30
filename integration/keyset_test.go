@@ -103,18 +103,7 @@ func TestCountRowsMatchesIndependentCounts(t *testing.T) {
 	t.Parallel()
 	session := connect(t)
 	createKeysetRows(t, session)
-	count := func(query *qs.SelectBuilder) int64 {
-		t.Helper()
-		sql, args, err := session.render(t, query)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var n int64
-		if err := session.QueryRow(session, sql, args...).Scan(&n); err != nil {
-			t.Fatalf("%s: %v", sql, err)
-		}
-		return n
-	}
+	count := func(query qs.Statement) int64 { t.Helper(); return scalarCount(t, session, query) }
 
 	all := keysetRows(t, session, qs.SelectCols("a", "b", "id").From("r"))
 	var matching int64
@@ -166,6 +155,108 @@ func TestCountRowsMatchesIndependentCounts(t *testing.T) {
 	}
 	if locked := qs.SelectCols("id").From("r").Lock(qs.ForUpdate()); count(qs.CountRows(locked)) != int64(len(all)) {
 		t.Fatal("locked query count differs from row count")
+	}
+}
+
+// scalarCount runs a statement that returns one count.
+func scalarCount(t *testing.T, session *testSession, statement qs.Statement) int64 {
+	t.Helper()
+	sql, args, err := session.render(t, statement)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var n int64
+	if err := session.QueryRow(session, sql, args...).Scan(&n); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	return n
+}
+
+// fetchedRows runs query and returns how many rows PostgreSQL produced.
+func fetchedRows(t *testing.T, session *testSession, query *qs.SelectBuilder) int64 {
+	t.Helper()
+	sql, args, err := session.render(t, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := session.Query(session, sql, args...)
+	if err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	defer rows.Close()
+	var n int64
+	for rows.Next() {
+		n++
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	return n
+}
+
+// ORDER BY can change which rows a query returns: PostgreSQL evaluates a
+// set-returning function there once per row and an aggregate there groups the
+// query. The count of a paged query must match the rows of the unpaged query.
+//
+//nolint:tparallel // Subtests share one pgx.Conn, which cannot be used concurrently.
+func TestCountRowsMatchesRowsOfOrderedQuery(t *testing.T) {
+	t.Parallel()
+	session := connect(t)
+	createKeysetRows(t, session)
+	for _, tc := range []struct {
+		name  string
+		query func() *qs.SelectBuilder
+		seek  []any
+		want  int64
+	}{
+		{"set_returning_function", func() *qs.SelectBuilder {
+			return qs.SelectCols("id").From("r").OrderBy(qs.Call("unnest", qs.UnsafeSQL("ARRAY[1, 2]")).Asc(), qs.Asc("id"))
+		}, nil, 26},
+		{"aggregate", func() *qs.SelectBuilder {
+			return qs.Select(qs.LiteralInt(1)).From("r").OrderBy(qs.CountAll().Asc())
+		}, nil, 1},
+		{"window_over_aggregate", func() *qs.SelectBuilder {
+			return qs.Select(qs.LiteralInt(1)).From("r").OrderBy(qs.Sum(qs.CountAll()).Over(qs.Window()).Asc())
+		}, nil, 1},
+		{"outer_level_aggregate", func() *qs.SelectBuilder {
+			return qs.Select(qs.LiteralInt(1)).From("r").OrderBy(qs.Scalar(qs.Select(qs.Max(qs.Col("r.id")))).Asc())
+		}, nil, 1},
+		{"grouped_aggregate", func() *qs.SelectBuilder {
+			return qs.SelectCols("a").From("r").GroupBy("a").OrderBy(qs.CountAll().Desc(), qs.Asc("a"))
+		}, nil, 3},
+		// DISTINCT ON keeps one row per group of the rows the empty
+		// set-returning function leaves, which are none.
+		{"distinct_on_set_returning_function", func() *qs.SelectBuilder {
+			return qs.SelectCols("id").DistinctOn(qs.Col("a")).From("r").
+				OrderBy(qs.Asc("a"), qs.Call("unnest", qs.UnsafeSQL("'{}'::bigint[]")).Asc())
+		}, nil, 0},
+		// A cast output takes the name of its column. Unnamed, the moved term
+		// would be the "a" DISTINCT ON resolves to: ambiguous beside the
+		// projected column, and two boolean groups instead of three without it.
+		{"distinct_on_beside_moved_column_name", func() *qs.SelectBuilder {
+			return qs.SelectCols("a", "id").DistinctOn(qs.Col("a")).From("r").
+				OrderBy(qs.Asc("a"), qs.Col("a").Cast(qs.TypeText).Asc())
+		}, nil, 3},
+		{"distinct_on_moved_column_name", func() *qs.SelectBuilder {
+			return qs.SelectCols("id").DistinctOn(qs.Col("a")).From("r").
+				OrderBy(qs.Asc("a"), qs.Col("a").Cast(qs.TypeInt4).Cast(qs.TypeBool).Asc())
+		}, nil, 3},
+		{"bound_expression_key", func() *qs.SelectBuilder {
+			return qs.SelectCols("id").From("r").OrderBy(qs.Call("abs", qs.Col("id").Sub(qs.Param(int64(4)))).Asc(), qs.Asc("id"))
+		}, []any{int64(0), int64(4)}, 13},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := fetchedRows(t, session, tc.query()); got != tc.want {
+				t.Fatalf("query returned %d rows; want %d", got, tc.want)
+			}
+			paged := tc.query().Limit(2).Offset(1)
+			if tc.seek != nil {
+				paged.SeekAfter(tc.seek[0], tc.seek[1:]...)
+			}
+			if got := scalarCount(t, session, qs.CountRows(paged)); got != tc.want {
+				t.Fatalf("count %d; want %d", got, tc.want)
+			}
+		})
 	}
 }
 

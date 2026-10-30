@@ -190,6 +190,25 @@ own statement scope without ORDER BY, cursor, LIMIT, OFFSET, FETCH or locks; it
 keeps the suffix, whose relation to the omitted clauses qs cannot know. Clone
 maps it through the same statement memoization as other references.
 
+ORDER BY is not inert: PostgreSQL evaluates an expression missing from the
+projection as a hidden output column, so a set-returning function there
+multiplies rows and an aggregate makes the query grouped. qs cannot tell those
+from other calls, so the count appends ORDER BY expressions to the counted
+projection, after the existing columns so ordinal references keep their
+positions. A hidden column has no name, but an appended one would take its
+function, column or field name, which DISTINCT ON and GROUP BY resolve against:
+DISTINCT ON could pick the moved term instead of the input column and miscount
+silently, and either clause could fail as ambiguous. Each appended expression
+is therefore aliased `qs_order_N`, N being its ORDER BY position. PostgreSQL 18
+drops unused outputs that are neither volatile nor set-returning, so no sort or
+extra evaluation remains for ordinary keys. Names, ordinals and bound values
+are skipped, after discarding grouping parentheses as PostgreSQL does: they
+cannot change the rows, and a name or ordinal may refer to an output column
+that the projection cannot see. SELECT DISTINCT is skipped because its ORDER BY
+expressions already appear in the projection. Keyset key validation discards
+the same parentheses, so `(1)` is an ordinal and `("x")` may name an output
+column there too.
+
 The standard-library clone generator discovers statement roots and traverses
 actual Go field types. Generated walkers register statement identities before
 recursion. One semantic policy classifies erased expression/JSON payloads and
@@ -297,6 +316,6 @@ alternatives are not supported APIs or implementation commitments.
 | 30 | Live/frozen graphs | Explicit generated graph copying; reject reflection, serialization, automatic snapshots, immutable-subtree sharing and mutation-sensitive caches. |
 | 31 | Keyset ownership | Builder-owned `SeekAfter`, derived from ORDER BY at render. Reject a separate keyset value (a second owner drifts from ORDER BY), typed arity (runtime-selected keys defeat it), `SeekBefore` (under the same ORDER BY and LIMIT it returns the first page) and the expansion without a leading bound (an index cannot bound the scan). |
 | 32 | Ordering direction | `Order.Reverse` involution, including NULLS; reject a `Direction` enum that cannot reverse whole terms. |
-| 33 | Count derivation | Live `CountRows` relation. Reject the Clone/Remove recipe (cannot remove locks and relies on callers removing every clause), `RemovePagination` (a manual snapshot that mutates the page), snapshots (miss later filters) and projection replacement (miscounts DISTINCT and GROUP BY). |
+| 33 | Count derivation | Live `CountRows` relation that appends ORDER BY expressions other than names, ordinals and bound values to the counted projection as `qs_order_N`. Reject the Clone/Remove recipe (cannot remove locks and relies on callers removing every clause), `RemovePagination` (a manual snapshot that mutates the page), snapshots (miss later filters), projection replacement (miscounts DISTINCT and GROUP BY), keeping ORDER BY (PostgreSQL keeps subquery sorts), rejecting terms qs cannot classify (breaks ordinary keys such as `lower(name)`) and detecting aggregates or set-returning functions by name (qs cannot classify `Call` or trusted SQL, so misses would miscount silently). Unaliased appended expressions are rejected because their default output names can capture DISTINCT ON and GROUP BY references. Trusted SQL naming an output column fails in PostgreSQL instead of counting wrongly. |
 | 34 | Comparison NULL | Reject untyped nil in comparison operands; binding it made comparisons silently false. |
 | 35 | Array NULL | Nil `ArrayParam` slices bind `{}`; NULL arrays require `NullExpr(TypeArray(...))`. |
