@@ -134,7 +134,7 @@ func (c Condition) EscapeExpr(character Expr) Condition {
 	}
 	e := c.expr
 	n := ownedPayload[*expression](e.value)
-	return AsCondition(Fragment(UnsafeSQL("("), n.left, UnsafeSQL(" "+e.text+" "), n.right, UnsafeSQL(" ESCAPE "), character, UnsafeSQL(")")))
+	return AsCondition(enclosed(n.left, UnsafeSQL(" "+e.text+" "), n.right, UnsafeSQL(" ESCAPE "), character))
 }
 
 func literalLikePattern(text string, mode literalLikeMode) string {

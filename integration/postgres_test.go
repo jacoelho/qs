@@ -330,6 +330,7 @@ func TestNullsAndArrayEncoding(t *testing.T) {
 		qs.Param(1).Cast(qs.TypeInt4).EqExpr(qs.NullLiteral()).Expr(),
 		qs.Param(1).Cast(qs.TypeInt4).InExpr(qs.Param(2), qs.NullLiteral()).Expr(),
 		qs.EqAny(qs.Param(int64(2)), qs.ArrayParam([]int64{1, 2}, qs.TypeInt8)).Expr(),
+		qs.EqAny(qs.Param(int64(2)), qs.ArrayParam([]int64(nil), qs.TypeInt8)).Expr(),
 	)
 	sql, args, err := session.render(t, q)
 	if err != nil {
@@ -338,11 +339,16 @@ func TestNullsAndArrayEncoding(t *testing.T) {
 	var absent, present pgtype.Text
 	var eq, in pgtype.Bool
 	var member bool
-	if err := conn.QueryRow(ctx, sql, args...).Scan(&absent, &present, &eq, &in, &member); err != nil {
+	var emptyMember pgtype.Bool
+	if err := conn.QueryRow(ctx, sql, args...).Scan(&absent, &present, &eq, &in, &member, &emptyMember); err != nil {
 		t.Fatalf("%s: %v", sql, err)
 	}
 	if absent.Valid || !present.Valid || present.String != "value" || eq.Valid || in.Valid || !member {
 		t.Fatal(absent, present, eq, in, member)
+	}
+	// A nil slice binds an empty array, so ANY is FALSE rather than NULL.
+	if !emptyMember.Valid || emptyMember.Bool {
+		t.Fatalf("ANY over nil ArrayParam = %v; want FALSE", emptyMember)
 	}
 }
 

@@ -20,6 +20,7 @@ type SelectBuilder struct {
 	having        []Condition
 	windows       []namedWindow
 	distinctOn    []Expr
+	cursor        *keysetCursor
 	tail          queryTail
 	base          statementBase
 	noColumns     bool
@@ -242,6 +243,19 @@ func (b *SelectBuilder) append(w *renderer) {
 // is supplied by SelectIntoBuilder so SELECT remains a composable Rowset and
 // never retains destination state itself.
 func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
+	b.appendRows(w, into, b.cursor)
+	if w.err != nil {
+		return
+	}
+	// An unused WINDOW definition does not prevent row locking. The tail checks
+	// structural OVER use after ORDER BY and pagination expressions are rendered.
+	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0)
+	w.foot(b.base)
+}
+
+// appendRows renders everything before ORDER BY: the rows that ordering and
+// pagination select from, or that CountRows counts when cursor is nil.
+func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cursor *keysetCursor) {
 	if !w.require(len(b.columns) > 0 || b.noColumns, "SELECT", "requires a projection or SelectNoColumns") {
 		return
 	}
@@ -288,12 +302,9 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 			return
 		}
 	}
-	if len(b.where) > 0 {
-		w.text(" WHERE ")
-		w.conditions(b.where)
-		if w.stopped("WHERE", 0) {
-			return
-		}
+	b.appendWhere(w, cursor)
+	if w.err != nil {
+		return
 	}
 	if b.groupDistinct && !w.require(len(b.group) > 0, "GROUP BY", "DISTINCT requires grouping expressions") {
 		return
@@ -334,16 +345,31 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 			w.byte(')')
 		}
 	}
-	// An unused WINDOW definition does not prevent row locking. The tail checks
-	// structural OVER use after ORDER BY and pagination expressions are rendered.
-	w.tail(b.tail, b.distinct == selectAll && len(b.group) == 0 && len(b.having) == 0)
-	w.foot(b.base)
+}
+
+// appendWhere renders the WHERE conditions with an active cursor as the last
+// conjunct.
+func (b *SelectBuilder) appendWhere(w *renderer, cursor *keysetCursor) {
+	if len(b.where) == 0 && !cursor.active() {
+		return
+	}
+	w.text(" WHERE ")
+	w.conjunction(b.where, len(b.where) > 1 || cursor.active())
+	if cursor.active() && w.err == nil {
+		if len(b.where) > 0 {
+			w.text(" AND ")
+		}
+		b.keyset(w, cursor.values)
+		w.stopped("keyset", 0)
+	}
+	w.stopped("WHERE", 0)
 }
 
 // Reset releases retained parameter/expression references while retaining the
-// capacities of the main clause lists. It invalidates any dependent subqueries.
+// capacities of the main clause lists and the SeekAfter cursor. It invalidates
+// any dependent subqueries.
 func (b *SelectBuilder) Reset() {
-	columns, from, where, group, having, windows, order := b.columns, b.from, b.where, b.group, b.having, b.windows, b.tail.order
+	columns, from, where, group, having, windows, order, cursor := b.columns, b.from, b.where, b.group, b.having, b.windows, b.tail.order, b.cursor
 	clear(columns)
 	clear(from)
 	clear(where)
@@ -351,5 +377,6 @@ func (b *SelectBuilder) Reset() {
 	clear(having)
 	clear(windows)
 	clear(order)
-	*b = SelectBuilder{columns: columns[:0], from: from[:0], where: where[:0], group: group[:0], having: having[:0], windows: windows[:0], tail: queryTail{order: order[:0]}}
+	cursor.clear()
+	*b = SelectBuilder{columns: columns[:0], from: from[:0], where: where[:0], group: group[:0], having: having[:0], windows: windows[:0], cursor: cursor, tail: queryTail{order: order[:0]}}
 }

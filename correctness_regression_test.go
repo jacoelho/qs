@@ -2,6 +2,7 @@ package qs_test
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -262,33 +263,84 @@ func TestCorrectnessDedicatedSyntaxVersionGates(t *testing.T) {
 	}
 }
 
-func TestCorrectnessScalarComparisonsBindUntypedNil(t *testing.T) {
+func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name string
-		make func(string, any) qs.Condition
-		op   string
+	var nilSlice []any
+	field := qs.Typed[any]("value")
+	a, b, c, d := qs.Typed[any]("a"), qs.Typed[any]("b"), qs.Typed[any]("c"), qs.Typed[any]("d")
+	for _, tc := range []struct {
+		name      string
+		condition qs.Condition
 	}{
-		{"eq", qs.Eq, "="},
-		{"ne", qs.Ne, "<>"},
-		{"lt", qs.Lt, "<"},
-		{"lte", qs.Lte, "<="},
-		{"gt", qs.Gt, ">"},
-		{"gte", qs.Gte, ">="},
-	}
-	for _, tc := range tests {
+		{"eq", qs.Eq("value", nil)},
+		{"ne", qs.Ne("value", nil)},
+		{"lt", qs.Lt("value", nil)},
+		{"lte", qs.Lte("value", nil)},
+		{"gt", qs.Gt("value", nil)},
+		{"gte", qs.Gte("value", nil)},
+		{"expr_eq", qs.Col("value").Eq(nil)},
+		{"expr_gte", qs.Col("value").Gte(nil)},
+		{"field_eq", field.Eq(nil)},
+		{"in_first", qs.In[any]("value", nil, 1)},
+		{"in_last", qs.In[any]("value", 1, nil)},
+		{"in_all", qs.In[any]("value", nil, nil)},
+		{"not_in", qs.NotIn[any]("value", 1, nil)},
+		{"expr_in", qs.Col("value").In(1, nil)},
+		{"expr_not_in", qs.Col("value").NotIn(nil)},
+		{"field_in", field.In(1, nil)},
+		{"field_not_in", field.NotIn(nil, 1)},
+		{"between_low", qs.Between[any]("value", nil, 1)},
+		{"between_high", qs.Col("value").Between(1, nil)},
+		{"not_between", qs.Col("value").NotBetween(1, nil)},
+		{"field_between", field.Between(nil, 1)},
+		{"row_values", qs.Row(qs.Col("a"), qs.Col("b")).EqValues(1, nil)},
+		{"tuple2", qs.Tuple2(a, b).GtValues(1, nil)},
+		{"tuple3", qs.Tuple3(a, b, c).LtValues(1, 2, nil)},
+		{"tuple4", qs.Tuple4(a, b, c, d).NeValues(1, 2, 3, nil)},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			sql, args, err := qs.Select(tc.make("value", nil).Expr()).ToSQL()
-			want := `SELECT ("value" ` + tc.op + ` $1)`
-			if err != nil || sql != want || len(args) != 1 || args[0] != nil {
-				t.Fatalf("SQL=%q args=%#v err=%v; want SQL=%q and one nil argument", sql, args, err, want)
+			sql, args, err := qs.Select(tc.condition.Expr()).ToSQL()
+			if !errors.Is(err, qs.ErrInvalid) || sql != "" || args != nil {
+				t.Fatalf("SQL=%q args=%#v err=%v; want atomic ErrInvalid", sql, args, err)
 			}
 		})
 	}
-	if sql, args, err := qs.Select(qs.Eq("value", int64(1)).Expr()).ToSQL(); err != nil || len(args) != 1 {
-		t.Fatalf("typed dynamic comparison failed: SQL=%q args=%#v err=%v", sql, args, err)
-	} else if got, ok := args[0].(int64); !ok || got != 1 {
-		t.Fatalf("comparison changed dynamic type: %#v", args[0])
+	for _, query := range []*qs.SelectBuilder{
+		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("a"), qs.Asc("id")).SeekAfter(nil, 1),
+		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("a"), qs.Asc("id")).SeekAfter(1, nil),
+	} {
+		if sql, args, err := query.ToSQL(); !errors.Is(err, qs.ErrInvalid) || sql != "" || args != nil {
+			t.Fatalf("SeekAfter nil: SQL=%q args=%#v err=%v; want atomic ErrInvalid", sql, args, err)
+		}
+	}
+
+	for _, tc := range []struct {
+		name      string
+		statement qs.Statement
+		want      string
+		args      []any
+	}{
+		{"typed_nil_pointer", qs.Select(qs.Eq("value", (*int)(nil)).Expr()), `SELECT ("value" = $1)`, []any{(*int)(nil)}},
+		{"typed_dynamic_value", qs.Select(qs.Eq("value", int64(1)).Expr()), `SELECT ("value" = $1)`, []any{int64(1)}},
+		{"empty_in", qs.Select(qs.In[any]("value").Expr()), `SELECT FALSE`, nil},
+		{"empty_in_spread", qs.Select(qs.In("value", nilSlice...).Expr()), `SELECT FALSE`, nil},
+		{"param", qs.Select(qs.Param(nil)), `SELECT $1`, []any{nil}},
+		{"param_null", qs.Select(qs.ParamNull(qs.Null[int]{})), `SELECT $1`, []any{nil}},
+		{"write_value", qs.InsertInto("t").Values(qs.Value(nil)), `INSERT INTO "t" VALUES ($1)`, []any{nil}},
+		{"values_row", qs.Values(nil), `VALUES ($1)`, []any{nil}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			sql, args, err := tc.statement.ToSQL()
+			if err != nil || sql != tc.want || !reflect.DeepEqual(args, tc.args) {
+				t.Fatalf("SQL=%q args=%#v err=%v; want SQL=%q args=%#v", sql, args, err, tc.want, tc.args)
+			}
+			for i, arg := range args {
+				if reflect.TypeOf(arg) != reflect.TypeOf(tc.args[i]) {
+					t.Fatalf("argument %d has type %T, want %T", i+1, arg, tc.args[i])
+				}
+			}
+		})
 	}
 }

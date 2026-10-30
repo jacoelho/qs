@@ -260,6 +260,7 @@ func (c *cloneContext) cloneSelectBuilder(b *SelectBuilder) *SelectBuilder {
 	for i1 := range n.distinctOn {
 		n.distinctOn[i1] = c.expr(b.distinctOn[i1])
 	}
+	n.cursor = c.clonePtrkeysetCursor(b.cursor)
 	n.tail = c.cloneValuequeryTail(b.tail)
 	n.base = c.cloneValuestatementBase(b.base)
 	return &n
@@ -1179,6 +1180,23 @@ func (c *cloneContext) clonePtrjsonSerializePayload(v *jsonSerializePayload) *js
 	return &n
 }
 
+func (c *cloneContext) cloneValuekeysetCursor(v keysetCursor) keysetCursor {
+	n := v
+	n.values = cloneSlice(v.values)
+	for i1 := range n.values {
+		n.values[i1] = c.expr(v.values[i1])
+	}
+	return n
+}
+
+func (c *cloneContext) clonePtrkeysetCursor(v *keysetCursor) *keysetCursor {
+	if v == nil {
+		return nil
+	}
+	n := c.cloneValuekeysetCursor(*v)
+	return &n
+}
+
 func (c *cloneContext) cloneValuematerializedViewDestination(v materializedViewDestination) materializedViewDestination {
 	n := v
 	n.columns = cloneSlice(v.columns)
@@ -1514,6 +1532,8 @@ func (c *cloneContext) cloneRelationPayload(kind relationKind, value any) any {
 		return c.clonePtrJSONTableBuilder(ownedPayload[*JSONTableBuilder](value))
 	case relationJoin:
 		return c.clonePtrjoinExpression(ownedPayload[*joinExpression](value))
+	case relationMatching:
+		return ownedPayload[*SelectBuilder](c.statement(ownedPayload[*SelectBuilder](value)))
 	case relationRowsFrom:
 		n := cloneSlice(ownedPayload[[]RecordFunction](value))
 		for i := range n {

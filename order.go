@@ -6,6 +6,9 @@ const (
 	ascending direction = iota + 1
 	descending
 	usingOperator
+	// reversedUsing records Reverse of a USING term, whose reverse operator qs
+	// cannot derive. It renders as an error and reverses back to usingOperator.
+	reversedUsing
 )
 
 type nullOrdering uint8
@@ -48,6 +51,32 @@ func (o Order) NullsFirst() Order { o.nulls = nullsFirst; return o }
 // NullsLast places NULL values after non-NULL values.
 func (o Order) NullsLast() Order { o.nulls = nullsLast; return o }
 
+// Reverse returns the term that orders rows in exactly the opposite sequence.
+// ASC and DESC swap, and explicit NULLS FIRST/LAST swap; default NULL placement
+// already follows the direction. Reversing twice returns the original term.
+// qs cannot derive the reverse of a USING operator, so a reversed USING term
+// fails when rendered.
+func (o Order) Reverse() Order {
+	switch o.direction {
+	case ascending:
+		o.direction = descending
+	case descending:
+		o.direction = ascending
+	case usingOperator:
+		o.direction = reversedUsing
+	case reversedUsing:
+		o.direction = usingOperator
+	}
+	switch o.nulls {
+	case nullsFirst:
+		o.nulls = nullsLast
+	case nullsLast:
+		o.nulls = nullsFirst
+	case defaultNulls:
+	}
+	return o
+}
+
 // Ordinal is a 1-based output-column index for ORDER BY or GROUP BY, not a bind.
 func Ordinal(index int) Expr {
 	if index < 1 {
@@ -87,6 +116,9 @@ func (w *renderer) order(term Order) {
 		}
 		w.text(" USING ")
 		w.text(term.operator)
+	case reversedUsing:
+		w.fail(ErrInvalid, "ORDER BY", "a USING term cannot be reversed")
+		return
 	default:
 		w.fail(ErrInvalid, "ORDER BY", "zero ordering term")
 		return

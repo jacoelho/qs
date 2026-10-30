@@ -3,6 +3,9 @@
 // Ordinary values become bind parameters. Identifiers are quoted. SQL-suffixed
 // methods and UnsafeSQL accept trusted application-authored SQL, never request
 // text. A single renderer numbers parameters through nested statements.
+// Comparison operands, including In lists and SeekAfter cursors, reject untyped
+// nil because a comparison with SQL NULL is never true; Param, Value and
+// ParamNull bind it. Trusted conditions are parenthesized when qs combines them.
 //
 // Destination writes accept WriteValue: Value binds application data, Write
 // wraps an ordinary expression, and Default requests SQL DEFAULT. WriteRow and

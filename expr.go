@@ -115,8 +115,14 @@ func ParamNull[T any](value Null[T]) Expr {
 }
 
 // ArrayParam binds one driver-encoded array, with an explicit PostgreSQL cast.
-// The driver must support encoding []T; qs does not convert or copy the slice.
+// A nil slice binds an empty array, never SQL NULL, so that ANY, ALL and NOT
+// agree with In and NotIn on an empty list; use NullExpr(TypeArray(element))
+// for a NULL array. The driver must support encoding []T. qs does not copy a
+// non-nil slice, which must not be mutated before execution completes.
 func ArrayParam[T any](values []T, element DataType) Expr {
+	if values == nil {
+		values = []T{}
+	}
 	return Param(values).Cast(TypeArray(element))
 }
 
@@ -155,10 +161,13 @@ func LiteralString(value string) Expr { return Expr{kind: exprStringLiteral, tex
 
 // UnsafeSQL accepts trusted SQL syntax. It does not process placeholders or
 // parse statements. Never pass request data or manually numbered bind slots.
+// Operators render it verbatim; use Parenthesized when its own operators could
+// bind to a neighbouring operand. See AsCondition for combined conditions.
 func UnsafeSQL(trusted string) Expr { return Expr{kind: exprRaw, text: trusted} }
 
 // Fragment concatenates expressions with no implicit separators or parentheses.
 // SQL syntax must be explicit UnsafeSQL parts; values remain Param expressions.
+// See AsCondition for the boundary qs adds when it combines conditions.
 func Fragment(parts ...Expr) Expr {
 	if len(parts) == 0 {
 		return invalidExpr("fragment", "empty SQL fragment")
@@ -172,6 +181,16 @@ func Fragment(parts ...Expr) Expr {
 func (e Expr) Parenthesized() Expr {
 	return Expr{kind: exprGroup, value: []Expr{e}}
 }
+
+// enclosed concatenates parts inside one pair of parentheses. Structural forms
+// spelled with trusted syntax use it rather than Fragment so that they carry
+// their own precedence boundary.
+func enclosed(parts ...Expr) Expr {
+	return Expr{kind: exprGroup, value: cloneSlice(parts)}
+}
+
+// opaque reports whether e is trusted SQL without its own precedence boundary.
+func (e Expr) opaque() bool { return e.kind == exprRaw || e.kind == exprFragment }
 
 // StatementSQL is an extension point for trusted statement syntax, not a parser.
 // It intentionally does not implement Rowset; subqueries should be structural.
@@ -333,7 +352,7 @@ func QualifiedOperator(left Expr, schema, operator string, right Expr) Expr {
 	if !validOperator(operator) {
 		return invalidExpr("operator", "invalid symbolic operator")
 	}
-	return Fragment(UnsafeSQL("("), left, UnsafeSQL(" OPERATOR("), Ident(schema), UnsafeSQL("."+operator+") "), right, UnsafeSQL(")"))
+	return enclosed(left, UnsafeSQL(" OPERATOR("), Ident(schema), UnsafeSQL("."+operator+") "), right)
 }
 
 func (w *renderer) exprs(exprs []Expr, separator string) {

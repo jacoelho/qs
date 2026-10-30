@@ -104,10 +104,13 @@ Select the constructor that matches the input:
 | Server default at a write destination | `Default()` | Renders `DEFAULT` |
 
 Comparison helpers such as `Eq` bind application values, while `EqExpr` compares
-a column with an expression. For SQL NULL tests, use `IsNull`:
-`Eq("id", nil)` binds a nil argument and does not produce `IS NULL`.
+a column with an expression. For SQL NULL tests, use `IsNull` or `IsNotNull`.
+A comparison with SQL NULL is never true, so comparison operands, including `In` lists,
+`Between` bounds, row values, and `SeekAfter` cursors, reject untyped nil:
+`Eq("id", nil)` fails rendering with `ErrInvalid` rather than selecting no rows.
+A typed nil, such as `(*int)(nil)`, still binds.
 
-`Param` and scalar comparison helpers accept `any`, including untyped nil:
+`Param`, `Value`, and `ParamNull` bind untyped nil as SQL NULL:
 
 ```go
 query, args, err := qs.Select(qs.Param(nil).Cast(qs.TypeText)).ToSQL()
@@ -152,6 +155,13 @@ column named `"*"`. To select a qualified column path, use top-level
 application-authored SQL with qs expressions. Keep request values in bind
 parameters and never pass request text to these constructors. Raw fragments do
 not bind placeholders written directly in the SQL text.
+
+When qs combines a trusted condition with another, it parenthesizes the trusted
+condition. This applies to two `Where` conditions, a `SeekAfter` cursor, and
+`And`, `Or` and `Not`. `Where(qs.AsCondition(qs.UnsafeSQL("a OR b")))` with a
+cursor renders `WHERE (a OR b) AND (...)`. Other operators render trusted SQL
+verbatim, so call `Parenthesized` where its operators could bind to a
+neighbouring operand.
 
 Database authorization remains your application's responsibility, including
 database roles, row-level security (RLS), tenant context, and transactions.
@@ -270,7 +280,8 @@ Arguments: `[10 20 [staff active] al% 20]`.
 
 `TypedExpr[int64]` lets Go enforce the type of values passed to `id.In`, which
 produces FALSE for an empty list. `ArrayParam` binds a single array argument
-and casts it to `text[]`, leaving array encoding to the driver.
+and casts it to `text[]`, leaving array encoding to the driver. A nil slice
+binds an empty array rather than NULL, so `= ANY` is FALSE and `<> ALL` is TRUE.
 
 Choose the text comparison form according to your application's matching
 requirements. `LOWER(column) LIKE` and PostgreSQL `ILIKE` can give different
@@ -278,7 +289,9 @@ results for some locales and Unicode input, and Go's `strings.ToLower` can
 differ from PostgreSQL `LOWER`.
 
 `count(*) OVER ()` adds the count to each returned row, so an empty page has no
-row from which to read it.
+row from which to read it, and after a `SeekAfter` cursor it counts only the
+remaining rows. [Count matching rows](#count-matching-rows) with `CountRows`
+instead.
 
 ### Add limits and offsets
 
@@ -307,15 +320,73 @@ a limit or offset.
 call. Use `RemoveLimit` and `RemoveOffset` to clear the corresponding clauses.
 
 For predictable page boundaries, choose an ordering with a unique final key.
-Offset pagination can still shift as rows change between requests. For a query
-ordered by ID, you can instead use the last returned ID as a cursor:
+Offset pagination can still shift as rows change between requests, and the
+server still reads every skipped row.
+
+### Page with a keyset cursor
+
+`SeekAfter` continues after the last row of the previous page. Pass that row's
+ORDER BY key values, one per term:
 
 ```go
-page := base.Clone().
-    Where(qs.Gt("id", lastSeenID)).
-    OrderBy(qs.Asc("id")).
-    Limit(10)
+order := []qs.Order{qs.Desc("created_at"), qs.Desc("id")}
+next := base.Clone().
+    OrderBy(order...).
+    SeekAfter(lastCreatedAt, lastID).
+    Limit(20)
 ```
+
+```sql
+SELECT "id" FROM "users"
+WHERE ("active" = $1) AND (("created_at", "id") < ($2, $3))
+ORDER BY "created_at" DESC, "id" DESC LIMIT $4
+```
+
+The cursor follows every other WHERE condition, whatever the call order.
+Uniform directions render one row comparison, which a B-tree index on the keys
+in ORDER BY order can serve. Mixed directions render an equivalent disjunction
+that binds earlier keys again: three keys bind seven arguments.
+
+Rendering fails with `ErrInvalid` when the cursor width differs from the ORDER
+BY width, when a term uses NULLS FIRST/LAST, USING, or an ordinal, when the
+query uses DISTINCT ON, or when a bare column key names an output alias of a
+different expression. Keys are evaluated in WHERE, so they cannot refer to
+output aliases, aggregates, or window functions; wrap such a query with
+`Subquery` and page the outer SELECT. Page set operations, VALUES, and TABLE the
+same way. A trusted SQL key is compared in parentheses, so `NOT archived` keeps
+its meaning, but qs cannot check whether it names an output alias.
+qs cannot inspect the schema: pages are complete and
+disjoint only when every key is NOT NULL and the last key is unique.
+
+For the previous page, reverse each term, seek after the first row of the
+current page, and reverse the fetched rows:
+
+```go
+previous := base.Clone().
+    OrderBy(order[0].Reverse(), order[1].Reverse()).
+    SeekAfter(firstCreatedAt, firstID).
+    Limit(20)
+```
+
+`RemoveOrderBy` and `Reset` remove the cursor, and `Clone` copies it.
+
+### Count matching rows
+
+`CountRows` counts the rows a query selects before ordering and pagination:
+
+```go
+total := qs.CountRows(next)
+```
+
+```sql
+SELECT count(*) FROM (SELECT "id" FROM "users" WHERE ("active" = $1)) AS "matching"
+```
+
+The count omits ORDER BY, the `SeekAfter` cursor, LIMIT, OFFSET, FETCH, and
+row locks, and keeps WITH, DISTINCT, GROUP BY, and HAVING. It renders the query
+live, so filters added later also apply; count `query.Clone()` for a fixed
+query. The count is a separate statement that agrees with the pages only when
+both run in one REPEATABLE READ or SERIALIZABLE transaction.
 
 ## Write rows and handle conflicts
 

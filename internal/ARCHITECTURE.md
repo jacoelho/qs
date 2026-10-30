@@ -145,10 +145,15 @@ builder and `ESCAPE` policy have one owner without a new node representation.
 
 One renderer owns buffers, arguments, options, limits and the first error. It
 traverses in emitted SQL order, including nested statements. Parameter nodes bind
-values and emit their placeholder. `Param(any)` retains dynamic value types
-and admits untyped nil; a generic type parameter would establish no additional
-invariant. Parameters remain shallow; identifiers, literals, operators and trusted
-fragments are never rewritten. SQL-string placeholder replacement was rejected
+values and emit their placeholder. `Param(any)` retains dynamic value types;
+a generic type parameter would establish no additional invariant. `Param`,
+`Value` and `ParamNull` bind untyped nil as NULL. Comparison, membership, range,
+row-value and keyset operands reject it when rendered, because SQL NULL never
+compares true; typed nil values remain indistinguishable from data. A nil
+`ArrayParam` slice binds an empty array, matching empty `In`/`NotIn` lists.
+Parameters remain shallow; identifiers, literals, operators and trusted
+fragments are never rewritten, although a combined trusted condition is
+parenthesized as described under validation and security limits. SQL-string placeholder replacement was rejected
 because question marks also occur in PostgreSQL grammar. Rendering never calls
 `driver.Valuer`, resolves a schema or independently renders subquery strings.
 
@@ -174,6 +179,16 @@ Nested statement pointers stay live. `Clone` copies the reachable graph with
 memoization, preserving shared children and cycles, but bound application values
 remain shallow. Automatic attachment snapshots add composition costs; validation
 caches would need invalidation for every live mutation.
+
+ORDER BY is the only ordering owner. `SelectBuilder` owns its keyset cursor
+values; rendering derives the predicate from the final ORDER BY terms and appends
+it as the last WHERE conjunct, so later ordering or projection changes are
+validated where they take effect. `RemoveOrderBy` and `Reset` clear the cursor,
+because its values mean nothing under another ordering. `CountRows` holds its
+query live in a private relation kind. That relation renders the query in its
+own statement scope without ORDER BY, cursor, LIMIT, OFFSET, FETCH or locks; it
+keeps the suffix, whose relation to the omitted clauses qs cannot know. Clone
+maps it through the same statement memoization as other references.
 
 The standard-library clone generator discovers statement roots and traverses
 actual Go field types. Generated walkers register statement identities before
@@ -220,18 +235,32 @@ SELECT locking rejects structural DISTINCT, GROUP BY and HAVING clauses. An
 unused named WINDOW is compatible with locking. Rendering records structural
 OVER use in the current statement and checks it after ORDER BY and pagination,
 before emitting locks. Statement entry saves and clears this flag; exit restores
-the parent scope, so scalar subqueries and CTEs cannot change outer eligibility.
+the parent scope, so scalar subqueries, CTEs and counted relations cannot change
+outer eligibility.
 SELECT INTO retains its source's scope. Opaque SQL, aggregate classification and
 locks propagated into FROM subqueries remain server-validated.
 
+Keyset rendering checks cursor width, ASC/DESC terms without NULLS or USING,
+DISTINCT ON and bare column keys that name an output alias of a different
+expression; trusted SQL keys are not inspected. It cannot prove that keys are
+NOT NULL or that the last key is unique; rows violating those assumptions are
+skipped or repeated across pages.
+
 Identifiers are quoted; values bind unless an explicit literal is selected.
-Unsafe fragments are trusted code. `RequireWhere` is a structural guard and
+Unsafe fragments are trusted code. `Condition` owns their boolean boundary: an
+`UnsafeSQL` or `Fragment` condition is parenthesized where qs combines it with
+another condition, which covers condition lists including the keyset conjunct,
+`And`/`Or` members and `Not`. Keyset rendering likewise parenthesizes a trusted
+ORDER BY term where it becomes a comparison operand. A lone trusted condition
+and trusted operands of caller-written operators render verbatim, because
+wrapping `= ANY(...)` produces invalid SQL. qs's own composite conditions, `LIKE ... ESCAPE` and `OPERATOR(...)`, are
+structural groups rather than fragments, so this rule never wraps them twice. `RequireWhere` is a structural guard and
 accepts WHERE TRUE; it is not authorization. Transactions, roles, RLS and tenant
 context belong to the execution boundary. TRUNCATE is not filtered by RLS.
 
 ## Evaluated API boundaries
 
-These 30 evaluations record selected representations and constraints. Deferred
+These 35 evaluations record selected representations and constraints. Deferred
 alternatives are not supported APIs or implementation commitments.
 
 | # | Boundary | Decision or constraint |
@@ -266,3 +295,8 @@ alternatives are not supported APIs or implementation commitments.
 | 28 | Ordered-set calls | Narrow known helpers; custom function classification stays server-owned. |
 | 29 | Version ownership | Syntax owners and per-render options; reject global registries and version-bound graphs. |
 | 30 | Live/frozen graphs | Explicit generated graph copying; reject reflection, serialization, automatic snapshots, immutable-subtree sharing and mutation-sensitive caches. |
+| 31 | Keyset ownership | Builder-owned `SeekAfter`, derived from ORDER BY at render. Reject a separate keyset value (a second owner drifts from ORDER BY), typed arity (runtime-selected keys defeat it), `SeekBefore` (under the same ORDER BY and LIMIT it returns the first page) and the expansion without a leading bound (an index cannot bound the scan). |
+| 32 | Ordering direction | `Order.Reverse` involution, including NULLS; reject a `Direction` enum that cannot reverse whole terms. |
+| 33 | Count derivation | Live `CountRows` relation. Reject the Clone/Remove recipe (cannot remove locks and relies on callers removing every clause), `RemovePagination` (a manual snapshot that mutates the page), snapshots (miss later filters) and projection replacement (miscounts DISTINCT and GROUP BY). |
+| 34 | Comparison NULL | Reject untyped nil in comparison operands; binding it made comparisons silently false. |
+| 35 | Array NULL | Nil `ArrayParam` slices bind `{}`; NULL arrays require `NullExpr(TypeArray(...))`. |

@@ -213,22 +213,34 @@ func (w *renderer) statement(s Statement) {
 	if w.err != nil {
 		return
 	}
-	if !w.enter() {
+	outerHasWindow, ok := w.openStatement()
+	if !ok {
 		w.statementErrorPath(s)
 		return
 	}
-	outerHasWindow := w.hasWindow
-	w.hasWindow = false
-	w.statementDepth++
-	defer func() {
-		w.statementDepth--
-		w.hasWindow = outerHasWindow
-		w.depth--
-	}()
 	w.dispatchStatement(s)
+	w.closeStatement(outerHasWindow)
 	if w.err != nil {
 		w.statementErrorPath(s)
 	}
+}
+
+// openStatement enters a nested statement scope, which owns its own window
+// function state. A successful open must be paired with closeStatement.
+func (w *renderer) openStatement() (outerHasWindow, ok bool) {
+	if !w.enter() {
+		return false, false
+	}
+	outerHasWindow = w.hasWindow
+	w.hasWindow = false
+	w.statementDepth++
+	return outerHasWindow, true
+}
+
+func (w *renderer) closeStatement(outerHasWindow bool) {
+	w.statementDepth--
+	w.hasWindow = outerHasWindow
+	w.depth--
 }
 
 func (w *renderer) dispatchStatement(s Statement) {
