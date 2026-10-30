@@ -6,6 +6,7 @@ import (
 	"cmp"
 	"reflect"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/jacoelho/qs"
@@ -54,9 +55,9 @@ func TestKeysetPaginationMatchesFullOrdering(t *testing.T) {
 	for mask := range 8 {
 		order := make([]qs.Order, len(keys))
 		for i, key := range keys {
-			order[i] = qs.Asc(key)
+			order[i] = qs.Asc("r." + key)
 			if mask&(1<<i) != 0 {
-				order[i] = qs.Desc(key)
+				order[i] = qs.Desc("r." + key)
 			}
 		}
 		page := func() *qs.SelectBuilder { return qs.SelectCols(keys...).From("r").OrderBy(order...) }
@@ -99,6 +100,73 @@ func TestKeysetPaginationMatchesFullOrdering(t *testing.T) {
 	}
 }
 
+// A cast output takes the name of its column, so ORDER BY resolves a bare id to
+// the text output while the cursor in WHERE compares the integer column.
+// Qualified keys resolve to the input column in both clauses.
+func TestKeysetPaginationBesideSameNamedOutput(t *testing.T) {
+	t.Parallel()
+	session := connect(t)
+	createKeysetRows(t, session)
+	query := func(order ...qs.Order) *qs.SelectBuilder {
+		return qs.Select(qs.Col("r.a"), qs.Col("r.b"), qs.Col("r.id").Cast(qs.TypeText)).From("r").OrderBy(order...)
+	}
+	rows := func(query *qs.SelectBuilder) [][3]int64 {
+		t.Helper()
+		sql, args, err := session.render(t, query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := session.Query(session, sql, args...)
+		if err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+		defer result.Close()
+		var got [][3]int64
+		for result.Next() {
+			var row [3]int64
+			var id string
+			if err := result.Scan(&row[0], &row[1], &id); err != nil {
+				t.Fatal(err)
+			}
+			if row[2], err = strconv.ParseInt(id, 10, 64); err != nil {
+				t.Fatal(err)
+			}
+			got = append(got, row)
+		}
+		if err := result.Err(); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+		return got
+	}
+
+	byID := keysetFixture()
+	bareOrder := rows(query(qs.Asc("id")))
+	if reflect.DeepEqual(bareOrder, byID) {
+		t.Fatalf("bare id key sorted numerically, so this test cannot detect a mismatch: %v", bareOrder)
+	}
+
+	want := keysetFixture()
+	slices.SortFunc(want, func(x, y [3]int64) int { return cmp.Or(cmp.Compare(x[0], y[0]), cmp.Compare(y[2], x[2])) })
+	order := []qs.Order{qs.Asc("r.a"), qs.Desc("r.id")}
+	var got [][3]int64
+	page := query(order...).Limit(4)
+	for pages := 0; ; pages++ {
+		if pages == 6 {
+			t.Fatalf("pagination did not terminate; pages so far %v", got)
+		}
+		result := rows(page)
+		if len(result) == 0 {
+			break
+		}
+		got = append(got, result...)
+		last := result[len(result)-1]
+		page = query(order...).SeekAfter(last[0], last[2]).Limit(4)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("pages %v; want %v", got, want)
+	}
+}
+
 func TestCountRowsMatchesIndependentCounts(t *testing.T) {
 	t.Parallel()
 	session := connect(t)
@@ -122,7 +190,7 @@ func TestCountRowsMatchesIndependentCounts(t *testing.T) {
 	}
 
 	page := qs.SelectCols("a", "b", "id").From("r").Where(qs.Gt("id", int64(2))).
-		OrderBy(qs.Asc("a"), qs.Desc("id")).Limit(4)
+		OrderBy(qs.Asc("r.a"), qs.Desc("r.id")).Limit(4)
 	total := qs.CountRows(page)
 	var seen int64
 	for pages := 0; ; pages++ {
@@ -242,7 +310,7 @@ func TestCountRowsMatchesRowsOfOrderedQuery(t *testing.T) {
 				OrderBy(qs.Asc("a"), qs.Col("a").Cast(qs.TypeInt4).Cast(qs.TypeBool).Asc())
 		}, nil, 3},
 		{"bound_expression_key", func() *qs.SelectBuilder {
-			return qs.SelectCols("id").From("r").OrderBy(qs.Call("abs", qs.Col("id").Sub(qs.Param(int64(4)))).Asc(), qs.Asc("id"))
+			return qs.SelectCols("id").From("r").OrderBy(qs.Call("abs", qs.Col("id").Sub(qs.Param(int64(4)))).Asc(), qs.Asc("r.id"))
 		}, []any{int64(0), int64(4)}, 13},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -286,13 +354,13 @@ func TestKeysetPaginationWithTrustedDisjunction(t *testing.T) {
 		keys    func(row [3]int64) []any
 		compare func(x, y [3]int64) int
 	}{
-		{"id_asc", []qs.Order{qs.Asc("id")},
+		{"id_asc", []qs.Order{qs.Asc("r.id")},
 			func(row [3]int64) []any { return []any{row[2]} },
 			func(x, y [3]int64) int { return cmp.Compare(x[2], y[2]) }},
-		{"id_desc", []qs.Order{qs.Desc("id")},
+		{"id_desc", []qs.Order{qs.Desc("r.id")},
 			func(row [3]int64) []any { return []any{row[2]} },
 			func(x, y [3]int64) int { return cmp.Compare(y[2], x[2]) }},
-		{"a_asc_id_desc", []qs.Order{qs.Asc("a"), qs.Desc("id")},
+		{"a_asc_id_desc", []qs.Order{qs.Asc("r.a"), qs.Desc("r.id")},
 			func(row [3]int64) []any { return []any{row[0], row[2]} },
 			func(x, y [3]int64) int { return cmp.Or(cmp.Compare(x[0], y[0]), cmp.Compare(y[2], x[2])) }},
 	}
@@ -393,18 +461,18 @@ func TestKeysetPaginationWithTrustedKey(t *testing.T) {
 		keys    func(row [3]int64) []any
 		compare func(x, y [3]int64) int
 	}{
-		{"not_asc_id_desc", []qs.Order{notZero.Asc(), qs.Desc("id")},
+		{"not_asc_id_desc", []qs.Order{notZero.Asc(), qs.Desc("r.id")},
 			func(row [3]int64) []any { return []any{row[0] != 0, row[2]} },
 			func(x, y [3]int64) int { return cmp.Or(compareBool(x[0] != 0, y[0] != 0), cmp.Compare(y[2], x[2])) }},
-		{"or_desc_id_asc", []qs.Order{either.Desc(), qs.Asc("id")},
+		{"or_desc_id_asc", []qs.Order{either.Desc(), qs.Asc("r.id")},
 			func(row [3]int64) []any { return []any{matchesTrustedDisjunction(row), row[2]} },
 			func(x, y [3]int64) int {
 				return cmp.Or(compareBool(matchesTrustedDisjunction(y), matchesTrustedDisjunction(x)), cmp.Compare(x[2], y[2]))
 			}},
-		{"not_uniform", []qs.Order{notZero.Asc(), qs.Asc("id")},
+		{"not_uniform", []qs.Order{notZero.Asc(), qs.Asc("r.id")},
 			func(row [3]int64) []any { return []any{row[0] != 0, row[2]} },
 			func(x, y [3]int64) int { return cmp.Or(compareBool(x[0] != 0, y[0] != 0), cmp.Compare(x[2], y[2])) }},
-		{"three_keys", []qs.Order{qs.Asc("a"), notOne.Desc(), qs.Asc("id")},
+		{"three_keys", []qs.Order{qs.Asc("r.a"), notOne.Desc(), qs.Asc("r.id")},
 			func(row [3]int64) []any { return []any{row[0], row[1] != 1, row[2]} },
 			func(x, y [3]int64) int {
 				return cmp.Or(cmp.Compare(x[0], y[0]), compareBool(y[1] != 1, x[1] != 1), cmp.Compare(x[2], y[2]))

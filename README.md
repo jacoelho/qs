@@ -329,7 +329,7 @@ server still reads every skipped row.
 ORDER BY key values, one per term:
 
 ```go
-order := []qs.Order{qs.Desc("created_at"), qs.Desc("id")}
+order := []qs.Order{qs.Desc("users.created_at"), qs.Desc("users.id")}
 next := base.Clone().
     OrderBy(order...).
     SeekAfter(lastCreatedAt, lastID).
@@ -338,8 +338,8 @@ next := base.Clone().
 
 ```sql
 SELECT "id" FROM "users"
-WHERE ("active" = $1) AND (("created_at", "id") < ($2, $3))
-ORDER BY "created_at" DESC, "id" DESC LIMIT $4
+WHERE ("active" = $1) AND (("users"."created_at", "users"."id") < ($2, $3))
+ORDER BY "users"."created_at" DESC, "users"."id" DESC LIMIT $4
 ```
 
 The cursor follows every other WHERE condition, whatever the call order.
@@ -348,15 +348,21 @@ in ORDER BY order can serve. Mixed directions render an equivalent disjunction
 that binds earlier keys again: three keys bind seven arguments.
 
 Rendering fails with `ErrInvalid` when the cursor width differs from the ORDER
-BY width, when a term uses NULLS FIRST/LAST, USING, or an ordinal, when the
-query uses DISTINCT ON, or when a bare column key names an output alias of a
-different expression. Keys are evaluated in WHERE, so they cannot refer to
-output aliases, aggregates, or window functions; wrap such a query with
-`Subquery` and page the outer SELECT. Page set operations, VALUES, and TABLE the
-same way. A trusted SQL key is compared in parentheses, so `NOT archived` keeps
-its meaning, but qs cannot check whether it is an ordinal or names an output
-alias. qs cannot inspect the schema: pages are complete and disjoint only when
-every key is NOT NULL and the last key is unique.
+BY width, when a term uses NULLS FIRST/LAST, USING, or an ordinal, when a key is
+a bare name, or when the query uses DISTINCT ON. ORDER BY resolves a bare name
+to a same-named output column first, including a derived one such as the `a`
+that `SELECT a::text` produces, while WHERE resolves it to the input column.
+Qualified names and other expressions resolve the same way in both clauses, so
+qualify column keys: `qs.Desc("users.id")`, or `users.Col("id").Desc()` for a
+`Relation`. Name a USING join with `UsingAs` and a `Derived` relation with `As`
+to qualify their columns. Keys are evaluated in WHERE, so they cannot be output
+aliases, aggregates, or window functions; wrap such a query with `Subquery` and
+page the outer SELECT by its alias-qualified columns. Page set operations,
+VALUES, and TABLE the same way. Trusted SQL and `Fragment` keys are compared in
+parentheses, so `NOT archived` keeps its meaning, but qs does not inspect them:
+they must not render a bare name or an integer. qs cannot inspect the schema:
+pages are complete and disjoint only when every key is NOT NULL and the last key
+is unique.
 
 For the previous page, reverse each term, seek after the first row of the
 current page, and reverse the fetched rows:

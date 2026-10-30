@@ -55,7 +55,7 @@ func (b *SelectBuilder) appendOrderExprs(w *renderer, order []Order) {
 	}
 	separate := len(b.columns) > 0
 	for i, term := range order {
-		switch unparenthesized(term.expr).kind {
+		switch orderTermSyntax(term.expr).kind {
 		case exprIdentifier, exprIdentifierParts, exprLiteral, exprParameter:
 			continue
 		default:

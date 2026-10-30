@@ -7,9 +7,9 @@ import (
 
 func TestCountRowsOmitsOrderingPaginationAndLocks(t *testing.T) {
 	t.Parallel()
-	q := Select(Col("id")).From("t").Where(Eq("a", 1)).OrderBy(Asc("id")).SeekAfter(5).Limit(10).Offset(20).Lock(ForUpdate())
+	q := Select(Col("id")).From("t").Where(Eq("a", 1)).OrderBy(Asc("t.id")).SeekAfter(5).Limit(10).Offset(20).Lock(ForUpdate())
 	checkSQL(t, CountRows(q), `SELECT count(*) FROM (SELECT "id" FROM "t" WHERE ("a" = $1)) AS "matching"`, 1)
-	checkSQL(t, q, `SELECT "id" FROM "t" WHERE ("a" = $1) AND ("id" > $2) ORDER BY "id" ASC LIMIT $3 OFFSET $4 FOR UPDATE`, 1, 5, 10, 20)
+	checkSQL(t, q, `SELECT "id" FROM "t" WHERE ("a" = $1) AND ("t"."id" > $2) ORDER BY "t"."id" ASC LIMIT $3 OFFSET $4 FOR UPDATE`, 1, 5, 10, 20)
 
 	fetch := Select(Col("id")).From("t").OrderBy(Asc("id")).Fetch(3, OnlyRows)
 	checkSQL(t, CountRows(fetch), `SELECT count(*) FROM (SELECT "id" FROM "t") AS "matching"`)
@@ -31,6 +31,8 @@ func TestCountRowsKeepsRowShapingClauses(t *testing.T) {
 			`SELECT count(*) FROM (SELECT "id", count(*) OVER () FROM "t") AS "matching"`, nil},
 		{"invalid_cursor_is_omitted", CountRows(Select(Col("id")).From("t").SeekAfter(1)),
 			`SELECT count(*) FROM (SELECT "id" FROM "t") AS "matching"`, nil},
+		{"bare_key_cursor_is_omitted", CountRows(Select(Col("id")).From("t").OrderBy(Asc("id")).SeekAfter(1)),
+			`SELECT count(*) FROM (SELECT "id" FROM "t") AS "matching"`, nil},
 	})
 }
 
@@ -51,6 +53,7 @@ func TestCountRowsKeepsOrderExpressionsThatChangeRows(t *testing.T) {
 		{"bound_value", CountRows(q().OrderBy(Param(1).Asc())), unchanged, nil},
 		{"parenthesized_column", CountRows(q().OrderBy(Col("id").Parenthesized().Asc())), unchanged, nil},
 		{"parenthesized_ordinal", CountRows(q().OrderBy(Ordinal(1).Parenthesized().Asc())), unchanged, nil},
+		{"base_prefixed_ordinal", CountRows(q().OrderBy(LiteralNumeric("0x1").Asc())), unchanged, nil},
 		{"doubly_parenthesized_bound_value", CountRows(q().OrderBy(Param(1).Parenthesized().Parenthesized().Asc())), unchanged, nil},
 
 		{"set_returning_function", CountRows(q().OrderBy(Call("unnest", Col("tags")).Asc())),
@@ -99,9 +102,9 @@ func TestCountRowsKeepsOrderExpressionsThatChangeRows(t *testing.T) {
 
 func TestCountRowsBindsOrderExpressionsBeforeWhere(t *testing.T) {
 	t.Parallel()
-	q := Select(Col("id")).From("t").Where(Eq("tenant", 7)).OrderBy(Call("abs", Col("id").Sub(Param(9))).Asc(), Asc("id")).SeekAfter(1, 2).Limit(5)
+	q := Select(Col("id")).From("t").Where(Eq("tenant", 7)).OrderBy(Call("abs", Col("id").Sub(Param(9))).Asc(), Asc("t.id")).SeekAfter(1, 2).Limit(5)
 	checkSQL(t, CountRows(q), `SELECT count(*) FROM (SELECT "id", "abs"(("id" - $1)) AS "qs_order_1" FROM "t" WHERE ("tenant" = $2)) AS "matching"`, 9, 7)
-	checkSQL(t, q, `SELECT "id" FROM "t" WHERE ("tenant" = $1) AND (("abs"(("id" - $2)), "id") > ($3, $4)) ORDER BY "abs"(("id" - $5)) ASC, "id" ASC LIMIT $6`, 7, 9, 1, 2, 9, 5)
+	checkSQL(t, q, `SELECT "id" FROM "t" WHERE ("tenant" = $1) AND (("abs"(("id" - $2)), "t"."id") > ($3, $4)) ORDER BY "abs"(("id" - $5)) ASC, "t"."id" ASC LIMIT $6`, 7, 9, 1, 2, 9, 5)
 }
 
 func TestCountRowsRendersQueryLive(t *testing.T) {

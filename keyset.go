@@ -23,25 +23,34 @@ func (c *keysetCursor) clear() {
 // order, for keyset pagination. Pass the ORDER BY key values of the last row of
 // the previous page, one per term; each call replaces the cursor. Rendering
 // fails with ErrInvalid unless the cursor width equals the ORDER BY width and
-// every term is an ASC or DESC expression over rows, not an ordinal or bound
-// value, without NULLS FIRST/LAST or USING. It also fails for DISTINCT ON, and
-// when a bare column key names an output alias of a different expression; page
-// such queries by wrapping them with Subquery. Set operations, VALUES and TABLE
-// are paged the same way.
+// every term is an ASC or DESC expression over rows, without NULLS FIRST/LAST
+// or USING, that is not an ordinal, a bound value or a bare name. It also fails
+// for DISTINCT ON.
+//
+// The cursor is compared in WHERE, which resolves names to input columns, but
+// ORDER BY resolves a bare name to a same-named output column first, including
+// a derived one: SELECT a::text names its column a, so ORDER BY a would sort
+// text while the cursor compares integers. Qualify column keys, as in
+// Desc("users.id"), or users.Col("id").Desc() for a Relation users; qualified
+// names and other expressions, such as Lower(Col("name")), resolve the same way
+// in both clauses. Name a USING join with UsingAs, and a Derived relation with
+// As, to qualify their columns. To page by an output alias, an aggregate, a
+// window function or a merged NATURAL join column, wrap the query with Subquery
+// and order by its alias-qualified columns. Page set operations, VALUES and
+// TABLE the same way.
 //
 // qs cannot check the schema. Pages are complete and disjoint only when every
-// key is NOT NULL and the last term is unique, such as a primary key. Keys are
-// evaluated in WHERE, where output aliases, aggregates and window functions are
-// unavailable, and window functions in the projection see only rows after the
-// cursor. Trusted SQL keys are compared in parentheses, and qs cannot check
-// whether they are ordinals or name an output alias. Untyped nil fails
-// rendering. A typed nil binds NULL: rows that tie with the cursor on every
-// earlier key are skipped, and a NULL first key selects no rows.
+// key is NOT NULL and the last term is unique, such as a primary key. Window
+// functions in the projection see only rows after the cursor. Trusted SQL and
+// Fragment keys are compared in parentheses and are not inspected; they must
+// not render a bare name or an integer. Untyped nil fails rendering. A typed
+// nil binds NULL: rows that tie with the cursor on every earlier key are
+// skipped, and a NULL first key selects no rows.
 //
-// Uniform directions render one row comparison, ("a", "b") > ($1, $2), which a
-// B-tree index on the keys in that order can serve. Mixed directions expand to
-// an equivalent disjunction that binds earlier keys again: three keys bind
-// seven arguments.
+// Uniform directions render one row comparison, ("t"."a", "t"."b") > ($1, $2),
+// which a B-tree index on the keys in that order can serve. Mixed directions
+// expand to an equivalent disjunction that binds earlier keys again: three keys
+// bind seven arguments.
 //
 // RemoveOrderBy and Reset remove the cursor; Clone copies it. For the previous
 // page, reverse each term with Order.Reverse, seek after the first row of the
@@ -62,7 +71,7 @@ func (b *SelectBuilder) SeekAfter(first any, rest ...any) *SelectBuilder {
 
 // keyset renders the WHERE conjunct admitting rows strictly after values in
 // the ORDER BY of b. Terms are validated here rather than at SeekAfter because
-// ORDER BY and the projection may change until rendering.
+// ORDER BY, DISTINCT ON and the cursor may change until rendering.
 func (b *SelectBuilder) keyset(w *renderer, values []Expr) {
 	order := b.tail.order
 	if !w.require(len(order) == len(values), "keyset", "cursor width must equal ORDER BY width") {
@@ -73,7 +82,7 @@ func (b *SelectBuilder) keyset(w *renderer, values []Expr) {
 	}
 	uniform := true
 	for i, term := range order {
-		b.keysetTerm(w, term)
+		w.keysetTerm(term)
 		if w.stopped("order", i+1) {
 			return
 		}
@@ -91,50 +100,37 @@ func (b *SelectBuilder) keyset(w *renderer, values []Expr) {
 	w.byte(')')
 }
 
-func (b *SelectBuilder) keysetTerm(w *renderer, term Order) {
+// keysetTerm rejects keys that ORDER BY and the WHERE cursor could resolve
+// differently. PostgreSQL resolves an ORDER BY term against output column names
+// only when it is a bare name or an integer; every other term resolves against
+// input columns, as WHERE does, whatever the projection contains.
+func (w *renderer) keysetTerm(term Order) {
 	if !w.require(term.direction == ascending || term.direction == descending, "keyset", "order term must be ASC or DESC") {
 		return
 	}
 	if !w.require(term.nulls == defaultNulls, "keyset", "order term cannot set NULLS FIRST or NULLS LAST; keys must be NOT NULL") {
 		return
 	}
-	key := unparenthesized(term.expr)
+	key := orderTermSyntax(term.expr)
 	if !w.require(key.kind != exprLiteral && key.kind != exprParameter, "keyset", "order term must be an expression over rows, not an ordinal or bound value") {
 		return
 	}
-	name, bare := bareIdentifier(key)
-	if !bare {
-		return
-	}
-	for _, column := range b.columns {
-		if column.kind != exprAlias || column.text != name {
-			continue
-		}
-		if aliased, ok := bareIdentifier(unparenthesized(column.unary())); !ok || aliased != name {
-			// ORDER BY resolves a bare name to the output column, but WHERE
-			// resolves it to an input column, so the pages would follow a
-			// different ordering than the cursor.
-			w.fail(ErrInvalid, "keyset", "order term names an output alias of a different expression; order by that expression")
-			return
-		}
+	if bareName(key) {
+		w.fail(ErrInvalid, "keyset", "order term must not be a bare name, which ORDER BY may resolve to an output column; qualify it with its relation, or page a Subquery")
 	}
 }
 
-// bareIdentifier reports the name of a single-component identifier, which
+// bareName reports whether e is a single-component identifier, which
 // PostgreSQL may resolve to an output column in ORDER BY.
-func bareIdentifier(e Expr) (string, bool) {
+func bareName(e Expr) bool {
 	switch e.kind {
 	case exprIdentifier:
-		if e.text != "*" && strings.IndexByte(e.text, '.') < 0 {
-			return e.text, true
-		}
+		return e.text != "*" && strings.IndexByte(e.text, '.') < 0
 	case exprIdentifierParts:
-		if parts := ownedPayload[identifierParts](e.value); len(parts) == 1 {
-			return parts[0], true
-		}
+		return len(ownedPayload[identifierParts](e.value)) == 1
 	default:
+		return false
 	}
-	return "", false
 }
 
 // keysetRow renders one row comparison; a B-tree index on the keys in ORDER BY

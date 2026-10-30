@@ -182,18 +182,25 @@ func (e Expr) Parenthesized() Expr {
 	return Expr{kind: exprGroup, value: []Expr{e}}
 }
 
-// unparenthesized strips grouping parentheses around a single expression.
-// PostgreSQL's parser discards them, so ORDER BY (1) is still an ordinal and
-// ORDER BY ("x") may still name an output column.
-func unparenthesized(e Expr) Expr {
-	for e.kind == exprGroup {
-		parts := ownedPayload[[]Expr](e.value)
-		if len(parts) != 1 {
-			break
+// orderTermSyntax returns the expression PostgreSQL parses for an ORDER BY
+// term. Its parser discards grouping parentheses around a single expression,
+// and version requirements render nothing, so ORDER BY (0x1) is still an
+// ordinal and ORDER BY ("x") may still name an output column.
+func orderTermSyntax(e Expr) Expr {
+	for {
+		switch e.kind {
+		case exprGroup:
+			parts := ownedPayload[[]Expr](e.value)
+			if len(parts) != 1 {
+				return e
+			}
+			e = parts[0]
+		case exprVersioned:
+			e = ownedPayload[*versionedExpression](e.value).expr
+		default:
+			return e
 		}
-		e = parts[0]
 	}
-	return e
 }
 
 // enclosed concatenates parts inside one pair of parentheses. Structural forms

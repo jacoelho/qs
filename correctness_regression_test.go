@@ -307,8 +307,8 @@ func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 		})
 	}
 	for _, query := range []*qs.SelectBuilder{
-		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("a"), qs.Asc("id")).SeekAfter(nil, 1),
-		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("a"), qs.Asc("id")).SeekAfter(1, nil),
+		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("t.a"), qs.Asc("t.id")).SeekAfter(nil, 1),
+		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("t.a"), qs.Asc("t.id")).SeekAfter(1, nil),
 	} {
 		if sql, args, err := query.ToSQL(); !errors.Is(err, qs.ErrInvalid) || sql != "" || args != nil {
 			t.Fatalf("SeekAfter nil: SQL=%q args=%#v err=%v; want atomic ErrInvalid", sql, args, err)

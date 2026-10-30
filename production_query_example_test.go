@@ -45,7 +45,7 @@ func ExampleSelectBuilder_GroupByExpr_parameterized() {
 func ExampleSelectBuilder_SeekAfter() {
 	// Every key is NOT NULL and the last key is unique, so pages are disjoint.
 	feed := qs.SelectCols("id", "created_at").From("posts").Where(qs.Eq("author_id", 7))
-	order := []qs.Order{qs.Desc("created_at"), qs.Desc("id")}
+	order := []qs.Order{qs.Desc("posts.created_at"), qs.Desc("posts.id")}
 	// Seek after the last row shown: created_at 1700000000, id 42.
 	next := feed.Clone().OrderBy(order...).SeekAfter(int64(1700000000), int64(42)).Limit(20)
 	// Seek after the first row shown in reverse order, then reverse the rows.
@@ -60,9 +60,9 @@ func ExampleSelectBuilder_SeekAfter() {
 		fmt.Println(args, err)
 	}
 	// Output:
-	// SELECT "id", "created_at" FROM "posts" WHERE ("author_id" = $1) AND (("created_at", "id") < ($2, $3)) ORDER BY "created_at" DESC, "id" DESC LIMIT $4
+	// SELECT "id", "created_at" FROM "posts" WHERE ("author_id" = $1) AND (("posts"."created_at", "posts"."id") < ($2, $3)) ORDER BY "posts"."created_at" DESC, "posts"."id" DESC LIMIT $4
 	// [7 1700000000 42 20] <nil>
-	// SELECT "id", "created_at" FROM "posts" WHERE ("author_id" = $1) AND (("created_at", "id") > ($2, $3)) ORDER BY "created_at" ASC, "id" ASC LIMIT $4
+	// SELECT "id", "created_at" FROM "posts" WHERE ("author_id" = $1) AND (("posts"."created_at", "posts"."id") > ($2, $3)) ORDER BY "posts"."created_at" ASC, "posts"."id" ASC LIMIT $4
 	// [7 1700000500 61 20] <nil>
 	// SELECT count(*) FROM (SELECT "id", "created_at" FROM "posts" WHERE ("author_id" = $1)) AS "matching"
 	// [7] <nil>

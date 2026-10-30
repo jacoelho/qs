@@ -182,8 +182,8 @@ caches would need invalidation for every live mutation.
 
 ORDER BY is the only ordering owner. `SelectBuilder` owns its keyset cursor
 values; rendering derives the predicate from the final ORDER BY terms and appends
-it as the last WHERE conjunct, so later ordering or projection changes are
-validated where they take effect. `RemoveOrderBy` and `Reset` clear the cursor,
+it as the last WHERE conjunct, so later ORDER BY, DISTINCT ON or cursor changes
+are validated where they take effect. `RemoveOrderBy` and `Reset` clear the cursor,
 because its values mean nothing under another ordering. `CountRows` holds its
 query live in a private relation kind. That relation renders the query in its
 own statement scope without ORDER BY, cursor, LIMIT, OFFSET, FETCH or locks; it
@@ -202,12 +202,12 @@ silently, and either clause could fail as ambiguous. Each appended expression
 is therefore aliased `qs_order_N`, N being its ORDER BY position. PostgreSQL 18
 drops unused outputs that are neither volatile nor set-returning, so no sort or
 extra evaluation remains for ordinary keys. Names, ordinals and bound values
-are skipped, after discarding grouping parentheses as PostgreSQL does: they
-cannot change the rows, and a name or ordinal may refer to an output column
-that the projection cannot see. SELECT DISTINCT is skipped because its ORDER BY
-expressions already appear in the projection. Keyset key validation discards
-the same parentheses, so `(1)` is an ordinal and `("x")` may name an output
-column there too.
+are skipped, after discarding grouping parentheses as PostgreSQL does and
+version requirements, which render nothing: they cannot change the rows, and a
+name or ordinal may refer to an output column that the projection cannot see.
+SELECT DISTINCT is skipped because its ORDER BY expressions already appear in
+the projection. Keyset key validation classifies terms the same way, so `(1)`
+and `0x1` are ordinals and `("x")` may name an output column there too.
 
 The standard-library clone generator discovers statement roots and traverses
 actual Go field types. Generated walkers register statement identities before
@@ -260,10 +260,14 @@ SELECT INTO retains its source's scope. Opaque SQL, aggregate classification and
 locks propagated into FROM subqueries remain server-validated.
 
 Keyset rendering checks cursor width, ASC/DESC terms without NULLS or USING,
-DISTINCT ON and bare column keys that name an output alias of a different
-expression; trusted SQL keys are not inspected. It cannot prove that keys are
-NOT NULL or that the last key is unique; rows violating those assumptions are
-skipped or repeated across pages.
+DISTINCT ON, and keys that are ordinals, bound values or bare names. PostgreSQL
+resolves an ORDER BY term against output column names, explicit or derived,
+only when it is a bare name or an integer; every other term resolves against
+input columns, as the WHERE cursor does. Rejecting bare names therefore keeps
+both clauses on the same values without reading the projection. Trusted SQL and
+`Fragment` keys are not inspected. It cannot prove that keys are NOT NULL or
+that the last key is unique; rows violating those assumptions are skipped or
+repeated across pages.
 
 Identifiers are quoted; values bind unless an explicit literal is selected.
 Unsafe fragments are trusted code. `Condition` owns their boolean boundary: an
@@ -279,7 +283,7 @@ context belong to the execution boundary. TRUNCATE is not filtered by RLS.
 
 ## Evaluated API boundaries
 
-These 35 evaluations record selected representations and constraints. Deferred
+These 36 evaluations record selected representations and constraints. Deferred
 alternatives are not supported APIs or implementation commitments.
 
 | # | Boundary | Decision or constraint |
@@ -319,3 +323,4 @@ alternatives are not supported APIs or implementation commitments.
 | 33 | Count derivation | Live `CountRows` relation that appends ORDER BY expressions other than names, ordinals and bound values to the counted projection as `qs_order_N`. Reject the Clone/Remove recipe (cannot remove locks and relies on callers removing every clause), `RemovePagination` (a manual snapshot that mutates the page), snapshots (miss later filters), projection replacement (miscounts DISTINCT and GROUP BY), keeping ORDER BY (PostgreSQL keeps subquery sorts), rejecting terms qs cannot classify (breaks ordinary keys such as `lower(name)`) and detecting aggregates or set-returning functions by name (qs cannot classify `Call` or trusted SQL, so misses would miscount silently). Unaliased appended expressions are rejected because their default output names can capture DISTINCT ON and GROUP BY references. Trusted SQL naming an output column fails in PostgreSQL instead of counting wrongly. |
 | 34 | Comparison NULL | Reject untyped nil in comparison operands; binding it made comparisons silently false. |
 | 35 | Array NULL | Nil `ArrayParam` slices bind `{}`; NULL arrays require `NullExpr(TypeArray(...))`. |
+| 36 | Keyset key resolution | Reject bare-name keys while a cursor is active; callers qualify keys or page a `Subquery`. Reject deriving output labels as PostgreSQL does (version-specific, such as `?column?` for `true` in 18, and blind to trusted SQL and `(c).*`), accepting bare keys under a provably safe projection (a select-list change elsewhere would invalidate the cursor), qualifying bare keys automatically (rewrites identifiers and is ambiguous across joins), filtering in a wrapping query (keys must be output columns, and an unflattened subquery loses the index seek) and rewrapping bare keys in a no-op expression (`COALESCE(a)` sorts without the index). |
