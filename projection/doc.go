@@ -1,38 +1,51 @@
-// Package projection associates SQL result expressions with caller-defined metadata.
-// Applications can reuse and extend declarations, then pass Expressions to qs.Select
-// or a builder's Returning method. Metadata can describe field keys, destinations or
-// other mapping information; this package never interprets or invokes it.
+// Package projection declares SQL result columns together with where each one is
+// read. One declaration owns output order, destinations and nesting, and drives
+// both a query's output list and the scan of each row:
 //
-// Named adds an SQL alias and records it as string metadata. Output leaves both the
-// expression and metadata unchanged, so aliases are optional and metadata need not
-// describe a label. All columns in a projection share one metadata type. Result
-// scanning, codecs, NULL handling and actual returned column labels belong to callers.
+//	p := projection.New(
+//		projection.Column(qs.Col("id"), func(u *User) *int64 { return &u.ID }),
+//		projection.ColumnNull(qs.Col("email"), func(u *User, v *string) { u.Email = v }),
+//	)
+//	rows, err := conn.Query(ctx, sql, args...) // sql rendered from p.Expressions()
+//	user, err := p.Scan(rows.Scan)
 //
-// Each supplied expression must produce one result column. The package cannot prove
-// this for wildcards, trusted SQL or composite expansion. Named requires an unaliased
-// expression: it adds an alias using qs.Expr.As rather than replacing one. Duplicate
-// labels are permitted; callers own label uniqueness and mapper compatibility. qs
-// performs its usual render checks, which do not establish complete SQL validity.
+// Column reads a required column, and ColumnNull a nullable one. Embed nests a
+// declaration in a field, and EmbedNull nests it as an optional group for the
+// nullable side of a LEFT JOIN, so one declaration serves both sides of a join.
+// Map transforms a declaration's value after the row is read. New concatenates.
+// For aliases use qs.Expr.As; for self-joins use a function taking qs.Relation.
+// Add a column outside D with a wrapper row: Embed the declaration beside a Column.
 //
-// A projection describes its declarations, not the final result of an arbitrary
-// query. Expressions keep their SQL qualifiers. To describe an entire result, attach
-// them to an otherwise empty output list and avoid independent output changes.
-// Returning appends to existing expressions, and later column reordering can break
-// the correspondence even when the result width stays the same.
+// Scan is positional and invokes the caller's function, so the package performs no
+// I/O and imports no driver. Attach Expressions to an otherwise empty SELECT or
+// RETURNING list: other output changes break the correspondence, and a reorder of
+// equal width can go unnoticed. SQL types are not checked against T. Incompatible
+// types fail when a row is scanned, while convertible ones, such as an integer
+// into a string, are coerced by the driver. A width mismatch fails only when a row
+// is scanned, so an empty result hides it.
 //
-// The zero Projection is empty. Empty declarations are permitted: qs.Select with
-// no expressions fails rendering, while empty input to Returning adds no clause.
-// Applications expecting returned rows must establish nonempty output before DML.
-// qs.SelectNoColumns separately expresses an intentional zero-column SELECT.
+// Each expression must produce one result column; the package cannot prove this
+// for wildcards, trusted SQL or composite expansion. Empty declarations are
+// permitted: qs.Select with no expressions fails rendering, while empty input to
+// Returning adds no clause. Applications expecting returned rows must establish
+// nonempty output before DML. qs.SelectNoColumns separately expresses an intentional
+// zero-column SELECT.
 //
-// Projections own column positions and return owned slice positions. Copies are
-// shallow: application objects, metadata pointers and nested query builders remain
-// shared. Reads can run concurrently while those reachable values and graphs are
-// stable. This package performs no I/O and owns no resources or background work.
+// Column accepts NULL outside a group when T can hold it, such as *string, []byte
+// or sql.NullString, and returns ErrNull inside a present EmbedNull group, which also
+// rejects a pointer T. Declare nullable columns with ColumnNull so a declaration reads
+// the same in both places. ColumnNull and group columns read as var v *T; rows.Scan(&v)
+// does: see EmbedNull.
 //
-// AppendExpressions and AppendMetadata append into caller-owned slices for repeated
-// extraction. They preserve prefixes and reuse available capacity. Empty projections
-// return the destination unchanged. Reusing destinations does not mutate a projection;
-// callers coordinate reuse with consumers of the returned slices. Select copies its
-// expression positions, so its input storage can be reused after construction.
+// Column and Embed dests run on a zero value at declaration, repeatedly under EmbedNull,
+// and once per Scan, before the row is read. They must be deterministic and must not
+// retain their argument beyond the field they return. A dest that panics at Scan would
+// strand the query, leaving a pgx connection busy; a declaration panic holds nothing,
+// so dests are checked there. set and convert run after the row is read.
+// A Scanner that panics hangs database/sql, with or without this package.
+//
+// Projections are immutable and safe for concurrent reads and Scan. Declare one once
+// per alias and reuse it: declaring runs the checks above and allocates per column,
+// while reuse costs only Expressions. Copies are shallow: nested query builders stay
+// shared. This package owns no resources or background work.
 package projection
