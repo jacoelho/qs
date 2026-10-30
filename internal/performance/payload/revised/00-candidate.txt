@@ -1,9 +1,0 @@
-goos: darwin
-goarch: arm64
-pkg: github.com/jacoelho/qs
-cpu: Apple M2 Max
-BenchmarkDesignQueries/CTE/AppendWarm         	  671820	       939.6 ns/op	       0 B/op	       0 allocs/op
-BenchmarkDesignQueries/Bulk100/AppendWarm     	   76567	      7962 ns/op	       0 B/op	       0 allocs/op
-BenchmarkDesignProjection/AppendSQLWarm       	 1422376	       420.5 ns/op	       0 B/op	       0 allocs/op
-BenchmarkDesignBinarySubscript/AppendWarm     	 1636677	       359.2 ns/op	       0 B/op	       0 allocs/op
-PASS

@@ -2,20 +2,10 @@
 
 This is the architecture entry point. [README.md](../README.md) owns public usage
 and caller contracts; the [corpus README](postgrescorpus/README.md) owns
-construction-support measurement and fixture maintenance. The
-[performance report](PERFORMANCE.md) records correctness, diagnostics,
-construction and clone measurements, including unmet CPU budgets.
+construction-support measurement and fixture maintenance.
 
 The [projection package documentation](../projection/doc.go) owns the result
 declaration contract.
-
-The [project review](PROJECT_REVIEW.md) records production query comparisons,
-selected improvements and their verification.
-The [query design comparison](QUERY_DESIGNS.md) records alternatives for query
-representation and projection extraction, including rejected ownership models.
-The [construction safety decision](COLLECTION_DESIGN.md) compares six collection
-architectures with jOOQ and Go alternatives, retains compile-time grammar guards,
-and owns the projection composition decision.
 
 ## Boundaries and representation
 
@@ -40,10 +30,11 @@ Driver-independent [examples](../projection/example_test.go) live alongside the
 package and run with its tests. No mapper dependency or separate example module
 is needed.
 
-One paired column list remains authoritative. The [query design comparison](QUERY_DESIGNS.md)
-owns extraction and allocation choices; the [construction safety decision](COLLECTION_DESIGN.md)
-owns composition and relation-taking factories. Public method contracts belong
-to the projection package documentation linked above.
+Owned `Expressions` and `Metadata` allocate exactly sized results; the
+`AppendExpressions` and `AppendMetadata` variants grow caller storage. Routing
+owned extraction through append-with-nil was rejected because it measured
+slower. Public method contracts belong to the projection package documentation
+linked above.
 
 `Statement` and `Rowset` are sealed interfaces. SELECT, VALUES, TABLE and set
 operations are rowsets; DML is Statement-only even with RETURNING. Query utility
@@ -203,7 +194,9 @@ bound-value lifetime through execution.
 Reusable rendering can avoid allocations with preconstructed nodes, stable
 interface values and adequate destination capacity. Construction, cloning, owned
 output and failures have separate costs. Benchmark and allocation tests own
-measurable budgets; there is no universal zero-allocation promise.
+measurable budgets; there is no universal zero-allocation promise. No CPU budget
+is enforced: shared-host noise left the window-lock guard's CPU cost
+unresolved, and the measurements are retained in commit `7651862`.
 
 ## Validation and security limits
 
@@ -216,6 +209,12 @@ nil rowsets, names, unknown widths and row assignments supplied to INSERT
 assignment sources retain runtime checks. The write roles prevent DEFAULT from
 entering general expressions through the public typed API; trusted SQL remains
 an intentional escape.
+
+Required-first and required-two signatures keep literal collections nonempty
+and write tuples at least two elements wide, including `Coalesce`, `Greatest`,
+`Least`, `SetRow` and MERGE insertion operands. Unrestricted
+variadics were rejected because their shorter dynamic calls admit empty grammar
+completions; compile-negative cases in `safety_test.go` enforce the policy.
 
 SELECT locking rejects structural DISTINCT, GROUP BY and HAVING clauses. An
 unused named WINDOW is compatible with locking. Rendering records structural

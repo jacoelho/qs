@@ -1,6 +1,0 @@
-goos: darwin
-goarch: arm64
-pkg: github.com/jacoelho/qs
-cpu: Apple M2 Max
-BenchmarkDesignProjection/Select         	 3500704	       361.9 ns/op	    1376 B/op	       4 allocs/op
-PASS

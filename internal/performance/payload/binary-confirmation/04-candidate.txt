@@ -1,6 +1,0 @@
-goos: darwin
-goarch: arm64
-pkg: github.com/jacoelho/qs
-cpu: Apple M2 Max
-BenchmarkDesignBinarySubscript/AppendWarm         	 3231180	       328.6 ns/op	       0 B/op	       0 allocs/op
-PASS

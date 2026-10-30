@@ -904,8 +904,7 @@ example with `clear(argBuffer)` before the next append.
 Successful appends can avoid allocations when the query is prebuilt and the
 buffers have enough capacity. Construction, cloning, owned output, and
 failures have separate costs, so this is not a zero-allocation guarantee for
-every query. The [performance report](internal/PERFORMANCE.md) documents the
-measurements and their limits.
+every query.
 
 ### Control query lifetime
 
@@ -966,9 +965,6 @@ Use these references for more information:
 - `go doc .`: the full exported API.
 - `go doc ./projection`: reusable result declarations and their ownership contracts.
 - [Architecture guide](internal/ARCHITECTURE.md): boundaries, ownership, and design decisions.
-- [Performance report](internal/PERFORMANCE.md): measurements and performance limits.
-- [Project review](internal/PROJECT_REVIEW.md): production query comparisons, findings and validation.
-- [Query design comparison](internal/QUERY_DESIGNS.md): 18 alternatives assessed for ergonomics, correctness and cost.
 - [PostgreSQL corpus](internal/postgrescorpus/README.md): construction measurements and fixture maintenance.
 
 The pinned corpus verifies 28,111 of 28,197 query occurrences, measuring 99.70%

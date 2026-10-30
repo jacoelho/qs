@@ -1,6 +1,0 @@
-PASS A current staged: exact SQL/args; captured positions; 8 empty collections; invalid element; row width (12 probes)
-PASS B uniform variadic adapter: exact SQL/args; captured positions; 8 empty collections; invalid element; row width (12 probes)
-PASS C validated nonempty: exact SQL/args; captured positions; 8 empty collections; invalid element; row width (12 probes)
-PASS D operation spec: exact SQL/args; captured positions; 8 empty collections; invalid element; row width (12 probes)
-PASS C zero-value nonempty lists rejected (1 probe)
-49 boundary probes passed; no timing or allocation claim

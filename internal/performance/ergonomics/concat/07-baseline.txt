@@ -1,7 +1,0 @@
-goos: darwin
-goarch: arm64
-pkg: github.com/jacoelho/qs
-cpu: Apple M2 Max
-BenchmarkArchitectureProjection/Concat         	  554506	       616.5 ns/op	    2176 B/op	       4 allocs/op
-BenchmarkArchitectureProjection/ConcatAndSelect         	  228858	      1278 ns/op	    4704 B/op	       8 allocs/op
-PASS
