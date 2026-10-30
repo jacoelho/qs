@@ -349,6 +349,7 @@ func checkAgainstHandWritten[T any](t *testing.T, drivers []projectionDriver, te
 }
 
 func TestProjectionReadsAsHandWritten(t *testing.T) {
+	session := connect(t)
 	drivers := projectionDrivers(t)
 	present := func(check func(*testing.T, []projectionDriver, string, bool), texts ...string) {
 		t.Helper()
@@ -365,7 +366,10 @@ func TestProjectionReadsAsHandWritten(t *testing.T) {
 	present(checkAgainstHandWritten[[]byte], `SELECT 'ab'::bytea`, `SELECT ''::bytea`)
 	present(checkAgainstHandWritten[sql.NullString], `SELECT 'x'::text`, `SELECT 'ab'::bytea`)
 	present(checkAgainstHandWritten[pgtype.Text], `SELECT 'x'::text`, `SELECT 'ab'::bytea`)
-	present(checkAgainstHandWritten[pgtype.Numeric], `SELECT 'NaN'::numeric`, `SELECT 'Infinity'::numeric`, `SELECT 1.50::numeric`)
+	present(checkAgainstHandWritten[pgtype.Numeric], `SELECT 'NaN'::numeric`, `SELECT 1.50::numeric`)
+	if session.options.PostgreSQL >= qs.PostgreSQL14 {
+		present(checkAgainstHandWritten[pgtype.Numeric], `SELECT 'Infinity'::numeric`)
+	}
 	present(checkAgainstHandWritten[pgtype.Timestamptz], `SELECT 'infinity'::timestamptz`)
 	present(checkAgainstHandWritten[pgtype.Date], `SELECT 'infinity'::date`)
 	present(checkAgainstHandWritten[time.Time], `SELECT '2026-01-02 03:04:05+00'::timestamptz`)
@@ -454,6 +458,7 @@ type projectionMultirange = pgtype.Multirange[pgtype.Range[pgtype.Int4]]
 // Multirange reads flat; only the read through a nil pointer is unusable. It is declared
 // here and never scanned through a pointer, which would hang database/sql.
 func TestProjectionReadsMultirangeFlat(t *testing.T) {
+	requireVersion(t, connect(t), qs.PostgreSQL14)
 	p := projection.Column(qs.Col("x"), func(v *projectionMultirange) *projectionMultirange { return v })
 	for _, d := range projectionDrivers(t) {
 		t.Run(d.name, func(t *testing.T) {
