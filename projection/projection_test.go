@@ -285,13 +285,13 @@ func TestEmptyAndDeferredValidation(t *testing.T) {
 	}
 }
 
-func checkSQL(t *testing.T, statement qs.Statement, want string, wantArgs ...any) {
-	t.Helper()
+func checkSQL(tb testing.TB, statement qs.Statement, want string, wantArgs ...any) {
+	tb.Helper()
 	text, args, err := qs.ToSQL(statement)
 	if err != nil {
-		t.Fatalf("render: %v", err)
+		tb.Fatalf("render: %v", err)
 	}
 	if text != want || !slices.Equal(args, wantArgs) {
-		t.Fatalf("SQL = %s args=%v, want %s args=%v", text, args, want, wantArgs)
+		tb.Fatalf("SQL = %s args=%v, want %s args=%v", text, args, want, wantArgs)
 	}
 }
