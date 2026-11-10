@@ -23,10 +23,52 @@ caller's scan function: it performs no I/O and imports no driver, reflection or
 positional, so it proves neither result width nor type agreement; the driver reports
 those when a row is scanned.
 
+`ScanInto` is the one row read; `Scan` is `ScanInto` on a new value, zeroed on error.
+The caller owns the value passed to `ScanInto`, including what reusing it across rows
+shares. `All` and `Collect` own the row loop and its completion check, `rows.Err`, and
+read through `Rows`, the three methods `pgx.Rows` and `*sql.Rows` have in common. They
+never close the rows: the caller opened the result set, and its deferred `Close` also
+covers an abandoned loop.
+
+Between rows of one result set they keep a scratch: the destination list, the cell
+lists and the cells of the previous row, which each part overwrites in creation order,
+the order the declaration fixes. Parts still run for every row, because a dest may
+allocate inside the row it is given. Nothing a caller can keep is reused: a present
+group's row is a new allocation, taken again only when the group was absent and no set
+received the row, though its dests may have allocated inside it. The cell is marked
+when the group is found present, before its cells finish, so this does not depend on
+the loop stopping at the first error. A `Map` input is a new allocation for every row,
+because a set inside it may keep a pointer to it. The `*T` a `ColumnNull` set receives
+is the driver's allocation: only the cell holding that pointer is pooled, so pooling
+the value would break what a set may keep. `Collect` reads each row into its slot
+of the result slice and `All` into a new value. A scan function must therefore not
+keep its destination list past its return, which neither driver's `Scan` does. A
+single `Scan` or `ScanInto` has no scratch and allocates what it needs.
+
 Flat columns read straight into their destination. Nullable columns, `EmbedNull`
 groups and `Map` add per-row cells that run after the row is read, and only those
 pay for them. This gives `Column` two read modes: flat, the driver owns NULL; in a
 group, the group owns it, because presence is unknown until the whole row is read.
+Cells that assign a column finish before the others: a group's `Column` cells, and
+every `ColumnOrZero` cell, flat or grouped. This reproduces the order of a flat
+`Column`, which the driver has written before any cell runs. `set` and `convert`
+therefore see the same row in both modes: every column of their row and of the
+enclosing rows assigned, and earlier callbacks applied in declaration order.
+
+`ColumnOrZero` is the `ColumnNull` read with the assignment owned by the package: it
+copies the driver's value, or the zero value on NULL, to the address `dest` returned
+before the row was read. Assigning zero rather than skipping keeps a destination reused
+through `ScanInto` free of the previous row. Its target passes the checks of a group
+`Column`, for every `T`, since no Scanner path exists for it: once on a zero `D`, and
+again behind the dests of enclosing `Embed`s, which run inner's parts in a declaring
+pass of their own. A value the caller prepares for `ScanInto` is
+beyond any declaration, so the rule itself, that `T` decodes from zero, stays the
+caller's.
+
+Positional reading covers a prefix: `scan` receives one destination per expression
+and may append its own for output selected after `Expressions`. Such output has no
+owner in the declaration, so it suits values that belong to no row, such as a window
+count; a per-row value belongs in a wrapper row.
 A group decides presence from what the driver wrote and never inspects Go types.
 For non-Scanner destinations that signal is a nil `**T`, so `ColumnNull` and a group
 `Column` are by construction the hand-written read `var v *T; rows.Scan(&v)`, with
@@ -44,15 +86,23 @@ through a probing cell, which keeps a write-through target reachable, at the cos
 pgx's native codec: such a read can differ from a flat one, in value as well as error.
 
 All destination checks run at declaration: `Column` and `Embed` call their dest on a
-zero value, and `EmbedNull` runs inner's dests in a declaring pass, where a dest under
+zero value, and `Embed` and `EmbedNull` run inner's dests in a declaring pass, where a dest under
 `Embed` receives what that `Embed` returned. A panic at Scan would come before `Row.Scan`, the only closer of a pgx
 `QueryRow` and the only release of a pooled one, and a recover around a failed driver
 read leaves the connection unusable. Expressions render before any query, so a
 declaration panic holds no connection. Scan itself checks nothing, so a
-non-deterministic accessor is outside the contract rather than detected.
+non-deterministic accessor is outside the contract rather than detected. The exception
+is `ScanInto`'s nil destination, which exists only at the call and panics there. That
+panic also precedes `Row.Scan` and strands a pgx `QueryRow` connection; a nil
+destination would panic in the first dest regardless, so the check adds a message,
+not a hazard.
+
+The package writes into a row only through dest addresses; `ColumnNull`, `EmbedNull` and `Map` deliver through a `set` the caller writes.
 
 Rejected alternatives:
 
+- `Map` yielding its whole value (`Map(inner, convert) Projection[T]`, the previous shape) with a guard in `New`: the package assigned the value when `convert` returned and discarded what else was read into it. The package imports neither reflect nor unsafe and checks destinations only at declaration, so it cannot detect that two dests reach the same value, as two `Embed`s of one field or a `Column` into a field of an embedded `Map` do, and `New` saw only its direct arguments. The cost of the replacement is an identity `set` for a whole-value `Map`, which still replaces what else was read into the value, now as a statement at the call.
+- One fallible callback for `Map` (`set func(*D, B) error`): a converter shaped `func(B) (T, error)`, such as `netip.ParseAddr`, would need a wrapper at every call, and `set` would be fallible here and infallible in `ColumnNull` and `EmbedNull`.
 - Go-type NULL inference in `EmbedNull`: needs reflection and guesses at driver and
   Scanner ownership of NULL.
 - Recovering an accessor panic before the row is read, draining the row with no-op
@@ -67,6 +117,30 @@ Rejected alternatives:
   a deferred unlock, so `Row.Scan` deadlocks before recover runs.
 - Opaque metadata (the previous design): the package never used the pairing, so
   every caller wrote the binding and scan code.
+- Finishing a group's cells in declaration order: a `set` declared before a `Column`
+  read its zero value in a group and its row value when flat.
+- Closing rows in `All` and `Collect`: `pgx.Rows.Close()` and `sql.Rows.Close() error`
+  share no signature, and both drivers already close on exhaustion.
+- A method usable as `pgx.RowToFunc`: function types must be identical, so no signature
+  that omits pgx is assignable; pgx callers wrap `p.Scan(row.Scan)` or use `Collect`.
+- A default-value column (`ColumnOr(expr, value, dest)`): `COALESCE` in the expression
+  already says it, in the query where the default is visible.
+- A named discard column: `ColumnNull` with a `set` that does nothing reads a column
+  no field holds, with the Go type the driver should decode stated at the call.
+- A helper that appends destinations to `Rows`: three lines at the caller, and the
+  appended output is outside the declaration either way.
+- Binding destinations once for a result set: a dest may allocate inside the row it
+  is given, so destinations bound to one row would point outside the next.
+- One row value shared by `All` and copied out for each row: a setter that keeps a
+  pointer into its row would then see the next row's data.
+- Two cell lists and the scratch pointer inside the reader: the reader passes by value
+  through every part, and past eight words a flat three-column `Scan` measured about a
+  tenth slower on arm64. One list with reserved leading slots, a bit set for the mode
+  and the scratch as a second argument keep it at eight.
+- A row read of its own for `Scan`, to save the call into the shared one: about 2 ns a
+  row, against two bodies to keep alike.
+- An exported scratch for `ScanInto` loops: no caller needs it while `All` and
+  `Collect` cover result sets, and it would make reuse rules part of the API.
 
 Driver-independent [examples](../projection/example_test.go) live alongside the
 package and run with its tests; driver behaviour is tested in `integration/`.

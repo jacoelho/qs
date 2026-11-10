@@ -10,7 +10,8 @@ import (
 )
 
 // ErrNull reports NULL in a Column inside an EmbedNull group with at least one
-// non-NULL column. Scan wraps it with the column's Expressions index and SQL.
+// non-NULL column. Scan wraps it with the column's Expressions index and SQL. When
+// several such columns are NULL it names one of them.
 // NULL means the driver left the destination nil: see EmbedNull for JSON null.
 var ErrNull = errors.New("projection: NULL in required column of present group")
 
@@ -22,8 +23,8 @@ func columnLabel(position int, expression qs.Expr) string {
 	return fmt.Sprintf("column %d (%s)", position, sql)
 }
 
-func nullError(position int, expression qs.Expr) error {
-	return fmt.Errorf("projection: %s: %w", columnLabel(position, expression), ErrNull)
+func nullError(position int, expression *qs.Expr) error {
+	return fmt.Errorf("projection: %s: %w", columnLabel(position, *expression), ErrNull)
 }
 
 // cell is one post-scan step. null reports presence to an enclosing group.
@@ -32,23 +33,125 @@ type cell interface {
 	finish() error
 }
 
-// reader passes by value: a pointer through part func values would escape.
-type reader struct {
-	dests   []any
-	cells   []cell
-	inGroup bool
-	// declaring marks EmbedNull's declaration pass, the only place group checks run.
-	declaring bool
+// scratch is what consecutive rows of one result set reuse: the destination list, the
+// cell lists and the cells themselves. Nothing in it outlives the row it was filled
+// for, except as storage. A cell is filled again for the next row unless it holds a row
+// that a set received: a present group's cell is replaced (groupCell.present) and a
+// Map's cell is never taken from the pool. The package documentation says what callers
+// may keep.
+//
+// A nil *scratch is a single row: cellAt and list then allocate.
+type scratch struct {
+	dests []any
+	// pool holds the cells created for the previous row, in creation order, which the
+	// declaration fixes.
+	pool []cell
+	// arena backs this row's cell lists.
+	arena []cell
+	// next is the pool slot being filled for this row.
+	next int
+	// need is what this row asked of arena.
+	need int
 }
 
-type part[D any] func(d *D, r reader) reader
+// cellAt returns the cell the calling part fills for this row: the one it filled for
+// the previous row, or a new one when s is nil. The caller overwrites it. The
+// single-row path stays small enough to inline.
+func cellAt[C any, P interface {
+	*C
+	cell
+}](s *scratch) P {
+	if s == nil {
+		return new(C)
+	}
+	return pooledCell[C, P](s)
+}
+
+// replace puts c in the slot cellAt just returned, for a part whose previous cell must not be filled again.
+func (s *scratch) replace(c cell) { s.pool[s.next-1] = c }
+
+func pooledCell[C any, P interface {
+	*C
+	cell
+}](s *scratch) P {
+	slot := s.next
+	s.next++
+	if slot < len(s.pool) {
+		if c, ok := s.pool[slot].(P); ok {
+			return c
+		}
+		c := P(new(C))
+		s.pool[slot] = c
+		return c
+	}
+	c := P(new(C))
+	s.pool = append(s.pool, c)
+	return c
+}
+
+// mode says where a reader is: inside a group, and in a declaration pass of Embed or
+// EmbedNull, where the targets that receive a driver-allocated value are checked behind
+// the dests that lead to them. A bit set, to keep reader at eight words.
+type mode uint8
+
+const (
+	inGroup mode = 1 << iota
+	declaring
+)
+
+// reader is the row being assembled. It passes by value, because a pointer through part
+// func values would escape, and it is passed through every part of every row, so its
+// size is the cost of a flat Column: measured on arm64, a ninth word adds about a tenth
+// to a three-column Scan. That is why the scratch travels beside it and mode is one field.
+type reader struct {
+	dests []any
+	// cells holds this row's cells in the order they finish. The first ones are those
+	// that assign a column after the scan: every ColumnOrZero, and a group's Columns.
+	// They finish before the rest, so set and convert see every column of their row, as
+	// they see a flat Column, which the driver writes. Their slots are reserved when the
+	// list is made and assigned counts those filled; the rest are appended.
+	cells    []cell
+	assigned int
+	mode     mode
+}
+
+// list returns a cell list with reserved leading slots for assigning cells and room
+// for capacity cells in all, taken from the arena when s is not nil and it has room.
+func (s *scratch) list(reserved, capacity int) []cell {
+	if s != nil {
+		s.need += capacity
+		if start := len(s.arena); capacity <= cap(s.arena)-start {
+			s.arena = s.arena[:start+capacity]
+			return s.arena[start : start+reserved : start+capacity]
+		}
+	}
+	return make([]cell, reserved, capacity)
+}
+
+// assign adds c to the cells that finish first. A declaration pass reserved no slots
+// and only counts.
+func (r reader) assign(c cell) reader {
+	if r.mode&declaring != 0 {
+		r.cells = append(r.cells, c)
+	} else {
+		r.cells[r.assigned] = c
+	}
+	r.assigned++
+	return r
+}
+
+// part adds one declaration's destinations and cells for the row read into d.
+type part[D any] func(d *D, r reader, reuse *scratch) reader
 
 // Projection is an ordered, immutable list of result columns bound to fields of D.
 // The zero Projection is empty.
 type Projection[D any] struct {
 	expressions []qs.Expr
 	parts       []part[D]
-	cells       int // cells Scan appends outside a group
+	// assigns is the number of cells the parts assign outside a group, exactly: read
+	// reserves that many leading slots. See reader.cells.
+	assigns int
+	cells   int // other cells the parts append outside a group
 }
 
 // scanner mirrors database/sql.Scanner without importing it.
@@ -58,7 +161,7 @@ type scanner interface{ Scan(src any) error }
 type requiredCell[T any] struct {
 	value      *T
 	dest       *T
-	expression qs.Expr
+	expression *qs.Expr
 	position   int
 }
 
@@ -76,7 +179,7 @@ func (c *requiredCell[T]) finish() error {
 // write-through target. NULL stops here because a group decides what it means.
 type scannerCell struct {
 	target     scanner
-	expression qs.Expr
+	expression *qs.Expr
 	position   int
 	isNull     bool
 }
@@ -125,13 +228,22 @@ func checkGroupTarget[T any](target, again *T, position int, expression qs.Expr)
 	if problem := indirectReadProblem[T](); problem != "" {
 		panic(label() + ": " + problem)
 	}
-	if target != again {
-		panic(fmt.Sprintf("%s: dest for %T must return a stable address or implement Scan(any) error", label(), *target))
+	if problem := targetProblem(target, again); problem != "" {
+		panic(label() + ": " + problem + " or implement Scan(any) error")
 	}
+}
+
+// targetProblem names why a value the driver allocated cannot be assigned through
+// target, or returns "": see checkGroupTarget.
+func targetProblem[T any](target, again *T) string {
 	var zero T
-	if fmt.Sprintf("%#v", *target) != fmt.Sprintf("%#v", zero) {
-		panic(fmt.Sprintf("%s: dest for %T must return a zero target or implement Scan(any) error", label(), *target))
+	switch {
+	case target != again:
+		return fmt.Sprintf("dest for %T must return a stable address", zero)
+	case fmt.Sprintf("%#v", *target) != fmt.Sprintf("%#v", zero):
+		return fmt.Sprintf("dest for %T must return a zero target", zero)
 	}
+	return ""
 }
 
 // Column reads one required result column into the address dest returns, as
@@ -140,7 +252,8 @@ func checkGroupTarget[T any](target, again *T, position int, expression qs.Expr)
 // the row is read, so it must be deterministic and must not return nil. It may allocate
 // a nil pointer but must not replace a value already set; put nested pointers behind
 // Embed's dest. Inside EmbedNull, NULL in a present group is ErrNull whatever T
-// is; use ColumnNull for nullable columns. Column panics if dest is nil or returns nil.
+// is; use ColumnNull or ColumnOrZero for nullable columns. Column panics if dest is nil
+// or returns nil.
 func Column[D, T any](expression qs.Expr, dest func(*D) *T) Projection[D] {
 	if dest == nil {
 		panic("projection: Column with nil dest")
@@ -149,23 +262,25 @@ func Column[D, T any](expression qs.Expr, dest func(*D) *T) Projection[D] {
 	if dest(&zero) == nil {
 		panic(fmt.Sprintf("projection: Column dest returned nil for a zero %T", zero))
 	}
-	return Projection[D]{expressions: []qs.Expr{expression}, parts: []part[D]{func(d *D, r reader) reader {
+	return Projection[D]{expressions: []qs.Expr{expression}, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
 		target := dest(d)
-		if !r.inGroup {
+		if r.mode&inGroup == 0 {
 			r.dests = append(r.dests, target)
 			return r
 		}
 		if s, ok := any(target).(scanner); ok {
-			c := &scannerCell{target: s, position: len(r.dests), expression: expression}
-			r.dests, r.cells = append(r.dests, c), append(r.cells, c)
-			return r
+			c := cellAt[scannerCell](reuse)
+			*c = scannerCell{target: s, position: len(r.dests), expression: &expression}
+			r.dests = append(r.dests, c)
+			return r.assign(c)
 		}
-		if r.declaring {
+		if r.mode&declaring != 0 {
 			checkGroupTarget(target, dest(d), len(r.dests), expression)
 		}
-		c := &requiredCell[T]{dest: target, position: len(r.dests), expression: expression}
-		r.dests, r.cells = append(r.dests, &c.value), append(r.cells, c)
-		return r
+		c := cellAt[requiredCell[T]](reuse)
+		*c = requiredCell[T]{dest: target, position: len(r.dests), expression: &expression}
+		r.dests = append(r.dests, &c.value)
+		return r.assign(c)
 	}}}
 }
 
@@ -182,9 +297,14 @@ func (c *nullCell[D, T]) finish() error {
 }
 
 // ColumnNull reads one nullable result column as var v *T; rows.Scan(&v) does, and calls
-// set with v after the row is read: nil on NULL. See EmbedNull for what such a read
-// requires of T. A write-through Scanner cannot be used here, because the driver
-// allocates T. ColumnNull panics if set is nil or T is detected as unreadable that way.
+// set with v after the row is read: nil on NULL. set finds every Column and ColumnOrZero
+// of its row already assigned, wherever each is declared; set and convert calls run in
+// declaration order. See EmbedNull for what such a read requires of T. A write-through
+// Scanner cannot be used here, because the driver allocates T. ColumnNull panics if set
+// is nil or T is detected as unreadable that way.
+//
+// A set that does nothing reads a column no field holds, such as a join key that only
+// decides whether an EmbedNull group is present.
 func ColumnNull[D, T any](expression qs.Expr, set func(*D, *T)) Projection[D] {
 	if set == nil {
 		panic("projection: ColumnNull with nil set")
@@ -192,31 +312,98 @@ func ColumnNull[D, T any](expression qs.Expr, set func(*D, *T)) Projection[D] {
 	if problem := indirectReadProblem[T](); problem != "" {
 		panic("projection: ColumnNull: " + problem)
 	}
-	return Projection[D]{expressions: []qs.Expr{expression}, cells: 1, parts: []part[D]{func(d *D, r reader) reader {
-		c := &nullCell[D, T]{d: d, set: set}
+	return Projection[D]{expressions: []qs.Expr{expression}, cells: 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
+		c := cellAt[nullCell[D, T]](reuse)
+		*c = nullCell[D, T]{d: d, set: set}
 		r.dests, r.cells = append(r.dests, &c.value), append(r.cells, c)
 		return r
+	}}}
+}
+
+type zeroCell[T any] struct {
+	value *T
+	dest  *T
+}
+
+func (c *zeroCell[T]) null() bool { return c.value == nil }
+func (c *zeroCell[T]) finish() error {
+	if c.value == nil {
+		// Assigned, not skipped: under ScanInto the target may hold the previous row.
+		var zero T
+		*c.dest = zero
+		return nil
+	}
+	*c.dest = *c.value
+	return nil
+}
+
+// ColumnOrZero reads one nullable result column as ColumnNull does and assigns it to
+// the address dest returns: the zero T on NULL. Use it where the row does not tell NULL
+// from zero, or where T represents NULL itself, as sql.NullString does. NULL is never
+// ErrNull, and inside EmbedNull it counts as NULL for the group's presence.
+//
+// dest follows Column's rules. The driver allocates the T that is then copied to the
+// address dest returned, so T must decode from its zero value and a write-through
+// Scanner cannot be used: see EmbedNull. As a check on that, the address dest returns
+// for a zero D, directly and behind the dests of enclosing Embeds, must be stable and
+// hold a zero value. The assignment happens after the row is read, before any set or
+// convert runs. ColumnOrZero panics if dest is nil or returns nil, on such a target, or
+// if T is detected as unreadable through a pointer.
+func ColumnOrZero[D, T any](expression qs.Expr, dest func(*D) *T) Projection[D] {
+	if dest == nil {
+		panic("projection: ColumnOrZero with nil dest")
+	}
+	if problem := indirectReadProblem[T](); problem != "" {
+		panic("projection: ColumnOrZero: " + problem)
+	}
+	var zero D
+	target := dest(&zero)
+	if target == nil {
+		panic(fmt.Sprintf("projection: ColumnOrZero dest returned nil for a zero %T", zero))
+	}
+	if problem := targetProblem(target, dest(&zero)); problem != "" {
+		panic("projection: ColumnOrZero: " + problem)
+	}
+	return Projection[D]{expressions: []qs.Expr{expression}, assigns: 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
+		c := cellAt[zeroCell[T]](reuse)
+		*c = zeroCell[T]{dest: dest(d)}
+		if r.mode&declaring != 0 {
+			// d now comes from an enclosing Embed's dest, which may have prepared the target.
+			if problem := targetProblem(c.dest, dest(d)); problem != "" {
+				panic("projection: ColumnOrZero: " + columnLabel(len(r.dests), expression) + ": " + problem)
+			}
+		}
+		r.dests = append(r.dests, &c.value)
+		return r.assign(c)
 	}}}
 }
 
 // Embed reads inner into the value dest returns. dest runs on a zero D at declaration
 // and once per Scan, before the row is read, so a nil pointer inside D must be
 // allocated by dest. Allocate only if nil: Embeds sharing a pointer would otherwise
-// each replace the last, losing its columns. inner's dests then receive what dest
-// returned. Embed panics if dest is nil or returns nil.
+// each replace the last, losing its columns. inner's dests, those of nested
+// declarations included, then receive what dest returned, at declaration too, where a
+// ColumnOrZero target is checked. Embed panics if dest is nil or returns nil.
 func Embed[D, N any](inner Projection[N], dest func(*D) *N) Projection[D] {
 	if dest == nil {
 		panic("projection: Embed with nil dest")
 	}
 	var zero D
-	if dest(&zero) == nil {
+	row := dest(&zero)
+	if row == nil {
 		panic(fmt.Sprintf("projection: Embed dest returned nil for a zero %T", zero))
 	}
+	// Every dest inside inner runs on the row it receives at Scan; a ColumnOrZero checks
+	// its target there.
+	declared := reader{mode: declaring}
+	for _, p := range inner.parts {
+		declared = p(row, declared, nil)
+	}
 	// One part, not one per column: an allocating dest must not split a row.
-	return Projection[D]{expressions: inner.expressions, cells: inner.cells, parts: []part[D]{func(d *D, r reader) reader {
+	return Projection[D]{expressions: inner.expressions, assigns: inner.assigns, cells: inner.cells, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
 		row := dest(d)
 		for _, p := range inner.parts {
-			r = p(row, r)
+			r = p(row, r, reuse)
 		}
 		return r
 	}}}
@@ -227,6 +414,9 @@ type groupCell[D, N any] struct {
 	d     *D
 	set   func(*D, *N)
 	cells []cell
+	// present marks a row whose group was present: its columns were assigned and sets
+	// received it, so the caller may hold it and the cell is not filled again.
+	present bool
 }
 
 func (c *groupCell[D, N]) null() bool {
@@ -243,6 +433,8 @@ func (c *groupCell[D, N]) finish() error {
 		c.set(c.d, nil)
 		return nil
 	}
+	// Before any inner cell finishes: an inner set may keep the row even if a later cell fails.
+	c.present = true
 	for _, inner := range c.cells {
 		if err := inner.finish(); err != nil {
 			return err
@@ -256,18 +448,23 @@ func (c *groupCell[D, N]) finish() error {
 // EmbedNull reads inner as an optional group, such as the nullable side of a LEFT
 // JOIN, and calls set after the row is read. set receives nil when every inner
 // column is NULL, so a matched row whose selected columns are all NULL is
-// indistinguishable from no match. Otherwise a NULL Column is ErrNull and a
-// ColumnNull receives nil. Under an absent group Map does not run convert.
+// indistinguishable from no match. Otherwise a NULL Column is ErrNull, a ColumnNull
+// receives nil and a ColumnOrZero assigns zero. Under an absent group Map runs neither
+// convert nor set.
+//
+// A present group assigns its Columns and ColumnOrZeros, then runs the set and convert
+// calls declared inside it in declaration order, then calls set. That call takes the group's place
+// in the enclosing declaration's order, and finds the enclosing row's Columns assigned.
 //
 // Inside a group, at any depth, a Column whose T is not a Scanner reads as
 // var v *T; rows.Scan(&v) does, with v == nil meaning NULL, and then assigns *v through
-// dest. ColumnNull reads the same way everywhere. Such a read has that read's limits on
-// each driver: T must decode from its zero value, because the driver allocates it, so
-// the Column's dest must return a stable address holding a zero value; T must own its
-// memory, because the driver's check for borrowed types sees only **T; and presence is
-// what the driver reports, so a non-NULL value it decodes to nil counts as NULL. Which
-// values do depends on driver and T: pgx v5.11 does for 'null'::jsonb into a string or
-// a map.
+// dest. ColumnNull and ColumnOrZero read the same way everywhere, whatever T is. Such a
+// read has that read's limits on each driver: T must decode from its zero value,
+// because the driver allocates it, so a dest must return a stable address holding a
+// zero value; T must own its memory, because the driver's check for borrowed types
+// sees only **T; and presence is what the driver reports, so a non-NULL value it
+// decodes to nil counts as NULL. Which values do depends on driver and T: pgx v5.11
+// does for 'null'::jsonb into a string or a map.
 //
 // A Scanner T in a group reads as a value exposing only Scan(any), with NULL withheld
 // from T, so it keeps JSON null present. On database/sql that matches a read outside a
@@ -287,16 +484,24 @@ func EmbedNull[D, N any](inner Projection[N], set func(*D, *N)) Projection[D] {
 		panic("projection: EmbedNull with nil set")
 	}
 	var row N
-	declared := reader{inGroup: true, declaring: true}
+	declared := reader{mode: inGroup | declaring}
 	for _, p := range inner.parts {
-		declared = p(&row, declared)
+		declared = p(&row, declared, nil)
 	}
-	capacity := len(declared.cells)
-	return Projection[D]{expressions: inner.expressions, cells: 1, parts: []part[D]{func(d *D, r reader) reader {
-		c := &groupCell[D, N]{d: d, set: set}
-		group := reader{dests: r.dests, cells: make([]cell, 0, capacity), inGroup: true}
+	assigns, capacity := declared.assigned, len(declared.cells)
+	return Projection[D]{expressions: inner.expressions, cells: 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
+		c := cellAt[groupCell[D, N]](reuse)
+		if c.present {
+			// Only a pooled cell can be present here. An absent group's row reached no set,
+			// so it is filled again with whatever its dests allocated inside it; a present
+			// one may be held by the caller.
+			c = new(groupCell[D, N])
+			reuse.replace(c)
+		}
+		c.d, c.set = d, set
+		group := reader{dests: r.dests, mode: inGroup, cells: reuse.list(assigns, capacity)}
 		for _, p := range inner.parts {
-			group = p(&c.row, group)
+			group = p(&c.row, group, reuse)
 		}
 		c.cells = group.cells
 		r.dests, r.cells = group.dests, append(r.cells, c)
@@ -304,35 +509,48 @@ func EmbedNull[D, N any](inner Projection[N], set func(*D, *N)) Projection[D] {
 	}}}
 }
 
-type mapCell[B, T any] struct {
+type mapCell[D, B, T any] struct {
 	row     B
-	d       *T
+	d       *D
 	convert func(B) (T, error)
+	set     func(*D, T)
 }
 
 // null is always true: a conversion proves nothing about presence.
-func (c *mapCell[B, T]) null() bool { return true }
-func (c *mapCell[B, T]) finish() error {
+func (c *mapCell[D, B, T]) null() bool { return true }
+func (c *mapCell[D, B, T]) finish() error {
 	value, err := c.convert(c.row)
 	if err != nil {
 		return err
 	}
-	*c.d = value
+	c.set(c.d, value)
 	return nil
 }
 
-// Map transforms inner's value after the row is read. convert runs synchronously
-// inside Scan while the result set is open and receives no context, so it must be
-// CPU-only and safe for concurrent use. Its error is returned unchanged, without
-// column context. Map panics if convert is nil.
-func Map[B, T any](inner Projection[B], convert func(B) (T, error)) Projection[T] {
+// Map reads inner into a value of its own, a new zero B for each row, and after the row
+// is read calls convert on it and passes the result to set, which assigns it into D.
+// Nothing inner reads reaches D except through set. Map assigns nothing itself, so what
+// other declarations read into the same D survives as far as set leaves it: a set that
+// assigns a field keeps the rest, and one that assigns the whole value, as
+// func(d *T, v T) { *d = v } does, replaces everything read into it before set ran,
+// Columns included, without an error. set and convert calls run in declaration order,
+// after every Column and ColumnOrZero of the row is assigned. If convert fails, set does
+// not run and the error is returned unchanged, without column context. convert runs
+// synchronously inside Scan while the result set is open and receives no context, so it
+// must be CPU-only and safe for concurrent use. Map panics if convert or set is nil.
+func Map[D, B, T any](inner Projection[B], convert func(B) (T, error), set func(*D, T)) Projection[D] {
 	if convert == nil {
 		panic("projection: Map with nil convert")
 	}
-	return Projection[T]{expressions: inner.expressions, cells: inner.cells + 1, parts: []part[T]{func(d *T, r reader) reader {
-		c := &mapCell[B, T]{d: d, convert: convert}
+	if set == nil {
+		panic("projection: Map with nil set")
+	}
+	return Projection[D]{expressions: inner.expressions, assigns: inner.assigns, cells: inner.cells + 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
+		// Never taken from the scratch: inner sets receive &c.row and may keep it, as a
+		// child's pointer to its parent does.
+		c := &mapCell[D, B, T]{d: d, convert: convert, set: set}
 		for _, p := range inner.parts {
-			r = p(&c.row, r)
+			r = p(&c.row, r, reuse)
 		}
 		r.cells = append(r.cells, c)
 		return r
@@ -341,15 +559,17 @@ func Map[B, T any](inner Projection[B], convert func(B) (T, error)) Projection[T
 
 // New concatenates projections in order, preserving duplicates.
 func New[D any](projections ...Projection[D]) Projection[D] {
-	var expressions, parts, cells int
+	var expressions, parts, assigns, cells int
 	for _, q := range projections {
 		expressions += len(q.expressions)
 		parts += len(q.parts)
+		assigns += q.assigns
 		cells += q.cells
 	}
 	p := Projection[D]{
 		expressions: make([]qs.Expr, 0, expressions),
 		parts:       make([]part[D], 0, parts),
+		assigns:     assigns,
 		cells:       cells,
 	}
 	for _, q := range projections {
@@ -363,21 +583,77 @@ func New[D any](projections ...Projection[D]) Projection[D] {
 func (p Projection[D]) Expressions() []qs.Expr { return slices.Clone(p.expressions) }
 
 // Scan reads one row through scan, normally rows.Scan or row.Scan, and returns the
-// value of D. An error from scan is returned unchanged. On any error Scan returns
-// the zero D.
+// value of D. scan receives the destinations ScanInto describes. An error from scan is
+// returned unchanged. On any error Scan returns the zero D.
 func (p Projection[D]) Scan(scan func(dest ...any) error) (D, error) {
-	var d, zero D
-	r := reader{dests: make([]any, 0, len(p.expressions)), cells: make([]cell, 0, p.cells)}
+	var d D
+	if err := p.ScanInto(&d, scan); err != nil {
+		var zero D
+		return zero, err
+	}
+	return d, nil
+}
+
+// ScanInto reads one row through scan into d, as Scan does into a new D. Use it for a
+// value the caller already holds: one a constructor prepared, the entity a RETURNING
+// clause completes, or a D that must not be copied. Fields the projection does not
+// declare keep their values, and dests receive d as it is, so an Embed dest that
+// allocates only if nil reads into the value already there.
+//
+// scan receives one destination per expression, in Expressions order. It may pass
+// further destinations of its own after them, to read output the query selects after
+// Expressions that belongs to no row, such as a window count:
+//
+//	err := p.ScanInto(&d, func(dest ...any) error { return row.Scan(append(dest, &total)...) })
+//
+// An error from scan is returned unchanged. On any error d may be partly written.
+//
+// d may be reused for the next row. Each call writes or calls back for every declared
+// column, passing nil for NULL and for an absent group, so a set that ignores nil
+// leaves the previous row's value; ColumnOrZero assigns zero. Memory reachable from d is reused with it: a copy
+// of *d kept from an earlier row still shares any pointer a dest returned without
+// allocating, such as an Embed field allocated only if nil. Read each row that is kept
+// into its own D.
+//
+// ScanInto panics if d is nil.
+func (p Projection[D]) ScanInto(d *D, scan func(dest ...any) error) error {
+	if d == nil {
+		panic("projection: ScanInto with nil destination")
+	}
+	return p.read(d, scan, nil)
+}
+
+// read is ScanInto. With reused, it takes the destination list, cell lists and cells
+// from the previous row of the same result set instead of allocating them, so scan
+// must not keep dest after it returns.
+func (p Projection[D]) read(d *D, scan func(dest ...any) error, reused *scratch) error {
+	var r reader
+	if reused != nil {
+		r.dests = reused.dests[:0]
+		reused.next, reused.need, reused.arena = 0, 0, reused.arena[:0]
+	}
+	if r.dests == nil {
+		r.dests = make([]any, 0, len(p.expressions))
+	}
+	if cells := p.assigns + p.cells; cells > 0 {
+		r.cells = reused.list(p.assigns, cells)
+	}
 	for _, q := range p.parts {
-		r = q(&d, r)
+		r = q(d, r, reused)
+	}
+	if reused != nil {
+		reused.dests = r.dests
+		if reused.need > cap(reused.arena) {
+			reused.arena = make([]cell, 0, reused.need)
+		}
 	}
 	if err := scan(r.dests...); err != nil {
-		return zero, err
+		return err
 	}
 	for _, c := range r.cells {
 		if err := c.finish(); err != nil {
-			return zero, err
+			return err
 		}
 	}
-	return d, nil
+	return nil
 }

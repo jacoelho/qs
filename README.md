@@ -742,45 +742,80 @@ func employees() (*qs.SelectBuilder, projection.Projection[Row]) {
 }
 ```
 
-Read each row by passing your driver's scan function; `p.Scan(rows.Scan)` returns a
-`Row`. qs still performs no I/O and imports no driver.
+Read a result set with `p.Collect(rows)`, or range over `p.All(rows)`. Both accept
+`pgx.Rows` and `*sql.Rows`, report `rows.Err()` with the row errors, and leave closing
+to you. They reuse their working memory from row to row, so prefer them to calling
+`Scan` in a loop:
+
+```go
+rows, err := conn.Query(ctx, text, args...)
+if err != nil {
+    return nil, err
+}
+defer rows.Close()
+return p.Collect(rows)
+```
+
+For one row, pass your driver's scan function: `p.Scan(row.Scan)` returns a `Row`.
+`p.ScanInto(&row, row.Scan)` reads into a value you already hold, such as the entity a
+RETURNING clause completes, and leaves the fields the declaration does not name. When
+you reuse one value across rows, each row overwrites the last in place: read every row
+you keep into its own value, and have each setter assign on nil too, or a NULL keeps
+the previous row's value. `ColumnOrZero` assigns zero on NULL, so it needs no such
+care. qs still performs no I/O and imports no driver.
 
 - `Column` reads a required column. Its destination can be a Scanner that writes
   into the row.
 - `ColumnNull` reads a nullable column and passes nil on NULL. Its `T` must work
   from a zero value, so a write-through Scanner cannot be used; hold the value in
   the Scanner and unwrap it in the setter.
+- `ColumnOrZero` reads a nullable column and assigns the zero value on NULL. Use it
+  where the row does not tell NULL from zero, or where the field's type represents NULL
+  itself, such as `sql.NullString`. It has `Column`'s shape, reads as `ColumnNull`
+  does, and never returns `ErrNull`.
 - `Embed` nests a declaration in a field. `EmbedNull` nests it as an optional group,
   so one declaration serves both sides of a LEFT JOIN.
-- `Map` transforms a declaration's value after the row is read. It runs while the
-  result set is open and receives no context, so keep it CPU-only.
+- `Map` reads a declaration into a value of its own, converts it after the row is read
+  and passes the result to a setter. It runs while the result set is open and receives
+  no context, so keep it CPU-only. The setter is the only write `Map` makes: one that
+  assigns a field composes with other declarations for the same row, and one that
+  assigns the whole value replaces what they read.
 - `New` concatenates declarations in order.
 
 An `EmbedNull` group is absent when all its columns are NULL, so a matched row with
 only NULLs in the selected columns looks like no match. In a present group, NULL in
 a `Column` returns an error matching `projection.ErrNull` that names the column.
 This differs from flat reads: `Column` accepts NULL outside a group when `T` can
-hold it, such as `*string`, so declare nullable columns with `ColumnNull`.
+hold it, such as `*string`, so declare nullable columns with `ColumnNull` or
+`ColumnOrZero`.
 
-`ColumnNull`, and a `Column` in a group whose `T` is not a Scanner, read as
-`var v *T; rows.Scan(&v)` does, with that read's limits on each driver:
+A join key that no field holds can still decide presence. Declare it with a
+`ColumnNull` whose setter does nothing:
 
-- `T` must decode from its zero value, so a `Column` there must return a stable
-  address holding a zero value.
+```go
+projection.ColumnNull(human.Col("user_id"), func(*Human, *int64) {})
+```
+
+`ColumnNull`, `ColumnOrZero`, and a `Column` in a group whose `T` is not a Scanner,
+read as `var v *T; rows.Scan(&v)` does, with that read's limits on each driver:
+
+- `T` must decode from its zero value, so a `ColumnOrZero`, and a `Column` in a
+  group, must return a stable address holding a zero value.
 - `T` must own its memory.
 - Presence is what the driver reports through a nil pointer, which depends on driver
   and `T`. pgx v5.11 reports nil for `'null'::jsonb` into a `string` or a map, which
-  then reads as NULL: an absent group, `ErrNull`, or nil from `ColumnNull`. A `Column` with a Scanner `T`
-  keeps it present; `ColumnNull` cannot.
+  then reads as NULL: an absent group, `ErrNull`, nil from `ColumnNull`, or zero from
+  `ColumnOrZero`. A `Column` with a Scanner `T` keeps it present; the other two cannot.
 
 A Scanner `T` in a group reads through `Scan(any)`, with NULL withheld from it. On
 pgx that bypasses its native codec, so a read outside a group can differ: an error
 where the codec would convert, or another value.
 
-`ColumnNull` and group `Column`s panic at declaration on a pointer `T` (use
-`ColumnNull[string]` rather than `*string`), `sql.RawBytes`, `pgtype.DriverBytes`,
-`pgtype.CompositeFields` and `pgtype.Multirange`. A non-Scanner group `Column` also panics
-on an unstable or initialised target. Detection is best effort: a defined type over one of
+`ColumnNull`, `ColumnOrZero` and group `Column`s panic at declaration on a pointer `T`
+(use `ColumnNull[string]` rather than `*string`), `sql.RawBytes`, `pgtype.DriverBytes`,
+`pgtype.CompositeFields` and `pgtype.Multirange`. A `ColumnOrZero`, and a non-Scanner
+group `Column`, also panic on a target that is unstable or initialised for a zero row,
+so a write-through Scanner cannot be used with `ColumnOrZero`. Detection is best effort: a defined type over one of
 these passes, and then fails as the hand-written read does, including a pgx panic or
 a database/sql hang.
 
@@ -789,10 +824,42 @@ return nil, so they must tolerate one and be deterministic. A `Column` accessor 
 not depend on another accessor's allocation: put nested pointers behind `Embed`, and
 allocate only if nil, since `Embed`s sharing a pointer would otherwise replace it.
 
-Attach `p.Expressions()` to an otherwise empty SELECT or RETURNING list. Scanning is
-positional: other output changes break the correspondence, and a reorder of equal
-width can go unnoticed. SQL types are not checked against `T`, and convertible
-types are coerced by the driver. A width mismatch fails only when a row is scanned.
+Setters and `Map` conversions run after the row is read, in declaration order. Each
+finds every `Column` and `ColumnOrZero` of its row, and of the rows enclosing it,
+already assigned, so a setter can derive a field from a sibling column whether the
+declaration is read flat or inside `EmbedNull`. A setter may keep the pointers it
+receives; the package documentation says what a kept row pointer refers to.
+
+Put `p.Expressions()` first in a SELECT or RETURNING list, unchanged. Scanning is
+positional: other output before or among them breaks the correspondence, and a reorder
+of equal width can go unnoticed.
+
+Output selected after them is read by destinations your scan function appends. Use
+this for a value that belongs to no row, such as a window count repeated on every row:
+
+```go
+var total int64
+row, err := p.Scan(func(dest ...any) error { return rows.Scan(append(dest, &total)...) })
+```
+
+With `Collect` or `All`, wrap the rows instead:
+
+```go
+type counted struct {
+    projection.Rows
+    total *int64
+}
+
+func (c counted) Scan(dest ...any) error { return c.Rows.Scan(append(dest, c.total)...) }
+
+users, err := p.Collect(counted{Rows: rows, total: &total})
+```
+
+A value that belongs to each row stays in the declaration: `Embed` the declaration
+beside a `Column` in a wrapper row.
+
+SQL types are not checked against `T`, and convertible types are coerced by the
+driver. A width mismatch fails only when a row is scanned.
 Each expression must produce one result column. Empty projections are valid
 containers: empty SELECT fails rendering, while empty RETURNING adds nothing.
 Establish nonempty output before executing DML that must return rows.
@@ -804,7 +871,8 @@ it rather than rebuilding it per query.
 For one-off queries with unique column names, ordinary `expr.As("label")` and your
 driver's struct mapping are sufficient. The
 [executable projection examples](projection/example_test.go) demonstrate self-joins,
-`Map`, JSONB and RETURNING.
+`Map`, JSONB, RETURNING, `Collect`, `ScanInto`, `ColumnOrZero` with a join key that
+no field holds, and a window count read beside each row.
 
 ### Cast a value
 
