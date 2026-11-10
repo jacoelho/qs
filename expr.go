@@ -353,7 +353,7 @@ func (e Expr) Collate(first string, rest ...string) Expr {
 // Scalar requires one projected column when the projection width is known.
 // PostgreSQL enforces the scalar subquery's run-time row count.
 func Scalar(query Rowset) Expr {
-	return nodeExpr(&subqueryExpression{query: query, expectedWidth: 1})
+	return nodeExpr(&subqueryExpression{query: ownedRowset(query), expectedWidth: 1})
 }
 
 func binary(left Expr, operator string, right Expr) Expr {

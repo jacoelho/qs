@@ -82,13 +82,13 @@ func table(name string) Relation { return Relation{kind: relationTable, name: na
 
 // Subquery creates an aliased FROM subquery with optional column aliases.
 func Subquery(query Rowset, alias string, columns ...string) Relation {
-	return Relation{kind: relationSource, source: query, alias: alias, columns: cloneSlice(columns)}
+	return Relation{kind: relationSource, source: ownedRowset(query), alias: alias, columns: cloneSlice(columns)}
 }
 
 // Derived creates an unaliased FROM subquery (PostgreSQL 16+). Use As to name
 // it when its columns need relation qualification.
 func Derived(query Rowset) Relation {
-	return Relation{kind: relationSource, source: query, noAlias: true}
+	return Relation{kind: relationSource, source: ownedRowset(query), noAlias: true}
 }
 
 // RelationSQL creates a relation from trusted SQL expressions.

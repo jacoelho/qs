@@ -117,7 +117,7 @@ func (t InsertTarget) Rows(rows ...[]WriteValue) InsertRows {
 
 // From selects a rowset source.
 func (t InsertTarget) From(source Rowset) InsertSelect {
-	return InsertSelect{base: t.base(), source: source}
+	return InsertSelect{base: t.base(), source: ownedRowset(source)}
 }
 
 // Set selects an assignment source.
@@ -157,7 +157,7 @@ func (b InsertRows) Rows(rows ...[]WriteValue) InsertRows {
 
 // From replaces the rowset source of the INSERT.
 func (b InsertSelect) From(source Rowset) InsertSelect {
-	b.source = source
+	b.source = ownedRowset(source)
 	return b
 }
 

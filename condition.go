@@ -243,7 +243,7 @@ func inQuery(e Expr, operator string, query Rowset, width int) Condition {
 	if nilOperand(e) {
 		return AsCondition(invalidExpr("comparison", nilComparison))
 	}
-	return AsCondition(nodeExpr(&membershipExpression{left: e, operator: operator, query: query, width: width}))
+	return AsCondition(nodeExpr(&membershipExpression{left: e, operator: operator, query: ownedRowset(query), width: width}))
 }
 
 func (w *renderer) membership(n *membershipExpression) {
@@ -279,7 +279,7 @@ func (w *renderer) membership(n *membershipExpression) {
 
 // Exists tests whether query returns at least one row.
 func Exists(query Rowset) Condition {
-	return AsCondition(nodeExpr(&subqueryExpression{query: query, keyword: "EXISTS "}))
+	return AsCondition(nodeExpr(&subqueryExpression{query: ownedRowset(query), keyword: "EXISTS "}))
 }
 
 // NotExists tests whether query returns no rows.
@@ -302,13 +302,13 @@ func AllArray(array Expr) Expr {
 // AnyQuery returns a quantified operand for comparison with any row from a
 // one-column query.
 func AnyQuery(query Rowset) Expr {
-	return nodeExpr(&subqueryExpression{query: query, keyword: "ANY ", expectedWidth: 1})
+	return nodeExpr(&subqueryExpression{query: ownedRowset(query), keyword: "ANY ", expectedWidth: 1})
 }
 
 // AllQuery returns a quantified operand for comparison with every row from a
 // one-column query.
 func AllQuery(query Rowset) Expr {
-	return nodeExpr(&subqueryExpression{query: query, keyword: "ALL ", expectedWidth: 1})
+	return nodeExpr(&subqueryExpression{query: ownedRowset(query), keyword: "ALL ", expectedWidth: 1})
 }
 
 // EqAny compares left with any value from array.

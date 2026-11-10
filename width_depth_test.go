@@ -68,3 +68,27 @@ func TestSetChainRefusesAMismatchedBranchAtAnyPosition(t *testing.T) {
 	checkSQL(t, Union(Union(Select(Star()).From("t"), narrow), wide),
 		`((SELECT * FROM "t") UNION (SELECT 1)) UNION (SELECT 1, 2)`)
 }
+
+// A spine longer than the depth limit fails either way. A mismatched branch
+// that the renderer reaches before the limit is still reported as a mismatch.
+func TestSetChainBeyondDepthStillReportsAReachableMismatch(t *testing.T) {
+	t.Parallel()
+
+	narrow, wide := Select(LiteralInt(1)), Select(LiteralInt(1), LiteralInt(2))
+	chain := func(branches, mismatch int) Rowset {
+		var query Rowset = narrow
+		for i := 1; i < branches; i++ {
+			if i == mismatch {
+				query = Union(query, wide)
+			} else {
+				query = Union(query, narrow)
+			}
+		}
+		return query
+	}
+	options := Options{MaxDepth: 10}
+	checkErrorWithOptions(t, chain(12, -1), options, ErrDepth)
+	checkErrorWithOptions(t, chain(12, 9), options, ErrInvalid)
+	checkErrorWithOptions(t, chain(12, 10), options, ErrInvalid)
+	checkErrorWithOptions(t, chain(13, 10), options, ErrInvalid)
+}

@@ -2,6 +2,7 @@ package qs
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -81,5 +82,64 @@ func TestPointerToJSONTableColumnRendersAsItsValue(t *testing.T) {
 	renderError, ok := errors.AsType[*RenderError](err)
 	if !ok || renderError.Detail != "nil column" {
 		t.Fatalf("got %v", err)
+	}
+}
+
+// A pointer is replaced by its builder when the statement is constructed, so
+// what was built cannot change afterwards and cannot contain itself.
+func TestPointerToBuilderIsReadAtConstruction(t *testing.T) {
+	t.Parallel()
+
+	query := Select(Col("a")).From("t")
+	union := Union(&query, &query)
+	subquery := Select(Star()).FromExpr(Subquery(&query, "s"))
+	query = query.Where(Col("a").IsNull())
+	checkSQL(t, union, `(SELECT "a" FROM "t") UNION (SELECT "a" FROM "t")`)
+	checkSQL(t, subquery, `SELECT * FROM (SELECT "a" FROM "t") AS "s"`)
+
+	var self SetBuilder
+	self = Union(&self, query)
+	checkError(t, self, ErrInvalid)
+}
+
+// A chain assembled through pointers is the chain assembled from values: its
+// widths are checked at every depth the renderer reaches, at the same cost.
+func TestSetChainBuiltThroughPointersIsCheckedLikeValues(t *testing.T) {
+	narrow, wide := Select(LiteralInt(1)), Select(LiteralInt(1), LiteralInt(2))
+	chain := func(levels int, pointers bool) Rowset {
+		var spine Rowset = narrow
+		for range levels {
+			union := Union(spine, narrow)
+			if pointers {
+				spine = &union
+			} else {
+				spine = union
+			}
+		}
+		return spine
+	}
+	for _, levels := range []int{1, 100, 130, 200, 250} {
+		for _, pointers := range []bool{false, true} {
+			valid, invalid := chain(levels, pointers), Union(chain(levels, pointers), wide)
+			sql, _, err := ToSQL(valid)
+			if err != nil || strings.Count(sql, " UNION ") != levels {
+				t.Fatalf("%d levels, pointers %v: %v", levels, pointers, err)
+			}
+			checkError(t, invalid, ErrInvalid)
+		}
+	}
+
+	// The outermost statement is a value in both, so only the stored spine differs.
+	values, pointers := Union(chain(128, false), narrow), Union(chain(128, true), narrow)
+	buffer := make([]byte, 0, 1<<16)
+	render := func(statement Statement) float64 {
+		return testing.AllocsPerRun(20, func() {
+			if _, _, err := AppendSQL(buffer[:0], nil, statement); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	if fromValues, fromPointers := render(values), render(pointers); fromPointers != fromValues {
+		t.Errorf("rendering allocates %v times for a chain of pointers and %v for one of values", fromPointers, fromValues)
 	}
 }

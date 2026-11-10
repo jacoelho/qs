@@ -28,9 +28,9 @@ const (
 )
 
 func setOperation(operator setOperator, left, right Rowset, rest []Rowset) SetBuilder {
-	b := SetBuilder{operator: operator, left: left, right: right}
+	b := SetBuilder{operator: operator, left: ownedRowset(left), right: ownedRowset(right)}
 	for _, next := range rest {
-		b = SetBuilder{operator: operator, left: b, right: next}
+		b = SetBuilder{operator: operator, left: b, right: ownedRowset(next)}
 	}
 	return b
 }
@@ -102,7 +102,9 @@ func (w *renderer) setOperationOfWidth(b *SetBuilder, left int) {
 		return
 	}
 	w.byte('(')
-	if spine, ok := b.left.(SetBuilder); ok {
+	// A width cut short by the depth limit is not handed down: the level below
+	// measures its own, shorter spine, as it did before widths were shared.
+	if spine, ok := b.left.(SetBuilder); ok && left != widthBeyondDepth {
 		w.leftSetOperation(&spine, left)
 	} else {
 		w.statement(b.left)
@@ -349,10 +351,16 @@ func unknownProjection(e Expr) bool {
 	}
 }
 
-// statementWidth returns a known output-column count or -1 when the statement
-// is opaque or its graph exceeds the caller's rendering depth. Set operations
-// inherit the left branch's width; their renderer validates both branches.
-// The set spine is walked iteratively, bounded by maxDepth.
+// widthBeyondDepth is statementWidth's answer for a set spine longer than the
+// rendering depth. Like -1 it means unknown, but a shorter walk from further
+// down the spine can still succeed.
+const widthBeyondDepth = -2
+
+// statementWidth returns a known output-column count, -1 when the statement
+// is opaque, or widthBeyondDepth when its graph exceeds the caller's rendering
+// depth. Set operations inherit the left branch's width; their renderer
+// validates both branches. The set spine is walked iteratively, bounded by
+// maxDepth.
 func statementWidth(s Statement, maxDepth int) int {
 	for range maxDepth {
 		switch b := s.(type) {
@@ -383,12 +391,8 @@ func statementWidth(s Statement, maxDepth int) int {
 			return projectionWidth(b.returning)
 		case MergeBuilder:
 			return projectionWidth(b.returning)
-		default:
-			if s = statementValue(s); s != nil {
-				continue
-			}
 		}
 		return -1
 	}
-	return -1
+	return widthBeyondDepth
 }

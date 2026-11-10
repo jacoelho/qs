@@ -58,6 +58,32 @@ func normalOptions(o Options) Options {
 	return o
 }
 
+// ownedStatement returns the statement that qs keeps or renders for s. A
+// pointer to a builder satisfies Statement through the builder's value
+// methods; it is replaced here, where it enters, by the builder it points to
+// at that moment, and a nil pointer by a nil statement. Everything stored is
+// therefore a value: it cannot change after construction, and the switches
+// over statements see one form of each builder.
+func ownedStatement(s Statement) Statement {
+	if value, pointer := statementPointee(s); pointer {
+		return value
+	}
+	return s
+}
+
+// ownedRowset is ownedStatement for a rowset.
+func ownedRowset(r Rowset) Rowset {
+	value, pointer := statementPointee(r)
+	if !pointer {
+		return r
+	}
+	// A nil pointer has no builder, and so no rowset.
+	if rowset, ok := value.(Rowset); ok {
+		return rowset
+	}
+	return nil
+}
+
 // ToSQL renders s using default options. On error it returns no SQL or args.
 func ToSQL(s Statement) (string, []any, error) { return ToSQLWith(s, Options{}) }
 
@@ -100,7 +126,7 @@ func AppendSQL(sql []byte, args []any, s Statement) ([]byte, []any, error) {
 func AppendWith(sql []byte, args []any, s Statement, options Options) ([]byte, []any, error) {
 	w, ok := newRenderer(sql, args, options)
 	if ok {
-		w.statement(s)
+		w.statement(ownedStatement(s))
 	}
 	return w.result(sql, args)
 }

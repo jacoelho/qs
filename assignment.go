@@ -49,7 +49,7 @@ func SetRowFrom(columns []string, query Rowset) Assignment {
 	for i, c := range columns {
 		targets[i] = unqualifiedColumn(c)
 	}
-	return Assignment{columns: targets, query: query, row: true}
+	return Assignment{columns: targets, query: ownedRowset(query), row: true}
 }
 
 // AssignRow preserves explicit or parenthesized row syntax and supports field
@@ -60,7 +60,7 @@ func AssignRow(targets []Expr, values WriteRowValue) Assignment {
 
 // AssignRowFrom assigns a rowset to explicit or parenthesized row targets.
 func AssignRowFrom(targets []Expr, query Rowset) Assignment {
-	return Assignment{columns: cloneSlice(targets), query: query, row: true}
+	return Assignment{columns: cloneSlice(targets), query: ownedRowset(query), row: true}
 }
 func assignTypedTarget(column Expr, value WriteValue) Assignment {
 	return Assignment{target: unqualifiedTarget(column), value: value.expr()}

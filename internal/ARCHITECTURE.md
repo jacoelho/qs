@@ -159,17 +159,24 @@ Public contracts belong to the projection package documentation linked above.
 operations are rowsets; DML is Statement-only even with RETURNING.
 
 Builders implement both interfaces with value methods, so Go also admits a
-pointer to a builder. A pointer renders as the builder it points to and a nil
-pointer is a nil statement. The switches over statements match values only;
-`statementValue`, generated beside them, resolves a pointer in their default
-branch, so a value pays nothing for it. `JSONTableColumn` and `JSONOperand`
-admit pointers the same way and normalise them once, where a constructor
-stores them.
+pointer to a builder. `ownedStatement` and `ownedRowset` replace a pointer by
+the builder it points to, and a nil pointer by a nil statement, at the two
+places a statement enters: a constructor that stores one, and `AppendWith`.
+What is stored is therefore always a value. It cannot change when the
+pointer's target is reassigned later, a builder cannot reach itself through a
+pointer, and the switches over statements match values only.
+`JSONTableColumn` and `JSONOperand` admit pointers the same way and are
+normalised by their constructors. An earlier version resolved pointers inside
+the switches instead; a chain of pointers then spent the width walk's depth
+budget twice as fast as rendering spent depth, so a mismatched branch could
+render.
 
 A set operation has the width of its leftmost leaf. The renderer finds that
 width once at the top of a chain and passes it down the left spine, so each
 level measures only its own right branch and validating a chain is linear in
-its length.
+its length. A width the depth limit cut short is not passed down: the level
+below measures its own shorter spine, so a mismatch within reach is still
+reported as one.
 
 ### Scope
 
@@ -239,8 +246,10 @@ Every type that is or converts to an expression carries the `qxExpression`
 marker, including the builders that still need `Expr`, `End` or `Condition`.
 `Param` and the other value-binding entry points refuse a marked value, so a
 builder passed without its conversion fails rendering instead of reaching the
-driver as an argument. A test scans the package source and fails when a
-converting type lacks the marker.
+driver as an argument. A test scans the package source and fails when a type
+with a zero-argument `Expr`, `End` or `Condition` method lacks the marker. A
+pending stage that reaches an expression only through a later builder, such as
+`PendingSearchedCase`, is outside that scan and is marked by hand.
 
 Typed fields, tuples and JSON documents wrap `Expr` and use the same renderer.
 Go types on a `Field` do not prove SQL types or schema validity. Finite grammar

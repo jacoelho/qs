@@ -29,7 +29,7 @@ func (t InsertColumnsTarget) Values(first WriteValue, rest ...WriteValue) Insert
 
 // From selects an INSERT rowset source and returns its completed role.
 func (t InsertColumnsTarget) From(source Rowset) InsertSelect {
-	return InsertSelect{base: t.base(), source: source}
+	return InsertSelect{base: t.base(), source: ownedRowset(source)}
 }
 
 // DefaultValues selects the INSERT target table's server-side defaults and returns its completed role.

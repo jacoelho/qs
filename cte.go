@@ -20,7 +20,9 @@ type WithQuery struct {
 }
 
 // CTE defines a common table expression with the supplied name and body.
-func CTE(name string, body Statement) WithQuery { return WithQuery{name: name, body: body} }
+func CTE(name string, body Statement) WithQuery {
+	return WithQuery{name: name, body: ownedStatement(body)}
+}
 
 // Columns replaces the output-column aliases of a common table expression.
 func (c WithQuery) Columns(names ...string) WithQuery { c.columns = cloneSlice(names); return c }
@@ -264,8 +266,7 @@ func isDML(s Statement) bool {
 		UpdateBuilder, DeleteBuilder, MergeBuilder:
 		return true
 	default:
-		value := statementValue(s)
-		return value != nil && isDML(value)
+		return false
 	}
 }
 func cteBody(s Statement) bool {

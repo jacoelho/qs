@@ -283,7 +283,7 @@ type JSONArrayQueryBuilder struct {
 // JSONArrayQuery constructs JSON_ARRAY from the rows of a query, which must
 // return exactly one column. A known width other than one fails rendering.
 func JSONArrayQuery(query Rowset) JSONArrayQueryBuilder {
-	return JSONArrayQueryBuilder{query: query}
+	return JSONArrayQueryBuilder{query: ownedRowset(query)}
 }
 
 // FormatJSON reads the query's column as JSON text.

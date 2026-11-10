@@ -176,27 +176,22 @@ func statementMethods() *file {
 	for _, k := range statementKinds {
 		f.printf("case %s:\nw.%s(&b)\n", k.builder, k.render)
 	}
-	f.write("default:\nif value := statementValue(s); value != nil {\nw.dispatchStatement(value)\nreturn\n}\n")
-	f.write("w.fail(ErrInvalid, \"statement\", \"nil statement\")\n}\n}\n\n")
+	f.write("default:\nw.fail(ErrInvalid, \"statement\", \"nil statement\")\n}\n}\n\n")
 
 	f.write("// statementLabel names s in an error path.\n")
 	f.write("func statementLabel(s Statement) string {\nswitch s.(type) {\n")
 	for _, k := range statementKinds {
 		f.printf("case %s:\nreturn %q\n", k.builder, k.label)
 	}
-	f.write("default:\nif value := statementValue(s); value != nil {\nreturn statementLabel(value)\n}\n")
-	f.write("return \"statement\"\n}\n}\n\n")
+	f.write("default:\nreturn \"statement\"\n}\n}\n\n")
 
-	f.write("// statementValue returns the builder that s points to, or nil when s is not a\n")
-	f.write("// non-nil pointer to a builder. A pointer satisfies Statement through the\n")
-	f.write("// builder's value methods, and every switch over statements matches values\n")
-	f.write("// only: each resolves what it does not match here, so the common path pays\n")
-	f.write("// nothing for it.\n")
-	f.write("func statementValue(s Statement) Statement {\nswitch p := s.(type) {\n")
+	f.write("// statementPointee reports whether s is a pointer to a builder and returns the\n")
+	f.write("// builder it points to, or nil for a nil pointer.\n")
+	f.write("func statementPointee(s Statement) (Statement, bool) {\nswitch p := s.(type) {\n")
 	for _, k := range statementKinds {
-		f.printf("case *%s:\nif p != nil {\nreturn *p\n}\n", k.builder)
+		f.printf("case *%s:\nif p == nil {\nreturn nil, true\n}\nreturn *p, true\n", k.builder)
 	}
-	f.write("}\nreturn nil\n}\n")
+	f.write("}\nreturn nil, false\n}\n")
 	return f
 }
 
@@ -214,7 +209,7 @@ func fluentMethods() *file {
 		{"ValuesSlice", "values []WriteValue", insertRows, "return InsertRows{base: t.base()}.ValuesSlice(values)"},
 		{"Rows", "rows ...[]WriteValue", insertRows, "return InsertRows{base: t.base()}.Rows(rows...)"},
 		{"Values", "first WriteValue, rest ...WriteValue", insertRows, "return InsertRows{base: t.base()}.Values(first, rest...)"},
-		{"From", "source Rowset", insertSelect, "return InsertSelect{base: t.base(), source: source}"},
+		{"From", "source Rowset", insertSelect, "return InsertSelect{base: t.base(), source: ownedRowset(source)}"},
 		{"DefaultValues", "", "InsertDefaults", "return InsertDefaults{base: t.base()}"},
 	} {
 		f.doc(m[0], docs[m[0]])

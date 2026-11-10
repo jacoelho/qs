@@ -503,10 +503,6 @@ func (w *renderer) dispatchStatement(s Statement) {
 	case SQLStatement:
 		w.sqlStatement(&b)
 	default:
-		if value := statementValue(s); value != nil {
-			w.dispatchStatement(value)
-			return
-		}
 		w.fail(ErrInvalid, "statement", "nil statement")
 	}
 }
@@ -539,68 +535,74 @@ func statementLabel(s Statement) string {
 	case SQLStatement:
 		return "statement fragment"
 	default:
-		if value := statementValue(s); value != nil {
-			return statementLabel(value)
-		}
 		return "statement"
 	}
 }
 
-// statementValue returns the builder that s points to, or nil when s is not a
-// non-nil pointer to a builder. A pointer satisfies Statement through the
-// builder's value methods, and every switch over statements matches values
-// only: each resolves what it does not match here, so the common path pays
-// nothing for it.
-func statementValue(s Statement) Statement {
+// statementPointee reports whether s is a pointer to a builder and returns the
+// builder it points to, or nil for a nil pointer.
+func statementPointee(s Statement) (Statement, bool) {
 	switch p := s.(type) {
 	case *SelectBuilder:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *InsertRows:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *InsertSelect:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *InsertAssignments:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *InsertDefaults:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *UpdateBuilder:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *DeleteBuilder:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *MergeBuilder:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *SetBuilder:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *ValuesBuilder:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *TableBuilder:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	case *SQLStatement:
-		if p != nil {
-			return *p
+		if p == nil {
+			return nil, true
 		}
+		return *p, true
 	}
-	return nil
+	return nil, false
 }

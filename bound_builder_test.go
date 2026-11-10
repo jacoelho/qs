@@ -36,8 +36,9 @@ func TestUnconvertedBuilderIsNotBoundAsAValue(t *testing.T) {
 	}
 }
 
-// Every type that converts to an expression carries the marker parameter
-// refuses, so a new builder cannot be bound by omission.
+// Every type with a zero-argument Expr, End or Condition method carries the
+// marker parameter refuses. A pending stage that reaches an expression only
+// through a later builder is outside this scan and is marked by hand.
 func TestEveryExpressionBuilderCarriesTheMarker(t *testing.T) {
 	t.Parallel()
 
