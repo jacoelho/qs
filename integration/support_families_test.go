@@ -23,12 +23,12 @@ func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 		want [][2]int
 	}{
 		{"cross", qs.CrossJoin(a, b), [][2]int{{1, 1}, {1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}}},
-		{"on", qs.InnerJoin(a, b).On(qs.Col("a.id").EqExpr(qs.Col("b.id"))), [][2]int{{1, 1}, {2, 2}}},
+		{"on", qs.InnerJoin(a, b).On(qs.Col("a", "id").Eq(qs.Col("b", "id"))), [][2]int{{1, 1}, {2, 2}}},
 		{"using", qs.InnerJoin(a, b).Using("id"), [][2]int{{1, 1}, {2, 2}}},
 		{"natural", qs.NaturalJoin(a, b), [][2]int{{1, 1}, {2, 2}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := session.render(t, qs.SelectCols("a.id", "b.id").FromExpr(tc.join).OrderBy(qs.Asc("a.id"), qs.Asc("b.id")))
+			sql, args, err := session.render(t, qs.Select(qs.Col("a", "id"), qs.Col("b", "id")).FromExpr(tc.join).OrderBy(qs.Col("a", "id").Asc(), qs.Col("b", "id").Asc()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -76,42 +76,6 @@ func TestUnboundedVarcharAgainstPostgres(t *testing.T) {
 	}
 	if unbounded != input || bounded != "abc" {
 		t.Fatalf("unbounded=%q bounded=%q; want %q and abc", unbounded, bounded, input)
-	}
-}
-
-func TestJSONTableExistsAgainstPostgres(t *testing.T) {
-	t.Parallel()
-	session := connect(t)
-	ctx, conn := session.Context, session.Conn
-	requireVersion(t, session, qs.PostgreSQL17)
-	table := qs.JSONTable(qs.JSONBParam(`[{"a":null},{}]`).Expr(), "$[*]",
-		qs.JSONOrdinality("n"), qs.JSONExistsColumn("has_a", qs.TypeBool).Path("$.a"),
-	).As("j")
-	sql, args, err := session.render(t, qs.SelectCols("has_a").FromExpr(table).OrderBy(qs.Asc("n")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	rows, err := conn.Query(ctx, sql, args...)
-	if err != nil {
-		t.Fatalf("%s: %v", sql, err)
-	}
-	defer rows.Close()
-	var got []bool
-	for rows.Next() {
-		var exists bool
-		if err := rows.Scan(&exists); err != nil {
-			t.Fatal(err)
-		}
-		got = append(got, exists)
-		if len(got) > 2 {
-			t.Fatal("unexpected extra JSON_TABLE row")
-		}
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(got, []bool{true, false}) {
-		t.Fatalf("key existence=%v; want [true false]", got)
 	}
 }
 

@@ -17,7 +17,7 @@ func FuzzIdentifier(f *testing.F) {
 		if len(name) > 4096 {
 			t.Skip()
 		}
-		sql, args, err := Select(Ident(name)).ToSQL()
+		sql, args, err := Select(Col(name)).ToSQL()
 		valid := name != "" && utf8.ValidString(name) && !strings.ContainsRune(name, 0)
 		if !valid {
 			if err == nil || sql != "" || args != nil {
@@ -40,7 +40,7 @@ func FuzzValueIsolation(f *testing.F) {
 		if len(v) > 1<<16 {
 			t.Skip()
 		}
-		sql, args, err := SelectCols("id").From("t").Where(Eq("name", v)).ToSQL()
+		sql, args, err := SelectCols("id").From("t").Where(Col("name").Eq(Param(v))).ToSQL()
 		if err != nil || sql != `SELECT "id" FROM "t" WHERE ("name" = $1)` || !reflect.DeepEqual(args, []any{v}) {
 			t.Fatalf("value changed SQL: %q %#v %v", sql, args, err)
 		}
@@ -58,8 +58,8 @@ func FuzzNestedNumbering(f *testing.F) {
 		q := SelectCols("id").From("t")
 		expected := make([]any, 0, len(data)*2)
 		for i, v := range data {
-			sub := Select(LiteralInt(1)).From("s").Where(Eq("v", v))
-			q.Where(Or(Eq("n", i), Exists(sub)))
+			sub := Select(LiteralInt(1)).From("s").Where(Col("v").Eq(Param(v)))
+			q = q.Where(Or(Col("n").Eq(Param(i)), Exists(sub)))
 			expected = append(expected, i, v)
 		}
 		sql, args, err := q.ToSQL()

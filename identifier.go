@@ -1,29 +1,119 @@
 package qs
 
 import (
+	"slices"
 	"strings"
 	"unicode/utf8"
 )
 
-// Col constructs a dotted identifier path. Dots delimit identifier components;
-// only a final * is a wildcard. Nothing in path is interpreted as SQL syntax.
-func Col(path string) Expr { return Expr{kind: exprIdentifier, text: path} }
-
-// Ident quotes literal identifier components, including dots inside a component.
-// Ident("a.b") is "a.b"; Col("a.b") is "a"."b". A literal * is quoted.
-func Ident(parts ...string) Expr {
-	return Expr{kind: exprIdentifierParts, value: identifierParts(cloneSlice(parts))}
+// Col names a column. Every argument is one identifier, quoted as written:
+// Col("id") is "id", Col("u", "id") is "u"."id" and Col("a.b") is the single
+// identifier "a.b". Nothing in a name is interpreted as SQL syntax, a path or a
+// wildcard; use Star for a wildcard and Relation.Col to qualify by a relation.
+//
+// Col is small enough to inline, which lets a qualified name written as
+// constants cost no allocation: the qualifier is then stored as static data.
+func Col(first string, rest ...string) Expr {
+	if len(rest) == 1 {
+		return Expr{kind: exprQualified, value: first, text: rest[0]}
+	}
+	return unpairedColumn(first, rest)
 }
 
-// Star constructs a SELECT wildcard, optionally qualified by a dotted path.
-func Star(table ...string) Expr {
-	if len(table) == 0 {
-		return Col("*")
+// unpairedColumn is Col for one name, or for three or more parts such as
+// schema.table.column.
+func unpairedColumn(first string, rest []string) Expr {
+	if len(rest) == 0 {
+		return unqualifiedColumn(first)
 	}
-	if len(table) != 1 {
-		return invalidExpr("star", "expected zero or one qualifier")
+	return nodeExpr(newQualifiedIdentifier(first, rest))
+}
+
+// newQualifiedIdentifier owns the parts of first followed by rest, which must
+// not be empty.
+func newQualifiedIdentifier(first string, rest []string) *qualifiedIdentifier {
+	if len(rest) != 1 {
+		return &qualifiedIdentifier{parts: qualifiedName(first, rest)}
 	}
-	return Col(table[0] + ".*")
+	n := &qualifiedIdentifier{pair: [2]string{first, rest[0]}}
+	n.parts = n.pair[:]
+	return n
+}
+
+// unqualifiedColumn is Col for one unqualified name.
+func unqualifiedColumn(name string) Expr { return Expr{kind: exprIdentifier, text: name} }
+
+// isColumn reports whether e is a column name in any of its three
+// representations: an unqualified leaf, the two-part leaf, or the node that
+// holds three or more parts.
+func (e Expr) isColumn() bool {
+	if e.kind == exprIdentifier || e.kind == exprQualified {
+		return true
+	}
+	_, qualified := e.node().(*qualifiedIdentifier)
+	return qualified
+}
+
+// qualifiedName owns the parts of a name such as schema.table or table.column.
+func qualifiedName(first string, rest []string) identifierParts { return ownedList(first, rest) }
+
+// ownedList returns first followed by rest in storage the caller owns. It is
+// how a constructor that requires at least one item takes its arguments.
+func ownedList[T any](first T, rest []T) []T {
+	list := make([]T, 1+len(rest))
+	list[0] = first
+	copy(list[1:], rest)
+	return list
+}
+
+// Star constructs a SELECT wildcard, optionally qualified by a relation name
+// given as identifiers: Star("u") is "u".* and Star("public", "users") is
+// "public"."users".*.
+func Star(qualifier ...string) Expr {
+	if len(qualifier) == 0 {
+		return nodeExpr(unqualifiedStar)
+	}
+	return nodeExpr(&starExpression{cloneSlice(qualifier)})
+}
+
+// unqualifiedStar is shared so that Star() does not allocate. It is never
+// written.
+var unqualifiedStar = &starExpression{}
+
+// identifierLimit is the number of bytes PostgreSQL keeps of an identifier:
+// NAMEDATALEN-1 in a standard build.
+const identifierLimit = 63
+
+// sameName reports whether PostgreSQL reads a and b as one name. Its scanner
+// truncates a longer identifier to identifierLimit bytes before any name is
+// compared, so every uniqueness rule qs checks compares names through here.
+// The limit is counted in UTF-8, which is exact for a UTF8 server encoding.
+func sameName(a, b string) bool {
+	if len(a) <= identifierLimit && len(b) <= identifierLimit {
+		return a == b
+	}
+	return sameTruncatedName(a, b)
+}
+
+// sameTruncatedName is the slow path of sameName, kept out of line so that
+// sameName inlines.
+//
+//go:noinline
+func sameTruncatedName(a, b string) bool {
+	return truncatedIdentifier(a) == truncatedIdentifier(b)
+}
+
+// truncatedIdentifier returns the part of name PostgreSQL keeps. It cuts at a
+// character boundary, as the server does.
+func truncatedIdentifier(name string) string {
+	if len(name) <= identifierLimit {
+		return name
+	}
+	end := identifierLimit
+	for end > 0 && !utf8.RuneStart(name[end]) {
+		end--
+	}
+	return name[:end]
 }
 
 func (w *renderer) identifierPart(s string) {
@@ -44,27 +134,25 @@ func (w *renderer) identifierPart(s string) {
 	w.byte('"')
 }
 
-func (w *renderer) identifierPath(path string, wildcard bool) {
-	if path == "" {
-		w.fail(ErrInvalid, "identifier", "empty identifier")
+// star renders a wildcard and its optional qualifier.
+func (w *renderer) star(n *starExpression) {
+	if len(n.qualifier) != 0 {
+		w.qualifiedName(n.qualifier, "identifier")
+		w.byte('.')
+	}
+	w.byte('*')
+}
+
+// qualifiedName renders parts as quoted identifiers joined by dots.
+func (w *renderer) qualifiedName(parts identifierParts, clause string) {
+	if !w.require(len(parts) > 0, clause, "empty identifier") {
 		return
 	}
-	for {
-		part, rest, found := strings.Cut(path, ".")
-		if part == "*" && wildcard && !found {
-			w.byte('*')
-		} else {
-			if part == "*" {
-				w.fail(ErrInvalid, "identifier", "wildcard is only valid at the end of a projection path")
-				return
-			}
-			w.identifierPart(part)
+	for i, part := range parts {
+		if i != 0 {
+			w.byte('.')
 		}
-		if !found {
-			return
-		}
-		w.byte('.')
-		path = rest
+		w.identifierPart(part)
 	}
 }
 
@@ -82,4 +170,73 @@ func cloneSlice[T any](values []T) []T {
 		return nil
 	}
 	return append([]T(nil), values...)
+}
+
+// extend returns s followed by items in storage that no other value can
+// write. Builders are values: a copy shares its slices with the original, so
+// appending into spare capacity would change both. The capacity is clipped so
+// that append always moves to a new array.
+func extend[T any](s []T, items ...T) []T {
+	return append(slices.Clip(s), items...)
+}
+
+// extendRows returns list followed by a copy of rows. All the added rows
+// share one array and each is clipped to its own length, so adding n rows
+// costs two allocations whatever n is.
+func extendRows[T any](list, rows [][]T) [][]T {
+	cells := 0
+	for _, row := range rows {
+		cells += len(row)
+	}
+	array := make([]T, 0, cells)
+	extended := make([][]T, len(list), len(list)+len(rows))
+	copy(extended, list)
+	for _, row := range rows {
+		start := len(array)
+		array = append(array, row...)
+		extended = append(extended, array[start:len(array):len(array)])
+	}
+	return extended
+}
+
+// extendRowsWith is extendRows for cells converted from values.
+func extendRowsWith[T, V any](list [][]T, rows [][]V, convert func(V) T) [][]T {
+	cells := 0
+	for _, row := range rows {
+		cells += len(row)
+	}
+	array := make([]T, 0, cells)
+	extended := make([][]T, len(list), len(list)+len(rows))
+	copy(extended, list)
+	for _, row := range rows {
+		start := len(array)
+		for _, value := range row {
+			array = append(array, convert(value))
+		}
+		extended = append(extended, array[start:len(array):len(array)])
+	}
+	return extended
+}
+
+// extendWith is extend for items converted from values.
+func extendWith[T, V any](s []T, values []V, convert func(V) T) []T {
+	if len(values) == 0 {
+		return s
+	}
+	extended := make([]T, len(s), len(s)+len(values))
+	copy(extended, s)
+	for _, value := range values {
+		extended = append(extended, convert(value))
+	}
+	return extended
+}
+
+// convertedList is ownedList for items converted from values.
+func convertedList[T, V any](first V, rest []V, convert func(V) T) []T {
+	list := make([]T, 1, 1+len(rest))
+	list[0] = convert(first)
+	for _, value := range rest {
+		list = append(list, convert(value))
+	}
+	return list
 }

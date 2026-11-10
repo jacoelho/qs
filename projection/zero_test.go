@@ -140,12 +140,18 @@ func TestMapSeesColumnOrZero(t *testing.T) {
 	}
 }
 
+// maskedWrapper prints the same whether or not it holds a target.
+type maskedWrapper struct{ target *int64 }
+
+func (maskedWrapper) GoString() string { return "maskedWrapper{}" }
+
 func TestColumnOrZeroDeclarationPanics(t *testing.T) {
 	t.Parallel()
 
 	type row struct {
 		Value   int64
 		Wrapper wrapper
+		Masked  maskedWrapper
 		Raw     sql.RawBytes
 		Pointer *string
 	}
@@ -159,6 +165,12 @@ func TestColumnOrZeroDeclarationPanics(t *testing.T) {
 			projection.ColumnOrZero(qs.Col("a"), func(r *row) *wrapper {
 				r.Wrapper = wrapper{target: &r.Value}
 				return &r.Wrapper
+			})
+		},
+		"initialised target that prints as zero": func() {
+			projection.ColumnOrZero(qs.Col("a"), func(r *row) *maskedWrapper {
+				r.Masked = maskedWrapper{target: &r.Value}
+				return &r.Masked
 			})
 		},
 		"initialised by Embed": func() {
@@ -198,8 +210,8 @@ func TestGroupPresenceFromKeyWithoutField(t *testing.T) {
 
 	type human struct{ Nickname string }
 	p := projection.EmbedNull(projection.New(
-		projection.ColumnNull(qs.Col("h.user_id"), func(*human, *int64) {}),
-		projection.ColumnOrZero(qs.Col("h.nickname"), func(h *human) *string { return &h.Nickname }),
+		projection.ColumnNull(qs.Col("h", "user_id"), func(*human, *int64) {}),
+		projection.ColumnOrZero(qs.Col("h", "nickname"), func(h *human) *string { return &h.Nickname }),
 	), func(d **human, h *human) { *d = h })
 
 	got, err := p.Scan(fakeRow(int64(9), nil))

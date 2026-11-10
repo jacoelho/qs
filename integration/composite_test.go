@@ -35,7 +35,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		person.Field("last_name"),
 		person.Field("age"),
 		qs.Col("note"),
-	).From("qs_composite_people").Where(qs.Eq("id", 1))
+	).From("qs_composite_people").Where(qs.Col("id").Eq(qs.Param(1)))
 	sql, args, err := session.render(t, read)
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		t.Fatalf("read first=%q last=%q age=%d note=%q", first, last, age, note)
 	}
 
-	expanded := qs.Select(person.Fields()).From("qs_composite_people").Where(qs.Eq("id", 1))
+	expanded := qs.Select(person.Fields()).From("qs_composite_people").Where(qs.Col("id").Eq(qs.Param(1)))
 	sql, args, err = session.render(t, expanded)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 	update := qs.Update("qs_composite_people").Set(
 		qs.Assign(person.Field("first_name"), qs.Write(qs.Param("Grace"))),
 		qs.Assign(person.Field("age"), qs.Write(qs.Param(37))),
-	).Where(qs.Eq("id", 1))
+	).Where(qs.Col("id").Eq(qs.Param(1)))
 	sql, args, err = session.render(t, update)
 	if err != nil {
 		t.Fatal(err)

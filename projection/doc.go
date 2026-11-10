@@ -34,7 +34,7 @@
 //
 // Each expression must produce one result column; the package cannot prove this
 // for wildcards, trusted SQL or composite expansion. Empty declarations are
-// permitted: qs.Select with no expressions fails rendering, while empty input to
+// permitted: qs.SelectSlice with no expressions fails rendering, while empty input to
 // Returning adds no clause. Applications expecting returned rows must establish
 // nonempty output before DML. qs.SelectNoColumns separately expresses an intentional
 // zero-column SELECT.
@@ -66,6 +66,6 @@
 //
 // Projections are immutable and safe for concurrent reads and Scan. Declare one once
 // per alias and reuse it: declaring runs the checks above and allocates per column,
-// while reuse costs only Expressions. Copies are shallow: nested query builders stay
-// shared. This package owns no resources or background work.
+// while reuse costs only Expressions. This package owns no resources or background
+// work.
 package projection

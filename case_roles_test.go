@@ -8,52 +8,37 @@ func TestCaseRolesRenderDistinctForms(t *testing.T) {
 	runCases(t, []renderCase{
 		{
 			name:      "searched",
-			statement: Select(Case().When(Eq("kind", 1), Param("searched-then")).Else(Param("searched-else")).End()),
+			statement: Select(Case().When(Col("kind").Eq(Param(1)), Param("searched-then")).Else(Param("searched-else")).End()),
 			sql:       `SELECT CASE WHEN ("kind" = $1) THEN $2 ELSE $3 END`,
 			args:      []any{1, "searched-then", "searched-else"},
 		},
 		{
 			name:      "simple",
-			statement: Select(CaseOf(Ident("kind")).WhenValue(LiteralInt(1), Param("simple-then")).Else(Param("simple-else")).End()),
+			statement: Select(CaseOf(Col("kind")).WhenValue(LiteralInt(1), Param("simple-then")).Else(Param("simple-else")).End()),
 			sql:       `SELECT CASE "kind" WHEN 1 THEN $1 ELSE $2 END`,
 			args:      []any{"simple-then", "simple-else"},
 		},
 	})
 }
 
-func TestCaseEndSnapshotsBranchesAndElse(t *testing.T) {
+func TestCaseBuildersBranchWithoutSharing(t *testing.T) {
 	t.Parallel()
 
 	searched := Case().When(True(), Param("before"))
 	searchedExpr := searched.End()
-	searched.When(False(), Param("after")).Else(Param("later"))
+	extended := searched.When(False(), Param("after")).Else(Param("later")).End()
 	checkSQL(t, Select(searchedExpr), `SELECT CASE WHEN TRUE THEN $1 END`, "before")
+	checkSQL(t, Select(extended), `SELECT CASE WHEN TRUE THEN $1 WHEN FALSE THEN $2 ELSE $3 END`, "before", "after", "later")
 
-	simple := CaseOf(Ident("kind")).WhenValue(LiteralInt(1), Param("before"))
+	simple := CaseOf(Col("kind")).WhenValue(LiteralInt(1), Param("before"))
 	simpleExpr := simple.End()
-	simple.WhenValue(LiteralInt(2), Param("after")).Else(Param("later"))
+	extendedSimple := simple.WhenValue(LiteralInt(2), Param("after")).Else(Param("later")).End()
 	checkSQL(t, Select(simpleExpr), `SELECT CASE "kind" WHEN 1 THEN $1 END`, "before")
+	checkSQL(t, Select(extendedSimple), `SELECT CASE "kind" WHEN 1 THEN $1 WHEN 2 THEN $2 ELSE $3 END`, "before", "after", "later")
 }
 
-func TestCaseCloneClonesNestedLiveQuery(t *testing.T) {
+func TestCaseZeroBuildersAreInvalid(t *testing.T) {
 	t.Parallel()
-
-	child := Select(Param("before"))
-	query := Select(Case().When(True(), Scalar(child)).End())
-	clone := query.Clone()
-
-	child.Columns(Param("after"))
-	checkError(t, query, ErrInvalid)
-	checkSQL(t, clone, `SELECT CASE WHEN TRUE THEN (SELECT $1) END`, "before")
-}
-
-func TestCaseNilAndZeroBuildersAreInvalid(t *testing.T) {
-	t.Parallel()
-
-	var nilSearched *SearchedCaseBuilder
-	checkError(t, Select(nilSearched.End()), ErrInvalid)
-	var nilSimple *SimpleCaseBuilder
-	checkError(t, Select(nilSimple.End()), ErrInvalid)
 
 	var zeroSearched SearchedCaseBuilder
 	checkError(t, Select(zeroSearched.End()), ErrInvalid)

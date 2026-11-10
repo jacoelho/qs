@@ -26,18 +26,69 @@ func TestSetWidthAnalysisUsesConfiguredDepth(t *testing.T) {
 	checkSQL(t, Union(Select(Star()).From("t"), Select(Param(1), Param(2))), `(SELECT * FROM "t") UNION (SELECT $1, $2)`, 1, 2)
 }
 
-func TestSetWidthAnalysisBoundsCycles(t *testing.T) {
-	t.Parallel()
-
-	cycle := Union(Select(LiteralInt(1)), Select(LiteralInt(2)))
-	cycle.left = cycle
-	checkErrorWithOptions(t, cycle, Options{MaxDepth: 32}, ErrDepth)
-}
-
 func TestSetOperatorValidation(t *testing.T) {
 	t.Parallel()
 
 	query := Union(Select(LiteralInt(1)), Select(LiteralInt(1)))
 	query.operator = setOperator(255)
 	checkError(t, query, ErrInvalid)
+}
+
+// A chain's width is found once and handed down its left spine. A branch of
+// another width must still be refused wherever in the chain it sits.
+func TestSetChainRefusesAMismatchedBranchAtAnyPosition(t *testing.T) {
+	t.Parallel()
+
+	const branches = 6
+	narrow, wide := Select(LiteralInt(1)), Select(LiteralInt(1), LiteralInt(2))
+	chain := func(mismatch int) Rowset {
+		pick := func(i int) Rowset {
+			if i == mismatch {
+				return wide
+			}
+			return narrow
+		}
+		query := pick(0)
+		for i := 1; i < branches; i++ {
+			query = Union(query, pick(i))
+		}
+		return query
+	}
+	if _, _, err := ToSQL(chain(-1)); err != nil {
+		t.Fatalf("equal-width chain: %v", err)
+	}
+	for position := range branches {
+		checkError(t, chain(position), ErrInvalid)
+	}
+
+	// A set operation as a right branch is measured on its own.
+	checkError(t, Union(chain(-1), Union(wide, wide)), ErrInvalid)
+	checkError(t, Union(chain(-1), Union(narrow, wide)), ErrInvalid)
+	// A leftmost leaf of unknown width leaves the chain unchecked, as before.
+	checkSQL(t, Union(Union(Select(Star()).From("t"), narrow), wide),
+		`((SELECT * FROM "t") UNION (SELECT 1)) UNION (SELECT 1, 2)`)
+}
+
+// A spine longer than the depth limit fails either way. A mismatched branch
+// that the renderer reaches before the limit is still reported as a mismatch.
+func TestSetChainBeyondDepthStillReportsAReachableMismatch(t *testing.T) {
+	t.Parallel()
+
+	narrow, wide := Select(LiteralInt(1)), Select(LiteralInt(1), LiteralInt(2))
+	chain := func(branches, mismatch int) Rowset {
+		var query Rowset = narrow
+		for i := 1; i < branches; i++ {
+			if i == mismatch {
+				query = Union(query, wide)
+			} else {
+				query = Union(query, narrow)
+			}
+		}
+		return query
+	}
+	options := Options{MaxDepth: 10}
+	checkErrorWithOptions(t, chain(12, -1), options, ErrDepth)
+	checkErrorWithOptions(t, chain(12, 9), options, ErrInvalid)
+	checkErrorWithOptions(t, chain(12, 10), options, ErrInvalid)
+	checkErrorWithOptions(t, chain(13, 10), options, ErrInvalid)
 }

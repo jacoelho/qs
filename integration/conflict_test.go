@@ -18,7 +18,7 @@ func TestUpsertLiteralDottedColumn(t *testing.T) {
 	}
 	statement := qs.InsertInto("settings").Columns("id", "a.b").Values(qs.Value(42), qs.Value("new")).
 		OnConflict(qs.ConflictColumns("id").DoUpdateSlice(qs.SetAllExcluded("a.b"))).
-		Returning(qs.Ident("a.b"))
+		Returning(qs.Col("a.b"))
 	sql, args, err := session.render(t, statement)
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestLiteralRelationColumnIdentity(t *testing.T) {
 		want     string
 	}{
 		{"table", qs.Table("qs_literal_relation_columns"), qs.Table("qs_literal_relation_columns").Col("a.b"), "dotted"},
-		{"table_ident", qs.TableIdent("qs_literal_relation_columns"), qs.TableIdent("qs_literal_relation_columns").Col("a.b"), "dotted"},
+		{"table_ident", qs.Table("qs_literal_relation_columns"), qs.Table("qs_literal_relation_columns").Col("a.b"), "dotted"},
 		{"alias", qs.Table("qs_literal_relation_columns").As("r"), qs.Table("qs_literal_relation_columns").As("r").Col("a.b"), "dotted"},
 		{"literal_star_column", qs.Table("qs_literal_relation_columns"), qs.Table("qs_literal_relation_columns").Col("*"), "star"},
 	}

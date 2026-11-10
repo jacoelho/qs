@@ -24,7 +24,7 @@ func TestRenderErrorStructuralPaths(t *testing.T) {
 		{"case", Select(Case().When(True(), LiteralInt(1)).When(True(), Expr{}).Else(Expr{}).End()), []string{"SELECT", "projection", "expression[1]", "CASE THEN[2]"}},
 		{"set_right", Union(Select(LiteralInt(1)), Select(Expr{})), []string{"set operation", "right", "SELECT", "projection", "expression[1]"}},
 		{"values", ValuesExpr(LiteralInt(1), LiteralInt(2)).RowExpr(LiteralInt(3), Expr{}), []string{"VALUES", "row[2]", "expression[2]"}},
-		{"assignment", Update("private_table").Set(Set("a", Value(1)), Set("b", Write(Expr{}))), []string{"UPDATE", "SET", "assignment[2]", "value"}},
+		{"assignment", Update("private_table").Set(Set("a", Value(1)), Set("b", Write(Expr{}))).AllRows(), []string{"UPDATE", "SET", "assignment[2]", "value"}},
 		{"insert_values", InsertInto("private_table").Values(Value(1), Write(Expr{})), []string{"INSERT", "VALUES", "row[1]", "value[2]"}},
 		{"order", Select(LiteralInt(1)).OrderBy(LiteralInt(1).Asc(), Expr{}.Asc()), []string{"SELECT", "ORDER BY", "order[2]"}},
 		{"join_right", Select(LiteralInt(1)).FromExpr(InnerJoin(Table("a"), Relation{}).On(Condition{})), []string{"SELECT", "FROM", "relation[1]", "right"}},
@@ -36,13 +36,13 @@ func TestRenderErrorStructuralPaths(t *testing.T) {
 		{"window_partition", Select(CountAll().Filter(True()).Over(Window().PartitionBy(LiteralInt(1), Expr{}).OrderBy(Expr{}.Asc()))), []string{"SELECT", "projection", "expression[1]", "OVER", "PARTITION BY", "expression[2]"}},
 		{"window_order", Select(CountAll().Over(Window().OrderBy(LiteralInt(1).Asc(), Expr{}.Asc()).Rows(PrecedingExpr(Expr{})))), []string{"SELECT", "projection", "expression[1]", "OVER", "ORDER BY", "order[2]"}},
 		{"window_frame", Select(CountAll().Over(Window().RowsBetween(PrecedingExpr(Expr{}), FollowingExpr(Expr{})))), []string{"SELECT", "projection", "expression[1]", "OVER", "frame start"}},
-		{"returning", DeleteFrom("t").Where(True()).Returning(LiteralInt(1), Expr{}), []string{"DELETE", "RETURNING", "expression[2]"}},
-		{"keyset_term", Select(LiteralInt(1)).From("t").Where(True()).OrderBy(Asc("t.private_a"), Asc("t.private_b").NullsFirst()).SeekAfter("private_value", 2), []string{"SELECT", "WHERE", "keyset", "order[2]"}},
-		{"keyset_bare_key", Select(LiteralInt(1)).From("t").OrderBy(Asc("t.private_a"), Asc("private_b")).SeekAfter("private_value", 2), []string{"SELECT", "WHERE", "keyset", "order[2]"}},
-		{"keyset_cursor", Select(LiteralInt(1)).From("t").OrderBy(Asc("t.private_a"), Asc("t.private_b")).SeekAfter("private_value", nil), []string{"SELECT", "WHERE", "keyset", "cursor[2]"}},
-		{"keyset_width", Select(LiteralInt(1)).From("t").OrderBy(Asc("private_a")).SeekAfter("private_value", 2), []string{"SELECT", "WHERE", "keyset"}},
+		{"returning", DeleteFrom("t").AllRows().Returning(LiteralInt(1), Expr{}), []string{"DELETE", "RETURNING", "expression[2]"}},
+		{"keyset_term", Select(LiteralInt(1)).From("t").Where(True()).OrderBy(Col("t", "private_a").Asc(), Col("t", "private_b").Asc().NullsFirst()).SeekAfter("private_value", 2), []string{"SELECT", "WHERE", "keyset", "order[2]"}},
+		{"keyset_bare_key", Select(LiteralInt(1)).From("t").OrderBy(Col("t", "private_a").Asc(), Col("private_b").Asc()).SeekAfter("private_value", 2), []string{"SELECT", "WHERE", "keyset", "order[2]"}},
+		{"keyset_cursor", Select(LiteralInt(1)).From("t").OrderBy(Col("t", "private_a").Asc(), Col("t", "private_b").Asc()).SeekAfter("private_value", nil), []string{"SELECT", "WHERE", "keyset", "cursor[2]"}},
+		{"keyset_width", Select(LiteralInt(1)).From("t").OrderBy(Col("private_a").Asc()).SeekAfter("private_value", 2), []string{"SELECT", "WHERE", "keyset"}},
 		{"count_rows", CountRows(Select(LiteralInt(1), Expr{}).From("private_t")), []string{"SELECT", "FROM", "relation[1]", "subquery", "SELECT", "projection", "expression[2]"}},
-		{"count_rows_order", CountRows(Select(LiteralInt(1)).From("private_t").OrderBy(Asc("private_a"), Expr{}.Asc(), Asc("private_b"))), []string{"SELECT", "FROM", "relation[1]", "subquery", "SELECT", "ORDER BY", "order[2]"}},
+		{"count_rows_order", CountRows(Select(LiteralInt(1)).From("private_t").OrderBy(Col("private_a").Asc(), Expr{}.Asc(), Col("private_b").Asc())), []string{"SELECT", "FROM", "relation[1]", "subquery", "SELECT", "ORDER BY", "order[2]"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -106,7 +106,6 @@ func TestRenderErrorPathPreservesSentinels(t *testing.T) {
 		cause   error
 		want    []string
 	}{
-		{"unsupported", Select(Normalize(Param("secret"))), Options{PostgreSQL: PostgreSQL12}, ErrUnsupported, []string{"SELECT", "projection", "expression[1]"}},
 		{"parameter_limit", Select(Param("secret"), Param("other")), Options{MaxParameters: 1}, ErrParameterLimit, []string{"SELECT", "projection", "expression[2]"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -117,5 +116,60 @@ func TestRenderErrorPathPreservesSentinels(t *testing.T) {
 				t.Fatalf("got %v; want cause %v and path %q", err, tc.cause, tc.want)
 			}
 		})
+	}
+}
+
+// A builder's own rendering methods and the package functions that take a
+// Statement reach the renderer by different routes. They must agree on SQL,
+// arguments, the error and its path, for statements that render and for ones
+// that fail at the top, in a nested statement and on the options.
+func TestStatementMethodsMatchPackageFunctions(t *testing.T) {
+	t.Parallel()
+
+	statements := map[string]Statement{
+		"invalid_projection":  Select(Param(1), Expr{}),
+		"invalid_subquery":    Select(Scalar(Select(Expr{}))),
+		"mutation_where_true": Update("t").Set(Set("a", Value(1))).Where(True()),
+		"nil_comparison":      DeleteFrom("t").Where(Col("a").Eq(Param(nil))),
+		"insert_duplicate":    InsertInto("t").Columns("a", "a").Values(Value(1), Value(2)),
+		"merge_without_on":    MergeInto("t").Using(Table("s")).When(Matched().ThenDelete()),
+		"values":              Values(Row(Param(1), Param("a"))),
+		"table":               TableRows("t"),
+		"set_operation":       Union(Select(Param(1)), Select(Param(2))),
+		"trusted":             StatementSQL(UnsafeSQL("SELECT "), Param(1)),
+	}
+	for _, s := range benchmarkScenarios {
+		statements[s.name] = s.statement()
+	}
+	options := map[string]Options{
+		"default":            {},
+		"one_parameter":      {MaxParameters: 1},
+		"shallow":            {MaxDepth: 2},
+		"invalid_parameters": {MaxParameters: -1},
+	}
+	for name, statement := range statements {
+		for optionName, option := range options {
+			t.Run(name+"/"+optionName, func(t *testing.T) {
+				t.Parallel()
+				wantSQL, wantArgs, wantErr := ToSQLWith(statement, option)
+				gotSQL, gotArgs, gotErr := statement.ToSQLWith(option)
+				compareRenders(t, "ToSQLWith", gotSQL, gotArgs, gotErr, wantSQL, wantArgs, wantErr)
+
+				prefix, prefixArgs := []byte("-- prefix\n"), []any{"kept"}
+				wantBytes, wantArgs, wantErr := AppendWith(slices.Clone(prefix), slices.Clone(prefixArgs), statement, option)
+				gotBytes, gotArgs, gotErr := statement.AppendWith(slices.Clone(prefix), slices.Clone(prefixArgs), option)
+				compareRenders(t, "AppendWith", string(gotBytes), gotArgs, gotErr, string(wantBytes), wantArgs, wantErr)
+			})
+		}
+	}
+}
+
+func compareRenders(t *testing.T, entry, gotSQL string, gotArgs []any, gotErr error, wantSQL string, wantArgs []any, wantErr error) {
+	t.Helper()
+	if gotSQL != wantSQL || !reflect.DeepEqual(gotArgs, wantArgs) {
+		t.Errorf("%s method rendered %q %#v; the package function rendered %q %#v", entry, gotSQL, gotArgs, wantSQL, wantArgs)
+	}
+	if (gotErr == nil) != (wantErr == nil) || gotErr != nil && gotErr.Error() != wantErr.Error() {
+		t.Errorf("%s method failed with %v; the package function failed with %v", entry, gotErr, wantErr)
 	}
 }

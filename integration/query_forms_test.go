@@ -4,6 +4,7 @@ package integration_test
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/jacoelho/qs"
@@ -56,7 +57,7 @@ func TestPostgreSQLNumericRadixValues(t *testing.T) {
 	t.Parallel()
 	session := connect(t)
 	ctx, conn := session.Context, session.Conn
-	requireVersion(t, session, qs.PostgreSQL16)
+	requireVersion(t, session, 16)
 	cases := []struct {
 		name, token, want string
 	}{
@@ -86,18 +87,51 @@ func TestPostgreSQLNumericRadixValues(t *testing.T) {
 func TestPostgreSQLUnaliasedLateralCorrelation(t *testing.T) {
 	t.Parallel()
 	session := connect(t)
-	requireVersion(t, session, qs.PostgreSQL16)
+	requireVersion(t, session, 16)
 	outer := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("o", "n")
 	lateral := qs.Lateral(qs.Derived(
-		qs.Select(qs.LiteralInt(1)).Where(qs.Col("o.n").EqExpr(qs.LiteralInt(1))),
+		qs.Select(qs.LiteralInt(1)).Where(qs.Col("o", "n").Eq(qs.LiteralInt(1))),
 	))
-	query := qs.Select(qs.Col("o.n").Cast(qs.TypeText)).
+	query := qs.Select(qs.Col("o", "n").Cast(qs.TypeText)).
 		FromExpr(outer).
 		CrossJoinExpr(lateral).
-		OrderBy(qs.Asc("o.n"))
+		OrderBy(qs.Col("o", "n").Asc())
 	got := queryStrings(t, session, query)
 	want := []string{"1"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v; want %#v", got, want)
+	}
+}
+
+func TestLimitWithTiesKeepsRowsTiedWithTheLast(t *testing.T) {
+	t.Parallel()
+	session := connect(t)
+	if _, err := session.Exec(session, `CREATE TEMP TABLE scores (name text NOT NULL, points integer NOT NULL);
+		INSERT INTO scores VALUES ('a', 3), ('b', 2), ('c', 2), ('d', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	ranked := qs.SelectCols("name").From("scores").OrderBy(qs.Col("points").Desc())
+	for _, tc := range []struct {
+		name  string
+		query qs.SelectBuilder
+		want  []string
+	}{
+		{"limit_stops_inside_the_tie", ranked.Limit(2), nil},
+		{"ties_extend_the_limit", ranked.LimitWithTies(2), []string{"a", "b", "c"}},
+		{"ties_after_offset", ranked.Offset(1).LimitWithTies(1), []string{"b", "c"}},
+		{"ties_with_row_lock", ranked.LimitWithTies(2).Lock(qs.ForUpdate()), []string{"a", "b", "c"}},
+	} {
+		got := queryStrings(t, session, tc.query)
+		slices.Sort(got)
+		if tc.want == nil {
+			// Which of the tied rows LIMIT keeps is unspecified.
+			if len(got) != 2 || got[0] != "a" {
+				t.Fatalf("%s: got %v; want a and one of b, c", tc.name, got)
+			}
+			continue
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Fatalf("%s: got %v; want %v", tc.name, got, tc.want)
+		}
 	}
 }

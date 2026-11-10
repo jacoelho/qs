@@ -32,7 +32,7 @@ type MergeWhen struct {
 	overriding overridingMode
 }
 
-// mergeMatch is the shared immutable selector payload. The exported wrappers
+// mergeMatch is the selector shared by the MERGE WHEN roles. The exported wrappers
 // use distinct field names so callers cannot explicitly convert one role into
 // another; byTarget is meaningful only for the NOT MATCHED role.
 type mergeMatch struct {
@@ -114,7 +114,7 @@ func (m MergeNotMatched) ThenInsert(assignments ...Assignment) MergeWhen {
 func (m MergeNotMatched) ThenInsertValues(columns []string, first WriteValue, rest ...WriteValue) MergeWhen {
 	branch := m.notMatched.complete(mergeInsert)
 	branch.columns = cloneSlice(columns)
-	branch.values = ownedWriteValues(first, rest)
+	branch.values = ownedList(first, rest)
 	return branch
 }
 
@@ -154,7 +154,7 @@ func (m MergeInsertOverride) ThenInsert(assignments ...Assignment) MergeWhen {
 func (m MergeInsertOverride) ThenInsertValues(columns []string, first WriteValue, rest ...WriteValue) MergeWhen {
 	branch := m.insertOverride.complete(mergeInsert)
 	branch.columns = cloneSlice(columns)
-	branch.values = ownedWriteValues(first, rest)
+	branch.values = ownedList(first, rest)
 	branch.overriding = m.overriding
 	return branch
 }
@@ -176,55 +176,46 @@ type MergeBuilder struct {
 }
 
 // MergeInto starts a MERGE for a named target table.
-func MergeInto(table string) *MergeBuilder { return &MergeBuilder{target: Table(table)} }
+func MergeInto(table string) MergeBuilder { return MergeBuilder{target: Table(table)} }
 
 // MergeIntoTable starts a MERGE for a relation target.
-func MergeIntoTable(table Relation) *MergeBuilder { return &MergeBuilder{target: table} }
+func MergeIntoTable(table Relation) MergeBuilder { return MergeBuilder{target: table} }
 
 // Using replaces the MERGE source relation.
-func (b *MergeBuilder) Using(source Relation) *MergeBuilder { b.source = source; return b }
+func (b MergeBuilder) Using(source Relation) MergeBuilder { b.source = source; return b }
 
 // On appends predicates to the MERGE match condition.
-func (b *MergeBuilder) On(conditions ...Condition) *MergeBuilder {
-	b.on = append(b.on, conditions...)
+func (b MergeBuilder) On(conditions ...Condition) MergeBuilder {
+	b.on = extend(b.on, conditions...)
 	return b
 }
 
 // When appends completed WHEN branches in rendering order.
-func (b *MergeBuilder) When(branches ...MergeWhen) *MergeBuilder {
-	b.branches = append(b.branches, branches...)
+func (b MergeBuilder) When(branches ...MergeWhen) MergeBuilder {
+	b.branches = extend(b.branches, branches...)
 	return b
 }
 
 // Returning appends expressions to the MERGE RETURNING projection.
-func (b *MergeBuilder) Returning(expressions ...Expr) *MergeBuilder {
-	b.returning = append(b.returning, expressions...)
+func (b MergeBuilder) Returning(expressions ...Expr) MergeBuilder {
+	b.returning = extend(b.returning, expressions...)
 	return b
 }
 
 // ReturningCols appends named columns to the MERGE RETURNING projection.
-func (b *MergeBuilder) ReturningCols(columns ...string) *MergeBuilder {
-	for _, c := range columns {
-		b.returning = append(b.returning, Col(c))
-	}
+func (b MergeBuilder) ReturningCols(columns ...string) MergeBuilder {
+	b.returning = extendWith(b.returning, columns, unqualifiedColumn)
 	return b
 }
 
 // ReturningRows replaces the OLD and NEW row aliases for MERGE RETURNING.
-func (b *MergeBuilder) ReturningRows(aliases ReturningAliases) *MergeBuilder {
+func (b MergeBuilder) ReturningRows(aliases ReturningAliases) MergeBuilder {
 	b.aliases = aliases
 	return b
 }
 
-func (b *MergeBuilder) append(w *renderer) {
-	w.feature(PostgreSQL15, "MERGE")
-	if w.stopped("version", 0) {
-		return
-	}
+func (w *renderer) mergeStatement(b *MergeBuilder) {
 	if !w.require(len(b.on) > 0 && len(b.branches) > 0, "MERGE", "requires ON and at least one WHEN branch") {
-		return
-	}
-	if !w.require(!b.base.recursive, "MERGE", "WITH RECURSIVE is not supported") {
 		return
 	}
 	w.head(b.base)
@@ -257,9 +248,6 @@ func (b *MergeBuilder) append(w *renderer) {
 		if w.stopped("WHEN", i+1) {
 			return
 		}
-	}
-	if len(b.returning) > 0 {
-		w.feature(PostgreSQL17, "MERGE RETURNING")
 	}
 	w.returning(b.returning, b.aliases)
 	if w.stopped("RETURNING", 0) {
@@ -303,11 +291,9 @@ func (w *renderer) mergeMatch(m MergeWhen) bool {
 	case matchNotMatched:
 		w.text("NOT MATCHED")
 		if m.byTarget {
-			w.feature(PostgreSQL17, "MERGE BY TARGET")
 			w.text(" BY TARGET")
 		}
 	case matchNotMatchedBySource:
-		w.feature(PostgreSQL17, "MERGE BY SOURCE")
 		w.text("NOT MATCHED BY SOURCE")
 	default:
 		w.fail(ErrInvalid, "MERGE WHEN", "zero or unknown match category")
@@ -348,7 +334,7 @@ func (w *renderer) mergeActionAllowed(m MergeWhen) bool {
 func (w *renderer) mergeInsert(m MergeWhen) {
 	for i, column := range m.columns {
 		for j := range i {
-			if column == m.columns[j] {
+			if sameName(column, m.columns[j]) {
 				w.fail(ErrInvalid, "MERGE INSERT", "duplicate target column")
 				return
 			}
@@ -432,6 +418,3 @@ func (w *renderer) mergeInsert(m MergeWhen) {
 	}
 	w.byte(')')
 }
-
-// Reset clears the MERGE builder, including its target and branches.
-func (b *MergeBuilder) Reset() { *b = MergeBuilder{} }

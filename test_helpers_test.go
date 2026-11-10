@@ -29,11 +29,6 @@ func checkSQL(t *testing.T, s Statement, sql string, args ...any) {
 	if err != nil || again != got || !reflect.DeepEqual(values, values2) {
 		t.Fatal("rendering mutated statement")
 	}
-	// Clone is a separate graph with identical behaviour.
-	copied, values3, err := Clone(s).ToSQL()
-	if err != nil || copied != got || !reflect.DeepEqual(values, values3) {
-		t.Fatalf("clone mismatch: %s %#v %v", copied, values3, err)
-	}
 }
 func runCases(t *testing.T, cases []renderCase) {
 	t.Helper()
@@ -52,5 +47,13 @@ func checkError(t *testing.T, s Statement, cause error) {
 	}
 	if _, ok := errors.AsType[*RenderError](err); !ok {
 		t.Fatal("missing RenderError")
+	}
+}
+
+func checkErrorWithOptions(t *testing.T, s Statement, options Options, cause error) {
+	t.Helper()
+	sql, args, err := ToSQLWith(s, options)
+	if !errors.Is(err, cause) || sql != "" || args != nil {
+		t.Fatalf("expected atomic %v error, got %q %#v %v", cause, sql, args, err)
 	}
 }

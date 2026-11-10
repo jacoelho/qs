@@ -214,9 +214,9 @@ func TestScanIntoReadsIntoPreparedNestedValue(t *testing.T) {
 		Feed *feed
 	}
 	p := projection.New(
-		projection.Column(qs.Col("e.id"), func(e *entry) *int64 { return &e.ID }),
+		projection.Column(qs.Col("e", "id"), func(e *entry) *int64 { return &e.ID }),
 		projection.Embed(
-			projection.Column(qs.Col("f.id"), func(f *feed) *int64 { return &f.ID }),
+			projection.Column(qs.Col("f", "id"), func(f *feed) *int64 { return &f.ID }),
 			func(e *entry) *feed {
 				if e.Feed == nil {
 					e.Feed = new(feed)

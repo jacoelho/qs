@@ -9,7 +9,7 @@ const (
 )
 
 // WithQuery is an immutable CTE definition. A recursive self-reference uses
-// CTERef(name), not a builder pointer cycle.
+// CTERef(name).
 type WithQuery struct {
 	body            Statement
 	search          *SearchSpec
@@ -20,7 +20,9 @@ type WithQuery struct {
 }
 
 // CTE defines a common table expression with the supplied name and body.
-func CTE(name string, body Statement) WithQuery { return WithQuery{name: name, body: body} }
+func CTE(name string, body Statement) WithQuery {
+	return WithQuery{name: name, body: ownedStatement(body)}
+}
 
 // Columns replaces the output-column aliases of a common table expression.
 func (c WithQuery) Columns(names ...string) WithQuery { c.columns = cloneSlice(names); return c }
@@ -32,10 +34,10 @@ func (c WithQuery) Materialized() WithQuery { c.materialization = cteMaterialize
 func (c WithQuery) NotMaterialized() WithQuery { c.materialization = cteNotMaterialized; return c }
 
 // Ref refers to this CTE by name without embedding its body.
-func (c WithQuery) Ref() Relation { return TableIdent(c.name) }
+func (c WithQuery) Ref() Relation { return Table(c.name) }
 
 // CTERef names a CTE, including recursive self-references.
-func CTERef(name string) Relation { return TableIdent(name) }
+func CTERef(name string) Relation { return Table(name) }
 
 // SearchSpec configures recursive CTE SEARCH ordering and its generated column.
 type SearchSpec struct {
@@ -129,7 +131,7 @@ func (w *renderer) withClause(base statementBase) {
 
 func (w *renderer) withQuery(base statementBase, i int, c WithQuery) bool {
 	for j := range i {
-		if base.with[j].name == c.name {
+		if sameName(base.with[j].name, c.name) {
 			w.fail(ErrInvalid, "WITH", "duplicate CTE name")
 			return false
 		}
@@ -185,7 +187,6 @@ func (w *renderer) cteSearchCycle(recursive bool, search *SearchSpec, cycle *Cyc
 	if search == nil && cycle == nil {
 		return true
 	}
-	w.feature(PostgreSQL14, "CTE SEARCH/CYCLE")
 	if !w.require(recursive, "WITH", "SEARCH/CYCLE requires WITH RECURSIVE") {
 		return false
 	}
@@ -222,7 +223,7 @@ func (w *renderer) cteCycle(s *CycleSpec) bool {
 	w.text(" SET ")
 	w.identifierPart(s.mark)
 	if s.custom {
-		if !w.require(w.cycleLiteral(s.to) && w.cycleLiteral(s.otherwise), "CYCLE", "mark values must be unsigned SQL constants") {
+		if !w.require(cycleLiteral(s.to) && cycleLiteral(s.otherwise), "CYCLE", "mark values must be unsigned SQL constants") {
 			return false
 		}
 		w.text(" TO ")
@@ -235,28 +236,16 @@ func (w *renderer) cteCycle(s *CycleSpec) bool {
 	return true
 }
 
-func (w *renderer) cycleLiteral(e Expr) bool {
+func cycleLiteral(e Expr) bool {
 	// CYCLE uses AexprConst, excluding unary signs and keyword expressions.
-	// Inspect through version gates, but render the original node so its
-	// feature and depth checks remain active.
-	for depth := w.depth; depth < w.options.MaxDepth; depth++ {
-		switch e.kind {
-		case exprVersioned:
-			gate, ok := e.value.(*versionedExpression)
-			if !ok || gate == nil {
-				return false
-			}
-			e = gate.expr
-		case exprStringLiteral:
-			return true
-		case exprLiteral:
-			return e.text != "" && e.text[0] != '+' && e.text[0] != '-'
-		default:
-			return false
-		}
+	switch e.kind {
+	case exprStringLiteral:
+		return true
+	case exprLiteral:
+		return e.text != "" && e.text[0] != '+' && e.text[0] != '-'
+	default:
+		return false
 	}
-	w.fail(ErrDepth, "CYCLE", "mark literal exceeds the nesting limit")
-	return false
 }
 
 func (w *renderer) foot(base statementBase) {
@@ -273,8 +262,8 @@ func (w *renderer) foot(base statementBase) {
 }
 func isDML(s Statement) bool {
 	switch s.(type) {
-	case *InsertRows, *InsertSelect, *InsertAssignments, *InsertDefaults,
-		*UpdateBuilder, *DeleteBuilder, *MergeBuilder:
+	case InsertRows, InsertSelect, InsertAssignments, InsertDefaults,
+		UpdateBuilder, DeleteBuilder, MergeBuilder:
 		return true
 	default:
 		return false

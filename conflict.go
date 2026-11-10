@@ -4,23 +4,32 @@ import "slices"
 
 // IndexElement is an ON CONFLICT index-inference element.
 type IndexElement struct {
-	collation string
-	opclass   string
+	collation identifierParts
+	opclass   identifierParts
 	expr      Expr
 	column    bool
 }
 
 // IndexColumn names one column; dots are literal characters, not qualification.
-func IndexColumn(column string) IndexElement { return IndexElement{expr: Ident(column), column: true} }
+func IndexColumn(column string) IndexElement {
+	return IndexElement{expr: unqualifiedColumn(column), column: true}
+}
 
 // IndexExpr adds an expression to ON CONFLICT index inference.
 func IndexExpr(expr Expr) IndexElement { return IndexElement{expr: expr} }
 
-// Collate sets the collation for an index-inference element.
-func (e IndexElement) Collate(name string) IndexElement { e.collation = name; return e }
+// Collate sets the collation for an index-inference element. Each argument is
+// one identifier.
+func (e IndexElement) Collate(first string, rest ...string) IndexElement {
+	e.collation = qualifiedName(first, rest)
+	return e
+}
 
 // OpClass sets the operator class for an index-inference element.
-func (e IndexElement) OpClass(name string) IndexElement { e.opclass = name; return e }
+func (e IndexElement) OpClass(first string, rest ...string) IndexElement {
+	e.opclass = qualifiedName(first, rest)
+	return e
+}
 
 type conflictTarget uint8
 
@@ -146,13 +155,12 @@ func (c ConflictColumnsTarget) DoNothing() ConflictNothing {
 // DoUpdate completes a column-inference target with a non-empty assignment list.
 func (c ConflictColumnsTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
 	c.columnsTarget.doNothing = false
-	c.columnsTarget.updates = ownedAssignments(first, rest)
+	c.columnsTarget.updates = ownedList(first, rest)
 	return ConflictUpdate{update: c.columnsTarget}
 }
 
 // DoUpdateSlice completes a column-inference target with a copy of assignments.
-// Nil or empty slices fail rendering with ErrInvalid. Nested queries remain live
-// and bound application values are shallow-copied.
+// Nil or empty slices fail rendering with ErrInvalid. Bound values are not copied.
 func (c ConflictColumnsTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
 	c.columnsTarget.doNothing = false
 	c.columnsTarget.updates = cloneSlice(assignments)
@@ -168,13 +176,12 @@ func (c ConflictIndexTarget) DoNothing() ConflictNothing {
 // DoUpdate completes an index-inference target with a non-empty assignment list.
 func (c ConflictIndexTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
 	c.indexTarget.doNothing = false
-	c.indexTarget.updates = ownedAssignments(first, rest)
+	c.indexTarget.updates = ownedList(first, rest)
 	return ConflictUpdate{update: c.indexTarget}
 }
 
 // DoUpdateSlice completes an index-inference target with a copy of assignments.
-// Nil or empty slices fail rendering with ErrInvalid. Nested queries remain live
-// and bound application values are shallow-copied.
+// Nil or empty slices fail rendering with ErrInvalid. Bound values are not copied.
 func (c ConflictIndexTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
 	c.indexTarget.doNothing = false
 	c.indexTarget.updates = cloneSlice(assignments)
@@ -190,13 +197,12 @@ func (c ConflictConstraintTarget) DoNothing() ConflictNothing {
 // DoUpdate completes a constraint target with a non-empty assignment list.
 func (c ConflictConstraintTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
 	c.constraintTarget.doNothing = false
-	c.constraintTarget.updates = ownedAssignments(first, rest)
+	c.constraintTarget.updates = ownedList(first, rest)
 	return ConflictUpdate{update: c.constraintTarget}
 }
 
 // DoUpdateSlice completes a constraint target with a copy of assignments.
-// Nil or empty slices fail rendering with ErrInvalid. Nested queries remain live
-// and bound application values are shallow-copied.
+// Nil or empty slices fail rendering with ErrInvalid. Bound values are not copied.
 func (c ConflictConstraintTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
 	c.constraintTarget.doNothing = false
 	c.constraintTarget.updates = cloneSlice(assignments)
@@ -242,13 +248,13 @@ func (w *renderer) conflict(c conflictClause) {
 				w.expr(e.expr)
 				w.byte(')')
 			}
-			if e.collation != "" {
+			if len(e.collation) != 0 {
 				w.text(" COLLATE ")
-				w.identifierPath(e.collation, false)
+				w.qualifiedName(e.collation, "COLLATE")
 			}
-			if e.opclass != "" {
+			if len(e.opclass) != 0 {
 				w.byte(' ')
-				w.identifierPath(e.opclass, false)
+				w.qualifiedName(e.opclass, "operator class")
 			}
 			if w.stopped("index", i+1) {
 				return

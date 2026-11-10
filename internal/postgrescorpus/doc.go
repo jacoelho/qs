@@ -1,7 +1,8 @@
-// Package postgrescorpus contains the bounded native harness for the pinned
-// PostgreSQL regression corpus.
+// Package postgrescorpus measures how much of the pinned PostgreSQL
+// regression corpus the public qs API can express.
 //
-// The corpus metadata is frozen as JSONL in eight test-only shard packages.
-// The shard builders and tests are deliberately excluded from production
-// builds; this package owns only the streaming decoder and audit logic.
+// Each fixture record carries a frozen PostgreSQL parse tree and the SQL an
+// independent parser verified for it. Package parsetree builds the statement
+// from the tree; this package owns the fixture format, the manifest audit and
+// the comparison. Nothing here runs outside tests and the offline tooling.
 package postgrescorpus

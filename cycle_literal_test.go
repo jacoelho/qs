@@ -2,7 +2,7 @@ package qs
 
 import "testing"
 
-func cycleValuesQuery(mark, otherwise Expr) *SelectBuilder {
+func cycleValuesQuery(mark, otherwise Expr) SelectBuilder {
 	return SelectCols("id").From("c").WithRecursive(
 		CTE("c", Select(Param(1))).Columns("id").Cycle(
 			Cycle("id").Set("seen").Values(mark, otherwise).Using("path"),
@@ -37,19 +37,9 @@ func TestCycleMarkConstants(t *testing.T) {
 		})
 	}
 
-	versioned := cycleValuesQuery(LiteralNumeric("0x1"), LiteralNumeric("0"))
-	checkErrorWithOptions(t, versioned, Options{PostgreSQL: PostgreSQL15}, ErrUnsupported)
-	sql, args, err := versioned.ToSQLWith(Options{PostgreSQL: PostgreSQL16})
-	if err != nil || sql != `WITH RECURSIVE "c" ("id") AS (SELECT $1) CYCLE "id" SET "seen" TO 0x1 DEFAULT 0 USING "path" SELECT "id" FROM "c"` || len(args) != 1 || args[0] != 1 {
-		t.Fatalf("PostgreSQL 16: SQL=%s args=%v error=%v", sql, args, err)
-	}
-	for _, values := range [][2]Expr{{LiteralInt(1), LiteralInt(0)}, {LiteralBool(true), LiteralBool(false)}} {
-		if _, _, err := cycleValuesQuery(values[0], values[1]).ToSQLWith(Options{PostgreSQL: PostgreSQL14}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, _, err := versioned.ToSQLWith(Options{MaxDepth: 3}); err != nil {
-		t.Fatalf("versioned constant should fit the same depth as the CTE body: %v", err)
+	radix := cycleValuesQuery(LiteralNumeric("0x1"), LiteralNumeric("0"))
+	if _, _, err := radix.ToSQLWith(Options{MaxDepth: 3}); err != nil {
+		t.Fatalf("mark constant should fit the same depth as the CTE body: %v", err)
 	}
 }
 

@@ -98,13 +98,14 @@ func BenchmarkCompose(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		p := projection.New(left, right)
-		qs.Select(p.Expressions()...)
+		benchSelect = qs.SelectSlice(p.Expressions())
 	}
 }
 
 var (
-	benchID   = int64(1)
-	benchName = "ada"
+	benchID     = int64(1)
+	benchName   = "ada"
+	benchSelect qs.SelectBuilder
 )
 
 // benchRows serves count rows through scan without allocating.

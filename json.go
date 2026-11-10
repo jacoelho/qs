@@ -17,12 +17,6 @@ type JSONBDocument struct{ expr Expr }
 func (JSONDocument) qxExpression()  {}
 func (JSONBDocument) qxExpression() {}
 
-// JSONCol returns a JSONDocument referring to a column.
-func JSONCol(column string) JSONDocument { return JSONExpr(Col(column)) }
-
-// JSONBCol returns a JSONBDocument referring to a column.
-func JSONBCol(column string) JSONBDocument { return JSONBExpr(Col(column)) }
-
 // JSONExpr asserts the SQL type of an existing expression without adding a
 // cast. Use expr.Cast(JSON) when its SQL type is not already json.
 func JSONExpr(expr Expr) JSONDocument { return JSONDocument{expr: expr} }
@@ -95,22 +89,22 @@ func (d JSONBDocument) Index(index int) JSONBDocument {
 
 // TextKey returns the text value at a JSON object key.
 func (d JSONDocument) TextKey(key string) Field[string] {
-	return TypedExpr[string](JSONGetText(d.expr, Param(key)))
+	return Typed[string](JSONGetText(d.expr, Param(key)))
 }
 
 // TextKey returns the text value at a JSONB object key.
 func (d JSONBDocument) TextKey(key string) Field[string] {
-	return TypedExpr[string](JSONGetText(d.expr, Param(key)))
+	return Typed[string](JSONGetText(d.expr, Param(key)))
 }
 
 // TextIndex returns the text value at a JSON array index.
 func (d JSONDocument) TextIndex(index int) Field[string] {
-	return TypedExpr[string](JSONGetText(d.expr, jsonIndex(index)))
+	return Typed[string](JSONGetText(d.expr, jsonIndex(index)))
 }
 
 // TextIndex returns the text value at a JSONB array index.
 func (d JSONBDocument) TextIndex(index int) Field[string] {
-	return TypedExpr[string](JSONGetText(d.expr, jsonIndex(index)))
+	return Typed[string](JSONGetText(d.expr, jsonIndex(index)))
 }
 
 // Path returns the JSON value selected by a sequence of object keys and array
@@ -128,13 +122,13 @@ func (d JSONBDocument) Path(parts ...string) JSONBDocument {
 // PathText returns the text value selected by a sequence of object keys and
 // array indexes.
 func (d JSONDocument) PathText(parts ...string) Field[string] {
-	return TypedExpr[string](JSONGetPathText(d.expr, jsonTextArray(parts)))
+	return Typed[string](JSONGetPathText(d.expr, jsonTextArray(parts)))
 }
 
 // PathText returns the JSONB text value selected by a sequence of object keys
 // and array indexes.
 func (d JSONBDocument) PathText(parts ...string) Field[string] {
-	return TypedExpr[string](JSONGetPathText(d.expr, jsonTextArray(parts)))
+	return Typed[string](JSONGetPathText(d.expr, jsonTextArray(parts)))
 }
 
 // Contains reports whether other is contained in this JSONB document.
@@ -213,5 +207,5 @@ func jsonTextArray(parts []string) Expr {
 	}
 	// Individual binds avoid requiring a driver's array codec. The cast also
 	// gives ARRAY[] a type; an empty extraction path is valid PostgreSQL syntax.
-	return (Expr{kind: exprList, text: sqlArray, value: expressions}).Cast(TypeArray(TypeText))
+	return nodeExpr(&listExpression{prefix: sqlArray, items: expressions}).Cast(TypeArray(TypeText))
 }

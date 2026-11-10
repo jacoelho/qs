@@ -6,27 +6,42 @@ import (
 )
 
 type callExpression struct {
-	mods           *callModifiers
-	args           []Expr
-	minimumVersion PostgreSQLVersion
-	builtin        bool
+	mods      *callModifiers
+	name      string
+	schema    string
+	args      []Expr
+	builtin   bool
+	qualified bool
+}
+
+// extractExpression is EXTRACT(part FROM source); part is a grammar keyword
+// chosen by qs.
+type extractExpression struct {
+	part   string
+	source Expr
 }
 
 type callModifiers struct {
+	order  []Order
+	within []Order
 	aggregateTail
-	order    []Order
-	within   []Order
 	distinct bool
 }
 
-// Call invokes a function identified by a dotted name. Its arguments are
-// expressions, never implicitly raw SQL. PostgreSQL resolves overloads/codecs.
+// Call invokes the function named name, which is one identifier quoted as
+// written. Its arguments are expressions, never implicitly raw SQL. PostgreSQL
+// resolves overloads/codecs.
 func Call(name string, arguments ...Expr) Expr {
-	return Expr{kind: exprCall, text: name, value: &callExpression{args: cloneSlice(arguments)}}
+	return nodeExpr(&callExpression{name: name, args: cloneSlice(arguments)})
+}
+
+// QualifiedCall is Call for a function selected by schema.
+func QualifiedCall(schema, name string, arguments ...Expr) Expr {
+	return nodeExpr(&callExpression{name: name, args: cloneSlice(arguments), schema: schema, qualified: true})
 }
 
 func builtin(name string, arguments ...Expr) Expr {
-	return Expr{kind: exprCall, text: name, value: &callExpression{args: cloneSlice(arguments), builtin: true}}
+	return nodeExpr(&callExpression{name: name, args: cloneSlice(arguments), builtin: true})
 }
 
 // builtinOwned constructs a builtin call from a freshly allocated argument
@@ -34,25 +49,22 @@ func builtin(name string, arguments ...Expr) Expr {
 // again would only add construction work while callers of builtin remain
 // protected by its variadic-slice copy.
 func builtinOwned(name string, arguments []Expr) Expr {
-	return Expr{kind: exprCall, text: name, value: &callExpression{args: arguments, builtin: true}}
-}
-func versionedCall(version PostgreSQLVersion, name string, arguments ...Expr) Expr {
-	return Expr{kind: exprCall, text: name, value: &callExpression{args: cloneSlice(arguments), builtin: true, minimumVersion: version}}
+	return nodeExpr(&callExpression{name: name, args: arguments, builtin: true})
 }
 
 func (e Expr) withModifiers(modify func(*callModifiers)) Expr {
-	if e.kind != exprCall {
+	call, ok := e.node().(*callExpression)
+	if !ok {
 		return invalidExpr("function", "modifiers require a function or aggregate call")
 	}
-	n := *ownedPayload[*callExpression](e.value)
+	n := *call
 	var m callModifiers
 	if n.mods != nil {
 		m = *n.mods
 	}
 	modify(&m)
 	n.mods = &m
-	e.value = &n
-	return e
+	return nodeExpr(&n)
 }
 
 // Distinct adds DISTINCT to a function or aggregate call.
@@ -60,7 +72,7 @@ func (e Expr) Distinct() Expr { return e.withModifiers(func(m *callModifiers) { 
 
 // Filter adds a FILTER (WHERE ...) clause to an aggregate call.
 func (e Expr) Filter(conditions ...Condition) Expr {
-	return e.withModifiers(func(m *callModifiers) { m.filter = slices.Concat(m.filter, conditions) })
+	return e.withModifiers(func(m *callModifiers) { m.aggregateTail = m.filtered(conditions) })
 }
 
 // OrderBy adds in-call ordering terms to an aggregate call.
@@ -75,7 +87,7 @@ func (e Expr) WithinGroup(terms ...Order) Expr {
 
 // Over applies an inline window definition to a function or aggregate call.
 func (e Expr) Over(window WindowSpec) Expr {
-	return e.withModifiers(func(m *callModifiers) { m.window = &window; m.windowName = "" })
+	return e.withModifiers(func(m *callModifiers) { m.aggregateTail = m.over(window) })
 }
 
 // OverNamed applies a named window reference to a function or aggregate call.
@@ -84,21 +96,18 @@ func (e Expr) OverNamed(name string) Expr {
 	if name == "" {
 		return invalidExpr("OVER", "empty window name")
 	}
-	return e.withModifiers(func(m *callModifiers) { m.windowName = name; m.window = nil })
+	return e.withModifiers(func(m *callModifiers) { m.aggregateTail = m.overNamed(name) })
 }
 
-func (w *renderer) call(e Expr) {
-	n := ownedPayload[*callExpression](e.value)
-	if n.minimumVersion != 0 {
-		w.feature(n.minimumVersion, e.text)
-		if w.stopped("version", 0) {
-			return
-		}
-	}
+func (w *renderer) call(n *callExpression) {
 	if n.builtin {
-		w.text(e.text)
+		w.text(n.name)
 	} else {
-		w.identifierPath(e.text, false)
+		if n.qualified {
+			w.identifierPart(n.schema)
+			w.byte('.')
+		}
+		w.identifierPart(n.name)
 		if w.stopped("function name", 0) {
 			return
 		}
@@ -127,7 +136,7 @@ func (w *renderer) call(e Expr) {
 		if !w.require(!m.distinct && len(m.order) == 0, "WITHIN GROUP", "cannot combine with DISTINCT or in-call ORDER BY") {
 			return
 		}
-		if !w.require(m.window == nil && m.windowName == "", "WITHIN GROUP", "ordered-set aggregates cannot be window functions") {
+		if !w.require(m.window == nil && !m.named, "WITHIN GROUP", "ordered-set aggregates cannot be window functions") {
 			return
 		}
 		w.text(" WITHIN GROUP (ORDER BY ")
@@ -137,11 +146,15 @@ func (w *renderer) call(e Expr) {
 		}
 		w.byte(')')
 	}
-	w.aggregateTail(m.aggregateTail)
+	w.aggregateTail(m.aggregateTail, len(m.order) != 0)
 }
 
+// countAll is shared so that CountAll() does not allocate. It is never
+// written: a modifier copies the call it changes.
+var countAll = &callExpression{name: "count", args: []Expr{nodeExpr(unqualifiedStar)}, builtin: true}
+
 // CountAll returns count(*) as an aggregate expression.
-func CountAll() Expr { return builtin("count", Star()) }
+func CountAll() Expr { return nodeExpr(countAll) }
 
 // Count returns count(expr) as an aggregate expression.
 func Count(expr Expr) Expr { return builtin("count", expr) }
@@ -360,9 +373,9 @@ func DateTrunc(precision, value Expr, zone ...Expr) Expr {
 	return builtinOwned("date_trunc", arguments)
 }
 
-// DateBin returns date_bin(stride, source, origin), available in PostgreSQL 14+.
+// DateBin returns date_bin(stride, source, origin).
 func DateBin(stride, source, origin Expr) Expr {
-	return versionedCall(PostgreSQL14, "date_bin", stride, source, origin)
+	return builtin("date_bin", stride, source, origin)
 }
 
 // Age returns age(left [, right]).
@@ -388,7 +401,9 @@ func GenerateSeries(start, stop Expr, step ...Expr) Expr {
 }
 
 // NamedArg returns a function argument using PostgreSQL's name => value syntax.
-func NamedArg(name string, expr Expr) Expr { return Fragment(Ident(name), UnsafeSQL(" => "), expr) }
+func NamedArg(name string, expr Expr) Expr {
+	return Fragment(unqualifiedColumn(name), UnsafeSQL(" => "), expr)
+}
 
 // Variadic marks a function argument with PostgreSQL's VARIADIC keyword.
 func Variadic(expr Expr) Expr { return Fragment(UnsafeSQL("VARIADIC "), expr) }
@@ -490,7 +505,7 @@ func Extract(part DatePart, expr Expr) Expr {
 	default:
 		return invalidExpr("EXTRACT", "unknown date part")
 	}
-	return Expr{kind: exprSpecialCall, text: name, value: &unaryExpression{expr}}
+	return nodeExpr(&extractExpression{part: name, source: expr})
 }
 
 // ExtractNamed preserves one of PostgreSQL's accepted EXTRACT field aliases
@@ -506,16 +521,16 @@ func ExtractNamed(part string, expr Expr) Expr {
 		"timezone", "timezone_hour", "timezone_minute", "timezone_h", "timezone_m",
 		"microseconds", "microsecond", "microsec", "milliseconds", "millisecond",
 		"decade", "century", "millennium", "julian":
-		return Expr{kind: exprSpecialCall, text: part, value: &unaryExpression{expr}}
+		return nodeExpr(&extractExpression{part: part, source: expr})
 	default:
 		return invalidExpr("EXTRACT", "unknown date part")
 	}
 }
 
-func (w *renderer) specialCall(e Expr) {
+func (w *renderer) extract(n *extractExpression) {
 	w.text("EXTRACT(")
-	w.text(e.text)
+	w.text(n.part)
 	w.text(" FROM ")
-	w.expr(e.unary())
+	w.expr(n.source)
 	w.byte(')')
 }

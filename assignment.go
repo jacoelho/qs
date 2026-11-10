@@ -2,7 +2,6 @@ package qs
 
 import (
 	"slices"
-	"strings"
 )
 
 // Assignment is a scalar, composite-field, subscript or row assignment.
@@ -16,7 +15,7 @@ type Assignment struct {
 
 // Set assigns a destination value to a column.
 func Set(column string, value WriteValue) Assignment {
-	return Assignment{target: Col(column), value: value.expr()}
+	return Assignment{target: unqualifiedColumn(column), value: value.expr()}
 }
 
 // SetNull assigns SQL NULL to a column.
@@ -39,7 +38,7 @@ func Assign(target Expr, value WriteValue) Assignment {
 func SetRow(columns []string, first WriteValue, rest ...WriteValue) Assignment {
 	targets := make([]Expr, len(columns))
 	for i, c := range columns {
-		targets[i] = Col(c)
+		targets[i] = unqualifiedColumn(c)
 	}
 	return Assignment{columns: targets, value: WriteRow(first, rest...).rowExpr().expr, row: true}
 }
@@ -48,107 +47,76 @@ func SetRow(columns []string, first WriteValue, rest ...WriteValue) Assignment {
 func SetRowFrom(columns []string, query Rowset) Assignment {
 	targets := make([]Expr, len(columns))
 	for i, c := range columns {
-		targets[i] = Col(c)
+		targets[i] = unqualifiedColumn(c)
 	}
-	return Assignment{columns: targets, query: query, row: true}
+	return Assignment{columns: targets, query: ownedRowset(query), row: true}
 }
 
 // AssignRow preserves explicit or parenthesized row syntax and supports field
-// and subscript targets. Structural lists are copied; nested queries stay live.
+// and subscript targets. The target list is copied.
 func AssignRow(targets []Expr, values WriteRowValue) Assignment {
 	return Assignment{columns: cloneSlice(targets), value: values.rowExpr().expr, row: true}
 }
 
 // AssignRowFrom assigns a rowset to explicit or parenthesized row targets.
 func AssignRowFrom(targets []Expr, query Rowset) Assignment {
-	return Assignment{columns: cloneSlice(targets), query: query, row: true}
+	return Assignment{columns: cloneSlice(targets), query: ownedRowset(query), row: true}
 }
 func assignTypedTarget(column Expr, value WriteValue) Assignment {
 	return Assignment{target: unqualifiedTarget(column), value: value.expr()}
 }
 
-func ownedAssignments(first Assignment, rest []Assignment) []Assignment {
-	assignments := make([]Assignment, 1+len(rest))
-	assignments[0] = first
-	copy(assignments[1:], rest)
-	return assignments
-}
-
-func appendAssignments(dst []Assignment, first Assignment, rest []Assignment) []Assignment {
-	n := len(dst)
-	need := 1 + len(rest)
-	dst = slices.Grow(dst, need)
-	dst = dst[:n+need]
-	dst[n] = first
-	copy(dst[n+1:], rest)
-	return dst
-}
-
-func unqualifiedTarget(column Expr) Expr {
-	switch column.kind {
-	case exprIdentifier:
-		if i := strings.LastIndexByte(column.text, '.'); i >= 0 {
-			column.text = column.text[i+1:]
-		}
-	case exprIdentifierParts:
-		parts := ownedPayload[identifierParts](column.value)
-		if len(parts) > 0 {
-			column = Ident(parts[len(parts)-1])
-		}
-	case exprField:
-		column.value = &unaryExpression{unqualifiedTarget(column.unary())}
-	case exprSubscript:
-		n := *ownedPayload[*expression](column.value)
-		n.left = unqualifiedTarget(n.left)
-		column.value = &n
-	case exprSlice:
-		n := *ownedPayload[*sliceExpression](column.value)
-		n.value = unqualifiedTarget(n.value)
-		column.value = &n
-	default:
-		column = invalidExpr("assignment", "typed field must refer to a column")
+func unqualifiedTarget(target Expr) Expr {
+	if target.kind == exprIdentifier {
+		return target
 	}
-	return column
+	if target.kind == exprQualified {
+		return unqualifiedColumn(target.text)
+	}
+	switch n := target.node().(type) {
+	case *qualifiedIdentifier:
+		return unqualifiedColumn(n.parts[len(n.parts)-1])
+	case *fieldExpression:
+		return nodeExpr(&fieldExpression{base: unqualifiedTarget(n.base), name: n.name})
+	case *subscriptExpression:
+		return nodeExpr(&subscriptExpression{base: unqualifiedTarget(n.base), index: n.index})
+	case *sliceExpression:
+		slice := *n
+		slice.base = unqualifiedTarget(n.base)
+		return nodeExpr(&slice)
+	default:
+		return invalidExpr("assignment", "typed field must refer to a column")
+	}
 }
 
 // Excluded references the proposed row in an ON CONFLICT update.
-func Excluded(column string) Expr { return Ident("excluded", column) }
+func Excluded(column string) Expr { return Col("excluded", column) }
 
 // SetAllExcluded creates one assignment from each literal column name to its
 // EXCLUDED value. Dots are part of the name; use Assign for field or subscript targets.
 func SetAllExcluded(columns ...string) []Assignment {
 	assignments := make([]Assignment, len(columns))
 	for i, column := range columns {
-		assignments[i] = Assign(Ident(column), Write(Excluded(column)))
+		assignments[i] = Assign(unqualifiedColumn(column), Write(Excluded(column)))
 	}
 	return assignments
 }
 
+// sameIdentifier reports whether a and b name the same column. A qualified
+// name has at least two parts, so it never equals an unqualified one.
 func sameIdentifier(a, b Expr) bool {
-	if a.kind == exprIdentifier && b.kind == exprIdentifier {
-		return a.text == b.text
+	if a.kind != exprNode || b.kind != exprNode {
+		return a.kind == b.kind && (a.kind == exprIdentifier || a.kind == exprQualified) &&
+			sameName(a.text, b.text) && sameName(a.qualifier(), b.qualifier())
 	}
-	if a.kind == exprIdentifierParts && b.kind == exprIdentifierParts {
-		left, right := ownedPayload[identifierParts](a.value), ownedPayload[identifierParts](b.value)
-		if len(left) != len(right) {
-			return false
-		}
-		for i := range left {
-			if left[i] != right[i] {
-				return false
-			}
-		}
-		return true
+	left, ok := a.node().(*qualifiedIdentifier)
+	if !ok {
+		return false
 	}
-	if a.kind == exprIdentifierParts && b.kind == exprIdentifier {
-		a, b = b, a
-	}
-	if a.kind == exprIdentifier && b.kind == exprIdentifierParts {
-		parts := ownedPayload[identifierParts](b.value)
-		return len(parts) == 1 && !strings.Contains(a.text, ".") && parts[0] == a.text
-	}
-	return false
+	right, ok := b.node().(*qualifiedIdentifier)
+	return ok && slices.EqualFunc(left.parts, right.parts, sameName)
 }
+
 func assignmentWidth(a Assignment) int {
 	if a.row {
 		return len(a.columns)
@@ -195,24 +163,24 @@ func (w *renderer) assignmentTarget(e Expr) {
 		return
 	}
 	defer func() { w.depth-- }()
-	switch e.kind {
-	case exprIdentifier:
-		w.identifierPath(e.text, false)
-	case exprIdentifierParts:
-		w.identifierParts(e)
-	case exprField:
-		w.assignmentTarget(e.unary())
+	if e.kind == exprIdentifier || e.kind == exprQualified {
+		w.expr(e)
+		return
+	}
+	switch n := e.node().(type) {
+	case *qualifiedIdentifier:
+		w.qualifiedName(n.parts, "identifier")
+	case *fieldExpression:
+		w.assignmentTarget(n.base)
 		w.byte('.')
-		w.identifierPart(e.text)
-	case exprSubscript:
-		n := ownedPayload[*expression](e.value)
-		w.assignmentTarget(n.left)
+		w.identifierPart(n.name)
+	case *subscriptExpression:
+		w.assignmentTarget(n.base)
 		w.byte('[')
-		w.expr(n.right)
+		w.expr(n.index)
 		w.byte(']')
-	case exprSlice:
-		n := ownedPayload[*sliceExpression](e.value)
-		w.assignmentTarget(n.value)
+	case *sliceExpression:
+		w.assignmentTarget(n.base)
 		w.byte('[')
 		if n.hasLower {
 			w.expr(n.lower)
@@ -222,9 +190,13 @@ func (w *renderer) assignmentTarget(e Expr) {
 			w.expr(n.upper)
 		}
 		w.byte(']')
-	case exprInvalid:
+	case *invalidExpression:
 		w.expr(e)
 	default:
+		if e.kind == exprZero {
+			w.expr(e)
+			return
+		}
 		w.fail(ErrInvalid, "assignment", "target must be a column, subfield or subscript")
 	}
 }
@@ -287,10 +259,11 @@ func (w *renderer) rowAssignment(a *Assignment) {
 		}
 		w.byte(')')
 	} else {
-		if !w.require(a.value.kind == exprList && (a.value.text == sqlRow || a.value.text == ""), "SET ROW", "requires a row value or subquery") {
+		row, ok := rowList(a.value)
+		if !w.require(ok, "SET ROW", "requires a row value or subquery") {
 			return
 		}
-		width := projectionWidth(ownedPayload[[]Expr](a.value.value))
+		width := projectionWidth(row.items)
 		if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "value count differs from target count or nil subquery") {
 			return
 		}
@@ -311,16 +284,16 @@ type ReturningAliases struct {
 
 // Old references a pre-mutation RETURNING column (PostgreSQL 18+).
 func Old(column string) Expr {
-	return versionExpression(PostgreSQL18, "OLD returning row", Ident("old", column))
+	return Col("old", column)
 }
 
 // New references a post-mutation RETURNING column (PostgreSQL 18+).
 func New(column string) Expr {
-	return versionExpression(PostgreSQL18, "NEW returning row", Ident("new", column))
+	return Col("new", column)
 }
 
 // MergeAction reports the action taken for a MERGE RETURNING row (PostgreSQL 17+).
-func MergeAction() Expr { return versionedCall(PostgreSQL17, "merge_action") }
+func MergeAction() Expr { return builtin("merge_action") }
 
 func (w *renderer) returning(expressions []Expr, aliases ReturningAliases) {
 	if w.err != nil {
@@ -334,8 +307,7 @@ func (w *renderer) returning(expressions []Expr, aliases ReturningAliases) {
 	}
 	w.text(" RETURNING ")
 	if aliases.Old != "" || aliases.New != "" {
-		w.feature(PostgreSQL18, "RETURNING row aliases")
-		if !w.require(aliases.Old == "" || aliases.Old != aliases.New, "RETURNING", "OLD and NEW aliases must differ") {
+		if !w.require(aliases.Old == "" || !sameName(aliases.Old, aliases.New), "RETURNING", "OLD and NEW aliases must differ") {
 			return
 		}
 		w.text("WITH (")

@@ -1,93 +1,107 @@
 package qs
 
-// UpdateBuilder constructs an UPDATE statement. Clause-list methods append;
-// Table replaces the target relation and Reset clears the builder.
+// PendingUpdate is an UPDATE that has not yet said which rows it changes. It
+// is not a statement: Where, WhereCurrentOf or AllRows completes it. It is an
+// immutable value whose clause methods return a copy with their arguments
+// appended.
+type PendingUpdate struct {
+	statement UpdateBuilder
+}
+
+// UpdateBuilder is a complete UPDATE statement: its rows were selected by
+// PendingUpdate.Where, WhereCurrentOf or AllRows. It is an immutable value.
 type UpdateBuilder struct {
-	aliases      ReturningAliases
-	cursor       string
-	set          []Assignment
-	from         []Relation
-	where        []Condition
-	returning    []Expr
-	table        Relation
-	base         statementBase
-	hasCursor    bool
-	requireWhere bool
+	aliases   ReturningAliases
+	set       []Assignment
+	from      []Relation
+	returning []Expr
+	rows      rowSelection
+	table     Relation
+	base      statementBase
 }
 
 // Update starts an UPDATE for a named table.
-func Update(table string) *UpdateBuilder { return &UpdateBuilder{table: Table(table)} }
+func Update(table string) PendingUpdate { return UpdateTable(Table(table)) }
 
 // UpdateTable starts an UPDATE for a relation expression.
-func UpdateTable(table Relation) *UpdateBuilder { return &UpdateBuilder{table: table} }
+func UpdateTable(table Relation) PendingUpdate {
+	return PendingUpdate{UpdateBuilder{table: table}}
+}
 
-// Table replaces the UPDATE target with a named table.
-func (b *UpdateBuilder) Table(table string) *UpdateBuilder { b.table = Table(table); return b }
+// With adds CTEs before UPDATE, in order. Duplicate CTE names are reported
+// when the statement is rendered.
+func (p PendingUpdate) With(ctes ...WithQuery) PendingUpdate {
+	p.statement = p.statement.With(ctes...)
+	return p
+}
 
-// Set appends assignments to the UPDATE SET clause.
-func (b *UpdateBuilder) Set(assignments ...Assignment) *UpdateBuilder {
-	b.set = append(b.set, assignments...)
-	return b
+// WithRecursive is With for CTEs that may refer to themselves.
+func (p PendingUpdate) WithRecursive(ctes ...WithQuery) PendingUpdate {
+	p.statement = p.statement.WithRecursive(ctes...)
+	return p
+}
+
+// Set appends assignments to the UPDATE SET clause. A statement with none
+// fails rendering.
+func (p PendingUpdate) Set(assignments ...Assignment) PendingUpdate {
+	p.statement.set = extend(p.statement.set, assignments...)
+	return p
 }
 
 // From appends named tables to the UPDATE FROM clause.
-func (b *UpdateBuilder) From(tables ...string) *UpdateBuilder {
-	for _, t := range tables {
-		b.from = append(b.from, Table(t))
-	}
-	return b
+func (p PendingUpdate) From(tables ...string) PendingUpdate {
+	p.statement.from = extendWith(p.statement.from, tables, table)
+	return p
 }
 
 // FromExpr appends relation expressions to the UPDATE FROM clause.
-func (b *UpdateBuilder) FromExpr(relations ...Relation) *UpdateBuilder {
-	b.from = append(b.from, relations...)
-	return b
+func (p PendingUpdate) FromExpr(relations ...Relation) PendingUpdate {
+	p.statement.from = extend(p.statement.from, relations...)
+	return p
 }
 
-// Where appends predicates to the UPDATE WHERE clause.
-func (b *UpdateBuilder) Where(conditions ...Condition) *UpdateBuilder {
-	b.where = append(b.where, conditions...)
-	return b
+// Where completes the UPDATE with the rows that satisfy every condition.
+// Rendering fails when the conditions are TRUE for every row by construction:
+// And of an empty list and NotIn of an empty list are TRUE, and a filter with
+// no entries must not reach every row. Use AllRows to update every row. The
+// check reads TRUE and FALSE literals through And, Or, Not and parentheses;
+// bound values and trusted SQL are not inspected.
+func (p PendingUpdate) Where(first Condition, rest ...Condition) UpdateBuilder {
+	p.statement.rows = rowsWhere(first, rest)
+	return p.statement
 }
 
-// WhereIf appends predicates only when include is true.
-func (b *UpdateBuilder) WhereIf(include bool, conditions ...Condition) *UpdateBuilder {
-	if include {
-		b.Where(conditions...)
-	}
-	return b
+// WhereCurrentOf completes the UPDATE with the row a cursor is positioned on.
+func (p PendingUpdate) WhereCurrentOf(cursor string) UpdateBuilder {
+	p.statement.rows = rowSelection{kind: rowsAtCursor, cursor: cursor}
+	return p.statement
 }
 
-// WhereCurrentOf selects PostgreSQL's cursor-position UPDATE predicate.
-func (b *UpdateBuilder) WhereCurrentOf(cursor string) *UpdateBuilder {
-	b.cursor = cursor
-	b.hasCursor = true
-	return b
+// AllRows completes the UPDATE with every row of the table.
+func (p PendingUpdate) AllRows() UpdateBuilder {
+	p.statement.rows = rowSelection{kind: rowsAll}
+	return p.statement
 }
-
-// RequireWhere checks for a syntactic WHERE, not authorisation or selectivity.
-func (b *UpdateBuilder) RequireWhere() *UpdateBuilder { b.requireWhere = true; return b }
 
 // Returning appends expressions to the UPDATE RETURNING projection.
-func (b *UpdateBuilder) Returning(expressions ...Expr) *UpdateBuilder {
-	b.returning = append(b.returning, expressions...)
+func (b UpdateBuilder) Returning(expressions ...Expr) UpdateBuilder {
+	b.returning = extend(b.returning, expressions...)
 	return b
 }
 
 // ReturningCols appends named columns to the UPDATE RETURNING projection.
-func (b *UpdateBuilder) ReturningCols(columns ...string) *UpdateBuilder {
-	for _, c := range columns {
-		b.returning = append(b.returning, Col(c))
-	}
+func (b UpdateBuilder) ReturningCols(columns ...string) UpdateBuilder {
+	b.returning = extendWith(b.returning, columns, unqualifiedColumn)
 	return b
 }
 
 // ReturningRows replaces the OLD and NEW row aliases for UPDATE RETURNING.
-func (b *UpdateBuilder) ReturningRows(aliases ReturningAliases) *UpdateBuilder {
+func (b UpdateBuilder) ReturningRows(aliases ReturningAliases) UpdateBuilder {
 	b.aliases = aliases
 	return b
 }
-func (b *UpdateBuilder) append(w *renderer) {
+
+func (w *renderer) updateStatement(b *UpdateBuilder) {
 	if !w.require(len(b.set) > 0, "UPDATE", "requires assignments") {
 		return
 	}
@@ -112,7 +126,7 @@ func (b *UpdateBuilder) append(w *renderer) {
 			return
 		}
 	}
-	w.mutationWhere(b.where, b.cursor, b.hasCursor, b.requireWhere)
+	w.mutationWhere(&b.rows)
 	if w.stopped("WHERE", 0) {
 		return
 	}
@@ -122,21 +136,120 @@ func (b *UpdateBuilder) append(w *renderer) {
 	}
 	w.foot(b.base)
 }
-func (w *renderer) mutationWhere(conditions []Condition, cursor string, hasCursor, required bool) {
-	if !w.require(!hasCursor || len(conditions) == 0, "WHERE", "CURRENT OF cannot be combined with a predicate") {
-		return
-	}
-	if !w.require(!required || hasCursor || len(conditions) > 0, "WHERE", "mutation requires an explicit WHERE") {
-		return
-	}
-	if hasCursor {
-		w.text(" WHERE CURRENT OF ")
-		w.identifierPart(cursor)
-	} else if len(conditions) > 0 {
+
+// rowSelection is which rows an UPDATE or DELETE changes. PendingUpdate and
+// PendingDelete are its only writers and set exactly one kind, so a complete
+// statement cannot hold a predicate together with a cursor or with all rows.
+type rowSelection struct {
+	cursor     string
+	conditions []Condition
+	kind       rowSelectionKind
+}
+
+type rowSelectionKind uint8
+
+const (
+	rowsUnselected rowSelectionKind = iota // the zero statement, which is invalid
+	rowsMatching                           // conditions
+	rowsAtCursor                           // WHERE CURRENT OF cursor
+	rowsAll                                // no WHERE
+)
+
+func rowsWhere(first Condition, rest []Condition) rowSelection {
+	return rowSelection{kind: rowsMatching, conditions: ownedList(first, rest)}
+}
+
+// mutationWhere renders the row selection of UPDATE and DELETE.
+func (w *renderer) mutationWhere(rows *rowSelection) {
+	switch rows.kind {
+	case rowsMatching:
+		// A predicate that is TRUE whatever the row is not a selection: And
+		// and NotIn return TRUE for an empty list, so accepting it would let
+		// a dynamic filter with no entries reach every row.
+		selective := false
+		for _, c := range rows.conditions {
+			if rowIndependent(c.expr, w.options.MaxDepth) != alwaysTrue {
+				selective = true
+				break
+			}
+		}
+		if !w.require(selective, "WHERE", "mutation requires a condition that is not always TRUE; use AllRows to change every row") {
+			return
+		}
 		w.text(" WHERE ")
-		w.conditions(conditions)
+		w.conditions(rows.conditions)
+	case rowsAtCursor:
+		w.text(" WHERE CURRENT OF ")
+		w.identifierPart(rows.cursor)
+	case rowsAll:
+	default:
+		w.fail(ErrInvalid, "WHERE", "zero statement selects no rows; build it from Update or DeleteFrom")
 	}
 }
 
-// Reset clears the UPDATE builder, including its target and accumulated clauses.
-func (b *UpdateBuilder) Reset() { *b = UpdateBuilder{} }
+// constantTruth is the value of a condition that is the same for every row.
+type constantTruth uint8
+
+const (
+	variesByRow constantTruth = iota
+	alwaysTrue
+	alwaysFalse
+)
+
+// rowIndependent folds TRUE and FALSE literals through AND, OR, NOT and
+// parentheses. Every other expression varies by row as far as qs can tell:
+// bound values and trusted SQL are not inspected. A condition nested deeper
+// than depth also reports variesByRow; rendering then rejects its depth.
+func rowIndependent(e Expr, depth int) constantTruth {
+	if e.kind == exprLiteral {
+		switch e.text {
+		case sqlTrue:
+			return alwaysTrue
+		case sqlFalse:
+			return alwaysFalse
+		}
+		return variesByRow
+	}
+	if depth <= 0 {
+		return variesByRow
+	}
+	switch n := e.node().(type) {
+	case *prefixExpression:
+		if n.operator != sqlNot {
+			return variesByRow
+		}
+		switch rowIndependent(n.operand, depth-1) {
+		case alwaysTrue:
+			return alwaysFalse
+		case alwaysFalse:
+			return alwaysTrue
+		case variesByRow:
+		}
+	case *groupExpression:
+		switch {
+		case len(n.items) == 1:
+			return rowIndependent(n.items[0], depth-1)
+		case n.separator == sqlAnd:
+			return junctionTruth(n.items, alwaysFalse, alwaysTrue, depth-1)
+		case n.separator == sqlOr:
+			return junctionTruth(n.items, alwaysTrue, alwaysFalse, depth-1)
+		}
+	}
+	return variesByRow
+}
+
+// junctionTruth is absorbing when any operand is, identity when every operand
+// is, and row-dependent otherwise. FALSE absorbs AND; TRUE absorbs OR.
+func junctionTruth(items []Expr, absorbing, identity constantTruth, depth int) constantTruth {
+	result := identity
+	for _, item := range items {
+		truth := rowIndependent(item, depth)
+		if truth == absorbing {
+			return absorbing
+		}
+		if truth == variesByRow {
+			result = variesByRow
+		}
+	}
+	return result
+}

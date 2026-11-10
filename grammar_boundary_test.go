@@ -10,23 +10,12 @@ func TestParenthesizedIndirection(t *testing.T) {
 
 	base := Col("a").Index(Param(1))
 	query := Select(base.Index(Param(2)), base.Parenthesized().Index(Param(3)), base.Parenthesized().Field("f"))
-	for _, tc := range []struct {
-		style PlaceholderStyle
-		sql   string
-	}{
-		{Dollar, `SELECT ("a")[$1][$2], (("a")[$3])[$4], (("a")[$5])."f"`},
-		{Question, `SELECT ("a")[?][?], (("a")[?])[?], (("a")[?])."f"`},
-	} {
-		sql, args, err := query.ToSQLWith(Options{PlaceholderStyle: tc.style})
-		if err != nil || sql != tc.sql || !reflect.DeepEqual(args, []any{1, 2, 1, 3, 1}) {
-			t.Fatalf("grouping: %q %#v %v", sql, args, err)
-		}
-	}
+	checkSQL(t, query, `SELECT ("a")[$1][$2], (("a")[$3])[$4], (("a")[$5])."f"`, 1, 2, 1, 3, 1)
 	checkSQL(t, Select(base), `SELECT ("a")[$1]`, 1)
 	checkSQL(t, Select(base.Parenthesized().Parenthesized().Index(LiteralInt(2))), `SELECT ((("a")[$1]))[2]`, 1)
 }
 
-func TestParenthesizedProjectionAndClone(t *testing.T) {
+func TestParenthesizedProjection(t *testing.T) {
 	t.Parallel()
 
 	expanded := Select(Col("person").Fields().Parenthesized()).From("people")
@@ -36,10 +25,8 @@ func TestParenthesizedProjectionAndClone(t *testing.T) {
 
 	child := Select(Param("before"))
 	query := Select(Scalar(child).Parenthesized())
-	cloned := Clone(query)
-	child.RemoveColumns().Columns(Param("after"))
-	checkSQL(t, query, `SELECT ((SELECT $1))`, "after")
-	checkSQL(t, cloned, `SELECT ((SELECT $1))`, "before")
+	checkSQL(t, Select(Scalar(child.Where(True())).Parenthesized()), `SELECT ((SELECT $1 WHERE TRUE))`, "before")
+	checkSQL(t, query, `SELECT ((SELECT $1))`, "before")
 }
 
 func TestFunctionRelationCastGrammar(t *testing.T) {
@@ -49,18 +36,7 @@ func TestFunctionRelationCastGrammar(t *testing.T) {
 		TableFunc(Param(5).Cast(TypeInt4)).As("direct", "v"),
 		RowsFrom(Function(Param(6).Cast(TypeInt8)), Function(Call("generate_series", Param(7), Param(8)))).As("rows", "v", "n"),
 	)
-	for _, tc := range []struct {
-		style PlaceholderStyle
-		sql   string
-	}{
-		{Dollar, `SELECT $1, ($2)::integer FROM CAST($3 AS integer) AS "direct" ("v"), ROWS FROM (CAST($4 AS bigint), "generate_series"($5, $6)) AS "rows" ("v", "n")`},
-		{Question, `SELECT ?, (?)::integer FROM CAST(? AS integer) AS "direct" ("v"), ROWS FROM (CAST(? AS bigint), "generate_series"(?, ?)) AS "rows" ("v", "n")`},
-	} {
-		sql, args, err := query.ToSQLWith(Options{PlaceholderStyle: tc.style})
-		if err != nil || sql != tc.sql || !reflect.DeepEqual(args, []any{"projection", 4, 5, 6, 7, 8}) {
-			t.Fatalf("FROM cast: %q %#v %v", sql, args, err)
-		}
-	}
+	checkSQL(t, query, `SELECT $1, ($2)::integer FROM CAST($3 AS integer) AS "direct" ("v"), ROWS FROM (CAST($4 AS bigint), "generate_series"($5, $6)) AS "rows" ("v", "n")`, "projection", 4, 5, 6, 7, 8)
 	checkSQL(t, Select(Star()).FromExpr(TableFunc(Param(1).Cast(TypeInt4).Cast(TypeInt8))), `SELECT * FROM CAST(($1)::integer AS bigint)`, 1)
 }
 

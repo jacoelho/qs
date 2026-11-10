@@ -113,7 +113,10 @@ linters:
             - $gostd
             - github.com/jacoelho/qs$
             - github.com/jacoelho/qs/internal/postgrescorpus$
+            - github.com/jacoelho/qs/internal/postgrescorpus/parsetree$
             - github.com/jacoelho/qs/projection$
+            # Test fixture: types that share printed names with driver types.
+            - github.com/jacoelho/qs/projection/internal/pgtype$
 
         integration:
           list-mode: strict
@@ -181,7 +184,8 @@ linters:
         - empty
         - stdlib
         - generic
-        - ^github\.com/jacoelho/qs\.(Statement|Rowset)$
+        # Sealed sum types: a caller can only hold one through the interface.
+        - ^github\.com/jacoelho/qs\.(Statement|Rowset|JSONOperand|JSONTableColumn)$
 
     dupl:
       threshold: 120
@@ -233,9 +237,6 @@ linters:
       under: 25
 
   exclusions:
-    paths:
-      # Generated corpus builders are verified by tests and their generator.
-      - '(^|/)[^/]*_generated_test\.go$'
     rules:
       - path: _test\.go
         linters:

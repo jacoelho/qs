@@ -60,20 +60,13 @@ func WriteRowExpr(row RowExpr) WriteRowValue {
 
 func writeRowValue(format string, exprs []Expr) WriteRowValue {
 	return WriteRowValue{writeRow: RowExpr{
-		expr:  Expr{kind: exprList, text: format, value: exprs},
+		expr:  nodeExpr(&listExpression{prefix: format, items: exprs}),
 		width: projectionWidth(exprs),
 	}}
 }
 
 func (v WriteValue) expr() Expr          { return v.write }
 func (v WriteRowValue) rowExpr() RowExpr { return v.writeRow }
-
-func ownedWriteValues(first WriteValue, rest []WriteValue) []WriteValue {
-	values := make([]WriteValue, 1+len(rest))
-	values[0] = first
-	copy(values[1:], rest)
-	return values
-}
 
 // writeExpr renders an expression at a direct destination-write position.
 // DEFAULT is represented as a write descriptor rather than a general
@@ -92,15 +85,13 @@ func (w *renderer) writeRow(e Expr) {
 		return
 	}
 	defer func() { w.depth-- }()
-	if !w.require(e.kind == exprList && (e.text == sqlRow || e.text == ""), "SET ROW", "requires a row value or subquery") {
+	row, ok := rowList(e)
+	if !w.require(ok, "SET ROW", "requires a row value or subquery") {
 		return
 	}
-	if e.text == sqlRow {
-		w.text(sqlRow + "(")
-	} else {
-		w.byte('(')
-	}
-	for i, value := range ownedPayload[[]Expr](e.value) {
+	w.text(row.prefix)
+	w.byte('(')
+	for i, value := range row.items {
 		if i != 0 {
 			w.text(", ")
 		}

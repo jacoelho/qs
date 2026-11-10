@@ -9,8 +9,8 @@ import (
 
 func ExampleSelect() {
 	query, args, err := qs.Select(qs.Col("id"), qs.Col("name")).From("users").
-		Where(qs.Eq("active", true), qs.IsNull("deleted_at")).
-		OrderBy(qs.Desc("created_at"), qs.Desc("id")).Limit(20).ToSQL()
+		Where(qs.Col("active").Eq(qs.Param(true)), qs.Col("deleted_at").IsNull()).
+		OrderBy(qs.Col("created_at").Desc(), qs.Col("id").Desc()).Limit(20).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
 	// Output:
@@ -19,9 +19,9 @@ func ExampleSelect() {
 }
 
 func ExampleCTE() {
-	recent := qs.CTE("recent", qs.SelectCols("user_id").From("orders").Where(qs.Gt("total", 100)))
-	query, args, err := qs.SelectCols("u.id").With(recent).
-		FromExpr(qs.InnerJoin(qs.Table("users").As("u"), recent.Ref()).On(qs.EqColumns("u.id", "recent.user_id"))).ToSQL()
+	recent := qs.CTE("recent", qs.SelectCols("user_id").From("orders").Where(qs.Col("total").Gt(qs.Param(100))))
+	query, args, err := qs.Select(qs.Col("u", "id")).With(recent).
+		FromExpr(qs.InnerJoin(qs.Table("users").As("u"), recent.Ref()).On(qs.Col("u", "id").Eq(qs.Col("recent", "user_id")))).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
 	// Output:
@@ -45,7 +45,7 @@ func ExampleNull() {
 			fmt.Println("no changes")
 			continue
 		}
-		query, args, err := qs.Update("users").Set(assignments...).Where(qs.Eq("id", 42)).ToSQL()
+		query, args, err := qs.Update("users").Set(assignments...).Where(qs.Col("id").Eq(qs.Param(42))).ToSQL()
 		if err != nil {
 			panic(err)
 		}
@@ -88,7 +88,7 @@ func ExampleSelectSQL() {
 	// equivalent to Select(UnsafeSQL("id, created_at")).
 	query, args, err := qs.SelectSQL("id, created_at").
 		Columns(qs.Col("team_id").Cast(qs.TypeText)).
-		From("users").Where(qs.Eq("active", true)).ToSQL()
+		From("users").Where(qs.Col("active").Eq(qs.Param(true))).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
 	// Output:
@@ -106,17 +106,17 @@ func ExampleExpr_Cast() {
 	// [550e8400-e29b-41d4-a716-446655440000] <nil>
 }
 
-func filteredUsers(tenantID int, prefix string, roles []string) *qs.SelectBuilder {
+func filteredUsers(tenantID int, prefix string, roles []string) qs.SelectBuilder {
 	q := qs.SelectCols("id", "email").From("users").
-		Where(qs.Eq("tenant_id", tenantID), qs.IsNull("deleted_at"))
+		Where(qs.Col("tenant_id").Eq(qs.Param(tenantID)), qs.Col("deleted_at").IsNull())
 	if prefix != "" {
-		q.Where(qs.Or(
-			qs.ILikePrefix("name", prefix),
-			qs.ILikePrefix("email", prefix),
+		q = q.Where(qs.Or(
+			qs.Col("name").ILikePrefix(prefix),
+			qs.Col("email").ILikePrefix(prefix),
 		))
 	}
 	if len(roles) > 0 {
-		q.Where(qs.In("role", roles...))
+		q = q.Where(qs.TypedCol[string]("role").In(roles...))
 	}
 	return q
 }
@@ -136,9 +136,9 @@ func ExampleSelectBuilder_filters() {
 	// [42] <nil>
 }
 
-func ExampleTypedExpr_search() {
+func ExampleTyped_search() {
 	users := qs.Table("users").As("u")
-	id := qs.TypedExpr[int64](users.Col("id"))
+	id := qs.Typed[int64](users.Col("id"))
 	ids := []int64{10, 20}
 	requiredTags := []string{"staff", "active"}
 	rawUsername := "Al"
@@ -149,13 +149,13 @@ func ExampleTypedExpr_search() {
 		qs.CountAll().Over(qs.Window()).As("total"),
 	).FromExpr(users)
 	if len(ids) > 0 {
-		q.Where(id.In(ids...))
+		q = q.Where(id.In(ids...))
 	}
 	if len(requiredTags) > 0 {
-		q.Where(qs.ArrayContains(users.Col("tags"), qs.ArrayParam(requiredTags, qs.TypeText)))
+		q = q.Where(qs.ArrayContains(users.Col("tags"), qs.ArrayParam(requiredTags, qs.TypeText)))
 	}
 	if rawUsername != "" {
-		q.Where(qs.Lower(users.Col("username")).LikePrefix(strings.ToLower(rawUsername)))
+		q = q.Where(qs.Lower(users.Col("username")).LikePrefix(strings.ToLower(rawUsername)))
 	}
 
 	query, args, err := q.OrderBy(id.Asc()).Limit(20).ToSQL()
@@ -167,9 +167,9 @@ func ExampleTypedExpr_search() {
 }
 
 func ExampleSelectBuilder_pagination() {
-	base := qs.SelectCols("id").From("users").Where(qs.Eq("active", true))
-	first := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(0)
-	next := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(10)
+	base := qs.SelectCols("id").From("users").Where(qs.Col("active").Eq(qs.Param(true)))
+	first := base.OrderBy(qs.Col("id").Asc()).Limit(10).Offset(0)
+	next := base.OrderBy(qs.Col("id").Asc()).Limit(10).Offset(10)
 
 	query, args, err := first.ToSQL()
 	fmt.Println(query)
@@ -190,24 +190,24 @@ func ExampleSelectBuilder_pagination() {
 }
 
 func ExampleCTE_report() {
-	total := qs.Sum(qs.Col("o.total"))
+	total := qs.Sum(qs.Col("o", "total"))
 	paidOrders := qs.CTE("paid_orders",
-		qs.Select(qs.Col("o.user_id"), total.As("total_spend")).
+		qs.Select(qs.Col("o", "user_id"), total.As("total_spend")).
 			FromExpr(qs.Table("orders").As("o")).
-			Where(qs.Eq("o.status", "paid")).
-			GroupBy("o.user_id").
-			Having(total.Gte(100)),
+			Where(qs.Col("o", "status").Eq(qs.Param("paid"))).
+			GroupByExpr(qs.Col("o", "user_id")).
+			Having(total.Gte(qs.Param(100))),
 	)
 	tier := qs.Case().
-		When(qs.Gte("p.total_spend", 1000), qs.Param("vip")).
+		When(qs.Col("p", "total_spend").Gte(qs.Param(1000)), qs.Param("vip")).
 		Else(qs.Param("standard")).
 		End().As("tier")
-	q := qs.Select(qs.Col("u.id"), qs.Col("u.email"), qs.Col("p.total_spend"), tier).
+	q := qs.Select(qs.Col("u", "id"), qs.Col("u", "email"), qs.Col("p", "total_spend"), tier).
 		With(paidOrders).
 		FromExpr(qs.InnerJoin(qs.Table("users").As("u"), paidOrders.Ref().As("p")).
-			On(qs.EqColumns("u.id", "p.user_id"))).
-		Where(qs.Eq("u.active", true)).
-		OrderBy(qs.Desc("p.total_spend"), qs.Asc("u.id")).
+			On(qs.Col("u", "id").Eq(qs.Col("p", "user_id")))).
+		Where(qs.Col("u", "active").Eq(qs.Param(true))).
+		OrderBy(qs.Col("p", "total_spend").Desc(), qs.Col("u", "id").Asc()).
 		Limit(20).Offset(40)
 
 	query, args, err := q.ToSQL()
@@ -234,7 +234,7 @@ func ExampleInsertInto_row() {
 func ExampleUpdate() {
 	query, args, err := qs.Update("users").
 		Set(qs.Set("name", qs.Value("Ana"))).
-		Where(qs.Eq("id", 42)).
+		Where(qs.Col("id").Eq(qs.Param(42))).
 		ReturningCols("id", "name").
 		ToSQL()
 	fmt.Println(query)
@@ -246,7 +246,7 @@ func ExampleUpdate() {
 
 func ExampleDeleteFrom() {
 	query, args, err := qs.DeleteFrom("users").
-		Where(qs.Eq("id", 42)).
+		Where(qs.Col("id").Eq(qs.Param(42))).
 		ReturningCols("id").
 		ToSQL()
 	fmt.Println(query)
@@ -305,7 +305,7 @@ func ExampleSetAllExcluded() {
 		Values(qs.Value(42), qs.Value("new")).
 		OnConflict(qs.ConflictColumns("id").
 			DoUpdateSlice(qs.SetAllExcluded("a.b"))).
-		Returning(qs.Ident("a.b")).
+		Returning(qs.Col("a.b")).
 		ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
@@ -341,8 +341,8 @@ func ExampleValuesBuilder_Row_widthError() {
 	// qs: invalid query (VALUES): row 2: expected 1 value, got 2 values [path: VALUES → row[2]]
 }
 
-func ExampleILikePrefix() {
-	query, args, err := qs.SelectCols("id").From("users").Where(qs.ILikePrefix("name", "a_%")).ToSQL()
+func ExampleExpr_ILikePrefix() {
+	query, args, err := qs.SelectCols("id").From("users").Where(qs.Col("name").ILikePrefix("a_%")).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
 	// Output:
@@ -350,9 +350,9 @@ func ExampleILikePrefix() {
 	// [a!_!%%] <nil>
 }
 
-func ExampleLikeSuffix() {
+func ExampleExpr_LikeSuffix() {
 	query, args, err := qs.SelectCols("id").From("users").
-		Where(qs.LikeSuffix("email", "@example.com")).ToSQL()
+		Where(qs.Col("email").LikeSuffix("@example.com")).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
 	// Output:
@@ -360,12 +360,57 @@ func ExampleLikeSuffix() {
 	// [%@example.com] <nil>
 }
 
-func ExampleILikeContains() {
+func ExampleExpr_ILikeContains() {
 	query, args, err := qs.SelectCols("id").From("users").
-		Where(qs.ILikeContains("display_name", "50%_")).ToSQL()
+		Where(qs.Col("display_name").ILikeContains("50%_")).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
 	// Output:
 	// SELECT "id" FROM "users" WHERE ("display_name" ILIKE $1 ESCAPE E'!')
 	// [%50!%!_%] <nil>
+}
+
+func ExampleJSONObject() {
+	user := qs.JSONObject(
+		qs.JSONPair(qs.LiteralString("id"), qs.Col("id")),
+		qs.JSONPair(qs.LiteralString("settings"), qs.FormatJSON(qs.Col("settings_text"))),
+	).AbsentOnNull().Returning(qs.TypeJSONB)
+	query, args, err := qs.Select(user.As("user")).From("users").
+		Where(qs.Col("team_id").Eq(qs.Param(7))).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT JSON_OBJECT(E'id' : "id", E'settings' : "settings_text" FORMAT JSON ABSENT ON NULL RETURNING jsonb) AS "user" FROM "users" WHERE ("team_id" = $1)
+	// [7] <nil>
+}
+
+func ExampleJSONValue() {
+	doc := qs.Col("doc")
+	total := qs.JSONValue(doc, qs.LiteralString("$.total")).
+		Returning(qs.TypeNumeric).DefaultOnEmpty(qs.LiteralInt(0))
+	large := qs.JSONExists(doc, qs.LiteralString("$.items[*] ? (@.qty >= $min)")).
+		Passing("min", qs.Param(10).Cast(qs.TypeInt4))
+	query, args, err := qs.Select(total.As("total")).From("orders").Where(large.Condition()).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT JSON_VALUE("doc", E'$.total' RETURNING numeric DEFAULT 0 ON EMPTY) AS "total" FROM "orders" WHERE JSON_EXISTS("doc", E'$.items[*] ? (@.qty >= $min)' PASSING ($1)::integer AS "min")
+	// [10] <nil>
+}
+
+func ExampleJSONTable() {
+	items := qs.JSONTable(qs.Col("o", "doc"), "$.items[*]",
+		qs.JSONOrdinality("position"),
+		qs.JSONColumn("sku", qs.TypeText),
+		qs.JSONColumn("qty", qs.TypeInt4).Path("$.quantity").DefaultOnEmpty(qs.LiteralInt(1)),
+		qs.JSONNested("$.parts[*]", qs.JSONColumn("part", qs.TypeText).Path("$.name")),
+	)
+	query, args, err := qs.Select(qs.Col("o", "id"), qs.Star("item")).
+		FromExpr(qs.Table("orders").As("o")).
+		CrossJoinExpr(qs.Lateral(items.As("item"))).ToSQL()
+	fmt.Println(query)
+	fmt.Println(args, err)
+	// Output:
+	// SELECT "o"."id", "item".* FROM ("orders" AS "o" CROSS JOIN LATERAL JSON_TABLE("o"."doc", E'$.items[*]' COLUMNS ("position" FOR ORDINALITY, "sku" text, "qty" integer PATH E'$.quantity' DEFAULT 1 ON EMPTY, NESTED PATH E'$.parts[*]' COLUMNS ("part" text PATH E'$.name'))) AS "item")
+	// [] <nil>
 }

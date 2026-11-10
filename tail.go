@@ -1,14 +1,6 @@
 package qs
 
-// FetchMode selects how a FETCH clause handles rows at its boundary.
-type FetchMode uint8
-
-const (
-	// OnlyRows emits FETCH ... ROWS ONLY.
-	OnlyRows FetchMode = iota + 1
-	// WithTies emits FETCH ... ROWS WITH TIES.
-	WithTies
-)
+import "slices"
 
 // LockStrength selects the row-locking strength of a LockClause.
 type LockStrength uint8
@@ -56,30 +48,40 @@ func (l LockClause) NoWait() LockClause { l.wait = waitNoWait; return l }
 // SkipLocked makes a lock clause skip rows that cannot be locked immediately.
 func (l LockClause) SkipLocked() LockClause { l.wait = waitSkipLocked; return l }
 
+// rowLimit is the one bound on the number of rows a query returns. A query
+// has at most one, so LIMIT and FETCH FIRST cannot both be set.
+type rowLimit uint8
+
+const (
+	limitNone     rowLimit = iota // no bound
+	limitCount                    // LIMIT count
+	limitAll                      // LIMIT ALL
+	limitWithTies                 // FETCH FIRST count ROWS WITH TIES
+)
+
 type queryTail struct {
-	limit     Expr
+	limit     Expr // the count of a limitCount or limitWithTies
 	offset    Expr
-	fetch     Expr
 	order     []Order
 	locks     []LockClause
-	hasLimit  bool
-	limitAll  bool
+	rowLimit  rowLimit
 	hasOffset bool
-	hasFetch  bool
-	fetchMode FetchMode
+}
+
+// withLimit returns t with its row limit replaced.
+func (t queryTail) withLimit(kind rowLimit, count Expr) queryTail {
+	t.rowLimit, t.limit = kind, count
+	return t
 }
 
 func limitValue(n int) Expr {
 	if n < 0 {
-		return invalidExpr("pagination", "negative limit, offset or fetch count")
+		return invalidExpr("pagination", "negative limit or offset")
 	}
 	return Param(n)
 }
 func (w *renderer) tail(t queryTail, allowLocks bool) {
 	if w.err != nil {
-		return
-	}
-	if !w.require(!t.hasLimit || !t.hasFetch, "pagination", "LIMIT and FETCH are mutually exclusive") {
 		return
 	}
 	if len(t.order) > 0 {
@@ -89,16 +91,19 @@ func (w *renderer) tail(t queryTail, allowLocks bool) {
 			return
 		}
 	}
-	if t.hasLimit {
+	switch t.rowLimit {
+	case limitNone, limitWithTies:
+	case limitCount:
 		w.text(" LIMIT ")
-		if t.limitAll {
-			w.text("ALL")
-		} else {
-			w.expr(t.limit)
-			if w.stopped("LIMIT", 0) {
-				return
-			}
+		w.expr(t.limit)
+		if w.stopped("LIMIT", 0) {
+			return
 		}
+	case limitAll:
+		w.text(" LIMIT ALL")
+	default:
+		w.fail(ErrInvalid, "pagination", "unknown row limit")
+		return
 	}
 	if t.hasOffset {
 		w.text(" OFFSET ")
@@ -107,30 +112,22 @@ func (w *renderer) tail(t queryTail, allowLocks bool) {
 			return
 		}
 	}
-	if t.hasFetch {
-		if !w.require(t.fetchMode == OnlyRows || t.fetchMode == WithTies, "FETCH", "unknown mode") {
+	if t.rowLimit == limitWithTies {
+		if !w.require(len(t.order) > 0, "FETCH WITH TIES", "requires ORDER BY") {
 			return
 		}
-		if t.fetchMode == WithTies {
-			w.feature(PostgreSQL13, "FETCH WITH TIES")
-			if !w.require(len(t.order) > 0, "FETCH WITH TIES", "requires ORDER BY") {
-				return
-			}
-			if !w.require(len(t.locks) == 0, "FETCH WITH TIES", "cannot combine with row locking") {
-				return
-			}
+		skipsLocked := slices.ContainsFunc(t.locks, func(l LockClause) bool { return l.wait == waitSkipLocked })
+		if !w.require(!skipsLocked, "FETCH WITH TIES", "cannot combine with SKIP LOCKED") {
+			return
 		}
+		// PostgreSQL accepts WITH TIES only in the FETCH FIRST spelling, which
+		// follows OFFSET.
 		w.text(" FETCH FIRST (")
-		w.expr(t.fetch)
+		w.expr(t.limit)
 		if w.stopped("FETCH", 0) {
 			return
 		}
-		w.text(") ROWS ")
-		if t.fetchMode == WithTies {
-			w.text("WITH TIES")
-		} else {
-			w.text("ONLY")
-		}
+		w.text(") ROWS WITH TIES")
 	}
 	if len(t.locks) > 0 {
 		if !w.require(allowLocks && !w.hasWindow, "locking", "not allowed for this query") {

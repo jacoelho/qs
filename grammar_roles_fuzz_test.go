@@ -23,46 +23,37 @@ func rolePlaceholders(golden string, prefix int) string {
 
 func checkRoleFuzz(t *testing.T, statement Statement, valid bool, golden string, expected []any, input []byte) {
 	t.Helper()
-	for _, style := range []PlaceholderStyle{Dollar, Question} {
-		options := Options{PlaceholderStyle: style}
-		want, appended := golden, golden
-		if style == Dollar {
-			want = rolePlaceholders(golden, 0)
-			appended = rolePlaceholders(golden, 1)
+	want, appended := rolePlaceholders(golden, 0), rolePlaceholders(golden, 1)
+	sql, args, err := statement.ToSQL()
+	if valid {
+		if err != nil || sql != want || !reflect.DeepEqual(args, expected) {
+			t.Fatalf("input=%x SQL=%q args=%#v err=%v; want=%q %#v", input, sql, args, err, want, expected)
 		}
-		for _, current := range []Statement{statement, Clone(statement)} {
-			sql, args, err := current.ToSQLWith(options)
-			if valid {
-				if err != nil || sql != want || !reflect.DeepEqual(args, expected) {
-					t.Fatalf("input=%x style=%v SQL=%q args=%#v err=%v; want=%q %#v", input, style, sql, args, err, want, expected)
-				}
-			} else if !errors.Is(err, ErrInvalid) || sql != "" || args != nil {
-				t.Fatalf("input=%x invalid: SQL=%q args=%#v err=%v", input, sql, args, err)
-			}
-			prefix := append(make([]byte, 0, 8192), "prefix "...)
-			spare := 0
-			if len(input) > 0 {
-				spare = int(input[0] % 5)
-			}
-			storage := make([]any, 1+spare)
-			storage[0] = "prefix"
-			binds := storage[:1]
-			out, values, err := current.AppendWith(prefix, binds, options)
-			if valid {
-				wantArgs := append([]any{"prefix"}, expected...)
-				if err != nil || string(out) != "prefix "+appended || !reflect.DeepEqual(values, wantArgs) {
-					t.Fatalf("input=%x style=%v append SQL=%q args=%#v err=%v; want=%q %#v", input, style, out, values, err, "prefix "+appended, wantArgs)
-				}
-			} else if !errors.Is(err, ErrInvalid) || string(out) != "prefix " || !reflect.DeepEqual(values, []any{"prefix"}) || string(prefix) != "prefix " || binds[0] != "prefix" {
-				t.Fatalf("input=%x rollback SQL=%q args=%#v err=%v", input, out, values, err)
-			}
-			if !valid {
-				for i, value := range storage[1:] {
-					if value != nil {
-						t.Fatalf("input=%x original appended slot %d retained %T", input, i+1, value)
-					}
-				}
-			}
+	} else if !errors.Is(err, ErrInvalid) || sql != "" || args != nil {
+		t.Fatalf("input=%x invalid: SQL=%q args=%#v err=%v", input, sql, args, err)
+	}
+	prefix := append(make([]byte, 0, 8192), "prefix "...)
+	spare := 0
+	if len(input) > 0 {
+		spare = int(input[0] % 5)
+	}
+	storage := make([]any, 1+spare)
+	storage[0] = "prefix"
+	binds := storage[:1]
+	out, values, err := statement.AppendSQL(prefix, binds)
+	if valid {
+		wantArgs := append([]any{"prefix"}, expected...)
+		if err != nil || string(out) != "prefix "+appended || !reflect.DeepEqual(values, wantArgs) {
+			t.Fatalf("input=%x append SQL=%q args=%#v err=%v; want=%q %#v", input, out, values, err, "prefix "+appended, wantArgs)
+		}
+		return
+	}
+	if !errors.Is(err, ErrInvalid) || string(out) != "prefix " || !reflect.DeepEqual(values, []any{"prefix"}) || string(prefix) != "prefix " || binds[0] != "prefix" {
+		t.Fatalf("input=%x rollback SQL=%q args=%#v err=%v", input, out, values, err)
+	}
+	for i, value := range storage[1:] {
+		if value != nil {
+			t.Fatalf("input=%x appended slot %d retained %T", input, i+1, value)
 		}
 	}
 }
@@ -76,7 +67,10 @@ func FuzzCaseRoles(f *testing.F) {
 		if len(steps) > 16 {
 			t.Skip()
 		}
-		searched, scalar := Case(), CaseOf(Param(17))
+		// A CASE has no builder until its first branch, so an ELSE before
+		// that branch cannot be written and the step is dropped.
+		var searched SearchedCaseBuilder
+		var scalar SimpleCaseBuilder
 		golden := "SELECT CASE"
 		var args []any
 		if simple {
@@ -88,18 +82,26 @@ func FuzzCaseRoles(f *testing.F) {
 		for i, step := range steps {
 			value := i + 101
 			if step&1 != 0 {
-				searched.Else(Param(value))
-				scalar.Else(Param(value))
+				if branches == 0 {
+					continue
+				}
+				searched = searched.Else(Param(value))
+				scalar = scalar.Else(Param(value))
 				elseValue, hasElse = value, true
 				continue
 			}
-			condition, operand := Eq("v", value), Param(value)
+			condition, operand := Col("v").Eq(Param(value)), Param(value)
 			if step&128 != 0 {
 				condition, operand = Condition{}, Expr{}
 				valid = false
 			}
-			searched.When(condition, Param(value+50))
-			scalar.WhenValue(operand, Param(value+50))
+			if branches == 0 {
+				searched = Case().When(condition, Param(value+50))
+				scalar = CaseOf(Param(17)).WhenValue(operand, Param(value+50))
+			} else {
+				searched = searched.When(condition, Param(value+50))
+				scalar = scalar.WhenValue(operand, Param(value+50))
+			}
 			branches++
 			if simple {
 				golden += " WHEN ? THEN ?"
@@ -117,8 +119,11 @@ func FuzzCaseRoles(f *testing.F) {
 		if simple {
 			captured = scalar.End()
 		}
-		searched.When(True(), Param(999)).Else(Param(998))
-		scalar.WhenValue(Param(997), Param(996)).Else(Param(995))
+		// Extending a builder after End must not reach the captured expression.
+		_ = searched.When(True(), Param(999)).Else(Param(998)).End()
+		_ = scalar.WhenValue(Param(997), Param(996)).Else(Param(995)).End()
+		// With no branch there is no builder that Case or CaseOf returned; the
+		// zero builders stand in and must fail.
 		checkRoleFuzz(t, Select(captured), valid && branches > 0, golden, args, steps)
 	})
 }
@@ -160,8 +165,8 @@ func FuzzMergeRoles(f *testing.F) {
 				missing = NotMatchedByTarget()
 			}
 			if conditional {
-				matched = matched.And(Eq("p", value))
-				missing = missing.And(Eq("p", value))
+				matched = matched.And(Col("p").Eq(Param(value)))
+				missing = missing.And(Col("p").Eq(Param(value)))
 				golden += ` AND ("p" = ?)`
 				args = append(args, value)
 			}
@@ -253,7 +258,7 @@ func FuzzJoinRoles(f *testing.F) {
 				pending := regular[kind](relation, right)
 				switch (step >> 4) % 3 {
 				case 0:
-					relation = pending.On(Eq("v", 101+i))
+					relation = pending.On(Col("v").Eq(Param(101 + i)))
 					golden += ` ON ("v" = ?)`
 					args = append(args, 101+i)
 				case 1:

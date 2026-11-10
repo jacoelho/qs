@@ -138,17 +138,6 @@ func TestExternalEmbeddedWriteDescriptorsRemainDriverValues(t *testing.T) {
 					if got := tc.calls(); got != 0 {
 						t.Fatalf("Value called during render: %d", got)
 					}
-					clone := statement.Clone()
-					cloneSQL, cloneArgs, err := clone.ToSQL()
-					if err != nil {
-						t.Fatal(err)
-					}
-					if cloneSQL != sql || len(cloneArgs) != 1 || cloneArgs[0] != tc.driver {
-						t.Fatalf("cloned driver: sql=%q args=%#v", cloneSQL, cloneArgs)
-					}
-					if got := tc.calls(); got != 0 {
-						t.Fatalf("Value called during clone/render: %d", got)
-					}
 				})
 			}
 		})

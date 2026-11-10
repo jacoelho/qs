@@ -5,7 +5,7 @@ import "testing"
 func TestTypedFacade(t *testing.T) {
 	t.Parallel()
 
-	a, b := Typed[int]("t.a"), Typed[int]("s.b")
+	a, b := TypedCol[int]("t", "a"), TypedCol[int]("s", "b")
 	cases := []struct {
 		name string
 		c    Condition
@@ -43,19 +43,19 @@ func TestTypedFacade(t *testing.T) {
 			checkSQL(t, Select(tc.c.Expr()), "SELECT "+tc.sql, tc.args...)
 		})
 	}
-	checkSQL(t, Select(a.As("value"), TypedExpr[int](Param(1)).Expr()).OrderBy(a.Asc(), b.Desc()), `SELECT "t"."a" AS "value", $1 ORDER BY "t"."a" ASC, "s"."b" DESC`, 1)
-	checkSQL(t, Update("t").Set(a.Set(1)), `UPDATE "t" SET "a" = $1`, 1)
-	checkSQL(t, Update("t").Set(a.SetField(b)), `UPDATE "t" SET "a" = "s"."b"`)
-	checkSQL(t, Update("t").Set(a.SetNullable(NullOf[int]())), `UPDATE "t" SET "a" = $1`, nil)
-	checkSQL(t, Update("t").Set(a.SetNull()), `UPDATE "t" SET "a" = NULL`)
-	checkSQL(t, Update("t").Set(a.SetDefault()), `UPDATE "t" SET "a" = DEFAULT`)
-	checkSQL(t, InsertInto("users").Set(Typed[int]("u.id").Set(42), Typed[string]("u.name").Set("Ana")), `INSERT INTO "users" ("id", "name") VALUES ($1, $2)`, 42, "Ana")
+	checkSQL(t, Select(a.As("value"), Typed[int](Param(1)).Expr()).OrderBy(a.Asc(), b.Desc()), `SELECT "t"."a" AS "value", $1 ORDER BY "t"."a" ASC, "s"."b" DESC`, 1)
+	checkSQL(t, Update("t").Set(a.Set(1)).AllRows(), `UPDATE "t" SET "a" = $1`, 1)
+	checkSQL(t, Update("t").Set(a.SetField(b)).AllRows(), `UPDATE "t" SET "a" = "s"."b"`)
+	checkSQL(t, Update("t").Set(a.SetNullable(NullOf[int]())).AllRows(), `UPDATE "t" SET "a" = $1`, nil)
+	checkSQL(t, Update("t").Set(a.SetNull()).AllRows(), `UPDATE "t" SET "a" = NULL`)
+	checkSQL(t, Update("t").Set(a.SetDefault()).AllRows(), `UPDATE "t" SET "a" = DEFAULT`)
+	checkSQL(t, InsertInto("users").Set(TypedCol[int]("u", "id").Set(42), TypedCol[string]("u", "name").Set("Ana")), `INSERT INTO "users" ("id", "name") VALUES ($1, $2)`, 42, "Ana")
 }
 
 func TestTypedTupleOperators(t *testing.T) {
 	t.Parallel()
 
-	a, b, c, d := Typed[int]("a"), Typed[string]("b"), Typed[bool]("c"), Typed[int64]("d")
+	a, b, c, d := TypedCol[int]("a"), TypedCol[string]("b"), TypedCol[bool]("c"), TypedCol[int64]("d")
 	r2, r3, r4 := Tuple2(a, b), Tuple3(a, b, c), Tuple4(a, b, c, d)
 	operators := []struct {
 		op               string

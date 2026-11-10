@@ -1,7 +1,5 @@
 package qs
 
-import "slices"
-
 type selectQuantifier uint8
 
 const (
@@ -10,8 +8,11 @@ const (
 	selectDistinctOn
 )
 
-// SelectBuilder is a mutable SELECT. Repeated list methods append; From and
+// SelectBuilder is an immutable SELECT. Every method returns a new value and
+// leaves its receiver unchanged, so a query can be branched by assignment:
+// keep the result, as in q = q.Where(...). List methods append; From and
 // FromExpr replace the FROM list. Limit/Offset replace their previous values.
+// The zero value has no projection and fails rendering until Columns is called.
 type SelectBuilder struct {
 	columns       []Expr
 	from          []Relation
@@ -20,7 +21,7 @@ type SelectBuilder struct {
 	having        []Condition
 	windows       []namedWindow
 	distinctOn    []Expr
-	cursor        *keysetCursor
+	cursor        []Expr // SeekAfter key values; empty means no cursor.
 	tail          queryTail
 	base          statementBase
 	noColumns     bool
@@ -28,222 +29,196 @@ type SelectBuilder struct {
 	distinct      selectQuantifier
 }
 
-// Select starts a query with expressions in projection order. Use Col for
-// identifiers, Param for bound values, and UnsafeSQL for an existing trusted
-// SQL projection list. SelectCols and SelectSQL are convenience wrappers.
-func Select(columns ...Expr) *SelectBuilder { return &SelectBuilder{columns: cloneSlice(columns)} }
+// Select starts a query with at least one expression, in projection order.
+// Use Col for identifiers, Param for bound values, and UnsafeSQL for an
+// existing trusted SQL projection list. SelectCols and SelectSQL are
+// convenience wrappers; SelectSlice takes a projection held in a slice and
+// SelectNoColumns states that none is wanted.
+func Select(first Expr, rest ...Expr) SelectBuilder {
+	return SelectBuilder{columns: ownedList(first, rest)}
+}
 
-// SelectNoColumns intentionally returns rows with no columns. Select() remains
-// an incomplete projection until columns are added.
-func SelectNoColumns() *SelectBuilder { return &SelectBuilder{noColumns: true} }
+// SelectSlice is Select for a projection held in a slice, which is copied. The
+// length of a slice is not known until the program runs, so an empty one is
+// an incomplete projection and fails rendering.
+func SelectSlice(columns []Expr) SelectBuilder {
+	return SelectBuilder{columns: cloneSlice(columns)}
+}
 
-// SelectCols is Select with each string interpreted as an identifier path,
-// not SQL syntax. For casts and aliases, use Select with expression helpers.
-func SelectCols(columns ...string) *SelectBuilder { return Select().ColumnNames(columns...) }
+// SelectNoColumns intentionally returns rows with no columns.
+func SelectNoColumns() SelectBuilder { return SelectBuilder{noColumns: true} }
+
+// SelectCols is Select with each string naming one column, quoted as written.
+// For qualified names, casts and aliases, use Select with expressions.
+func SelectCols(first string, rest ...string) SelectBuilder {
+	return SelectBuilder{columns: convertedList(first, rest, unqualifiedColumn)}
+}
 
 // SelectSQL is a convenience wrapper for Select with each argument wrapped in
 // UnsafeSQL. It accepts trusted projection lists, not identifiers or user data.
 // Column counts for these fragments are unknown; qs does not pretend that
 // counting commas parses SQL. Prefer Select with expressions for new queries.
-func SelectSQL(projections ...string) *SelectBuilder { return Select().ColumnsSQL(projections...) }
-
-// Into terminates this SELECT as a standalone SELECT INTO statement. The
-// source remains reusable and does not retain the destination.
-func (b *SelectBuilder) Into(name string) *SelectIntoBuilder {
-	return &SelectIntoBuilder{
-		source:      b,
-		destination: selectIntoTarget{name: name},
-	}
+func SelectSQL(first string, rest ...string) SelectBuilder {
+	return SelectBuilder{columns: convertedList(first, rest, UnsafeSQL)}
 }
 
 // Columns appends expressions in projection order.
-func (b *SelectBuilder) Columns(columns ...Expr) *SelectBuilder {
-	b.columns = append(b.columns, columns...)
+func (b SelectBuilder) Columns(columns ...Expr) SelectBuilder {
+	b.columns = extend(b.columns, columns...)
 	return b
 }
 
-// ColumnNames appends identifier paths in projection order.
-func (b *SelectBuilder) ColumnNames(columns ...string) *SelectBuilder {
-	b.columns = slices.Grow(b.columns, len(columns))
-	for _, c := range columns {
-		b.columns = append(b.columns, Col(c))
-	}
+// ColumnNames appends columns, each named by one identifier, in projection order.
+func (b SelectBuilder) ColumnNames(columns ...string) SelectBuilder {
+	b.columns = extendWith(b.columns, columns, unqualifiedColumn)
 	return b
 }
 
 // ColumnsSQL appends trusted SQL projection fragments.
-func (b *SelectBuilder) ColumnsSQL(projections ...string) *SelectBuilder {
-	b.columns = slices.Grow(b.columns, len(projections))
-	for _, c := range projections {
-		b.columns = append(b.columns, UnsafeSQL(c))
-	}
-	return b
-}
-
-// RemoveColumns clears the SELECT projection.
-func (b *SelectBuilder) RemoveColumns() *SelectBuilder {
-	clear(b.columns)
-	b.columns = b.columns[:0]
+func (b SelectBuilder) ColumnsSQL(projections ...string) SelectBuilder {
+	b.columns = extendWith(b.columns, projections, UnsafeSQL)
 	return b
 }
 
 // From replaces the table list. An empty call removes FROM.
-func (b *SelectBuilder) From(tables ...string) *SelectBuilder {
-	clear(b.from)
-	b.from = b.from[:0]
-	b.from = slices.Grow(b.from, len(tables))
-	for _, table := range tables {
-		b.from = append(b.from, Table(table))
-	}
+func (b SelectBuilder) From(tables ...string) SelectBuilder {
+	b.from = extendWith(nil, tables, table)
 	return b
 }
 
 // FromExpr replaces the relation list. An empty call removes FROM.
-func (b *SelectBuilder) FromExpr(relations ...Relation) *SelectBuilder {
-	clear(b.from)
-	b.from = append(b.from[:0], relations...)
+func (b SelectBuilder) FromExpr(relations ...Relation) SelectBuilder {
+	b.from = cloneSlice(relations)
 	return b
 }
 
 // Where appends predicates to the SELECT WHERE clause.
-func (b *SelectBuilder) Where(conditions ...Condition) *SelectBuilder {
-	b.where = append(b.where, conditions...)
+func (b SelectBuilder) Where(conditions ...Condition) SelectBuilder {
+	b.where = extend(b.where, conditions...)
 	return b
 }
 
 // WhereIf appends predicates only when include is true.
-func (b *SelectBuilder) WhereIf(include bool, conditions ...Condition) *SelectBuilder {
+func (b SelectBuilder) WhereIf(include bool, conditions ...Condition) SelectBuilder {
 	if include {
-		b.Where(conditions...)
+		return b.Where(conditions...)
 	}
 	return b
 }
 
-// RemoveWhere clears the SELECT WHERE clause.
-func (b *SelectBuilder) RemoveWhere() *SelectBuilder { clear(b.where); b.where = b.where[:0]; return b }
-
 // Distinct removes duplicate result rows and replaces any DISTINCT ON expressions.
-func (b *SelectBuilder) Distinct() *SelectBuilder {
+func (b SelectBuilder) Distinct() SelectBuilder {
 	b.distinct = selectDistinct
 	b.distinctOn = nil
 	return b
 }
 
 // All preserves duplicate rows and clears both DISTINCT and DISTINCT ON.
-func (b *SelectBuilder) All() *SelectBuilder {
+func (b SelectBuilder) All() SelectBuilder {
 	b.distinct = selectAll
 	b.distinctOn = nil
 	return b
 }
 
 // DistinctOn replaces the quantifier with DISTINCT ON and stores its expressions.
-func (b *SelectBuilder) DistinctOn(expressions ...Expr) *SelectBuilder {
+func (b SelectBuilder) DistinctOn(expressions ...Expr) SelectBuilder {
 	b.distinct = selectDistinctOn
 	b.distinctOn = cloneSlice(expressions)
 	return b
 }
 
-// GroupBy appends identifier paths to the grouping list.
-func (b *SelectBuilder) GroupBy(columns ...string) *SelectBuilder {
-	b.group = slices.Grow(b.group, len(columns))
-	for _, c := range columns {
-		b.group = append(b.group, Col(c))
-	}
+// GroupBy appends columns, each named by one identifier, to the grouping list.
+func (b SelectBuilder) GroupBy(columns ...string) SelectBuilder {
+	b.group = extendWith(b.group, columns, unqualifiedColumn)
 	return b
 }
 
 // GroupByExpr appends expressions to the grouping list.
-func (b *SelectBuilder) GroupByExpr(expressions ...Expr) *SelectBuilder {
-	b.group = append(b.group, expressions...)
+func (b SelectBuilder) GroupByExpr(expressions ...Expr) SelectBuilder {
+	b.group = extend(b.group, expressions...)
 	return b
 }
 
 // GroupByDistinct requests PostgreSQL's GROUP BY DISTINCT form.
-func (b *SelectBuilder) GroupByDistinct() *SelectBuilder { b.groupDistinct = true; return b }
+func (b SelectBuilder) GroupByDistinct() SelectBuilder { b.groupDistinct = true; return b }
 
 // Having appends predicates to the SELECT HAVING clause.
-func (b *SelectBuilder) Having(conditions ...Condition) *SelectBuilder {
-	b.having = append(b.having, conditions...)
+func (b SelectBuilder) Having(conditions ...Condition) SelectBuilder {
+	b.having = extend(b.having, conditions...)
 	return b
 }
 
 // Window appends a named window definition.
-func (b *SelectBuilder) Window(name string, spec WindowSpec) *SelectBuilder {
-	b.windows = append(b.windows, namedWindow{name, spec})
+func (b SelectBuilder) Window(name string, spec WindowSpec) SelectBuilder {
+	b.windows = extend(b.windows, namedWindow{name, spec})
 	return b
 }
 
-// Join helpers attach to the last FROM item, matching PostgreSQL's binding of
-// explicit JOIN more tightly than comma-separated FROM items. For nested joins,
-// build a Relation with InnerJoin/LeftJoin/etc. and pass it to FromExpr.
-func (b *SelectBuilder) appendJoin(right Relation, kind joinKind, first Condition, rest ...Condition) *SelectBuilder {
+// joinLast replaces the last FROM item with a join onto it, matching
+// PostgreSQL's binding of explicit JOIN more tightly than comma-separated FROM
+// items. For nested joins, build a Relation with InnerJoin/LeftJoin/etc. and
+// pass it to FromExpr. The FROM list is copied: the receiver's is shared.
+func (b SelectBuilder) joinLast(join func(left Relation) Relation) SelectBuilder {
 	if len(b.from) == 0 {
-		b.from = append(b.from, RelationSQL(invalidExpr("JOIN", "requires a FROM item")))
+		b.from = []Relation{RelationSQL(invalidExpr("JOIN", "requires a FROM item"))}
 		return b
 	}
-	n := len(b.from) - 1
-	b.from[n] = pendingJoin(b.from[n], right, kind).On(first, rest...)
+	from := cloneSlice(b.from)
+	from[len(from)-1] = join(from[len(from)-1])
+	b.from = from
 	return b
 }
-func (b *SelectBuilder) appendCrossJoin(right Relation) *SelectBuilder {
-	if len(b.from) == 0 {
-		b.from = append(b.from, RelationSQL(invalidExpr("JOIN", "requires a FROM item")))
-		return b
-	}
-	n := len(b.from) - 1
-	b.from[n] = CrossJoin(b.from[n], right)
-	return b
+
+func (b SelectBuilder) appendJoin(right Relation, kind joinKind, first Condition, rest ...Condition) SelectBuilder {
+	return b.joinLast(func(left Relation) Relation { return pendingJoin(left, right, kind).On(first, rest...) })
+}
+
+func (b SelectBuilder) appendCrossJoin(right Relation) SelectBuilder {
+	return b.joinLast(func(left Relation) Relation { return CrossJoin(left, right) })
 }
 
 // Join attaches to the last FROM item; missing FROM remains a rendering error.
-func (b *SelectBuilder) Join(table string, first Condition, rest ...Condition) *SelectBuilder {
+func (b SelectBuilder) Join(table string, first Condition, rest ...Condition) SelectBuilder {
 	return b.appendJoin(Table(table), joinInner, first, rest...)
 }
 
 // LeftJoin attaches to the last FROM item, preserving comma binding.
-func (b *SelectBuilder) LeftJoin(table string, first Condition, rest ...Condition) *SelectBuilder {
+func (b SelectBuilder) LeftJoin(table string, first Condition, rest ...Condition) SelectBuilder {
 	return b.appendJoin(Table(table), joinLeft, first, rest...)
 }
 
 // RightJoin attaches to the last FROM item, preserving comma binding.
-func (b *SelectBuilder) RightJoin(table string, first Condition, rest ...Condition) *SelectBuilder {
+func (b SelectBuilder) RightJoin(table string, first Condition, rest ...Condition) SelectBuilder {
 	return b.appendJoin(Table(table), joinRight, first, rest...)
 }
 
 // FullJoin attaches to the last FROM item, preserving comma binding.
-func (b *SelectBuilder) FullJoin(table string, first Condition, rest ...Condition) *SelectBuilder {
+func (b SelectBuilder) FullJoin(table string, first Condition, rest ...Condition) SelectBuilder {
 	return b.appendJoin(Table(table), joinFull, first, rest...)
 }
 
 // CrossJoin attaches a named table with a CROSS JOIN to the last FROM item.
-func (b *SelectBuilder) CrossJoin(table string) *SelectBuilder {
+func (b SelectBuilder) CrossJoin(table string) SelectBuilder {
 	return b.appendCrossJoin(Table(table))
 }
 
 // JoinExpr accepts a completed relation and attaches to the last FROM item.
-func (b *SelectBuilder) JoinExpr(relation Relation, first Condition, rest ...Condition) *SelectBuilder {
+func (b SelectBuilder) JoinExpr(relation Relation, first Condition, rest ...Condition) SelectBuilder {
 	return b.appendJoin(relation, joinInner, first, rest...)
 }
 
 // LeftJoinExpr accepts a completed relation and attaches to the last FROM item.
-func (b *SelectBuilder) LeftJoinExpr(relation Relation, first Condition, rest ...Condition) *SelectBuilder {
+func (b SelectBuilder) LeftJoinExpr(relation Relation, first Condition, rest ...Condition) SelectBuilder {
 	return b.appendJoin(relation, joinLeft, first, rest...)
 }
 
 // CrossJoinExpr attaches a completed relation with a CROSS JOIN.
-func (b *SelectBuilder) CrossJoinExpr(relation Relation) *SelectBuilder {
+func (b SelectBuilder) CrossJoinExpr(relation Relation) SelectBuilder {
 	return b.appendCrossJoin(relation)
 }
 
-func (b *SelectBuilder) append(w *renderer) {
-	b.appendInto(w, nil)
-}
-
-// appendInto renders the SELECT source for SELECT ... INTO. The destination
-// is supplied by SelectIntoBuilder so SELECT remains a composable Rowset and
-// never retains destination state itself.
-func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
-	b.appendRows(w, into, b.cursor, nil)
+func (w *renderer) selectStatement(b *SelectBuilder) {
+	w.selectRows(b, b.cursor, nil)
 	if w.err != nil {
 		return
 	}
@@ -257,7 +232,7 @@ func (b *SelectBuilder) appendInto(w *renderer, into *selectIntoDestination) {
 // pagination select from, or that CountRows counts when cursor is nil. The
 // projection is followed by the order expressions that may change those rows;
 // CountRows passes ORDER BY there because it omits the clause itself.
-func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cursor *keysetCursor, order []Order) {
+func (w *renderer) selectRows(b *SelectBuilder, cursor []Expr, order []Order) {
 	if !w.require(len(b.columns) > 0 || b.noColumns, "SELECT", "requires a projection or SelectNoColumns") {
 		return
 	}
@@ -291,15 +266,9 @@ func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cur
 	if w.stopped("projection", 0) {
 		return
 	}
-	b.appendOrderExprs(w, order)
+	w.selectOrderExprs(b, order)
 	if w.err != nil {
 		return
-	}
-	if into != nil {
-		into.append(w)
-		if w.stopped("INTO", 0) {
-			return
-		}
 	}
 	if len(b.from) > 0 {
 		w.text(" FROM ")
@@ -308,7 +277,7 @@ func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cur
 			return
 		}
 	}
-	b.appendWhere(w, cursor)
+	w.selectWhere(b, cursor)
 	if w.err != nil {
 		return
 	}
@@ -318,7 +287,6 @@ func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cur
 	if len(b.group) > 0 {
 		w.text(" GROUP BY ")
 		if b.groupDistinct {
-			w.feature(PostgreSQL14, "GROUP BY DISTINCT")
 			w.text("DISTINCT ")
 		}
 		w.exprs(b.group, ", ")
@@ -355,34 +323,18 @@ func (b *SelectBuilder) appendRows(w *renderer, into *selectIntoDestination, cur
 
 // appendWhere renders the WHERE conditions with an active cursor as the last
 // conjunct.
-func (b *SelectBuilder) appendWhere(w *renderer, cursor *keysetCursor) {
-	if len(b.where) == 0 && !cursor.active() {
+func (w *renderer) selectWhere(b *SelectBuilder, cursor []Expr) {
+	if len(b.where) == 0 && len(cursor) == 0 {
 		return
 	}
 	w.text(" WHERE ")
-	w.conjunction(b.where, len(b.where) > 1 || cursor.active())
-	if cursor.active() && w.err == nil {
+	w.conjunction(b.where, len(b.where) > 1 || len(cursor) > 0)
+	if len(cursor) > 0 && w.err == nil {
 		if len(b.where) > 0 {
 			w.text(" AND ")
 		}
-		b.keyset(w, cursor.values)
+		w.selectKeyset(b, cursor)
 		w.stopped("keyset", 0)
 	}
 	w.stopped("WHERE", 0)
-}
-
-// Reset releases retained parameter/expression references while retaining the
-// capacities of the main clause lists and the SeekAfter cursor. It invalidates
-// any dependent subqueries.
-func (b *SelectBuilder) Reset() {
-	columns, from, where, group, having, windows, order, cursor := b.columns, b.from, b.where, b.group, b.having, b.windows, b.tail.order, b.cursor
-	clear(columns)
-	clear(from)
-	clear(where)
-	clear(group)
-	clear(having)
-	clear(windows)
-	clear(order)
-	cursor.clear()
-	*b = SelectBuilder{columns: columns[:0], from: from[:0], where: where[:0], group: group[:0], having: having[:0], windows: windows[:0], cursor: cursor, tail: queryTail{order: order[:0]}}
 }
