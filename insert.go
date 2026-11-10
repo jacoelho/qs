@@ -109,6 +109,12 @@ func (t InsertTarget) ValuesSlice(values []WriteValue) InsertRows {
 	return InsertRows{base: t.base()}.ValuesSlice(values)
 }
 
+// Rows selects a direct value-row source holding every row of rows. It is the
+// entry for rows sized by data; see InsertRows.Rows.
+func (t InsertTarget) Rows(rows ...[]WriteValue) InsertRows {
+	return InsertRows{base: t.base()}.Rows(rows...)
+}
+
 // From selects a rowset source.
 func (t InsertTarget) From(source Rowset) InsertSelect {
 	return InsertSelect{base: t.base(), source: source}
@@ -124,16 +130,28 @@ func (t InsertTarget) DefaultValues() InsertDefaults {
 	return InsertDefaults{base: t.base()}
 }
 
-// Values appends a direct value row to the INSERT.
+// Values appends a direct value row to the INSERT. Each call copies the row
+// list, so a loop that adds one row per call does work quadratic in the number
+// of rows: add rows sized by data with Rows.
 func (b InsertRows) Values(first WriteValue, rest ...WriteValue) InsertRows {
 	b.rows = extend(b.rows, ownedList(first, rest))
 	return b
 }
 
 // ValuesSlice appends one direct value row and copies its structural slice.
-// An empty row is invalid when rendered. Bound values are not copied.
+// An empty row is invalid when rendered. Bound values are not copied. Like
+// Values, each call copies the row list.
 func (b InsertRows) ValuesSlice(values []WriteValue) InsertRows {
 	b.rows = extend(b.rows, cloneSlice(values))
+	return b
+}
+
+// Rows appends every row of rows in one step, copying their structural
+// slices; bound values are not copied. Its cost is linear in the rows added,
+// which makes it the way to add rows sized by data. An INSERT with no rows, or
+// with an empty row, is invalid when rendered.
+func (b InsertRows) Rows(rows ...[]WriteValue) InsertRows {
+	b.rows = extendRows(b.rows, rows)
 	return b
 }
 

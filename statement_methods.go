@@ -503,6 +503,10 @@ func (w *renderer) dispatchStatement(s Statement) {
 	case SQLStatement:
 		w.sqlStatement(&b)
 	default:
+		if value := statementValue(s); value != nil {
+			w.dispatchStatement(value)
+			return
+		}
 		w.fail(ErrInvalid, "statement", "nil statement")
 	}
 }
@@ -535,6 +539,68 @@ func statementLabel(s Statement) string {
 	case SQLStatement:
 		return "statement fragment"
 	default:
+		if value := statementValue(s); value != nil {
+			return statementLabel(value)
+		}
 		return "statement"
 	}
+}
+
+// statementValue returns the builder that s points to, or nil when s is not a
+// non-nil pointer to a builder. A pointer satisfies Statement through the
+// builder's value methods, and every switch over statements matches values
+// only: each resolves what it does not match here, so the common path pays
+// nothing for it.
+func statementValue(s Statement) Statement {
+	switch p := s.(type) {
+	case *SelectBuilder:
+		if p != nil {
+			return *p
+		}
+	case *InsertRows:
+		if p != nil {
+			return *p
+		}
+	case *InsertSelect:
+		if p != nil {
+			return *p
+		}
+	case *InsertAssignments:
+		if p != nil {
+			return *p
+		}
+	case *InsertDefaults:
+		if p != nil {
+			return *p
+		}
+	case *UpdateBuilder:
+		if p != nil {
+			return *p
+		}
+	case *DeleteBuilder:
+		if p != nil {
+			return *p
+		}
+	case *MergeBuilder:
+		if p != nil {
+			return *p
+		}
+	case *SetBuilder:
+		if p != nil {
+			return *p
+		}
+	case *ValuesBuilder:
+		if p != nil {
+			return *p
+		}
+	case *TableBuilder:
+		if p != nil {
+			return *p
+		}
+	case *SQLStatement:
+		if p != nil {
+			return *p
+		}
+	}
+	return nil
 }

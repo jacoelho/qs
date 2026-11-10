@@ -17,6 +17,11 @@ func (t InsertColumnsTarget) ValuesSlice(values []WriteValue) InsertRows {
 	return InsertRows{base: t.base()}.ValuesSlice(values)
 }
 
+// Rows selects a direct value-row source holding every row of rows; it is the entry for rows sized by data.
+func (t InsertColumnsTarget) Rows(rows ...[]WriteValue) InsertRows {
+	return InsertRows{base: t.base()}.Rows(rows...)
+}
+
 // Values selects a direct INSERT value-row source and returns its completed role.
 func (t InsertColumnsTarget) Values(first WriteValue, rest ...WriteValue) InsertRows {
 	return InsertRows{base: t.base()}.Values(first, rest...)

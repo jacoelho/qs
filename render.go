@@ -96,7 +96,7 @@ func AppendSQL(sql []byte, args []any, s Statement) ([]byte, []any, error) {
 	return AppendWith(sql, args, s, Options{})
 }
 
-// AppendWith is AppendSQL with explicit parameter syntax, limits and feature validation.
+// AppendWith is AppendSQL with explicit rendering limits.
 func AppendWith(sql []byte, args []any, s Statement, options Options) ([]byte, []any, error) {
 	w, ok := newRenderer(sql, args, options)
 	if ok {

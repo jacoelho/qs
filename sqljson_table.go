@@ -112,9 +112,37 @@ type JSONTableNestedColumns struct {
 	columns  []JSONTableColumn
 }
 
+// tableColumnOf reads a caller's column. A pointer to a column type satisfies
+// JSONTableColumn through the type's value methods; it is stored as the value
+// it points to, so that rendering sees one form of each column. A nil pointer
+// becomes a nil column, which fails rendering.
+func tableColumnOf(column JSONTableColumn) JSONTableColumn {
+	switch c := column.(type) {
+	case *JSONTableValueColumn:
+		if c != nil {
+			return *c
+		}
+	case *JSONTableExistsColumn:
+		if c != nil {
+			return *c
+		}
+	case *JSONTableOrdinalityColumn:
+		if c != nil {
+			return *c
+		}
+	case *JSONTableNestedColumns:
+		if c != nil {
+			return *c
+		}
+	default:
+		return column
+	}
+	return nil
+}
+
 // JSONNested declares a NESTED PATH group with its columns.
 func JSONNested(path string, first JSONTableColumn, rest ...JSONTableColumn) JSONTableNestedColumns {
-	return JSONTableNestedColumns{path: path, columns: ownedList(first, rest)}
+	return JSONTableNestedColumns{path: path, columns: convertedList(first, rest, tableColumnOf)}
 }
 
 // PathName names the group's path, as in NESTED PATH '$.a' AS name.
@@ -142,7 +170,7 @@ type JSONTableBuilder struct {
 // row path has no PathName, because PostgreSQL gives that name to the row
 // path.
 func JSONTable(document JSONOperand, path string, first JSONTableColumn, rest ...JSONTableColumn) JSONTableBuilder {
-	return JSONTableBuilder{document: operandOf(document), path: path, columns: ownedList(first, rest)}
+	return JSONTableBuilder{document: operandOf(document), path: path, columns: convertedList(first, rest, tableColumnOf)}
 }
 
 // PathName names the row path, as in JSON_TABLE(doc, '$[*]' AS name ...).
@@ -160,8 +188,15 @@ func (b JSONTableBuilder) As(alias string, columns ...string) Relation {
 	return b.Ref().As(alias, columns...)
 }
 
+// jsonTable renders b and locates any failure inside JSON_TABLE.
 func (w *renderer) jsonTable(b *JSONTableBuilder) {
-	const clause = "JSON_TABLE"
+	w.jsonTableClauses(b)
+	if w.err != nil {
+		w.errorPath("JSON_TABLE", 0)
+	}
+}
+
+func (w *renderer) jsonTableClauses(b *JSONTableBuilder) {
 	w.text("JSON_TABLE(")
 	w.jsonOperand(b.document)
 	if w.stopped("document", 0) {
@@ -179,10 +214,6 @@ func (w *renderer) jsonTable(b *JSONTableBuilder) {
 		return
 	}
 	w.jsonColumns(b.columns, names)
-	if w.err != nil {
-		w.errorPath(clause, 0)
-		return
-	}
 	w.jsonBehavior(b.onError, jsonOnError)
 	w.byte(')')
 }

@@ -582,6 +582,14 @@ not copied. Empty column lists and empty rows fail at render time. For
 positional insertion, omit the column selector; `ValuesSlice` can start a
 positional INSERT or append a row to a row INSERT.
 
+To insert rows sized by your data, pass them all to `Rows`, for example
+`InsertInto("users").Columns("id", "name").Rows(rows...)` with `rows` a
+`[][]qs.WriteValue`. `Values` and `ValuesSlice` copy the row list on every
+call, so a loop that adds one row per call does work quadratic in the number of
+rows; `Rows` copies once. A VALUES rowset has the same pair: `Row` and
+`RowExpr` add one row, `Rows` and `RowsExpr` add many. No rows fails at render
+time.
+
 ### Insert columnar batches
 
 For data already arranged in columns, bind one array per column and expand them
@@ -1404,7 +1412,7 @@ Repeated calls on one builder combine as follows:
 | Pending UPDATE, pending DELETE | `Where`, `WhereCurrentOf`, `AllRows` | Completes the statement; the result has none of the three |
 | SELECT and other queries | `Limit`, `LimitExpr`, `LimitAll`, `LimitWithTies`, `LimitWithTiesExpr` | Replaces the row limit |
 | Pending UPDATE, assignment INSERT | `Set` | Appends assignments |
-| Row INSERT | `Values`, `ValuesSlice` | Appends a row |
+| Row INSERT | `Values`, `ValuesSlice`, `Rows` | Appends rows |
 
 For example, `SelectCols("id").From("a").From("b")` selects from `b` only,
 while `Update("target").From("a").From("b")` retains both source tables.

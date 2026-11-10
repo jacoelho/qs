@@ -54,7 +54,7 @@ func (w *renderer) selectOrderExprs(b *SelectBuilder, order []Order) {
 	separate := len(b.columns) > 0
 	for i, term := range order {
 		key := orderTermSyntax(term.expr)
-		if _, qualified := key.node().(*qualifiedIdentifier); qualified || key.kind == exprIdentifier || key.kind == exprQualified || key.kind == exprLiteral || key.kind == exprParameter {
+		if key.isColumn() || key.kind == exprLiteral || key.kind == exprParameter {
 			continue
 		}
 		if separate {

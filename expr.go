@@ -170,9 +170,21 @@ func (*extractExpression) exprNode()    {}
 func (*sqlSyntaxExpression) exprNode()  {}
 func (*caseExpression) exprNode()       {}
 
-func (Expr) qxExpression()      {}
-func (Condition) qxExpression() {}
-func (Null[T]) qxNull()         {}
+// qxExpression marks a type that is, or converts to, an expression. Such a
+// value is query structure, never data: parameter refuses to bind it, so a
+// builder passed without its Expr or End call fails rendering instead of
+// reaching the driver as an argument.
+func (Expr) qxExpression()                   {}
+func (Condition) qxExpression()              {}
+func (PendingSearchedCase) qxExpression()    {}
+func (PendingSimpleCase) qxExpression()      {}
+func (SearchedCaseBuilder) qxExpression()    {}
+func (SimpleCaseBuilder) qxExpression()      {}
+func (Tuple2Expr[A, B]) qxExpression()       {}
+func (Tuple3Expr[A, B, C]) qxExpression()    {}
+func (Tuple4Expr[A, B, C, D]) qxExpression() {}
+func (JSONFormatted) qxExpression()          {}
+func (Null[T]) qxNull()                      {}
 
 func invalidExpr(clause, detail string) Expr {
 	return nodeExpr(&invalidExpression{clause, detail})

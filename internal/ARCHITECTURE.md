@@ -158,6 +158,19 @@ Public contracts belong to the projection package documentation linked above.
 `Statement` and `Rowset` are sealed interfaces. SELECT, VALUES, TABLE and set
 operations are rowsets; DML is Statement-only even with RETURNING.
 
+Builders implement both interfaces with value methods, so Go also admits a
+pointer to a builder. A pointer renders as the builder it points to and a nil
+pointer is a nil statement. The switches over statements match values only;
+`statementValue`, generated beside them, resolves a pointer in their default
+branch, so a value pays nothing for it. `JSONTableColumn` and `JSONOperand`
+admit pointers the same way and normalise them once, where a constructor
+stores them.
+
+A set operation has the width of its leftmost leaf. The renderer finds that
+width once at the top of a chain and passes it down the left spine, so each
+level measures only its own right branch and validating a chain is linear in
+its length.
+
 ### Scope
 
 qs models the statements an application builds at run time: SELECT, VALUES,
@@ -188,6 +201,13 @@ writes storage no other value can see. Constructors copy the slices callers
 pass. Bound parameter values are never copied: callers keep them unchanged
 until execution completes.
 
+An append therefore copies the list it extends. That is constant in practice
+for lists that follow the shape of a query, such as conditions, CTEs and
+windows. Rows follow the caller's data, so they also enter in one call:
+`Rows` on an INSERT and `Rows` or `RowsExpr` on VALUES copy any number of rows
+into one array. Adding rows one call at a time stays quadratic and the method
+documentation says so.
+
 A method result that is discarded changes nothing, and neither the compiler nor
 `go vet` reports it. This is the cost of value semantics in Go.
 
@@ -211,6 +231,17 @@ payload and an unknown form fails rendering instead of panicking. The zero
 `Expr` is invalid. `Relation` follows the same rule: a single-name table is a
 leaf, and every other form is a typed source.
 
+`Expr.isColumn` is the one test for a column name across its three
+representations; the counted projection and the SQL/JSON DEFAULT check both use
+it.
+
+Every type that is or converts to an expression carries the `qxExpression`
+marker, including the builders that still need `Expr`, `End` or `Condition`.
+`Param` and the other value-binding entry points refuse a marked value, so a
+builder passed without its conversion fails rendering instead of reaching the
+driver as an argument. A test scans the package source and fails when a
+converting type lacks the marker.
+
 Typed fields, tuples and JSON documents wrap `Expr` and use the same renderer.
 Go types on a `Field` do not prove SQL types or schema validity. Finite grammar
 states use named enums; unknown states fail validation.
@@ -226,7 +257,9 @@ PostgreSQL keeps the first 63 bytes of an identifier, cut at a character
 boundary, and compares names after that. `sameName` in `identifier.go` owns
 that rule, and every uniqueness check compares names through it: CTE names,
 window names, INSERT and MERGE target columns, SET targets, the OLD and NEW
-aliases of RETURNING, and `JSON_TABLE` column and path names. Two names equal
+aliases of RETURNING, and `JSON_TABLE` column and path names. A base window is
+resolved through it too, so the name a duplicate check calls taken is the name
+a later window can inherit from. Two names equal
 in their kept part are one name to the server, which reports the duplicate
 after a truncation notice. qs still renders a long name as written. The limit
 is `NAMEDATALEN - 1` of a standard build, counted in UTF-8: a server built with
@@ -560,3 +593,4 @@ alternatives are not supported APIs or implementation commitments.
 | 35 | Corpus oracle | Frozen PostgreSQL 18 parse trees built by a Go adapter (`internal/postgrescorpus/parsetree`) through exported constructors only; `go test` replays every record with the standard library. The pinned PostgreSQL parser grades the output offline, when fixtures are regenerated. Reject generated Go test shards written by a Python emitter (the previous shape): 108k lines no compiler checked at their source, regenerated on every API change. Reject parsing inside `go test`: a PostgreSQL parser means cgo and a dependency in a standard-library module. Reject the adapter grading itself: it would agree with its own mistakes, so a record is `verified` only when the reparsed SQL equals the source tree. Out-of-scope and gap classification is the adapter's own; pinned counts keep it from growing unnoticed. |
 | 36 | SELECT projection | Required-first `Select`, `SelectCols` and `SelectSQL`; `SelectSlice` for run-time lists; `SelectNoColumns` for zero columns. Reject a variadic `Select` that fails rendering when empty: a literal call can be checked by its signature. Reject a nonempty-list type for `SelectSlice`: projections and callers assemble lists at run time, so the check would only move. |
 | 37 | SQL/JSON | One builder type per form, itself the expression node; method sets generated from one table of the clauses PostgreSQL accepts per form. Reject one builder with option enums (the previous shape: `JSONBehavior`, `JSONWrapper`, `JSONQuotes`, `JSONNullPolicy` values legal on some forms only, each checked at render or by the server). Reject an input-role type per operand position: one sealed `JSONOperand` covers every position that takes FORMAT JSON. Reject `Not` on `IsJSON`: PostgreSQL parses IS NOT JSON as NOT over the predicate, which `Condition().Not()` already states. Reject `JSONCol` and `JSONBCol` shorthands: `JSONExpr(Col(...))` says the same. Reject typed column kinds for `JSON_VALUE` and `JSON_QUERY` evaluation of a `JSON_TABLE` column: PostgreSQL chooses by SQL type, which qs does not model. |
+| 38 | Row lists | A bulk `Rows` entry that copies once; single-row methods keep the clipped append and document its cost. Reject amortised growth through an array shared by copies with an atomic high-water mark: sound, but it puts shared mutable state inside values documented as immutable, adds a second list representation, lets a short value retain its siblings' rows, and costs an allocation on the two-row statement. Reject backward-linked immutable chunks: no shared mutation, but more bytes than the shared array and the renderer and width checks would iterate chunks. Reject applying either to every list: the others are sized by the query a person writes, not by data. |

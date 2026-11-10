@@ -66,7 +66,16 @@ func ExceptAll(left, right Rowset, rest ...Rowset) SetBuilder {
 	return setOperation(setExceptAll, left, right, rest)
 }
 func (w *renderer) setOperation(b *SetBuilder) {
-	left, right := statementWidth(b.left, w.options.MaxDepth), statementWidth(b.right, w.options.MaxDepth)
+	w.setOperationOfWidth(b, statementWidth(b.left, w.options.MaxDepth))
+}
+
+// setOperationOfWidth renders b, whose left branch has width left. A set
+// operation has the width of its leftmost leaf, so a chain finds that leaf
+// once and hands the width down its left spine; each level then inspects only
+// its own right branch. Recomputing it per level made validating a chain
+// quadratic in its length.
+func (w *renderer) setOperationOfWidth(b *SetBuilder, left int) {
+	right := statementWidth(b.right, w.options.MaxDepth)
 	if left >= 0 && right >= 0 && !w.require(left == right, "set operation", "projection widths differ") {
 		return
 	}
@@ -93,7 +102,11 @@ func (w *renderer) setOperation(b *SetBuilder) {
 		return
 	}
 	w.byte('(')
-	w.statement(b.left)
+	if spine, ok := b.left.(SetBuilder); ok {
+		w.leftSetOperation(&spine, left)
+	} else {
+		w.statement(b.left)
+	}
 	if w.stopped("left", 0) {
 		return
 	}
@@ -107,6 +120,18 @@ func (w *renderer) setOperation(b *SetBuilder) {
 	w.byte(')')
 	w.tail(b.tail, false)
 	w.foot(b.base)
+}
+
+// leftSetOperation renders the set operation that is another's left branch,
+// as statement does, with the width its parent already knows.
+func (w *renderer) leftSetOperation(b *SetBuilder, width int) {
+	if outerHasWindow, ok := w.openStatement(); ok {
+		w.setOperationOfWidth(b, width)
+		w.closeStatement(outerHasWindow)
+	}
+	if w.err != nil {
+		w.errorPath(statementLabel(*b), 0)
+	}
 }
 
 // ValuesBuilder is a standalone VALUES rowset. Row binds values and RowExpr
@@ -133,7 +158,9 @@ func ValuesExpr(expressions ...Expr) ValuesBuilder {
 	return ValuesBuilder{}.RowExpr(expressions...)
 }
 
-// Row appends a row whose values become bound parameters.
+// Row appends a row whose values become bound parameters. Each call copies
+// the row list, so a loop that adds one row per call does work quadratic in
+// the number of rows: add rows sized by data with Rows.
 func (b ValuesBuilder) Row(values ...any) ValuesBuilder {
 	exprs := make([]Expr, len(values))
 	for i, v := range values {
@@ -143,9 +170,25 @@ func (b ValuesBuilder) Row(values ...any) ValuesBuilder {
 	return b
 }
 
-// RowExpr appends a row of explicit expressions.
+// RowExpr appends a row of explicit expressions. Like Row, each call copies
+// the row list; RowsExpr adds many rows in one step.
 func (b ValuesBuilder) RowExpr(expressions ...Expr) ValuesBuilder {
 	b.rows = extend(b.rows, cloneSlice(expressions))
+	return b
+}
+
+// Rows appends every row of rows in one step; their values become bound
+// parameters. Its cost is linear in the rows added, which makes it the way to
+// add rows sized by data: Values().Rows(rows...) builds the whole rowset. A
+// VALUES with no rows, or with an empty row, is invalid when rendered.
+func (b ValuesBuilder) Rows(rows ...[]any) ValuesBuilder {
+	b.rows = extendRowsWith(b.rows, rows, parameter)
+	return b
+}
+
+// RowsExpr is Rows for rows of explicit expressions, whose slices it copies.
+func (b ValuesBuilder) RowsExpr(rows ...[]Expr) ValuesBuilder {
+	b.rows = extendRows(b.rows, rows)
 	return b
 }
 func (w *renderer) valuesStatement(b *ValuesBuilder) {
@@ -340,6 +383,10 @@ func statementWidth(s Statement, maxDepth int) int {
 			return projectionWidth(b.returning)
 		case MergeBuilder:
 			return projectionWidth(b.returning)
+		default:
+			if s = statementValue(s); s != nil {
+				continue
+			}
 		}
 		return -1
 	}

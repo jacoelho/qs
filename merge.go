@@ -218,9 +218,6 @@ func (w *renderer) mergeStatement(b *MergeBuilder) {
 	if !w.require(len(b.on) > 0 && len(b.branches) > 0, "MERGE", "requires ON and at least one WHEN branch") {
 		return
 	}
-	if !w.require(!b.base.recursive, "MERGE", "WITH RECURSIVE is not supported") {
-		return
-	}
 	w.head(b.base)
 	if w.err != nil {
 		return

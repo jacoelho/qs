@@ -77,3 +77,26 @@ func TestNamesDistinctWithinTheLimitAreDistinct(t *testing.T) {
 		})
 	}
 }
+
+// A base window is found by the name PostgreSQL keeps, as a duplicate is.
+func TestBaseWindowResolvesByTheKeptName(t *testing.T) {
+	t.Parallel()
+
+	long := strings.Repeat("w", 70)
+	kept := long[:63]
+	checkSQL(t,
+		Select(RowNumber().OverNamed("b")).From("t").Window(long, Window().OrderBy(Col("a").Asc())).Window("b", Window().Base(kept)),
+		`SELECT row_number() OVER "b" FROM "t" WINDOW "`+long+`" AS (ORDER BY "a" ASC), "b" AS ("`+kept+`")`,
+	)
+
+	// The inherited ORDER BY is found through the same name: overriding it fails.
+	override := Select(RowNumber().OverNamed("c")).From("t").
+		Window(long, Window().OrderBy(Col("a").Asc())).
+		Window("b", Window().Base(kept)).
+		Window("c", Window().Base("b").OrderBy(Col("z").Asc()))
+	checkError(t, override, ErrInvalid)
+	_, _, err := override.ToSQL()
+	if renderError, _ := errors.AsType[*RenderError](err); renderError.Detail != "cannot override ORDER BY clause of inherited window" {
+		t.Fatalf("got %v", err)
+	}
+}

@@ -114,7 +114,7 @@ func jsonDefaultColumn(value Expr, depth int) bool {
 		}
 		break
 	}
-	return value.kind == exprIdentifier || value.kind == exprQualified
+	return value.isColumn()
 }
 
 const (

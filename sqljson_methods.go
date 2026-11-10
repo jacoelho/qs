@@ -2,7 +2,8 @@
 
 package qs
 
-func (JSONObjectBuilder) exprNode() {}
+func (JSONObjectBuilder) exprNode()     {}
+func (JSONObjectBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONObjectBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -45,7 +46,8 @@ func (b JSONObjectBuilder) ReturningFormatJSONUTF8() JSONObjectBuilder {
 	b.output = returning(TypeBytea, jsonFormatJSONUTF8)
 	return b
 }
-func (JSONArrayBuilder) exprNode() {}
+func (JSONArrayBuilder) exprNode()     {}
+func (JSONArrayBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONArrayBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -76,7 +78,8 @@ func (b JSONArrayBuilder) ReturningFormatJSONUTF8() JSONArrayBuilder {
 	b.output = returning(TypeBytea, jsonFormatJSONUTF8)
 	return b
 }
-func (JSONArrayQueryBuilder) exprNode() {}
+func (JSONArrayQueryBuilder) exprNode()     {}
+func (JSONArrayQueryBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONArrayQueryBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -101,7 +104,8 @@ func (b JSONArrayQueryBuilder) ReturningFormatJSONUTF8() JSONArrayQueryBuilder {
 	b.output = returning(TypeBytea, jsonFormatJSONUTF8)
 	return b
 }
-func (JSONObjectAggregateBuilder) exprNode() {}
+func (JSONObjectAggregateBuilder) exprNode()     {}
+func (JSONObjectAggregateBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONObjectAggregateBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -168,7 +172,8 @@ func (b JSONObjectAggregateBuilder) OverNamed(name string) JSONObjectAggregateBu
 	b.tail = b.tail.overNamed(name)
 	return b
 }
-func (JSONArrayAggregateBuilder) exprNode() {}
+func (JSONArrayAggregateBuilder) exprNode()     {}
+func (JSONArrayAggregateBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONArrayAggregateBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -223,7 +228,8 @@ func (b JSONArrayAggregateBuilder) OverNamed(name string) JSONArrayAggregateBuil
 	b.tail = b.tail.overNamed(name)
 	return b
 }
-func (JSONParseBuilder) exprNode() {}
+func (JSONParseBuilder) exprNode()     {}
+func (JSONParseBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONParseBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -239,7 +245,8 @@ func (b JSONParseBuilder) WithoutUniqueKeys() JSONParseBuilder {
 	b.unique = jsonWithoutUniqueKeys
 	return b
 }
-func (JSONSerializeBuilder) exprNode() {}
+func (JSONSerializeBuilder) exprNode()     {}
+func (JSONSerializeBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONSerializeBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -264,7 +271,8 @@ func (b JSONSerializeBuilder) ReturningFormatJSONUTF8() JSONSerializeBuilder {
 	b.output = returning(TypeBytea, jsonFormatJSONUTF8)
 	return b
 }
-func (JSONPredicateBuilder) exprNode() {}
+func (JSONPredicateBuilder) exprNode()     {}
+func (JSONPredicateBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONPredicateBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -286,7 +294,8 @@ func (b JSONPredicateBuilder) WithoutUniqueKeys() JSONPredicateBuilder {
 	b.unique = jsonWithoutUniqueKeys
 	return b
 }
-func (JSONExistsBuilder) exprNode() {}
+func (JSONExistsBuilder) exprNode()     {}
+func (JSONExistsBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONExistsBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -326,7 +335,8 @@ func (b JSONExistsBuilder) UnknownOnError() JSONExistsBuilder {
 	b.onError = behavior(jsonBehaviorUnknown)
 	return b
 }
-func (JSONValueBuilder) exprNode() {}
+func (JSONValueBuilder) exprNode()     {}
+func (JSONValueBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONValueBuilder) Expr() Expr { return nodeExpr(&b) }
@@ -381,7 +391,8 @@ func (b JSONValueBuilder) DefaultOnError(value Expr) JSONValueBuilder {
 	b.onError = defaultBehavior(value)
 	return b
 }
-func (JSONQueryBuilder) exprNode() {}
+func (JSONQueryBuilder) exprNode()     {}
+func (JSONQueryBuilder) qxExpression() {}
 
 // Expr returns b as an expression.
 func (b JSONQueryBuilder) Expr() Expr { return nodeExpr(&b) }

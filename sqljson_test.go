@@ -2,6 +2,7 @@ package qs
 
 import (
 	"errors"
+	"slices"
 	"testing"
 )
 
@@ -325,6 +326,8 @@ func TestSQLJSONRenderErrors(t *testing.T) {
 			"JSON_TABLE", "too many column aliases",
 		},
 		{"default_qualified_column", table(JSONColumn("a", TypeText).DefaultOnEmpty(Col("t", "fallback").Cast(TypeText))), "DEFAULT", "cannot reference a column"},
+		{"default_schema_qualified_column", Select(JSONValue(doc, LiteralString("$")).DefaultOnEmpty(Col("public", "t", "fallback")).Expr()), "DEFAULT", "cannot reference a column"},
+		{"default_relation_column", Select(JSONQuery(doc, LiteralString("$")).DefaultOnError(Table("public", "t").Col("fallback")).Expr()), "DEFAULT", "cannot reference a column"},
 		{"table_zero_value", Select(Star()).FromExpr(JSONTableBuilder{}.Ref()), "", ""},
 		{"table_nil_column", table(JSONColumn("a", TypeText), nil), "COLUMNS", "nil column"},
 		{"nested_zero_value", table(JSONTableNestedColumns{}), "PATH", "requires a path"},
@@ -434,4 +437,34 @@ func TestSQLJSONBuildersShareNoState(t *testing.T) {
 		checkSQL(t, Select(expression), `SELECT JSON_QUERY("doc", E'$')`)
 		checkSQL(t, Select(Star()).FromExpr(source), `SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS ("a" text))`)
 	})
+}
+
+// A failure anywhere in a JSON_TABLE is located inside it, so that a query
+// with several tells which one failed.
+func TestSQLJSONTableFailuresAreLocatedInJSONTable(t *testing.T) {
+	t.Parallel()
+
+	doc := Col("doc")
+	var noOperand JSONOperand
+	column := JSONColumn("a", TypeText)
+	for name, table := range map[string]JSONTableBuilder{
+		"document":  JSONTable(noOperand, "$", column),
+		"row_path":  JSONTable(doc, "", column),
+		"path_name": JSONTable(doc, "$", column).PathName("\x00"),
+		"passing":   JSONTable(doc, "$", column).Passing("x", noOperand),
+		"column":    JSONTable(doc, "$", column.Path("")),
+		"behavior":  JSONTable(doc, "$", JSONColumn("b", TypeText).DefaultOnEmpty(Col("c"))),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, _, err := Select(Star()).FromExpr(table.Ref()).ToSQL()
+			renderError, ok := errors.AsType[*RenderError](err)
+			if !ok {
+				t.Fatalf("expected a render error, got %v", err)
+			}
+			if !slices.Contains(renderError.Path, "JSON_TABLE") {
+				t.Fatalf("path %q does not locate the failure in JSON_TABLE", renderError.Path)
+			}
+		})
+	}
 }

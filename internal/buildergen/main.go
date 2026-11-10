@@ -100,6 +100,7 @@ var docs = map[string]string{
 	"Columns":               "selects an ordinary INSERT target-column list before choosing a source.",
 	"Targets":               "selects an INSERT target-expression list before choosing a source.",
 	"ValuesSlice":           "selects one direct value row and copies its structural slice; empty rows fail at render time.",
+	"Rows":                  "selects a direct value-row source holding every row of rows; it is the entry for rows sized by data.",
 	"Values":                "selects a direct INSERT value-row source and returns its completed role.",
 	"From":                  "selects an INSERT rowset source and returns its completed role.",
 	"DefaultValues":         "selects the INSERT target table's server-side defaults and returns its completed role.",
@@ -175,14 +176,27 @@ func statementMethods() *file {
 	for _, k := range statementKinds {
 		f.printf("case %s:\nw.%s(&b)\n", k.builder, k.render)
 	}
-	f.write("default:\nw.fail(ErrInvalid, \"statement\", \"nil statement\")\n}\n}\n\n")
+	f.write("default:\nif value := statementValue(s); value != nil {\nw.dispatchStatement(value)\nreturn\n}\n")
+	f.write("w.fail(ErrInvalid, \"statement\", \"nil statement\")\n}\n}\n\n")
 
 	f.write("// statementLabel names s in an error path.\n")
 	f.write("func statementLabel(s Statement) string {\nswitch s.(type) {\n")
 	for _, k := range statementKinds {
 		f.printf("case %s:\nreturn %q\n", k.builder, k.label)
 	}
-	f.write("default:\nreturn \"statement\"\n}\n}\n")
+	f.write("default:\nif value := statementValue(s); value != nil {\nreturn statementLabel(value)\n}\n")
+	f.write("return \"statement\"\n}\n}\n\n")
+
+	f.write("// statementValue returns the builder that s points to, or nil when s is not a\n")
+	f.write("// non-nil pointer to a builder. A pointer satisfies Statement through the\n")
+	f.write("// builder's value methods, and every switch over statements matches values\n")
+	f.write("// only: each resolves what it does not match here, so the common path pays\n")
+	f.write("// nothing for it.\n")
+	f.write("func statementValue(s Statement) Statement {\nswitch p := s.(type) {\n")
+	for _, k := range statementKinds {
+		f.printf("case *%s:\nif p != nil {\nreturn *p\n}\n", k.builder)
+	}
+	f.write("}\nreturn nil\n}\n")
 	return f
 }
 
@@ -198,6 +212,7 @@ func fluentMethods() *file {
 	f.write("func (t InsertTarget) Targets(first Expr, rest ...Expr) InsertColumnsTarget { return newInsertExprTarget(t.table, first, rest) }\n\n")
 	for _, m := range [][4]string{
 		{"ValuesSlice", "values []WriteValue", insertRows, "return InsertRows{base: t.base()}.ValuesSlice(values)"},
+		{"Rows", "rows ...[]WriteValue", insertRows, "return InsertRows{base: t.base()}.Rows(rows...)"},
 		{"Values", "first WriteValue, rest ...WriteValue", insertRows, "return InsertRows{base: t.base()}.Values(first, rest...)"},
 		{"From", "source Rowset", insertSelect, "return InsertSelect{base: t.base(), source: source}"},
 		{"DefaultValues", "", "InsertDefaults", "return InsertDefaults{base: t.base()}"},
@@ -409,7 +424,8 @@ func sqljsonMethods() *file {
 	for _, form := range jsonForms {
 		t := form.builder
 		if slices.Contains(form.families, jsonExpr) {
-			f.printf("func (%s) exprNode() {}\n\n", t)
+			f.printf("func (%s) exprNode() {}\n", t)
+			f.printf("func (%s) qxExpression() {}\n\n", t)
 		}
 		for _, family := range form.families {
 			for _, c := range jsonClauses[family] {

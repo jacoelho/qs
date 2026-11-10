@@ -178,13 +178,7 @@ func (w *renderer) validateWindows(windows []namedWindow) bool {
 		if current.spec.base == "" {
 			continue
 		}
-		baseIndex := -1
-		for j := range i {
-			if windows[j].name == current.spec.base {
-				baseIndex = j
-				break
-			}
-		}
+		baseIndex := previousWindowIndex(windows, i, current.spec.base)
 		if !w.require(baseIndex >= 0, "WINDOW", "base window must be defined earlier") {
 			return false
 		}
@@ -221,9 +215,12 @@ func inheritedWindowOrderCount(windows []namedWindow, index int) int {
 	return 0
 }
 
+// previousWindowIndex finds the window a base name refers to among those
+// defined before index before, or returns -1. Names are compared as PostgreSQL
+// keeps them, as the duplicate check does.
 func previousWindowIndex(windows []namedWindow, before int, name string) int {
 	for i := before - 1; i >= 0; i-- {
-		if windows[i].name == name {
+		if sameName(windows[i].name, name) {
 			return i
 		}
 	}

@@ -43,6 +43,17 @@ func newQualifiedIdentifier(first string, rest []string) *qualifiedIdentifier {
 // unqualifiedColumn is Col for one unqualified name.
 func unqualifiedColumn(name string) Expr { return Expr{kind: exprIdentifier, text: name} }
 
+// isColumn reports whether e is a column name in any of its three
+// representations: an unqualified leaf, the two-part leaf, or the node that
+// holds three or more parts.
+func (e Expr) isColumn() bool {
+	if e.kind == exprIdentifier || e.kind == exprQualified {
+		return true
+	}
+	_, qualified := e.node().(*qualifiedIdentifier)
+	return qualified
+}
+
 // qualifiedName owns the parts of a name such as schema.table or table.column.
 func qualifiedName(first string, rest []string) identifierParts { return ownedList(first, rest) }
 
@@ -65,8 +76,8 @@ func Star(qualifier ...string) Expr {
 	return nodeExpr(&starExpression{cloneSlice(qualifier)})
 }
 
-// unqualifiedStar is shared so that Star() and CountAll() do not allocate. It
-// is never written.
+// unqualifiedStar is shared so that Star() does not allocate. It is never
+// written.
 var unqualifiedStar = &starExpression{}
 
 // identifierLimit is the number of bytes PostgreSQL keeps of an identifier:
@@ -167,6 +178,44 @@ func cloneSlice[T any](values []T) []T {
 // that append always moves to a new array.
 func extend[T any](s []T, items ...T) []T {
 	return append(slices.Clip(s), items...)
+}
+
+// extendRows returns list followed by a copy of rows. All the added rows
+// share one array and each is clipped to its own length, so adding n rows
+// costs two allocations whatever n is.
+func extendRows[T any](list, rows [][]T) [][]T {
+	cells := 0
+	for _, row := range rows {
+		cells += len(row)
+	}
+	array := make([]T, 0, cells)
+	extended := make([][]T, len(list), len(list)+len(rows))
+	copy(extended, list)
+	for _, row := range rows {
+		start := len(array)
+		array = append(array, row...)
+		extended = append(extended, array[start:len(array):len(array)])
+	}
+	return extended
+}
+
+// extendRowsWith is extendRows for cells converted from values.
+func extendRowsWith[T, V any](list [][]T, rows [][]V, convert func(V) T) [][]T {
+	cells := 0
+	for _, row := range rows {
+		cells += len(row)
+	}
+	array := make([]T, 0, cells)
+	extended := make([][]T, len(list), len(list)+len(rows))
+	copy(extended, list)
+	for _, row := range rows {
+		start := len(array)
+		for _, value := range row {
+			array = append(array, convert(value))
+		}
+		extended = append(extended, array[start:len(array):len(array)])
+	}
+	return extended
 }
 
 // extendWith is extend for items converted from values.

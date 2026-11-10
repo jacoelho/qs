@@ -264,7 +264,8 @@ func isDML(s Statement) bool {
 		UpdateBuilder, DeleteBuilder, MergeBuilder:
 		return true
 	default:
-		return false
+		value := statementValue(s)
+		return value != nil && isDML(value)
 	}
 }
 func cteBody(s Statement) bool {

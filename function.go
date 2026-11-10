@@ -149,8 +149,12 @@ func (w *renderer) call(n *callExpression) {
 	w.aggregateTail(m.aggregateTail, len(m.order) != 0)
 }
 
+// countAll is shared so that CountAll() does not allocate. It is never
+// written: a modifier copies the call it changes.
+var countAll = &callExpression{name: "count", args: []Expr{nodeExpr(unqualifiedStar)}, builtin: true}
+
 // CountAll returns count(*) as an aggregate expression.
-func CountAll() Expr { return builtin("count", Star()) }
+func CountAll() Expr { return nodeExpr(countAll) }
 
 // Count returns count(expr) as an aggregate expression.
 func Count(expr Expr) Expr { return builtin("count", expr) }
