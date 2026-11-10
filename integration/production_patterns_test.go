@@ -18,7 +18,7 @@ func TestUnusedWindowAllowsRowLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	statement := qs.SelectCols("id").From("jobs").
-		Window("unused", qs.Window().OrderBy(qs.Asc("id"))).
+		Window("unused", qs.Window().OrderBy(qs.Col("id").Asc())).
 		Lock(qs.ForUpdate())
 	sql, args, err := session.render(t, statement)
 	if err != nil {
@@ -90,11 +90,11 @@ func TestColumnarPartialIndexUpsert(t *testing.T) {
 			(1, 'archived one', '2024-01-01'), (2, 'archived two', '2024-01-01')`); err != nil {
 		t.Fatal(err)
 	}
-	upsert := func(ids []int32, names []string) *qs.InsertSelect {
+	upsert := func(ids []int32, names []string) qs.InsertSelect {
 		return qs.InsertInto("jobs").Columns("id", "name").From(qs.Select(
 			qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
 			qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
-		)).OnConflict(qs.ConflictColumns("id").TargetWhere(qs.IsNull("deleted_at")).
+		)).OnConflict(qs.ConflictColumns("id").TargetWhere(qs.Col("deleted_at").IsNull()).
 			DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
 			ReturningCols("id", "name")
 	}
@@ -126,7 +126,7 @@ func TestColumnarPartialIndexUpsert(t *testing.T) {
 		t.Fatalf("got %d rows %#v; want %#v", count, got, want)
 	}
 	archived := queryStrings(t, session, qs.SelectCols("name").From("jobs").
-		Where(qs.IsNotNull("deleted_at")).OrderBy(qs.Asc("id")))
+		Where(qs.Col("deleted_at").IsNotNull()).OrderBy(qs.Col("id").Asc()))
 	if !reflect.DeepEqual(archived, []string{"archived one", "archived two"}) {
 		t.Fatalf("archived rows changed: %#v", archived)
 	}
@@ -159,22 +159,22 @@ func TestPaginateBeforeLateralAggregation(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := qs.CTE("page", qs.SelectCols("id").From("parents").
-		Where(qs.Gt("id", 1)).OrderBy(qs.Asc("id")).Limit(2))
+		Where(qs.Col("id").Gt(qs.Param(1))).OrderBy(qs.Col("id").Asc()).Limit(2))
 	summary := qs.Select(
-		qs.Sum(qs.Col("amount")).Filter(qs.Gt("amount", 10)).As("total"),
+		qs.Sum(qs.Col("amount")).Filter(qs.Col("amount").Gt(qs.Param(10))).As("total"),
 		qs.CountAll().As("entries"),
-	).From("events").Where(qs.EqColumns("events.parent_id", "page.id")).
-		GroupBy("events.parent_id")
+	).From("events").Where(qs.Col("events", "parent_id").Eq(qs.Col("page", "id"))).
+		GroupByExpr(qs.Col("events", "parent_id"))
 	comments := qs.Select(qs.CountAll().As("entries")).From("comments").
-		Where(qs.EqColumns("comments.parent_id", "page.id")).GroupBy("comments.parent_id")
-	statement := qs.Select(qs.Col("page.id"),
-		qs.Coalesce(qs.Col("summary.total"), qs.LiteralInt(0)),
-		qs.Coalesce(qs.Col("summary.entries"), qs.LiteralInt(0)),
-		qs.Coalesce(qs.Col("comment_summary.entries"), qs.LiteralInt(0)),
+		Where(qs.Col("comments", "parent_id").Eq(qs.Col("page", "id"))).GroupByExpr(qs.Col("comments", "parent_id"))
+	statement := qs.Select(qs.Col("page", "id"),
+		qs.Coalesce(qs.Col("summary", "total"), qs.LiteralInt(0)),
+		qs.Coalesce(qs.Col("summary", "entries"), qs.LiteralInt(0)),
+		qs.Coalesce(qs.Col("comment_summary", "entries"), qs.LiteralInt(0)),
 	).With(page).FromExpr(page.Ref()).
 		LeftJoinExpr(qs.Lateral(summary.As("summary")), qs.True()).
 		LeftJoinExpr(qs.Lateral(comments.As("comment_summary")), qs.True()).
-		OrderBy(qs.Asc("page.id"))
+		OrderBy(qs.Col("page", "id").Asc())
 	sql, args, err := session.render(t, statement)
 	if err != nil {
 		t.Fatal(err)

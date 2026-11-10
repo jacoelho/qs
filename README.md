@@ -2,37 +2,56 @@
 
 qs builds PostgreSQL queries from composable Go expressions. You can start with
 a query, add filters, joins, or pagination, and render SQL with a separate list
-of arguments for your database driver. Your application owns execution and
-result scanning.
+of arguments for your database driver.
+
+qs renders SQL and nothing else. It does not connect to a database, execute
+queries, or include a driver: your application supplies the connection, manages
+transactions, and scans results.
 
 The library supports SELECT, INSERT, UPDATE, DELETE, MERGE, common table
-expressions (CTEs), joins, set operations, window functions, JSON/JSONB, and XML.
-It uses only the Go standard library, with no reflection, unsafe code, or
-third-party dependencies.
+expressions (CTEs), joins, set operations, window functions, JSON/JSONB
+operators, and SQL/JSON syntax including `JSON_TABLE`. It uses only the Go
+standard library, with no unsafe code or third-party dependencies. The root
+package uses no reflection; the `projection` companion uses `reflect` when a
+declaration is made, not when a row is scanned.
 
 When rendering a query, qs quotes identifiers and binds application values to
-parameters. A single renderer numbers those parameters in SQL order across the
-entire query, including nested queries. Feature checks target PostgreSQL 12
-through 18, with PostgreSQL 18 as the default.
+`$n` parameters. A single renderer numbers those parameters in SQL order across
+the entire query, including nested queries. Statement builders are immutable
+values, so a query can be branched and shared between goroutines.
+
+Rendering checks query structure only. Schema objects, SQL types, privileges,
+and driver encoding are left to PostgreSQL and your driver; see
+[Know what rendering checks](#know-what-rendering-checks).
 
 ## Contents
 
-1. [Install and build a query](#install-and-build-a-query)
-2. [Use values and identifiers](#use-values-and-identifiers)
-3. [Add filters and pagination](#add-filters-and-pagination)
-4. [Write rows and handle conflicts](#write-rows-and-handle-conflicts)
-5. [Build joins and reports](#build-joins-and-reports)
-6. [Use PostgreSQL types and drivers](#use-postgresql-types-and-drivers)
-7. [Render SQL and handle errors](#render-sql-and-handle-errors)
-8. [Develop and find references](#develop-and-find-references)
+1. [Install qs](#install-qs)
+2. [Build a first query](#build-a-first-query)
+3. [Bind values and name identifiers](#bind-values-and-name-identifiers)
+4. [Filter rows](#filter-rows)
+5. [Page results](#page-results)
+6. [Write rows](#write-rows)
+7. [Compose joins, CTEs, and reports](#compose-joins-ctes-and-reports)
+8. [Build and query JSON](#build-and-query-json)
+9. [Scan rows with projection declarations](#scan-rows-with-projection-declarations)
+10. [Use PostgreSQL types with pgx](#use-postgresql-types-with-pgx)
+11. [Render SQL and handle errors](#render-sql-and-handle-errors)
+12. [Reuse and share builders](#reuse-and-share-builders)
+13. [Develop qs](#develop-qs)
+14. [Find references](#find-references)
 
-## Install and build a query
+## Install qs
 
 qs requires Go 1.27 or later. To install it in your Go module, run:
 
 ```sh
 go get github.com/jacoelho/qs
 ```
+
+Install your database driver separately; qs does not include one.
+
+## Build a first query
 
 This program builds a query and prints its SQL and arguments:
 
@@ -48,8 +67,8 @@ import (
 func main() {
     query, args, err := qs.SelectCols("id", "name").
         From("users").
-        Where(qs.Eq("active", true), qs.IsNull("deleted_at")).
-        OrderBy(qs.Desc("created_at"), qs.Desc("id")).
+        Where(qs.Col("active").Eq(qs.Param(true)), qs.Col("deleted_at").IsNull()).
+        OrderBy(qs.Col("created_at").Desc(), qs.Col("id").Desc()).
         Limit(20).
         ToSQL()
     if err != nil {
@@ -75,12 +94,8 @@ After handling any render error, pass `query` and `args...` to your driver:
 - With `database/sql`, use `db.QueryContext(ctx, query, args...)`.
 - With pgx, use `conn.Query(ctx, query, args...)`.
 
-Your application supplies the connection and context and manages transactions
-and result scanning. Install your database driver separately; qs does not
-include one.
-
 Use `SelectCols` when selecting column names and `Select` when selecting
-expressions, such as a cast or an alias:
+expressions, such as a qualified name, a cast, or an alias:
 
 ```go
 q := qs.Select(
@@ -90,27 +105,77 @@ q := qs.Select(
 ).From("users")
 ```
 
-## Use values and identifiers
+Every builder method returns a new builder and leaves its receiver unchanged.
+Keep the result: `q = q.Where(...)`.
+
+## Bind values and name identifiers
 
 Select the constructor that matches the input:
 
 | Input | Constructor | Behavior |
 |---|---|---|
 | Application value in an expression | `Param(value)` | Binds one argument |
-| Qualified column path | `Col("u.id")` | Renders `"u"."id"` |
-| Literal identifier | `Ident("u.id")` | Renders `"u.id"` |
+| Column | `Col("id")` | Renders `"id"` |
+| Qualified column | `Col("u", "id")` | Renders `"u"."id"` |
+| Column compared with Go values | `TypedCol[int64]("u", "id")` | Renders `"u"."id"`; comparisons bind `int64` values |
 | Application value at a write destination | `Value(value)` | Binds one argument |
 | SQL expression at a write destination | `Write(expr)` | Renders the expression |
 | Server default at a write destination | `Default()` | Renders `DEFAULT` |
 
-Comparison helpers such as `Eq` bind application values, while `EqExpr` compares
-a column with an expression. For SQL NULL tests, use `IsNull` or `IsNotNull`.
-A comparison with SQL NULL is never true, so comparison operands, including `In` lists,
-`Between` bounds, row values, and `SeekAfter` cursors, reject untyped nil:
-`Eq("id", nil)` fails rendering with `ErrInvalid` rather than selecting no rows.
-A typed nil, such as `(*int)(nil)`, still binds.
+If the driver needs a specific value type, preserve it with an explicit Go
+conversion, such as `qs.Param(int64(1))`.
 
-`Param`, `Value`, and `ParamNull` bind untyped nil as SQL NULL:
+### Compare values
+
+Comparisons are methods on `Expr` that take an `Expr`: `Eq`, `Ne`, `Lt`, `Lte`,
+`Gt`, `Gte`, `In`, `NotIn`, `Between`, `IsDistinctFrom`, and their relatives.
+Bind an application value with `Param`.
+
+A `Field[T]` binds values for you. Build one with `TypedCol[T]` from a column
+name or `Typed[T]` from an expression; its comparison methods take Go values of
+type `T`:
+
+```go
+users := qs.Table("users").As("u")
+id := qs.TypedCol[int64]("u", "id")
+role := qs.Typed[string](users.Col("role"))
+
+query, args, err := qs.Select(id.Expr()).FromExpr(users).
+    Where(
+        id.Gt(1000),
+        role.In("admin", "editor"),
+        users.Col("score").Gte(qs.Param(4.5)),
+        users.Col("created_at").Lt(qs.Now()),
+        users.Col("deleted_at").IsNull(),
+    ).ToSQL()
+```
+
+```sql
+SELECT "u"."id" FROM "users" AS "u"
+WHERE ("u"."id" > $1)
+  AND ("u"."role" IN ($2, $3))
+  AND ("u"."score" >= $4)
+  AND ("u"."created_at" < now())
+  AND ("u"."deleted_at" IS NULL)
+```
+
+Arguments: `[1000 admin editor 4.5]`.
+
+`Field[T]` proves nothing about the SQL type and adds no cast. To compare two
+fields, use the `Field` variants, such as `EqField`. `Field.Expr` returns the
+expression for everything else.
+
+### Handle SQL NULL
+
+For SQL NULL tests, use `IsNull` or `IsNotNull`.
+
+A comparison with SQL NULL is never true, so comparison operands reject a bound
+untyped nil. This covers `In` lists, `Between` bounds, row values, and
+`SeekAfter` cursors. `qs.Col("id").Eq(qs.Param(nil))` fails rendering with
+`ErrInvalid` rather than selecting no rows. A typed nil, such as `(*int)(nil)`,
+still binds.
+
+Outside comparisons, `Param`, `Value`, and `ParamNull` bind SQL NULL:
 
 ```go
 query, args, err := qs.Select(qs.Param(nil).Cast(qs.TypeText)).ToSQL()
@@ -122,71 +187,103 @@ SELECT ($1)::text
 
 Arguments: `[<nil>]`.
 
-If the driver needs a specific value type, preserve it with an explicit Go
-conversion, such as `qs.Param(int64(1))`.
+`Null[T]` represents nullable values, and `Optional[T]` distinguishes absent
+values from present ones. The [executable examples](example_test.go) show how to
+use them together.
 
-Standalone `Values` binds values in a rowset, while `ValuesExpr` builds one from
-expressions. A rowset is a query that can occur in an ordinary subquery: SELECT,
-VALUES, TABLE, or a set operation. Write statements do not qualify as rowsets,
-even with RETURNING, so use a CTE to compose them with another query.
+### Name columns and tables
 
-`Field[T]` keeps operands typed, `Null[T]` represents nullable values, and
-`Optional[T]` distinguishes absent values from present ones. The
-[executable examples](example_test.go) show how to use them together.
-For sparse updates, assemble assignments first and choose explicitly whether an
-all-absent patch is a no-op or an error. A present NULL remains an assignment;
-it is not absence. qs rejects an UPDATE with no assignments.
+Every string that names something is exactly one identifier, quoted as written.
+qs never splits a name on dots; pass each part of a qualified name as its own
+argument:
 
-### Select literal column names
+| Call | Renders |
+|---|---|
+| `qs.Col("u", "id")` | `"u"."id"` |
+| `qs.Col("a.b")` | `"a.b"` |
+| `qs.Table("public", "users")` | `"public"."users"` |
+| `qs.Star("u")` | `"u".*` |
+| `qs.Call("my_fn", qs.Param(1))` | `"my_fn"($1)` |
+| `qs.QualifiedCall("app", "my_fn", qs.Param(1))` | `"app"."my_fn"($1)` |
+| `qs.Col("name").Collate("pg_catalog", "default")` | `("name" COLLATE "pg_catalog"."default")` |
 
-`Relation.Col` treats the column name as one literal identifier, whether or not
-the relation has an alias. For example,
-`qs.Table("public.settings").Col("a.b")` renders
-`"public"."settings"."a.b"`, keeping the dot as part of the column name.
+A dotted string where a qualified name was meant renders one identifier:
+`qs.Col("u.id")` is `"u.id"` and `From("public.users")` is `"public.users"`.
+Rendering succeeds and the database rejects the name. Quoted names are also
+case-sensitive: `qs.Call("lower", x)` finds the built-in function and
+`qs.Call("LOWER", x)` does not.
 
-Use `relation.Star()` for a wildcard; `relation.Col("*")` refers to a literal
-column named `"*"`. To select a qualified column path, use top-level
-`qs.Col(path)`. The same distinction applies to table names:
-`TableIdent("*")` names a literal table, while `Table("*")` is invalid.
+String shorthands such as `SelectCols`, `From`, `GroupBy`, and `ReturningCols`
+take one identifier per string. For a qualified name, use the expression form:
+`Select`, `FromExpr`, `GroupByExpr`, or `Returning`.
+
+`Relation.Col` qualifies a column by the relation's alias, or by its table name
+when it has no alias. `qs.Table("public", "settings").Col("a.b")` renders
+`"public"."settings"."a.b"`. Use `relation.Star()` for a wildcard;
+`relation.Col("*")` refers to a column named `"*"`.
 
 ### Use trusted SQL
 
 `SelectSQL`, `UnsafeSQL`, `Fragment`, and `StatementSQL` let you compose trusted
-application-authored SQL with qs expressions. Keep request values in bind
-parameters and never pass request text to these constructors. Raw fragments do
-not bind placeholders written directly in the SQL text.
+application-authored SQL with qs expressions.
+
+Never pass request text to these constructors; keep request values in bind
+parameters. Raw fragments do not bind placeholders written directly in the SQL
+text.
 
 When qs combines a trusted condition with another, it parenthesizes the trusted
 condition. This applies to two `Where` conditions, a `SeekAfter` cursor, and
 `And`, `Or` and `Not`. `Where(qs.AsCondition(qs.UnsafeSQL("a OR b")))` with a
 cursor renders `WHERE (a OR b) AND (...)`. Other operators render trusted SQL
 verbatim, so call `Parenthesized` where its operators could bind to a
-neighbouring operand.
+neighboring operand.
+
+### Reach syntax qs does not model
+
+qs does not model XML, EXPLAIN, TRUNCATE, CREATE TABLE AS, materialized views,
+DECLARE CURSOR, EXECUTE, or SELECT INTO.
+Reach them, and anything else qs lacks, through three escape hatches:
+
+- `Call` and `QualifiedCall` for functions.
+- `UnsafeSQL` and `Fragment` for trusted expression syntax.
+- `StatementSQL` for a trusted statement.
+
+```go
+score := qs.Call("similarity", qs.Col("name"), qs.Param("ana")).As("score")
+query, args, err := qs.Select(qs.Col("id"), score).From("users").ToSQL()
+
+refresh, _, err := qs.StatementSQL(
+    qs.UnsafeSQL(`REFRESH MATERIALIZED VIEW "daily_totals"`),
+).ToSQL()
+```
+
+The first statement renders `SELECT "id", "similarity"("name", $1) AS "score" FROM "users"`
+with arguments `[ana]`. The second renders its text unchanged.
 
 Database authorization remains your application's responsibility, including
 database roles, row-level security (RLS), tenant context, and transactions.
 
-## Add filters and pagination
+## Filter rows
 
 ### Add optional filters
 
-Each `Where` call appends conditions with AND, and `Or` groups alternatives
-within a condition. You can use ordinary Go control flow to add filters only
-when the corresponding input is present:
+Each `Where` call returns a builder with its conditions appended with AND, and
+`Or` groups alternatives within a condition. You can use ordinary Go control
+flow to add filters only when the corresponding input is present:
 
 ```go
-func filteredUsers(tenantID int, prefix string, roles []string) *qs.SelectBuilder {
+func filteredUsers(tenantID int, prefix string, roles []string) qs.SelectBuilder {
     q := qs.SelectCols("id", "email").From("users").
-        Where(qs.Eq("tenant_id", tenantID), qs.IsNull("deleted_at"))
+        Where(qs.Col("tenant_id").Eq(qs.Param(tenantID)), qs.Col("deleted_at").IsNull())
 
     if prefix != "" {
-        q.Where(qs.Or(
-            qs.ILikePrefix("name", prefix),
-            qs.ILikePrefix("email", prefix),
+        q = q.Where(qs.Or(
+            qs.Col("name").ILikePrefix(prefix),
+            qs.Col("email").ILikePrefix(prefix),
         ))
     }
     if len(roles) > 0 {
-        q.Where(qs.In("role", roles...))
+        q = q.Where(qs.TypedCol[string]("role").In(roles...))
     }
     return q
 }
@@ -210,42 +307,46 @@ The example omits filters for empty prefixes and role lists. An empty `In` list
 produces FALSE, so omit the condition when an empty list means "no filter" in
 your application.
 
-`WhereIf(include, condition)` appends a condition only when `include` is true,
-but Go still constructs the condition before the call. Use an `if` statement
-when you also want to avoid that construction work.
+`WhereIf(include, condition)` appends a condition to a SELECT only when
+`include` is true, but Go still constructs the condition before the call. Use
+an `if` statement when you also want to avoid that construction work.
+
+UPDATE and DELETE take their whole predicate in one `Where` call and have no
+`WhereIf`; see
+[Select the rows UPDATE and DELETE change](#select-the-rows-update-and-delete-change).
 
 ### Match literal text
 
 `Like` and `ILike` bind SQL patterns in which `%` and `_` retain their wildcard
-meaning. When the input should match literal text, use one of these helpers:
+meaning. When the input should match literal text, use one of these `Expr`
+methods:
 
-| Match | Case-sensitive helper | Case-insensitive helper |
+| Match | Case-sensitive method | Case-insensitive method |
 |---|---|---|
 | Prefix | `LikePrefix` | `ILikePrefix` |
 | Suffix | `LikeSuffix` | `ILikeSuffix` |
 | Substring | `LikeContains` | `ILikeContains` |
 
-These helpers escape `%`, `_`, and `!`, then add the wildcards needed for the
+These methods escape `%`, `_`, and `!`, then add the wildcards needed for the
 selected match. They render a fixed `ESCAPE E'!'` clause, so pass the original
-text without escaping it first. You can also call them as expression methods,
-such as `qs.Col("name").ILikePrefix(prefix)`.
+text without escaping it first.
 
 | Condition | Bound pattern |
 |---|---|
-| `qs.ILikePrefix("name", "a_%")` | `a!_!%%` |
-| `qs.LikeSuffix("email", "@example.com")` | `%@example.com` |
-| `qs.ILikeContains("display_name", "50%_")` | `%50!%!_%` |
+| `qs.Col("name").ILikePrefix("a_%")` | `a!_!%%` |
+| `qs.Col("email").LikeSuffix("@example.com")` | `%@example.com` |
+| `qs.Col("display_name").ILikeContains("50%_")` | `%50!%!_%` |
 
 An empty prefix, suffix, or substring matches every non-NULL text value. Omit
 the condition if your application treats empty input as "no filter".
 
-### Use typed fields and array parameters
+### Compare typed fields and array parameters
 
 This example uses the `strings` package and qs:
 
 ```go
 users := qs.Table("users").As("u")
-id := qs.TypedExpr[int64](users.Col("id"))
+id := qs.Typed[int64](users.Col("id"))
 ids := []int64{10, 20}
 requiredTags := []string{"staff", "active"}
 rawUsername := "Al"
@@ -256,13 +357,13 @@ q := qs.Select(
     qs.CountAll().Over(qs.Window()).As("total"),
 ).FromExpr(users)
 if len(ids) > 0 {
-    q.Where(id.In(ids...))
+    q = q.Where(id.In(ids...))
 }
 if len(requiredTags) > 0 {
-    q.Where(qs.ArrayContains(users.Col("tags"), qs.ArrayParam(requiredTags, qs.TypeText)))
+    q = q.Where(qs.ArrayContains(users.Col("tags"), qs.ArrayParam(requiredTags, qs.TypeText)))
 }
 if rawUsername != "" {
-    q.Where(qs.Lower(users.Col("username")).LikePrefix(strings.ToLower(rawUsername)))
+    q = q.Where(qs.Lower(users.Col("username")).LikePrefix(strings.ToLower(rawUsername)))
 }
 query, args, err := q.OrderBy(id.Asc()).Limit(20).ToSQL()
 ```
@@ -278,7 +379,7 @@ ORDER BY "u"."id" ASC LIMIT $5
 
 Arguments: `[10 20 [staff active] al% 20]`.
 
-`TypedExpr[int64]` lets Go enforce the type of values passed to `id.In`, which
+`Typed[int64]` lets Go enforce the type of values passed to `id.In`, which
 produces FALSE for an empty list. `ArrayParam` binds a single array argument
 and casts it to `text[]`, leaving array encoding to the driver. A nil slice
 binds an empty array rather than NULL, so `= ANY` is FALSE and `<> ALL` is TRUE.
@@ -293,16 +394,18 @@ row from which to read it, and after a `SeekAfter` cursor it counts only the
 remaining rows. [Count matching rows](#count-matching-rows) with `CountRows`
 instead.
 
+## Page results
+
 ### Add limits and offsets
 
-Adding clauses modifies the builder. To create separate pages from a reusable
-base query, call `Clone` before adding each page's ordering, limit, and offset:
+A derived builder never changes its source, so one base query serves every
+page:
 
 ```go
-base := qs.SelectCols("id").From("users").Where(qs.Eq("active", true))
+base := qs.SelectCols("id").From("users").Where(qs.Col("active").Eq(qs.Param(true)))
 
-first := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(0)
-next := base.Clone().OrderBy(qs.Asc("id")).Limit(10).Offset(10)
+first := base.OrderBy(qs.Col("id").Asc()).Limit(10).Offset(0)
+next := base.OrderBy(qs.Col("id").Asc()).Limit(10).Offset(10)
 
 query, args, err := next.ToSQL()
 ```
@@ -312,12 +415,17 @@ SELECT "id" FROM "users" WHERE ("active" = $1)
 ORDER BY "id" ASC LIMIT $2 OFFSET $3
 ```
 
-The first page binds `[true 10 0]`, and the next binds `[true 10 10]`. Because
-each page uses a clone, the base query retains its original condition without
-a limit or offset.
+The first page binds `[true 10 0]`, and the next binds `[true 10 10]`. `base`
+keeps its condition and gains no ordering, limit, or offset.
 
 `Limit` and `Offset` bind their values, replacing the previous value on each
-call. Use `RemoveLimit` and `RemoveOffset` to clear the corresponding clauses.
+call. To drop an offset or ordering, branch from a builder that has none.
+
+A query has one row limit. `Limit`, `LimitExpr`, `LimitAll`, and
+`LimitWithTies` each replace it, so LIMIT and FETCH FIRST cannot both be set.
+`LimitWithTies(n)` renders `FETCH FIRST (n) ROWS WITH TIES`, which also returns
+the rows that tie with the last one. It fails rendering without ORDER BY or
+with a SKIP LOCKED row lock.
 
 For predictable page boundaries, choose an ordering with a unique final key.
 Offset pagination can still shift as rows change between requests, and the
@@ -329,8 +437,8 @@ server still reads every skipped row.
 ORDER BY key values, one per term:
 
 ```go
-order := []qs.Order{qs.Desc("users.created_at"), qs.Desc("users.id")}
-next := base.Clone().
+order := []qs.Order{qs.Col("users", "created_at").Desc(), qs.Col("users", "id").Desc()}
+next := base.
     OrderBy(order...).
     SeekAfter(lastCreatedAt, lastID).
     Limit(20)
@@ -342,39 +450,52 @@ WHERE ("active" = $1) AND (("users"."created_at", "users"."id") < ($2, $3))
 ORDER BY "users"."created_at" DESC, "users"."id" DESC LIMIT $4
 ```
 
-The cursor follows every other WHERE condition, whatever the call order.
+The cursor follows every other WHERE condition, whatever the call order. Each
+`SeekAfter` call replaces the cursor.
+
+qs cannot inspect the schema. Pages are complete and disjoint only when every
+key is NOT NULL and the last key is unique.
+
+Qualify column keys: `qs.Col("users", "id").Desc()`, or
+`users.Col("id").Desc()` for a `Relation`. ORDER BY resolves a bare name to a
+same-named output column first, including a derived one such as the `a` that
+`SELECT a::text` produces, while WHERE resolves it to the input column.
+Qualified names and other expressions resolve the same way in both clauses.
+Name a USING join with `UsingAs` and a `Derived` relation with `As` to qualify
+their columns.
+
+Rendering fails with `ErrInvalid` when:
+
+- the cursor width differs from the ORDER BY width;
+- a term uses NULLS FIRST/LAST, USING, or an ordinal;
+- a key is a bare name;
+- the query uses DISTINCT ON.
+
+Keys are evaluated in WHERE, so they cannot be output aliases, aggregates, or
+window functions. Wrap such a query with `Subquery` and page the outer SELECT
+by its alias-qualified columns. Page set operations, VALUES, and TABLE the same
+way.
+
+A trusted SQL or `Fragment` key is compared as one operand, so `NOT archived`
+keeps its meaning. qs does not inspect such a key: it must not render a bare
+name or an integer.
+
 Uniform directions render one row comparison, which a B-tree index on the keys
 in ORDER BY order can serve. Mixed directions render an equivalent disjunction
 that binds earlier keys again: three keys bind seven arguments.
-
-Rendering fails with `ErrInvalid` when the cursor width differs from the ORDER
-BY width, when a term uses NULLS FIRST/LAST, USING, or an ordinal, when a key is
-a bare name, or when the query uses DISTINCT ON. ORDER BY resolves a bare name
-to a same-named output column first, including a derived one such as the `a`
-that `SELECT a::text` produces, while WHERE resolves it to the input column.
-Qualified names and other expressions resolve the same way in both clauses, so
-qualify column keys: `qs.Desc("users.id")`, or `users.Col("id").Desc()` for a
-`Relation`. Name a USING join with `UsingAs` and a `Derived` relation with `As`
-to qualify their columns. Keys are evaluated in WHERE, so they cannot be output
-aliases, aggregates, or window functions; wrap such a query with `Subquery` and
-page the outer SELECT by its alias-qualified columns. Page set operations,
-VALUES, and TABLE the same way. Trusted SQL and `Fragment` keys are compared in
-parentheses, so `NOT archived` keeps its meaning, but qs does not inspect them:
-they must not render a bare name or an integer. qs cannot inspect the schema:
-pages are complete and disjoint only when every key is NOT NULL and the last key
-is unique.
 
 For the previous page, reverse each term, seek after the first row of the
 current page, and reverse the fetched rows:
 
 ```go
-previous := base.Clone().
+previous := base.
     OrderBy(order[0].Reverse(), order[1].Reverse()).
     SeekAfter(firstCreatedAt, firstID).
     Limit(20)
 ```
 
-`RemoveOrderBy` and `Reset` remove the cursor, and `Clone` copies it.
+`go doc . SelectBuilder.SeekAfter` states the full contract, including how a
+typed nil cursor value behaves.
 
 ### Count matching rows
 
@@ -388,19 +509,26 @@ total := qs.CountRows(next)
 SELECT count(*) FROM (SELECT "id" FROM "users" WHERE ("active" = $1)) AS "matching"
 ```
 
-The count omits the `SeekAfter` cursor, LIMIT, OFFSET, FETCH, and row locks,
-and keeps WITH, DISTINCT, GROUP BY, and HAVING. It does not sort, but ORDER BY
-expressions other than column names, ordinals, and bound values move into the
-counted projection as `qs_order_N` columns, so a set-returning function such as
-`unnest(tags)` or an aggregate such as `count(*)` still changes the rows.
-DISTINCT ON and GROUP BY must not name columns `qs_order_N`. Volatile moved
-expressions run for every counted row, and a trusted SQL term naming an output
-column can fail, so order by the aliased expression. The count renders the
-query live, so filters added later also apply; count `query.Clone()` for a fixed
-query. The count is a separate statement that agrees with the pages only when
-both run in one REPEATABLE READ or SERIALIZABLE transaction.
+The count omits the `SeekAfter` cursor, the row limit, OFFSET, and row locks,
+and keeps WITH, DISTINCT, GROUP BY, and HAVING. A data-modifying WITH fails
+rendering. `CountRows` captures the builder it is given; builders derived from
+that one later do not change the count.
 
-## Write rows and handle conflicts
+The count is a separate statement. It agrees with the pages only when both run
+in one REPEATABLE READ or SERIALIZABLE transaction.
+
+The count does not sort, but an ORDER BY expression can still change the rows:
+a set-returning function such as `unnest(tags)` or an aggregate such as
+`count(*)` does. To keep that effect, ORDER BY expressions other than column
+names, ordinals, and bound values move into the counted projection as
+`qs_order_N` columns. Three consequences follow:
+
+- DISTINCT ON and GROUP BY must not name columns `qs_order_N`.
+- Volatile moved expressions run for every counted row.
+- A trusted SQL term naming an output column can fail, so order by the aliased
+  expression.
+
+## Write rows
 
 Write destinations in INSERT, MERGE, and assignments accept `WriteValue`
 descriptors: `Value` binds application data, including nil as SQL NULL; `Write`
@@ -430,10 +558,9 @@ If you need an explicit target list, select `Columns` or `Targets` before
 choosing `Values`, `From`, or `DefaultValues`. Assignment INSERTs start with
 `Set` directly on `InsertInto` and cannot also have an explicit target list.
 
-Each source selection creates an independent completed builder, sharing only
-the column selector's immutable target list. Once completed, an INSERT builder
-cannot change the target list, switch source roles, or call `Reset`.
-Default-value INSERT builders also omit identity overriding.
+Each source selection returns a completed builder with the methods of that
+source. A completed INSERT builder cannot change the target list or switch
+source. Default-value INSERT builders also omit identity overriding.
 
 ### Insert columns and values from slices
 
@@ -450,11 +577,10 @@ INSERT INTO "users" ("id", "name") VALUES ($1, $2)
 
 Arguments: `[42 Ana]`.
 
-`ColumnsSlice` and `ValuesSlice` copy slice entries, while retaining live
-references to nested statements and leaving bound application objects shared.
-Empty column lists and empty rows fail at render time. For positional
-insertion, omit the column selector; `ValuesSlice` can start a positional
-INSERT or append rows to a completed row INSERT.
+`ColumnsSlice` and `ValuesSlice` copy the slice; bound application values are
+not copied. Empty column lists and empty rows fail at render time. For
+positional insertion, omit the column selector; `ValuesSlice` can start a
+positional INSERT or append a row to a row INSERT.
 
 ### Insert columnar batches
 
@@ -471,11 +597,15 @@ rows := qs.Select(
 query, args, err := qs.InsertInto("users").Columns("id", "name").From(rows).ToSQL()
 ```
 
-The driver encodes the arrays. Supply equal lengths: PostgreSQL
-[pads shorter results with NULL](https://www.postgresql.org/docs/18/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET);
-qs does not inspect bound application data. Empty arrays insert
-no rows. Bound batch size according to data volume; fewer parameters do not
-reduce the payload size. For larger loads, consider the driver's COPY support.
+The driver encodes the arrays.
+
+Supply arrays of equal length. PostgreSQL
+[pads shorter results with NULL](https://www.postgresql.org/docs/18/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET),
+and qs does not inspect bound application data. Empty arrays insert no rows.
+
+Bound batch size according to data volume; fewer parameters do not reduce the
+payload size. For larger loads, consider the driver's COPY support.
+
 The [executable upsert example](production_query_example_test.go) combines this
 shape with partial-index conflict inference and RETURNING. Its table needs a
 unique index on `id WHERE deleted_at IS NULL`.
@@ -485,7 +615,7 @@ unique index on `id WHERE deleted_at IS NULL`.
 ```go
 query, args, err := qs.Update("users").
     Set(qs.Set("name", qs.Value("Ana"))).
-    Where(qs.Eq("id", 42)).
+    Where(qs.Col("id").Eq(qs.Param(42))).
     ReturningCols("id", "name").
     ToSQL()
 ```
@@ -503,11 +633,15 @@ expression. These constructors preserve tuple and `ROW(...)` syntax and allow
 direct DEFAULT elements. Typed field, JSON, NULL, and default assignment
 helpers use the same write descriptors.
 
+An UPDATE with no assignments fails rendering. For sparse updates, assemble
+assignments first and choose explicitly whether an all-absent patch is a no-op
+or an error. A present NULL remains an assignment; it is not absence.
+
 ### Delete a row
 
 ```go
 query, args, err := qs.DeleteFrom("users").
-    Where(qs.Eq("id", 42)).
+    Where(qs.Col("id").Eq(qs.Param(42))).
     ReturningCols("id").
     ToSQL()
 ```
@@ -518,10 +652,38 @@ DELETE FROM "users" WHERE ("id" = $1) RETURNING "id"
 
 Arguments: `[42]`.
 
-UPDATE and DELETE allow statements without WHERE. Add `RequireWhere()` if your
-application requires a predicate or `CURRENT OF` clause. This is a structural
-guard that accepts `WHERE TRUE`, so it does not verify authorization or limit
-the affected rows.
+### Select the rows UPDATE and DELETE change
+
+`Update` and `DeleteFrom` return a pending statement with no `ToSQL`. One of
+three methods completes it by saying which rows it changes:
+
+- `Where(first, rest...)` selects the rows that satisfy every condition.
+- `WhereCurrentOf(cursor)` selects the row a cursor is positioned on.
+- `AllRows()` selects every row.
+
+A mutation that forgot its predicate does not compile. A completed statement
+accepts only RETURNING, WITH, and the prefix and suffix clauses, so the row
+selection cannot be changed or combined afterwards.
+
+```go
+query, args, err := qs.DeleteFrom("sessions").AllRows().ToSQL()
+```
+
+```sql
+DELETE FROM "sessions"
+```
+
+`Where` takes the whole predicate in one call. Build optional filters as a
+slice and pass them with `qs.And(filters...)`.
+
+One check remains at render: a predicate that is TRUE for every row fails with
+`ErrInvalid`. `qs.And` and `NotIn` over an empty list are TRUE and would
+otherwise reach every row. The check reads TRUE and FALSE literals through
+`And`, `Or`, `Not` and parentheses, so `qs.And(qs.True(), qs.True())` and
+`qs.Not(qs.False())` fail too; use `AllRows` instead.
+
+The guard is structural. It does not inspect bound values or trusted SQL,
+verify authorization, or limit the affected rows.
 
 ### Update a row on conflict
 
@@ -554,8 +716,8 @@ Select a conflict target that matches the database constraint:
 
 For column and index targets, `TargetWhere` filters index inference; named
 constraint targets do not support inference predicates. `ConflictUpdate.Where`
-filters the update action itself. Both methods return new descriptors rather
-than mutating earlier ones, so retain their results.
+filters the update action itself. Both methods return new descriptors, so
+retain their results.
 
 Use `DoUpdate` when you have at least one assignment argument, or
 `DoUpdateSlice` when the assignment list is built at runtime:
@@ -578,63 +740,45 @@ SET "name" = "excluded"."name", "email" = "excluded"."email"
 
 Arguments: `[42 Ana ana@example.com]`.
 
-`DoUpdateSlice` copies the assignment slice entries, retaining live nested
-statements and shared bound application objects. An empty list produces
-`ErrInvalid` at render time rather than becoming `DO NOTHING`.
+`DoUpdateSlice` copies the assignment slice; bound application values are not
+copied. An empty list produces `ErrInvalid` at render time rather than becoming
+`DO NOTHING`.
 
-`SetAllExcluded` treats column names literally on both sides of each assignment,
-matching `Columns` and `ConflictColumns`. For a column named `a.b`, it renders
-`"a.b" = "excluded"."a.b"`; use `Ident("a.b")` to return the same literal
-column.
+`SetAllExcluded` takes one identifier per column, as `Columns` and
+`ConflictColumns` do. For a column named `a.b`, it renders
+`"a.b" = "excluded"."a.b"`.
 
 The generic `OnConflict` methods accept the two completed action types. Because
 they are generic, they cannot satisfy a consumer interface that requires a
 nongeneric `OnConflict` method.
 
-### Reuse statement builders
-
-Repeated builder calls have these effects:
-
-| Builder | Method | Effect |
-|---|---|---|
-| SELECT | `From`, `FromExpr` | Replaces the FROM list |
-| UPDATE | `From`, `FromExpr` | Appends FROM items |
-| DELETE | `From` | Replaces the target table |
-| INSERT SELECT | `From` | Replaces the source query |
-| SELECT, UPDATE, DELETE | `Where` | Appends conditions with AND |
-| UPDATE, assignment INSERT | `Set` | Appends assignments |
-| Row INSERT | `Values`, `ValuesSlice` | Appends a row |
-
-For example, `SelectCols("id").From("a").From("b")` selects from `b` only,
-while `Update("target").From("a").From("b")` retains both source tables.
-
-## Build joins and reports
+## Compose joins, CTEs, and reports
 
 Queries compose across CTEs, joins, and expressions. This example groups paid
 orders in a CTE, joins the result to users, and uses CASE to select a spending
 tier:
 
 ```go
-total := qs.Sum(qs.Col("o.total"))
+total := qs.Sum(qs.Col("o", "total"))
 paidOrders := qs.CTE("paid_orders",
-    qs.Select(qs.Col("o.user_id"), total.As("total_spend")).
+    qs.Select(qs.Col("o", "user_id"), total.As("total_spend")).
         FromExpr(qs.Table("orders").As("o")).
-        Where(qs.Eq("o.status", "paid")).
-        GroupBy("o.user_id").
-        Having(total.Gte(100)),
+        Where(qs.Col("o", "status").Eq(qs.Param("paid"))).
+        GroupByExpr(qs.Col("o", "user_id")).
+        Having(total.Gte(qs.Param(100))),
 )
 
 tier := qs.Case().
-    When(qs.Gte("p.total_spend", 1000), qs.Param("vip")).
+    When(qs.Col("p", "total_spend").Gte(qs.Param(1000)), qs.Param("vip")).
     Else(qs.Param("standard")).
     End().As("tier")
 
-q := qs.Select(qs.Col("u.id"), qs.Col("u.email"), qs.Col("p.total_spend"), tier).
+q := qs.Select(qs.Col("u", "id"), qs.Col("u", "email"), qs.Col("p", "total_spend"), tier).
     With(paidOrders).
     FromExpr(qs.InnerJoin(qs.Table("users").As("u"), paidOrders.Ref().As("p")).
-        On(qs.EqColumns("u.id", "p.user_id"))).
-    Where(qs.Eq("u.active", true)).
-    OrderBy(qs.Desc("p.total_spend"), qs.Asc("u.id")).
+        On(qs.Col("u", "id").Eq(qs.Col("p", "user_id")))).
+    Where(qs.Col("u", "active").Eq(qs.Param(true))).
+    OrderBy(qs.Col("p", "total_spend").Desc(), qs.Col("u", "id").Asc()).
     Limit(20).Offset(40)
 
 query, args, err := q.ToSQL()
@@ -664,8 +808,16 @@ the table reference used to join the CTE's result.
 
 `InnerJoin`, `LeftJoin`, `RightJoin`, and `FullJoin` need an `On`, `Using`, or
 `UsingAs` clause before they form a complete relation. CROSS and natural joins
-are already complete. For conditional expressions, `Case` uses conditions for
-each branch, while `CaseOf` compares branches with a single operand.
+are already complete.
+
+For conditional expressions, `Case` uses conditions for each branch, while
+`CaseOf` compares branches with a single operand. Both return a value whose
+only method adds the first branch, so a CASE with no WHEN has no `End` to call.
+
+A rowset is a query that can occur in an ordinary subquery: SELECT, VALUES,
+TABLE, or a set operation. Standalone `Values` binds values in a rowset, while
+`ValuesExpr` builds one from expressions. Write statements do not qualify as
+rowsets, even with RETURNING, so use a CTE to compose them with another query.
 
 ### Group a parameterized expression
 
@@ -692,9 +844,127 @@ final result order. The [database examples](integration/production_patterns_test
 exercise two collections and a parent with no children. Indexes and query plans
 remain application concerns.
 
-## Use PostgreSQL types and drivers
+## Build and query JSON
 
-### Reuse result declarations
+qs models PostgreSQL's SQL/JSON syntax as typed builders: the `JSON_OBJECT` and
+`JSON_ARRAY` constructors, the `JSON_OBJECTAGG` and `JSON_ARRAYAGG` aggregates,
+`JSON()`, `JSON_SCALAR`, `JSON_SERIALIZE`, `IS JSON`, the query functions
+`JSON_EXISTS`, `JSON_VALUE` and `JSON_QUERY`, and `JSON_TABLE`. The constructors,
+the aggregates and `IS JSON` need PostgreSQL 16. The rest need PostgreSQL 17.
+
+Each builder has only the clauses PostgreSQL accepts for its function, so most
+combinations the server rejects do not compile. `JSONValue` has no wrapper
+clause, `JSONExists` has no `Returning`, and `JSONQuery` has no `TrueOnError`.
+
+### Build a JSON object
+
+```go
+user := qs.JSONObject(
+    qs.JSONPair(qs.LiteralString("id"), qs.Col("id")),
+    qs.JSONPair(qs.LiteralString("name"), qs.Col("name")),
+    qs.JSONPair(qs.LiteralString("settings"), qs.FormatJSON(qs.Col("settings_text"))),
+).AbsentOnNull().Returning(qs.TypeJSONB)
+
+query, args, err := qs.Select(user.As("user")).
+    From("users").
+    Where(qs.Col("team_id").Eq(qs.Param(7))).
+    ToSQL()
+```
+
+```sql
+SELECT JSON_OBJECT(E'id' : "id", E'name' : "name", E'settings' : "settings_text" FORMAT JSON ABSENT ON NULL RETURNING jsonb) AS "user" FROM "users" WHERE ("team_id" = $1)
+```
+
+Arguments: `[7]`.
+
+`FormatJSON` marks text that already holds JSON, so PostgreSQL embeds it instead
+of quoting it as a string. `AbsentOnNull` omits a member whose value is NULL.
+Without a NULL clause, objects keep NULL values and arrays drop them.
+
+`JSONArray` builds an array from values, and `JSONArrayQuery` builds one from a
+query that returns one column. `JSONObjectAggregate` and `JSONArrayAggregate` are
+the SQL-standard aggregates. Both accept `Filter`, `Over` and `OverNamed`, and
+`JSONArrayAggregate` also accepts `OrderBy`. `JSONObjectAgg` and `JSONAgg` call
+PostgreSQL's `json_object_agg` and `json_agg` functions instead.
+
+### Read values from a document
+
+```go
+doc := qs.Col("doc")
+path := qs.LiteralString
+
+query, args, err := qs.Select(
+    qs.JSONValue(doc, path("$.customer.name")).As("customer"),
+    qs.JSONValue(doc, path("$.total")).
+        Returning(qs.TypeNumeric).DefaultOnEmpty(qs.LiteralInt(0)).As("total"),
+    qs.JSONQuery(doc, path("$.items[*].sku")).WithWrapper().As("skus"),
+).
+    From("orders").
+    Where(qs.JSONExists(doc, path("$.items[*] ? (@.qty >= $min)")).
+        Passing("min", qs.Param(10).Cast(qs.TypeInt4)).
+        Condition()).
+    ToSQL()
+```
+
+```sql
+SELECT JSON_VALUE("doc", E'$.customer.name') AS "customer", JSON_VALUE("doc", E'$.total' RETURNING numeric DEFAULT 0 ON EMPTY) AS "total", JSON_QUERY("doc", E'$.items[*].sku' WITH WRAPPER) AS "skus" FROM "orders" WHERE JSON_EXISTS("doc", E'$.items[*] ? (@.qty >= $min)' PASSING ($1)::integer AS "min")
+```
+
+Arguments: `[10]`.
+
+`JSONValue` returns one SQL scalar, `JSONQuery` returns JSON, and `JSONExists`
+tests whether the path matches anything. `Passing` supplies the value of a
+`$name` variable in the path. Cast a parameter you pass this way, because
+PostgreSQL otherwise reads it as text.
+
+`DefaultOnEmpty` and `DefaultOnError` take a constant, a function call, or an
+operator expression. PostgreSQL rejects a column reference there, and a value
+that is a column fails rendering. Under the extended query protocol PostgreSQL
+also rejects a value that is only a bound parameter; qs renders it and leaves
+that error to the server.
+
+`OmitQuotes` with `WithWrapper` or `WithConditionalWrapper` fails rendering,
+because PostgreSQL rejects the pair.
+
+`IsJSON` tests whether text is well-formed JSON. Narrow the test with `Object`,
+`Array`, or `Scalar`, and negate it with `Condition().Not()`.
+
+### Turn a document into rows
+
+```go
+items := qs.JSONTable(qs.Col("o", "doc"), "$.items[*]",
+    qs.JSONOrdinality("position"),
+    qs.JSONColumn("sku", qs.TypeText),
+    qs.JSONColumn("qty", qs.TypeInt4).Path("$.quantity").DefaultOnEmpty(qs.LiteralInt(1)),
+    qs.JSONExistsColumn("gift", qs.TypeBool),
+    qs.JSONNested("$.parts[*]", qs.JSONColumn("part", qs.TypeText).Path("$.name")),
+)
+
+query, args, err := qs.Select(qs.Col("o", "id"), qs.Star("item")).
+    FromExpr(qs.Table("orders").As("o")).
+    CrossJoinExpr(qs.Lateral(items.As("item"))).
+    ToSQL()
+```
+
+```sql
+SELECT "o"."id", "item".* FROM ("orders" AS "o" CROSS JOIN LATERAL JSON_TABLE("o"."doc", E'$.items[*]' COLUMNS ("position" FOR ORDINALITY, "sku" text, "qty" integer PATH E'$.quantity' DEFAULT 1 ON EMPTY, "gift" boolean EXISTS, NESTED PATH E'$.parts[*]' COLUMNS ("part" text PATH E'$.name'))) AS "item")
+```
+
+Arguments: `[]`.
+
+`JSONTable` is a row source, and `As` or `Ref` makes it a relation. PostgreSQL
+lets it read a column of an earlier FROM item with or without `Lateral`, which
+only writes the keyword. The row path and every column path are Go strings,
+because PostgreSQL accepts only a string constant there. A column without `Path`
+reads the member that has the column's name.
+
+Column names and path names must be distinct within one `JSONTable`. A repeated
+name, an empty path, or more column aliases in `As` than the table has columns
+fails rendering. PostgreSQL names a row path without `PathName`
+`json_table_path_0`, so that name fails rendering too until you name the row
+path.
+
+## Scan rows with projection declarations
 
 The `github.com/jacoelho/qs/projection` companion package declares result columns
 together with where each one is read. One declaration owns output order,
@@ -728,24 +998,32 @@ func users(r qs.Relation, prefix string) projection.Projection[User] {
     )
 }
 
-func employees() (*qs.SelectBuilder, projection.Projection[Row]) {
+func employees() (qs.SelectBuilder, projection.Projection[Row]) {
     employee := qs.Table("users").As("employee")
     manager := qs.Table("users").As("manager")
     p := projection.New(
         projection.Embed(users(employee, ""), func(r *Row) *User { return &r.Employee }),
         projection.EmbedNull(users(manager, "manager_"), func(r *Row, u *User) { r.Manager = u }),
     )
-    query := qs.Select(p.Expressions()...).FromExpr(
-        qs.LeftJoin(employee, manager).On(employee.Col("manager_id").EqExpr(manager.Col("id"))),
+    query := qs.SelectSlice(p.Expressions()).FromExpr(
+        qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
     )
     return query, p
 }
 ```
 
-Read a result set with `p.Collect(rows)`, or range over `p.All(rows)`. Both accept
-`pgx.Rows` and `*sql.Rows`, report `rows.Err()` with the row errors, and leave closing
-to you. They reuse their working memory from row to row, so prefer them to calling
-`Scan` in a loop:
+For one-off queries with unique column names, ordinary `expr.As("label")` and
+your driver's struct mapping are sufficient.
+
+Declarations are immutable and safe to share, so declare one once per alias and
+reuse it rather than rebuilding it per query.
+
+### Read rows
+
+Read a result set with `p.Collect(rows)`, or range over `p.All(rows)`. Both
+accept `pgx.Rows` and `*sql.Rows`, report `rows.Err()` with the row errors, and
+leave closing to you. They reuse their working memory from row to row, so prefer
+them to calling `Scan` in a loop:
 
 ```go
 rows, err := conn.Query(ctx, text, args...)
@@ -756,13 +1034,21 @@ defer rows.Close()
 return p.Collect(rows)
 ```
 
-For one row, pass your driver's scan function: `p.Scan(row.Scan)` returns a `Row`.
-`p.ScanInto(&row, row.Scan)` reads into a value you already hold, such as the entity a
-RETURNING clause completes, and leaves the fields the declaration does not name. When
-you reuse one value across rows, each row overwrites the last in place: read every row
-you keep into its own value, and have each setter assign on nil too, or a NULL keeps
-the previous row's value. `ColumnOrZero` assigns zero on NULL, so it needs no such
-care. qs still performs no I/O and imports no driver.
+For one row, pass your driver's scan function: `p.Scan(row.Scan)` returns a
+`Row`. `p.ScanInto(&row, row.Scan)` reads into a value you already hold, such as
+the entity a RETURNING clause completes, and leaves the fields the declaration
+does not name.
+
+When you reuse one value across rows, each row overwrites the last in place.
+Read every row you keep into its own value, and have each setter assign on nil
+too, or a NULL keeps the previous row's value. `ColumnOrZero` assigns zero on
+NULL, so it needs no such care.
+
+qs still performs no I/O and imports no driver.
+
+### Declare columns and groups
+
+Build a declaration from these constructors:
 
 - `Column` reads a required column. Its destination can be a Scanner that writes
   into the row.
@@ -782,12 +1068,13 @@ care. qs still performs no I/O and imports no driver.
   assigns the whole value replaces what they read.
 - `New` concatenates declarations in order.
 
-An `EmbedNull` group is absent when all its columns are NULL, so a matched row with
-only NULLs in the selected columns looks like no match. In a present group, NULL in
-a `Column` returns an error matching `projection.ErrNull` that names the column.
-This differs from flat reads: `Column` accepts NULL outside a group when `T` can
-hold it, such as `*string`, so declare nullable columns with `ColumnNull` or
-`ColumnOrZero`.
+Declare nullable columns with `ColumnNull` or `ColumnOrZero`. `Column` accepts
+NULL outside a group when `T` can hold it, such as `*string`, but in a present
+`EmbedNull` group NULL in a `Column` returns an error matching
+`projection.ErrNull` that names the column.
+
+An `EmbedNull` group is absent when all its columns are NULL, so a matched row
+with only NULLs in the selected columns looks like no match.
 
 A join key that no field holds can still decide presence. Declare it with a
 `ColumnNull` whose setter does nothing:
@@ -796,46 +1083,32 @@ A join key that no field holds can still decide presence. Declare it with a
 projection.ColumnNull(human.Col("user_id"), func(*Human, *int64) {})
 ```
 
-`ColumnNull`, `ColumnOrZero`, and a `Column` in a group whose `T` is not a Scanner,
-read as `var v *T; rows.Scan(&v)` does, with that read's limits on each driver:
+`ColumnNull`, `ColumnOrZero`, and a `Column` in a group whose `T` is not a
+Scanner read as `var v *T; rows.Scan(&v)` does, with that read's limits on each
+driver. Declaring one panics on a pointer `T` (use `ColumnNull[string]` rather
+than `*string`) and on the driver types qs detects as unreadable that way.
+Detection is best effort.
 
-- `T` must decode from its zero value, so a `ColumnOrZero`, and a `Column` in a
-  group, must return a stable address holding a zero value.
-- `T` must own its memory.
-- Presence is what the driver reports through a nil pointer, which depends on driver
-  and `T`. pgx v5.11 reports nil for `'null'::jsonb` into a `string` or a map, which
-  then reads as NULL: an absent group, `ErrNull`, nil from `ColumnNull`, or zero from
-  `ColumnOrZero`. A `Column` with a Scanner `T` keeps it present; the other two cannot.
+`Column` and `Embed` accessors run on a zero value at declaration and panic if
+they return nil, so they must tolerate one and be deterministic.
 
-A Scanner `T` in a group reads through `Scan(any)`, with NULL withheld from it. On
-pgx that bypasses its native codec, so a read outside a group can differ: an error
-where the codec would convert, or another value.
+`go doc ./projection` states these contracts in full: the per-driver limits of
+nullable reads, the types rejected at declaration, the order in which setters
+and `Map` conversions run, and what a pointer kept by a setter refers to.
 
-`ColumnNull`, `ColumnOrZero` and group `Column`s panic at declaration on a pointer `T`
-(use `ColumnNull[string]` rather than `*string`), `sql.RawBytes`, `pgtype.DriverBytes`,
-`pgtype.CompositeFields` and `pgtype.Multirange`. A `ColumnOrZero`, and a non-Scanner
-group `Column`, also panic on a target that is unstable or initialised for a zero row,
-so a write-through Scanner cannot be used with `ColumnOrZero`. Detection is best effort: a defined type over one of
-these passes, and then fails as the hand-written read does, including a pgx panic or
-a database/sql hang.
+### Keep the output list aligned
 
-`Column` and `Embed` accessors run on a zero value at declaration and panic if they
-return nil, so they must tolerate one and be deterministic. A `Column` accessor must
-not depend on another accessor's allocation: put nested pointers behind `Embed`, and
-allocate only if nil, since `Embed`s sharing a pointer would otherwise replace it.
+Put `p.Expressions()` first in a SELECT or RETURNING list, unchanged. Scanning
+is positional: other output before or among them breaks the correspondence, and
+a reorder of equal width can go unnoticed.
 
-Setters and `Map` conversions run after the row is read, in declaration order. Each
-finds every `Column` and `ColumnOrZero` of its row, and of the rows enclosing it,
-already assigned, so a setter can derive a field from a sibling column whether the
-declaration is read flat or inside `EmbedNull`. A setter may keep the pointers it
-receives; the package documentation says what a kept row pointer refers to.
+SQL types are not checked against `T`, and convertible types are coerced by the
+driver. A width mismatch fails only when a row is scanned. Each expression must
+produce one result column.
 
-Put `p.Expressions()` first in a SELECT or RETURNING list, unchanged. Scanning is
-positional: other output before or among them breaks the correspondence, and a reorder
-of equal width can go unnoticed.
-
-Output selected after them is read by destinations your scan function appends. Use
-this for a value that belongs to no row, such as a window count repeated on every row:
+Output selected after them is read by destinations your scan function appends.
+Use this for a value that belongs to no row, such as a window count repeated on
+every row:
 
 ```go
 var total int64
@@ -855,24 +1128,20 @@ func (c counted) Scan(dest ...any) error { return c.Rows.Scan(append(dest, c.tot
 users, err := p.Collect(counted{Rows: rows, total: &total})
 ```
 
-A value that belongs to each row stays in the declaration: `Embed` the declaration
-beside a `Column` in a wrapper row.
+A value that belongs to each row stays in the declaration: `Embed` the
+declaration beside a `Column` in a wrapper row.
 
-SQL types are not checked against `T`, and convertible types are coerced by the
-driver. A width mismatch fails only when a row is scanned.
-Each expression must produce one result column. Empty projections are valid
-containers: empty SELECT fails rendering, while empty RETURNING adds nothing.
-Establish nonempty output before executing DML that must return rows.
-`qs.SelectNoColumns` separately expresses an intentional zero-column SELECT.
+Empty projections are valid containers: `qs.SelectSlice` with no expressions
+fails rendering, while empty RETURNING adds nothing. Establish nonempty output
+before executing DML that must return rows. `qs.Select` requires its first
+column, so a literal SELECT list cannot be empty; `qs.SelectNoColumns` states
+an intentional zero-column SELECT.
 
-Declarations are immutable and safe to share, so declare one once per alias and reuse
-it rather than rebuilding it per query.
+The [executable projection examples](projection/example_test.go) demonstrate
+self-joins, `Map`, JSONB, RETURNING, `Collect`, `ScanInto`, `ColumnOrZero` with
+a join key that no field holds, and a window count read beside each row.
 
-For one-off queries with unique column names, ordinary `expr.As("label")` and your
-driver's struct mapping are sufficient. The
-[executable projection examples](projection/example_test.go) demonstrate self-joins,
-`Map`, JSONB, RETURNING, `Collect`, `ScanInto`, `ColumnOrZero` with a join key that
-no field holds, and a window count read beside each row.
+## Use PostgreSQL types with pgx
 
 ### Cast a value
 
@@ -890,7 +1159,7 @@ SELECT ($1)::uuid
 Arguments: `[550e8400-e29b-41d4-a716-446655440000]`.
 
 To compare a UUID column with this expression, use
-`qs.Col("id").EqExpr(qs.Param(id).Cast(qs.TypeUUID))`. The cast affects the SQL
+`qs.Col("id").Eq(qs.Param(id).Cast(qs.TypeUUID))`. The cast affects the SQL
 text; qs leaves the Go value unchanged for the driver to encode.
 
 Dedicated descriptors cover common PostgreSQL types. For other built-in types,
@@ -900,10 +1169,11 @@ from any descriptor.
 
 ### Use pgx values
 
-pgx values can pass directly to `Param`, comparison helpers, or standalone
+pgx values can pass directly to `Param`, `Field[T]` comparisons, or standalone
 `Values`. For write destinations, pass them through `Value`.
 
-This example requires `github.com/jackc/pgx/v5/pgtype`, an open pgx connection `conn`, and a context `ctx`:
+This example requires `github.com/jackc/pgx/v5/pgtype`, an open pgx connection
+`conn`, and a context `ctx`:
 
 ```go
 var id pgtype.UUID
@@ -987,52 +1257,48 @@ If you also bind `person[]`, register `_person`. For schema-qualified types,
 use a cast such as `qs.TypeNamed("app", "person")` and load the corresponding
 schema-qualified types on the connection.
 
-The [database type examples](integration/type_examples_test.go) verify UUID and nested composite results against PostgreSQL.
+The [database type examples](integration/type_examples_test.go) verify UUID and
+nested composite results against PostgreSQL.
 
 ## Render SQL and handle errors
 
-### Select render options
+### Set render limits
 
-`ToSQL` returns an owned SQL string and argument slice. To configure a render,
-pass `Options` to `ToSQLWith` or `AppendWith`. Zero-valued fields select the
-following defaults:
+`ToSQL` returns an owned SQL string and argument slice. Placeholders are always
+`$1`, `$2`, and so on. To change a render's limits, pass `Options` to `ToSQLWith`
+or `AppendWith`. Zero-valued fields select the following defaults:
 
 | Option | Default | Valid non-default values |
 |---|---|---|
-| `PlaceholderStyle` | `Dollar` (`$1`, `$2`, ...) | `Question` (`?`) |
-| `PostgreSQL` | PostgreSQL 18 | PostgreSQL 12 through 18 |
 | `MaxParameters` | 65,535 | 1 through 65,535 |
 | `MaxDepth` | 256 | 1 through 4,096 |
 
-For example, render for PostgreSQL 16:
+For example, reject a query that binds more than 1,000 arguments:
 
 ```go
-query, args, err := q.ToSQLWith(qs.Options{PostgreSQL: qs.PostgreSQL16})
+query, args, err := q.ToSQLWith(qs.Options{MaxParameters: 1000})
 ```
 
-`Question` changes only the parameter placeholders, preserving PostgreSQL
-syntax. It requires a consumer that supports question-mark placeholders. The
-parameter limit includes any existing arguments passed to an append method,
-and the depth limit bounds nested traversal and rejects cycles.
+The parameter limit includes any existing arguments passed to an append method,
+and the depth limit bounds nesting.
 
-Feature checks cover known syntax requirements, leaving schema objects, SQL
-types, privileges, and driver encoding to PostgreSQL and your driver. qs does
-not infer feature requirements for arbitrary `Call` names or trusted SQL, and
-PostgreSQL validates unknown projection widths. Operator validation enforces
-the standard PostgreSQL limit of 63 bytes without proving that an operator
-exists or supports ordering.
+### Know what rendering checks
 
-Some features require these minimum versions:
+Rendering checks structure only. Schema objects, SQL types, privileges, driver
+encoding, and whether your server supports a construct are left to PostgreSQL
+and your driver.
 
-| Feature | Minimum PostgreSQL version |
-|---|---|
-| Normalization | 13 |
-| `SubstringSimilar` | 14 |
-| SQL/JSON object, array, aggregate, and predicate forms | 16 |
-| `AtLocal`, `JSONParse`, `JSONScalar`, `JSONSerialize` | 17 |
+qs has no PostgreSQL version option and renders the same SQL for every server.
+A construct newer than your server, such as `MergeAction` (PostgreSQL 17) or
+`Old` and `New` in RETURNING (PostgreSQL 18), fails at the database.
 
-The selected `Options.PostgreSQL` value controls feature checks for each render.
-Older substring forms retain their existing version support.
+Operator validation enforces the standard PostgreSQL limit of 63 bytes without
+proving that an operator exists or supports ordering.
+
+PostgreSQL keeps the first 63 bytes of an identifier. Checks that names are
+distinct, such as CTE names, target columns, and `JSONTable` columns, compare
+names by that part, so two long names with the same first 63 bytes fail
+rendering as duplicates.
 
 ### Handle render errors
 
@@ -1041,9 +1307,8 @@ Use `errors.Is` to identify the cause of a render error:
 | Cause | Meaning |
 |---|---|
 | `ErrInvalid` | Invalid query structure, input, or options |
-| `ErrUnsupported` | Feature unavailable in the selected PostgreSQL version |
 | `ErrParameterLimit` | Too many arguments |
-| `ErrDepth` | Query cycle or nesting limit exceeded |
+| `ErrDepth` | Nesting limit exceeded |
 
 For more context, use `errors.As` to obtain `*qs.RenderError`, which provides
 these fields:
@@ -1054,9 +1319,10 @@ these fields:
 
 Each error owns its path, so later renders cannot change it. Paths identify
 composition boundaries through static roles and indexes; they do not include
-bound values, caller names, SQL fragments, or every internal node. The cause
-and path ordering are contracts, but `Error()` text is diagnostic output and
-should not be parsed as a machine format.
+bound values, caller names, SQL fragments, or every internal node.
+
+The cause and path ordering are contracts. `Error()` text is diagnostic output
+and should not be parsed as a machine format.
 
 On failure, `ToSQL` returns empty SQL and nil arguments. Append methods return
 the original slice lengths and visible prefixes, although unused buffer
@@ -1081,7 +1347,7 @@ For repeated rendering, `AppendSQL` appends SQL and arguments to caller-owned
 buffers, starting parameter numbering after any existing arguments:
 
 ```go
-q := qs.SelectCols("id").From("users").Where(qs.Eq("active", true))
+q := qs.SelectCols("id").From("users").Where(qs.Col("active").Eq(qs.Param(true)))
 sqlBuffer := make([]byte, 0, 256)
 argBuffer := make([]any, 0, 8)
 
@@ -1093,25 +1359,57 @@ execution finishes, clear argument references before reusing the storage, for
 example with `clear(argBuffer)` before the next append.
 
 Successful appends can avoid allocations when the query is prebuilt and the
-buffers have enough capacity. Construction, cloning, owned output, and
-failures have separate costs, so this is not a zero-allocation guarantee for
-every query.
+buffers have enough capacity. Construction, owned output, and failures have
+separate costs, so this is not a zero-allocation guarantee for every query.
 
-### Control query lifetime
+`make benchmark` reports both costs. `BenchmarkBuildAndRender` builds a
+statement and renders it, which is what a request that builds its query pays.
+`BenchmarkRender` renders a prebuilt statement into reused buffers.
 
-Nested builders remain live references, which means a parent query observes
-later changes to its children. `Clone` copies the reachable statement graph,
-including target expressions with child queries, and preserves shared
-subqueries within the copy. Application objects in bound parameters remain
-shared with the original.
+## Reuse and share builders
 
-You can render concurrently once the query graph and bound values are stable.
-Mutation and `Reset` are unsynchronized, so do not mutate a builder while
-another goroutine renders it. Resetting a child also changes what its parent
-observes. INSERT builders do not support `Reset`; select a source again to
-create a new completed builder.
+Builders, expressions, and relations are immutable values. A builder method
+returns a new builder and never changes its receiver, so you can branch a base
+query freely and render it from several goroutines without synchronization.
 
-## Develop and find references
+A subquery or CTE captures the builder value it was given. Builders derived
+from that value later do not change it:
+
+```go
+orders := qs.SelectCols("user_id").From("orders")
+buyers := qs.SelectCols("id").From("users").Where(qs.Col("id").InQuery(orders))
+
+orders = orders.Where(qs.Col("total").Gt(qs.Param(100)))
+query, args, err := buyers.ToSQL()
+```
+
+```sql
+SELECT "id" FROM "users" WHERE ("id" IN (SELECT "user_id" FROM "orders"))
+```
+
+qs does not copy bound values. Keep the application objects you bind unchanged
+until execution completes.
+
+### Know which calls append and which replace
+
+Repeated calls on one builder combine as follows:
+
+| Builder | Method | Effect |
+|---|---|---|
+| SELECT | `From`, `FromExpr` | Replaces the FROM list |
+| Pending UPDATE | `From`, `FromExpr` | Appends FROM items |
+| Pending DELETE | `Using`, `UsingExpr` | Appends USING items |
+| INSERT SELECT | `From` | Replaces the source query |
+| SELECT | `Where` | Appends conditions with AND |
+| Pending UPDATE, pending DELETE | `Where`, `WhereCurrentOf`, `AllRows` | Completes the statement; the result has none of the three |
+| SELECT and other queries | `Limit`, `LimitExpr`, `LimitAll`, `LimitWithTies`, `LimitWithTiesExpr` | Replaces the row limit |
+| Pending UPDATE, assignment INSERT | `Set` | Appends assignments |
+| Row INSERT | `Values`, `ValuesSlice` | Appends a row |
+
+For example, `SelectCols("id").From("a").From("b")` selects from `b` only,
+while `Update("target").From("a").From("b")` retains both source tables.
+
+## Develop qs
 
 Run these checks from the repository root:
 
@@ -1121,10 +1419,13 @@ make test
 ```
 
 `make golangci-lint` installs the pinned linter in `.bin/` when needed and
-checks both the root packages and the PostgreSQL integration module. Pull
-request checks run the linter, regular tests, and race tests. Regular tests
-need no database or database driver, and Make and CI bound test parallelism.
-Use `TEST_PROCS` to override the Make default.
+checks both the root packages and the PostgreSQL integration module.
+
+Regular tests need no database or database driver. Make and CI bound test
+parallelism; use `TEST_PROCS` to override the Make default.
+
+Pull request checks run the linter, the generated-code check, regular tests,
+and race tests.
 
 Use these targets for additional development tasks:
 
@@ -1137,6 +1438,10 @@ Use these targets for additional development tasks:
 | Verify generated code without changes | `make generate-check` |
 | Run benchmarks | `make benchmark` |
 
+`make generate` runs `go run ./internal/buildergen`, which writes the methods
+every statement builder repeats and the typed tuples. `make generate-check`
+runs it with `-check`, which reports stale output without writing.
+
 To run database tests, supply a PostgreSQL connection string:
 
 ```sh
@@ -1145,12 +1450,12 @@ make integration
 ```
 
 The `integration/` module owns the pgx dependency and uses the local qs checkout.
-Integration CI tests PostgreSQL 12 through 18, passing the detected server
-version to rendering. CI also runs root and integration race tests. This
-coverage verifies the declared syntax targets without claiming support for
-every combination of schema, types, and extensions.
+The integration suite supports PostgreSQL 15 through 18, and pull request checks
+run it against each of them with the race detector. This coverage verifies the
+syntax qs renders without claiming support for every combination of schema,
+types, and extensions.
 
-Use these references for more information:
+## Find references
 
 - [Executable examples](example_test.go): examples with expected SQL and arguments.
 - `go doc .`: the full exported API.
@@ -1158,8 +1463,10 @@ Use these references for more information:
 - [Architecture guide](internal/ARCHITECTURE.md): boundaries, ownership, and design decisions.
 - [PostgreSQL corpus](internal/postgrescorpus/README.md): construction measurements and fixture maintenance.
 
-The pinned corpus verifies 28,111 of 28,197 query occurrences, measuring 99.70%
-construction support. This measures SQL construction, not schema validity,
+The pinned corpus holds 28,197 query occurrences from PostgreSQL 18's regression
+SQL. The public API builds 27,887 of them (98.90%) into SQL that reparses to the
+source tree; 220 use syntax qs omits by design, 50 are refused at render time and
+40 have no construction. This measures SQL construction, not schema validity,
 query results, or query plans.
 
 qs uses the [MIT license](LICENSE). PostgreSQL-derived fixtures retain their

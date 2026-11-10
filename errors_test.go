@@ -40,10 +40,10 @@ func TestInvalidConstruction(t *testing.T) {
 		name string
 		q    Statement
 	}{
-		{"select_zero", Select()}, {"nil", nil}, {"typed_nil", (*SelectBuilder)(nil)},
+		{"select_zero", SelectSlice(nil)}, {"nil", nil},
 		{"where_zero", Select(LiteralInt(1)).Where(Condition{})},
-		{"identifier_empty", Select(Col(""))}, {"identifier_component", Select(Col("a..b"))},
-		{"identifier_nul", Select(Ident("a\x00b"))}, {"identifier_utf8", Select(Ident("\xff"))},
+		{"identifier_empty", Select(Col(""))}, {"identifier_component", Select(Col("a", "", "b"))},
+		{"identifier_nul", Select(Col("a\x00b"))}, {"identifier_utf8", Select(Col("\xff"))},
 		{"raw_empty", SelectSQL("")}, {"raw_nul", SelectSQL("a\x00")},
 		{"cast_zero", Select(Param(1).Cast(DataType{}))}, {"cast_varchar", Select(Param(1).Cast(TypeVarchar(0)))},
 		{"cast_numeric", Select(Param(1).Cast(TypeDecimal(1001, 0)))},
@@ -54,10 +54,9 @@ func TestInvalidConstruction(t *testing.T) {
 		{"bind_optional", Select(Param(Some(1)))}, {"bind_null", Select(Param(NullOf[int]()))},
 		{"bind_null_pointer", Select(Param((*Null[int])(nil)))},
 		{"limit_negative", Select(LiteralInt(1)).Limit(-1)}, {"offset_negative", Select(LiteralInt(1)).Offset(-1)},
-		{"fetch_limit", Select(LiteralInt(1)).Limit(1).Fetch(2, OnlyRows)},
-		{"fetch_mode", Select(LiteralInt(1)).Fetch(1, FetchMode(99))},
-		{"fetch_ties_unordered", Select(LiteralInt(1)).Fetch(1, WithTies)},
-		{"fetch_ties_locked", Select(LiteralInt(1)).OrderBy(Ordinal(1).Asc()).Fetch(1, WithTies).Lock(ForUpdate())},
+		{"ties_negative", Select(LiteralInt(1)).OrderBy(Ordinal(1).Asc()).LimitWithTies(-1)},
+		{"ties_unordered", Select(LiteralInt(1)).LimitWithTies(1)},
+		{"ties_skip_locked", Select(Col("a")).From("t").OrderBy(Col("a").Asc()).LimitWithTies(1).Lock(ForUpdate().SkipLocked())},
 		{"order_zero", Select(LiteralInt(1)).OrderBy(Order{})}, {"ordinal_zero", Select(LiteralInt(1)).OrderBy(Ordinal(0).Asc())},
 		{"lock_distinct", Select(Star()).From("t").Distinct().Lock(ForUpdate())},
 		{"lock_group", Select(Col("id")).From("t").GroupBy("id").Lock(ForUpdate())},
@@ -70,7 +69,7 @@ func TestInvalidConstruction(t *testing.T) {
 		{"scalar_width", Select(Scalar(Select(Param(1), Param(2))))},
 		{"in_width", Select(Col("a").InQuery(SelectCols("a", "b")).Expr())},
 		{"in_nil", Select(Col("a").InQuery(nil).Expr())},
-		{"row_width", Select(Row(Col("a"), Col("b")).EqValues(1).Expr())},
+		{"row_width", Select(Row(Col("a"), Col("b")).Eq(Row(Param(1))).Expr())},
 		{"row_empty", Select(Row().Expr())},
 		{"row_membership_width", Select(Row(Col("a"), Col("b")).In(Row(Param(1))).Expr())},
 		{"set_width", Union(SelectCols("a"), SelectCols("b", "c"))},
@@ -79,36 +78,40 @@ func TestInvalidConstruction(t *testing.T) {
 		{"bound_write_descriptor", Select(Param(Default()))},
 		{"cte_duplicate", Select(Param(1)).With(CTE("c", Select(Param(1))), CTE("c", Select(Param(2))))},
 		{"cte_nil", Select(Param(1)).With(CTE("c", nil))},
-		{"cte_invalid_body", Select(Param(1)).With(CTE("c", Truncate("t")))},
 		{"cte_width", Select(Param(1)).With(CTE("c", Select(Param(1))).Columns("a", "b"))},
 		{"cte_search_nonrecursive", Select(Param(1)).With(CTE("c", Select(Param(1))).Search(SearchDepthFirst("id").Set("ord")))},
 		{"cte_search_empty", Select(Param(1)).WithRecursive(CTE("c", Select(Param(1))).Search(SearchBreadthFirst().Set("ord")))},
 		{"cte_cycle_empty", Select(Param(1)).WithRecursive(CTE("c", Select(Param(1))).Cycle(Cycle("id")))},
-		{"cte_nested_dml", Select(Scalar(Select(Param(1)).With(CTE("d", DeleteFrom("t").ReturningCols("id")))))},
+		{"cte_nested_dml", Select(Scalar(Select(Param(1)).With(CTE("d", DeleteFrom("t").AllRows().ReturningCols("id")))))},
 		{"insert_target", InsertInto("").Values(Write(Param(1)))},
 		{"insert_nil_select", InsertInto("t").From(nil)},
 		{"insert_columns_width", InsertInto("t").Columns("a", "b").Values(Write(Param(1)))},
 		{"insert_select_width", InsertInto("t").Columns("a").From(SelectCols("a", "b"))},
 		{"insert_columns_duplicate", InsertInto("t").Columns("a", "a").Values(Write(Param(1)), Write(Param(2)))},
 		{"insert_only", InsertIntoTable(Table("t").Only()).Values(Write(Param(1)))},
-		{"update_no_assignments", Update("t")}, {"update_target", Update("").Set(Set("a", Write(Param(1))))},
-		{"update_duplicate", Update("t").Set(Set("a", Write(Param(1))), Set("a", Write(Param(2))))},
-		{"update_tuple_empty", Update("t").Set(SetRow(nil, Write(Param(1))))},
-		{"update_tuple_width", Update("t").Set(SetRow([]string{"a", "b"}, Write(Param(1))))},
-		{"update_tuple_duplicate", Update("t").Set(SetRow([]string{"a", "a"}, Write(Param(1)), Write(Param(2))))},
-		{"update_tuple_query_width", Update("t").Set(SetRowFrom([]string{"a"}, SelectCols("b", "c")))},
-		{"update_bad_target", Update("t").Set(Assign(Param("a"), Write(Param(1))))},
-		{"update_missing_guard", Update("t").Set(Set("a", Write(Param(1)))).RequireWhere()},
-		{"cursor_and_where", DeleteFrom("t").Where(True()).WhereCurrentOf("c")},
-		{"delete_target", DeleteFrom("")}, {"delete_missing_guard", DeleteFrom("t").RequireWhere()},
-		{"returning_no_projection", DeleteFrom("t").ReturningRows(ReturningAliases{Old: "o"})},
-		{"returning_same_alias", DeleteFrom("t").ReturningCols("id").ReturningRows(ReturningAliases{Old: "r", New: "r"})},
+		{"update_no_assignments", Update("t").AllRows()}, {"update_target", Update("").Set(Set("a", Write(Param(1)))).AllRows()},
+		{"update_duplicate", Update("t").Set(Set("a", Write(Param(1))), Set("a", Write(Param(2)))).AllRows()},
+		{"update_qualified_duplicate", Update("t").Set(Assign(Col("t", "a"), Write(Param(1))), Assign(Col("t", "a"), Write(Param(2)))).AllRows()},
+		{"update_schema_qualified_duplicate", Update("t").Set(Assign(Col("s", "t", "a"), Write(Param(1))), Assign(Col("s", "t", "a"), Write(Param(2)))).AllRows()},
+		{"insert_qualified_targets_duplicate", InsertInto("t").Targets(Col("t", "a"), Col("t", "a")).Values(Write(Param(1)), Write(Param(2)))},
+		{"update_tuple_empty", Update("t").Set(SetRow(nil, Write(Param(1)))).AllRows()},
+		{"update_tuple_width", Update("t").Set(SetRow([]string{"a", "b"}, Write(Param(1)))).AllRows()},
+		{"update_tuple_duplicate", Update("t").Set(SetRow([]string{"a", "a"}, Write(Param(1)), Write(Param(2)))).AllRows()},
+		{"update_tuple_query_width", Update("t").Set(SetRowFrom([]string{"a"}, SelectCols("b", "c"))).AllRows()},
+		{"update_bad_target", Update("t").Set(Assign(Param("a"), Write(Param(1)))).AllRows()},
+		{"update_unselected", UpdateBuilder{table: table("t"), set: []Assignment{Set("a", Write(Param(1)))}}},
+		{"update_where_true", Update("t").Set(Set("a", Write(Param(1)))).Where(True())},
+		{"update_where_empty_and", Update("t").Set(Set("a", Write(Param(1)))).Where(And())},
+		{"delete_target", DeleteFrom("").AllRows()}, {"delete_unselected", DeleteBuilder{table: table("t")}},
+		{"delete_where_true", DeleteFrom("t").Where(True(), True())},
+		{"delete_where_empty_and", DeleteFrom("t").Where(And())},
+		{"returning_no_projection", DeleteFrom("t").AllRows().ReturningRows(ReturningAliases{Old: "o"})},
+		{"returning_same_alias", DeleteFrom("t").AllRows().ReturningCols("id").ReturningRows(ReturningAliases{Old: "r", New: "r"})},
 		{"conflict_empty_target", InsertInto("t").Values(Write(Param(1))).OnConflict(ConflictColumnsTarget{}.DoNothing())},
 		{"conflict_empty_index", InsertInto("t").Values(Write(Param(1))).OnConflict(ConflictIndexTarget{}.DoNothing())},
-		{"case_nil", Select((*SearchedCaseBuilder)(nil).End())},
 		{"function_modifier_wrong", Select(Col("x").Distinct())},
-		{"ordered_set_distinct", Select(PercentileCont(Param(0.5)).Distinct().WithinGroup(Asc("x")))},
-		{"ordered_set_window", Select(PercentileCont(Param(0.5)).WithinGroup(Asc("x")).Over(Window()))},
+		{"ordered_set_distinct", Select(PercentileCont(Param(0.5)).Distinct().WithinGroup(Col("x").Asc()))},
+		{"ordered_set_window", Select(PercentileCont(Param(0.5)).WithinGroup(Col("x").Asc()).Over(Window()))},
 		{"window_duplicate", Select(RowNumber().OverNamed("w")).Window("w", Window()).Window("w", Window())},
 		{"window_empty_name", Select(RowNumber().OverNamed(""))},
 		{"frame_bad_start", Select(CountAll().Over(Window().RowsBetween(UnboundedFollowing(), CurrentRow())))},
@@ -116,14 +119,14 @@ func TestInvalidConstruction(t *testing.T) {
 		{"frame_backwards", Select(CountAll().Over(Window().RowsBetween(Following(1), Preceding(1))))},
 		{"frame_negative", Select(CountAll().Over(Window().RowsBetween(Preceding(-1), CurrentRow())))},
 		{"range_unordered", Select(CountAll().Over(Window().RangeBetween(Preceding(1), CurrentRow())))},
-		{"range_many_orders", Select(CountAll().Over(Window().OrderBy(Asc("a"), Asc("b")).RangeBetween(Preceding(1), CurrentRow())))},
+		{"range_many_orders", Select(CountAll().Over(Window().OrderBy(Col("a").Asc(), Col("b").Asc()).RangeBetween(Preceding(1), CurrentRow())))},
 		{"groups_unordered", Select(CountAll().Over(Window().GroupsBetween(UnboundedPreceding(), CurrentRow())))},
 		{"exclude_no_frame", Select(CountAll().Over(Window().Exclude(ExcludeTies)))},
 		{"inherit_partition", Select(CountAll().Over(Window().Base("w").PartitionBy(Col("a"))))},
 		{"operator_comment", Select(Operator(Col("a"), "--", Param(1)))},
 		{"operator_keyword", Select(Operator(Col("a"), "UNION SELECT", Param(1)))},
-		{"escape_too_long", Select(Like("a", "b").Escape("xy").Expr())},
-		{"escape_wrong_operator", Select(Eq("a", 1).Escape("\\").Expr())},
+		{"escape_too_long", Select(Col("a").Like("b").Escape("xy").Expr())},
+		{"escape_wrong_operator", Select(Col("a").Eq(Param(1)).Escape("\\").Expr())},
 		{"table_lateral", Select(Star()).FromExpr(Lateral(Table("t")))},
 		{"subquery_only", Select(Star()).FromExpr(Select(Param(1)).As("s").Only())},
 		{"sample_subquery", Select(Star()).FromExpr(Select(Param(1)).As("s").TableSample("system", Param(10)))},
@@ -132,20 +135,6 @@ func TestInvalidConstruction(t *testing.T) {
 		{"rows_from_empty", Select(Star()).FromExpr(RowsFrom())},
 		{"record_ordinality", Select(Star()).FromExpr(TableFunc(Call("f")).DefineColumns(Def("x", TypeInt4)).WithOrdinality())},
 		{"json_object_odd", Select(JSONBBuildObject(Param("x")))},
-		{"json_exists_returning", Select(JSONExists(Col("doc"), Param("$")).Returning(TypeBool).Expr())},
-		{"json_exists_empty", Select(JSONExists(Col("doc"), Param("$")).OnEmpty(JSONFalse()).Expr())},
-		{"json_exists_wrong_error", Select(JSONExists(Col("doc"), Param("$")).OnError(JSONNull()).Expr())},
-		{"json_value_wrapper", Select(JSONValue(Col("doc"), Param("$")).WithWrapper().Expr())},
-		{"json_value_empty_array", Select(JSONValue(Col("doc"), Param("$")).OnEmpty(JSONEmptyArray()).Expr())},
-		{"json_query_quotes_wrapper", Select(JSONQuery(Col("doc"), Param("$")).WithWrapper().OmitQuotes().Expr())},
-		{"json_format_without_returning", Select(JSONQuery(Col("doc"), Param("$")).FormatJSON().Expr())},
-		{"json_passing_duplicate", Select(JSONQuery(Col("doc"), Param("$")).Passing("x", Param(1)).Passing("x", Param(2)).Expr())},
-		{"json_table_empty", Select(Star()).FromExpr(JSONTable(Col("doc"), "$").As("j"))},
-		{"json_table_bad_root_error", Select(Star()).FromExpr(JSONTable(Col("doc"), "$", JSONColumn("a", TypeInt4)).OnError(JSONNull()).As("j"))},
-		{"json_table_duplicate_column", Select(Star()).FromExpr(JSONTable(Col("doc"), "$", JSONColumn("a", TypeInt4), JSONColumn("a", TypeText)).As("j"))},
-		{"json_ordinality_path", Select(Star()).FromExpr(JSONTable(Col("doc"), "$", JSONOrdinality("n").Path("$")).As("j"))},
-		{"json_nested_options", Select(Star()).FromExpr(JSONTable(Col("doc"), "$", JSONNested("$", JSONColumn("a", TypeInt4)).OnError(JSONError())).As("j"))},
-		{"json_table_column_zero", Select(Star()).FromExpr(JSONTable(Col("doc"), "$", JSONTableColumn{}).As("j"))},
 		{"merge_no_on", MergeInto("t").Using(Table("s")).When(Matched().ThenDelete())},
 		{"merge_no_when", MergeInto("t").Using(Table("s")).On(True())},
 		{"merge_zero_branch", MergeInto("t").Using(Table("s")).On(True()).When(MergeWhen{})},
@@ -153,10 +142,6 @@ func TestInvalidConstruction(t *testing.T) {
 		{"merge_empty_insert", MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsert())},
 		{"merge_insert_width", MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsertValues([]string{"a", "b"}, Write(Param(1))))},
 		{"merge_duplicate_columns", MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsertValues([]string{"a", "a"}, Write(Param(1)), Write(Param(2))))},
-		{"explain_analyze_generic", Explain(Select(Param(1))).Analyze(true).GenericPlan(true)},
-		{"explain_format", Explain(Select(Param(1))).Format(ExplainFormat(99))},
-		{"explain_nested", Explain(Explain(Select(Param(1))))},
-		{"truncate_empty", Truncate()}, {"truncate_alias", Truncate().TablesExpr(Table("t").As("a"))},
 	}
 	for _, tt := range bad {
 		t.Run(tt.name, func(t *testing.T) {
@@ -166,37 +151,56 @@ func TestInvalidConstruction(t *testing.T) {
 	}
 }
 
-func TestFeatureVersions(t *testing.T) {
+// A dynamic filter whose entries all vanish must not reach every row, however
+// the constant was assembled: And and NotIn of empty lists are TRUE.
+func TestMutationWhereRejectsPredicatesTrueForEveryRow(t *testing.T) {
 	t.Parallel()
-
-	tests := []struct {
-		name    string
-		version PostgreSQLVersion
-		q       Statement
-	}{
-		{"ties", PostgreSQL13, SelectCols("id").OrderBy(Asc("id")).Fetch(1, WithTies)},
-		{"date_bin", PostgreSQL14, Select(DateBin(Param("1 hour"), Param("2020-01-01"), Param("2000-01-01")))},
-		{"search", PostgreSQL14, Select(Star()).WithRecursive(CTE("t", Select(Param(1))).Search(SearchDepthFirst("id").Set("ord"))).From("t")},
-		{"merge", PostgreSQL15, MergeInto("t").Using(Table("s")).On(True()).When(Matched().ThenDoNothing())},
-		{"negative_scale", PostgreSQL15, Select(Param(123).Cast(TypeDecimal(2, -3)))},
-		{"generic_plan", PostgreSQL16, Explain(Select(Param(1))).GenericPlan(true)},
-		{"merge_returning", PostgreSQL17, MergeInto("t").Using(Table("s")).On(True()).When(Matched().ThenDoNothing()).Returning(MergeAction())},
-		{"merge_by_source", PostgreSQL17, MergeInto("t").Using(Table("s")).On(True()).When(NotMatchedBySource().ThenDelete())},
-		{"json_value", PostgreSQL17, Select(JSONValue(Param(`{"a":1}`), Param("$.a")).Expr())},
-		{"json_table", PostgreSQL17, Select(Star()).FromExpr(JSONTable(Param(`{"a":1}`), "$", JSONColumn("a", TypeInt4)).As("j"))},
-		{"returning_old", PostgreSQL18, Update("t").Set(Set("a", Write(Param(1)))).Returning(Old("a"))},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	var none []Condition
+	var ids []Expr
+	for name, where := range map[string][]Condition{
+		"true":                    {True()},
+		"empty_and":               {And(none...)},
+		"empty_not_in":            {Col("a").NotIn(ids...)},
+		"and_of_empty_filters":    {And(Col("a").NotIn(ids...), Col("b").NotIn(ids...))},
+		"listed_empty_filters":    {Col("a").NotIn(ids...), And(none...)},
+		"not_false":               {Not(False())},
+		"not_empty_in":            {Not(Col("a").In(ids...))},
+		"not_empty_or":            {Or(none...).Not()},
+		"or_with_true":            {Or(Col("a").IsNull(), True())},
+		"parenthesized_true":      {AsCondition(LiteralBool(true).Parenthesized())},
+		"nested_and_of_or_of_not": {And(Or(False(), Not(False())), And(True(), True()))},
+	} {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-
-			sql, args, err := ToSQLWith(tt.q, Options{PostgreSQL: tt.version - 1})
-			if !errors.Is(err, ErrUnsupported) || sql != "" || args != nil {
-				t.Fatalf("lower version accepted: %s %#v %v", sql, args, err)
-			}
-			if _, _, err := ToSQLWith(tt.q, Options{PostgreSQL: tt.version}); err != nil {
-				t.Fatal(err)
-			}
+			checkError(t, Update("t").Set(Set("a", Value(1))).Where(where[0], where[1:]...), ErrInvalid)
+			checkError(t, DeleteFrom("t").Where(where[0], where[1:]...), ErrInvalid)
 		})
 	}
+}
+
+// Only a predicate that is TRUE for every row is refused: one that is FALSE
+// for every row changes nothing, and one that reads the row is the caller's.
+func TestMutationWhereAcceptsOtherPredicates(t *testing.T) {
+	t.Parallel()
+	var ids []Expr
+	b := Col("b").IsNull()
+	runCases(t, []renderCase{
+		{"false", DeleteFrom("t").Where(False()), `DELETE FROM "t" WHERE FALSE`, nil},
+		{"empty_in", DeleteFrom("t").Where(Col("a").In(ids...)), `DELETE FROM "t" WHERE FALSE`, nil},
+		{"and_with_false", DeleteFrom("t").Where(And(True(), False())), `DELETE FROM "t" WHERE (TRUE AND FALSE)`, nil},
+		{"and_with_row_condition", DeleteFrom("t").Where(And(True(), b)), `DELETE FROM "t" WHERE (TRUE AND ("b" IS NULL))`, nil},
+		{"or_of_row_conditions", DeleteFrom("t").Where(Or(False(), b)), `DELETE FROM "t" WHERE (FALSE OR ("b" IS NULL))`, nil},
+		{"not_row_condition", DeleteFrom("t").Where(Not(b)), `DELETE FROM "t" WHERE (NOT ("b" IS NULL))`, nil},
+	})
+}
+
+// The literal TRUE does not select rows by itself, and beside a condition that
+// does it is rendered as written.
+func TestMutationWhereKeepsTrueBesideACondition(t *testing.T) {
+	t.Parallel()
+	checkSQL(t, Update("t").Set(Set("a", Write(LiteralInt(1)))).Where(True(), Col("b").IsNull()),
+		`UPDATE "t" SET "a" = 1 WHERE TRUE AND ("b" IS NULL)`)
+	var filters []Condition
+	checkSQL(t, DeleteFrom("t").Where(And(filters...), Col("b").IsNull()),
+		`DELETE FROM "t" WHERE TRUE AND ("b" IS NULL)`)
 }

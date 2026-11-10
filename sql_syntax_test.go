@@ -1,9 +1,6 @@
 package qs
 
-import (
-	"reflect"
-	"testing"
-)
+import "testing"
 
 func TestSQLSyntaxExpressions(t *testing.T) {
 	t.Parallel()
@@ -157,66 +154,9 @@ func TestExtractNamedAliases(t *testing.T) {
 	checkError(t, Select(Param("earlier"), ExtractNamed("fortnight", Param("value"))), ErrInvalid)
 }
 
-func TestSQLSyntaxPlaceholderStyles(t *testing.T) {
+func TestSQLSyntaxBindsArgumentsInOrder(t *testing.T) {
 	t.Parallel()
 
-	query := Select(Position(Param("needle"), Param("haystack")), Normalize(Param("value"), NFKC))
-	wantArgs := []any{"needle", "haystack", "value"}
-	for _, tc := range []struct {
-		name  string
-		style PlaceholderStyle
-		sql   string
-	}{
-		{"dollar", Dollar, `SELECT POSITION($1 IN $2), NORMALIZE($3, NFKC)`},
-		{"question", Question, `SELECT POSITION(? IN ?), NORMALIZE(?, NFKC)`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			gotSQL, gotArgs, err := query.ToSQLWith(Options{PlaceholderStyle: tc.style})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if gotSQL != tc.sql || !reflect.DeepEqual(gotArgs, wantArgs) {
-				t.Fatalf("SQL=%s args=%#v; want %s %#v", gotSQL, gotArgs, tc.sql, wantArgs)
-			}
-		})
-	}
-}
-
-func TestSQLSyntaxCloneChildren(t *testing.T) {
-	t.Parallel()
-
-	original := Select(SubstringFrom(Param("original"), LiteralInt(1)))
-	cloned := Clone(original)
-	syntax, ok := cloned.columns[0].value.(*sqlSyntaxExpression)
-	if !ok {
-		t.Fatalf("cloned expression has type %T, want *sqlSyntaxExpression", cloned.columns[0].value)
-	}
-	syntax.args[0] = Param("clone")
-
-	checkSQL(t, original, `SELECT SUBSTRING($1 FROM 1)`, "original")
-	checkSQL(t, cloned, `SELECT SUBSTRING($1 FROM 1)`, "clone")
-}
-
-func TestSQLSyntaxConstructionErrors(t *testing.T) {
-	t.Parallel()
-
-	for _, tc := range []struct {
-		name string
-		q    Statement
-	}{
-		{"substring_length_arity", Select(SubstringFrom(Param("x"), Param(1), Param(2), Param(3)))},
-		{"normalize_form", Select(Normalize(Param("x"), UnicodeNormalForm(99)))},
-		{"normalize_form_arity", Select(Normalize(Param("x"), NFC, NFD))},
-		{"trim_direction", Select(TrimSyntax(Param("x"), TrimDirection(99)))},
-		{"timestamp_precision_low", Select(CurrentTimestamp(-1))},
-		{"timestamp_precision_high", Select(CurrentTimestamp(7))},
-		{"time_precision_arity", Select(CurrentTime(1, 2))},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			checkError(t, tc.q, ErrInvalid)
-		})
-	}
+	checkSQL(t, Select(Position(Param("needle"), Param("haystack")), Normalize(Param("value"), NFKC)),
+		`SELECT POSITION($1 IN $2), NORMALIZE($3, NFKC)`, "needle", "haystack", "value")
 }

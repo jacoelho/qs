@@ -3,7 +3,6 @@
 package integration_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/jacoelho/qs"
@@ -19,15 +18,15 @@ func TestWindowShorthandLiveSemantics(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rowsFrame := qs.Window().OrderBy(qs.Asc("v"), qs.Asc("id")).Rows(qs.Preceding(1))
-	rangeFrame := qs.Window().OrderBy(qs.Asc("v")).Range(qs.Preceding(1))
-	groupsFrame := qs.Window().OrderBy(qs.Asc("v")).Groups(qs.Preceding(1))
+	rowsFrame := qs.Window().OrderBy(qs.Col("v").Asc(), qs.Col("id").Asc()).Rows(qs.Preceding(1))
+	rangeFrame := qs.Window().OrderBy(qs.Col("v").Asc()).Range(qs.Preceding(1))
+	groupsFrame := qs.Window().OrderBy(qs.Col("v").Asc()).Groups(qs.Preceding(1))
 	query := qs.Select(
 		qs.Col("id"),
 		qs.Sum(qs.Col("v")).Over(rowsFrame),
 		qs.Sum(qs.Col("v")).Over(rangeFrame),
 		qs.Sum(qs.Col("v")).Over(groupsFrame),
-	).From("qs_window_fidelity").OrderBy(qs.Asc("id"))
+	).From("qs_window_fidelity").OrderBy(qs.Col("id").Asc())
 	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)
@@ -58,24 +57,5 @@ func TestWindowShorthandLiveSemantics(t *testing.T) {
 	}
 	if rowsSeen != len(want) {
 		t.Fatalf("window query returned %d rows; want %d", rowsSeen, len(want))
-	}
-}
-
-func TestExplainBareSerializationLive(t *testing.T) {
-	t.Parallel()
-	session := connect(t)
-	ctx, conn := session.Context, session.Conn
-	requireVersion(t, session, qs.PostgreSQL17)
-	query := qs.Explain(qs.Select(qs.Param("payload"))).Analyze(true).Serialize().Format(qs.ExplainJSON)
-	sql, args, err := session.render(t, query)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var plan []byte
-	if err := conn.QueryRow(ctx, sql, args...).Scan(&plan); err != nil {
-		t.Fatalf("%s: %v", sql, err)
-	}
-	if len(plan) == 0 || !json.Valid(plan) {
-		t.Fatalf("bare SERIALIZE returned invalid JSON: %q", plan)
 	}
 }

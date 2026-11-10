@@ -10,8 +10,8 @@ func TestTrustedConditionsAreUnitsWhenCombined(t *testing.T) {
 	t.Parallel()
 	raw := trustedDisjunction
 	fragment := AsCondition(Fragment(Col("m"), UnsafeSQL(" ? "), Param("k")))
-	x := Eq("x", 1)
-	sel := func() *SelectBuilder { return Select(Col("id")).From("t") }
+	x := Col("x").Eq(Param(1))
+	sel := func() SelectBuilder { return Select(Col("id")).From("t") }
 	runCases(t, []renderCase{
 		{"where_first", sel().Where(raw(), x),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("x" = $1)`, []any{1}},
@@ -21,11 +21,11 @@ func TestTrustedConditionsAreUnitsWhenCombined(t *testing.T) {
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("m" ? $1)`, []any{"k"}},
 		{"where_separate_calls", sel().Where(raw()).Where(x),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("x" = $1)`, []any{1}},
-		{"cursor_uniform", sel().Where(raw()).OrderBy(Asc("t.id")).SeekAfter(5),
+		{"cursor_uniform", sel().Where(raw()).OrderBy(Col("t", "id").Asc()).SeekAfter(5),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("t"."id" > $1) ORDER BY "t"."id" ASC`, []any{5}},
-		{"cursor_mixed", sel().Where(raw()).OrderBy(Asc("t.a"), Desc("t.id")).SeekAfter(1, 5),
+		{"cursor_mixed", sel().Where(raw()).OrderBy(Col("t", "a").Asc(), Col("t", "id").Desc()).SeekAfter(1, 5),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ("t"."id" < $4)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 1, 1, 5}},
-		{"cursor_before_where", sel().OrderBy(Asc("t.id")).SeekAfter(5).Where(raw()),
+		{"cursor_before_where", sel().OrderBy(Col("t", "id").Asc()).SeekAfter(5).Where(raw()),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("t"."id" > $1) ORDER BY "t"."id" ASC`, []any{5}},
 		{"and_first", sel().Where(And(raw(), x)),
 			`SELECT "id" FROM "t" WHERE ((a = 1 OR b = 2) AND ("x" = $1))`, []any{1}},
@@ -45,8 +45,8 @@ func TestTrustedConditionsAreUnitsWhenCombined(t *testing.T) {
 func TestTrustedConditionsAreUnitsAtEveryConditionList(t *testing.T) {
 	t.Parallel()
 	raw := trustedDisjunction
-	x := Eq("x", 1)
-	insert := func() *InsertRows { return InsertInto("t").Columns("id").Values(Value(1)) }
+	x := Col("x").Eq(Param(1))
+	insert := func() InsertRows { return InsertInto("t").Columns("id").Values(Value(1)) }
 	runCases(t, []renderCase{
 		{"having", Select(Col("a")).From("t").GroupBy("a").Having(raw(), x),
 			`SELECT "a" FROM "t" GROUP BY "a" HAVING (a = 1 OR b = 2) AND ("x" = $1)`, []any{1}},
@@ -74,7 +74,7 @@ func TestTrustedConditionsAreUnitsAtEveryConditionList(t *testing.T) {
 func TestSingleTrustedConditionStaysVerbatim(t *testing.T) {
 	t.Parallel()
 	raw := trustedDisjunction
-	sel := func() *SelectBuilder { return Select(Col("id")).From("t") }
+	sel := func() SelectBuilder { return Select(Col("id")).From("t") }
 	runCases(t, []renderCase{
 		{"where", sel().Where(raw()),
 			`SELECT "id" FROM "t" WHERE a = 1 OR b = 2`, nil},
@@ -82,7 +82,7 @@ func TestSingleTrustedConditionStaysVerbatim(t *testing.T) {
 			`SELECT "id" FROM "t" WHERE a = 1 OR b = 2`, nil},
 		{"or_single_member", sel().Where(Or(raw())),
 			`SELECT "id" FROM "t" WHERE a = 1 OR b = 2`, nil},
-		{"count_omits_cursor", CountRows(sel().Where(raw()).OrderBy(Asc("id")).SeekAfter(5)),
+		{"count_omits_cursor", CountRows(sel().Where(raw()).OrderBy(Col("id").Asc()).SeekAfter(5)),
 			`SELECT count(*) FROM (SELECT "id" FROM "t" WHERE a = 1 OR b = 2) AS "matching"`, nil},
 		{"case_when", Select(Case().When(raw(), Param(1)).End()).From("t"),
 			`SELECT CASE WHEN a = 1 OR b = 2 THEN $1 END FROM "t"`, []any{1}},
@@ -97,7 +97,7 @@ func TestParenthesizedTrustedConditionIsNotRewrapped(t *testing.T) {
 	runCases(t, []renderCase{
 		{"lone", Select(Col("id")).From("t").Where(parenthesized),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2)`, nil},
-		{"combined", Select(Col("id")).From("t").Where(parenthesized, Eq("x", 1)),
+		{"combined", Select(Col("id")).From("t").Where(parenthesized, Col("x").Eq(Param(1))),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("x" = $1)`, []any{1}},
 	})
 }
@@ -108,9 +108,9 @@ func TestParenthesizedTrustedConditionIsNotRewrapped(t *testing.T) {
 func TestTrustedOperandsOfOtherOperatorsStayVerbatim(t *testing.T) {
 	t.Parallel()
 	runCases(t, []renderCase{
-		{"raw", Select(Col("id")).From("t").Where(Col("x").EqExpr(UnsafeSQL("ANY(ARRAY[1,2])"))),
+		{"raw", Select(Col("id")).From("t").Where(Col("x").Eq(UnsafeSQL("ANY(ARRAY[1,2])"))),
 			`SELECT "id" FROM "t" WHERE ("x" = ANY(ARRAY[1,2]))`, nil},
-		{"fragment", Select(Col("id")).From("t").Where(Col("x").EqExpr(Fragment(UnsafeSQL("ANY("), Param([]int{1}), UnsafeSQL(")")))),
+		{"fragment", Select(Col("id")).From("t").Where(Col("x").Eq(Fragment(UnsafeSQL("ANY("), Param([]int{1}), UnsafeSQL(")")))),
 			`SELECT "id" FROM "t" WHERE ("x" = ANY($1))`, []any{[]int{1}}},
 	})
 }
@@ -120,30 +120,30 @@ func TestTrustedOperandsOfOtherOperatorsStayVerbatim(t *testing.T) {
 func TestTrustedOrderKeysAreUnitsInCursor(t *testing.T) {
 	t.Parallel()
 	raw := UnsafeSQL("NOT archived")
-	sel := func() *SelectBuilder { return Select(Col("id")).From("t") }
+	sel := func() SelectBuilder { return Select(Col("id")).From("t") }
 	runCases(t, []renderCase{
 		{"single_asc", sel().OrderBy(raw.Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT archived) > $1) ORDER BY NOT archived ASC`, []any{true}},
 		{"single_desc", sel().OrderBy(raw.Desc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT archived) < $1) ORDER BY NOT archived DESC`, []any{true}},
-		{"mixed_leading", sel().OrderBy(raw.Asc(), Desc("t.id")).SeekAfter(true, 2),
+		{"mixed_leading", sel().OrderBy(raw.Asc(), Col("t", "id").Desc()).SeekAfter(true, 2),
 			`SELECT "id" FROM "t" WHERE (((NOT archived) >= $1) AND (((NOT archived) > $2) OR (((NOT archived) = $3) AND ("t"."id" < $4)))) ORDER BY NOT archived ASC, "t"."id" DESC`,
 			[]any{true, true, true, 2}},
-		{"mixed_trailing", sel().OrderBy(Asc("t.a"), raw.Desc()).SeekAfter(1, true),
+		{"mixed_trailing", sel().OrderBy(Col("t", "a").Asc(), raw.Desc()).SeekAfter(1, true),
 			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ((NOT archived) < $4)))) ORDER BY "t"."a" ASC, NOT archived DESC`,
 			[]any{1, 1, 1, true}},
-		{"mixed_middle", sel().OrderBy(Asc("t.a"), raw.Desc(), Asc("t.id")).SeekAfter(1, true, 3),
+		{"mixed_middle", sel().OrderBy(Col("t", "a").Asc(), raw.Desc(), Col("t", "id").Asc()).SeekAfter(1, true, 3),
 			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ((NOT archived) < $4)) OR (("t"."a" = $5) AND ((NOT archived) = $6) AND ("t"."id" > $7)))) ORDER BY "t"."a" ASC, NOT archived DESC, "t"."id" ASC`,
 			[]any{1, 1, 1, true, 1, true, 3}},
 		{"fragment", sel().OrderBy(Fragment(UnsafeSQL("NOT "), Col("archived")).Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT "archived") > $1) ORDER BY NOT "archived" ASC`, []any{true}},
 		{"disjunction", sel().OrderBy(UnsafeSQL("a OR b").Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((a OR b) > $1) ORDER BY a OR b ASC`, []any{true}},
-		{"uniform_row_unchanged", sel().OrderBy(raw.Asc(), Asc("t.id")).SeekAfter(true, 2),
+		{"uniform_row_unchanged", sel().OrderBy(raw.Asc(), Col("t", "id").Asc()).SeekAfter(true, 2),
 			`SELECT "id" FROM "t" WHERE ((NOT archived, "t"."id") > ($1, $2)) ORDER BY NOT archived ASC, "t"."id" ASC`, []any{true, 2}},
 		{"parenthesized_not_rewrapped", sel().OrderBy(raw.Parenthesized().Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT archived) > $1) ORDER BY (NOT archived) ASC`, []any{true}},
-		{"structural_unchanged", sel().OrderBy(Lower(Col("name")).Asc(), Desc("t.id")).SeekAfter("ann", 4),
+		{"structural_unchanged", sel().OrderBy(Lower(Col("name")).Asc(), Col("t", "id").Desc()).SeekAfter("ann", 4),
 			`SELECT "id" FROM "t" WHERE ((lower("name") >= $1) AND ((lower("name") > $2) OR ((lower("name") = $3) AND ("t"."id" < $4)))) ORDER BY lower("name") ASC, "t"."id" DESC`,
 			[]any{"ann", "ann", "ann", 4}},
 	})

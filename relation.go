@@ -2,26 +2,20 @@ package qs
 
 import (
 	"slices"
-	"strings"
 )
 
 type relationKind uint8
 
 const (
-	relationTable relationKind = iota + 1
-	relationTableIdent
-	relationSubquery
-	relationJoin
-	relationFunction
-	relationRowsFrom
-	relationSQL
-	relationJSONTable
-	relationXMLTable
-	// relationMatching holds the live *SelectBuilder of CountRows, rendered
-	// without its cursor, pagination, locks or sort; ORDER BY expressions that
-	// may change the rows move into its projection.
-	relationMatching
+	relationZero   relationKind = iota // the zero Relation, which is invalid
+	relationTable                      // name is one table identifier
+	relationSource                     // source holds the form
 )
+
+// matchingRows is the SelectBuilder of CountRows, rendered without its cursor,
+// pagination, locks or sort; ORDER BY expressions that may change the rows move
+// into its projection.
+type matchingRows SelectBuilder
 
 type joinKind uint8
 
@@ -58,7 +52,10 @@ type sampleClause struct {
 
 // Relation is an immutable FROM item, including a nested join tree.
 type Relation struct {
-	value      any
+	// source is the form of a relationSource: *qualifiedIdentifier (a qualified
+	// table), Rowset or nil (a subquery), matchingRows, *joinExpression,
+	// RecordFunction, []RecordFunction (ROWS FROM) or Expr (trusted SQL).
+	source     any
 	sample     *sampleClause
 	name       string
 	alias      string
@@ -70,29 +67,33 @@ type Relation struct {
 	noAlias    bool
 }
 
-// Table creates a relation for a named table. The name is parsed as an
-// identifier path when rendered.
-func Table(name string) Relation { return Relation{kind: relationTable, name: name} }
-
-// TableIdent creates a relation from identifier components.
-func TableIdent(parts ...string) Relation {
-	return Relation{kind: relationTableIdent, value: identifierParts(cloneSlice(parts))}
+// Table creates a relation for a named table. Every argument is one
+// identifier, quoted as written: Table("users") is "users", Table("public",
+// "users") is "public"."users" and Table("a.b") is the single identifier "a.b".
+func Table(first string, rest ...string) Relation {
+	if len(rest) == 0 {
+		return table(first)
+	}
+	return Relation{kind: relationSource, source: newQualifiedIdentifier(first, rest)}
 }
+
+// table is Table for one unqualified name.
+func table(name string) Relation { return Relation{kind: relationTable, name: name} }
 
 // Subquery creates an aliased FROM subquery with optional column aliases.
 func Subquery(query Rowset, alias string, columns ...string) Relation {
-	return Relation{kind: relationSubquery, value: query, alias: alias, columns: cloneSlice(columns)}
+	return Relation{kind: relationSource, source: query, alias: alias, columns: cloneSlice(columns)}
 }
 
 // Derived creates an unaliased FROM subquery (PostgreSQL 16+). Use As to name
 // it when its columns need relation qualification.
 func Derived(query Rowset) Relation {
-	return Relation{kind: relationSubquery, value: query, noAlias: true}
+	return Relation{kind: relationSource, source: query, noAlias: true}
 }
 
 // RelationSQL creates a relation from trusted SQL expressions.
 func RelationSQL(parts ...Expr) Relation {
-	return Relation{kind: relationSQL, value: Fragment(parts...)}
+	return Relation{kind: relationSource, source: Fragment(parts...)}
 }
 
 // As replaces a relation alias and its optional column aliases.
@@ -129,56 +130,83 @@ func (r Relation) Repeatable(seed Expr) Relation {
 	return r
 }
 
-// Col refers to a literal column name using the relation's alias when present.
-// Dots and * in column are quoted; use Star for a relation wildcard.
+// Col names a column of the relation: by its alias when it has one, otherwise
+// by its table name. column is one identifier, quoted as written; use Star for
+// a relation wildcard.
 func (r Relation) Col(column string) Expr {
-	if r.alias != "" {
-		return Ident(r.alias, column)
+	name, parts, ok := r.qualifier()
+	switch {
+	case !ok:
+		return invalidExpr("column", "derived or joined relation requires an alias")
+	case parts == nil:
+		return Col(name, column)
+	default:
+		return nodeExpr(&qualifiedIdentifier{parts: slices.Concat(parts, identifierParts{column})})
 	}
-	if r.kind == relationTable {
-		parts := make(identifierParts, strings.Count(r.name, ".")+2)
-		name := r.name
-		for i := range parts[:len(parts)-1] {
-			part, rest, found := strings.Cut(name, ".")
-			if part == "" || part == "*" {
-				return invalidExpr("column", "invalid table path")
-			}
-			parts[i] = part
-			if !found {
-				parts[len(parts)-1] = column
-				return Expr{kind: exprIdentifierParts, value: parts}
-			}
-			name = rest
-		}
-		return Expr{kind: exprIdentifierParts, value: parts}
-	}
-	if r.kind == relationTableIdent {
-		base, ok := r.value.(identifierParts)
-		if !ok {
-			return invalidExpr("column", "invalid table identifier")
-		}
-		parts := slices.Concat(base, identifierParts{column})
-		return Expr{kind: exprIdentifierParts, value: parts}
-	}
-	return invalidExpr("column", "derived or joined relation requires an alias")
 }
 
 // Star references all columns exposed by the relation.
 func (r Relation) Star() Expr {
+	name, parts, ok := r.qualifier()
+	switch {
+	case !ok:
+		return invalidExpr("star", "derived or joined relation requires an alias")
+	case parts == nil:
+		return nodeExpr(&starExpression{identifierParts{name}})
+	default:
+		return nodeExpr(&starExpression{parts})
+	}
+}
+
+// qualifier returns what qualifies the relation's columns: its alias or
+// unqualified table name as name, or the parts of its qualified table name.
+func (r Relation) qualifier() (name string, parts identifierParts, ok bool) {
 	if r.alias != "" {
-		return Fragment(Ident(r.alias), UnsafeSQL(".*"))
+		return r.alias, nil, true
 	}
 	if r.kind == relationTable {
-		return Star(r.name)
+		return r.name, nil, true
 	}
-	if r.kind == relationTableIdent {
-		return Fragment(Ident(ownedPayload[identifierParts](r.value)...), UnsafeSQL(".*"))
+	if table, ok := r.source.(*qualifiedIdentifier); ok {
+		return "", table.parts, true
 	}
-	return invalidExpr("star", "derived or joined relation requires an alias")
+	return "", nil, false
+}
+
+// physical reports whether r names a table.
+func (r Relation) physical() bool {
+	if r.kind == relationTable {
+		return true
+	}
+	_, qualified := r.source.(*qualifiedIdentifier)
+	return qualified
+}
+
+// tableFunction reports whether r is a table function or ROWS FROM.
+func (r Relation) tableFunction() bool {
+	switch r.source.(type) {
+	case RecordFunction, []RecordFunction:
+		return true
+	default:
+		return false
+	}
+}
+
+// lateralSource reports whether r may be marked LATERAL.
+func (r Relation) lateralSource() bool {
+	if r.kind != relationSource {
+		return false
+	}
+	switch r.source.(type) {
+	case nil, Rowset, Expr, *JSONTableBuilder:
+		return true
+	default:
+		return r.tableFunction()
+	}
 }
 
 func join(left, right Relation, kind joinKind, natural bool) Relation {
-	return Relation{kind: relationJoin, value: &joinExpression{left: left, right: right, kind: kind, natural: natural}}
+	return Relation{kind: relationSource, source: &joinExpression{left: left, right: right, kind: kind, natural: natural}}
 }
 func pendingJoin(left, right Relation, kind joinKind) PendingJoin {
 	return PendingJoin{joinExpression{left: left, right: right, kind: kind}}
@@ -218,7 +246,7 @@ func (p PendingJoin) On(first Condition, rest ...Condition) Relation {
 	conditions = append(conditions, rest...)
 	completed := p.joinExpression
 	completed.on = conditions
-	return Relation{kind: relationJoin, value: &completed}
+	return Relation{kind: relationSource, source: &completed}
 }
 
 // Using owns a nonempty column list. Each column is a literal identifier.
@@ -228,11 +256,11 @@ func (p PendingJoin) Using(first string, rest ...string) Relation {
 	columns = append(columns, rest...)
 	completed := p.joinExpression
 	completed.using = columns
-	return Relation{kind: relationJoin, value: &completed}
+	return Relation{kind: relationSource, source: &completed}
 }
 
 // UsingAs names the joined USING columns, independently of a whole-relation alias.
-// An empty alias omits that name; nonempty aliases require PostgreSQL 14 or newer.
+// An empty alias omits that name.
 func (p PendingJoin) UsingAs(alias string, first string, rest ...string) Relation {
 	columns := make([]string, 1, 1+len(rest))
 	columns[0] = first
@@ -240,7 +268,7 @@ func (p PendingJoin) UsingAs(alias string, first string, rest ...string) Relatio
 	completed := p.joinExpression
 	completed.using = columns
 	completed.usingAlias = alias
-	return Relation{kind: relationJoin, value: &completed}
+	return Relation{kind: relationSource, source: &completed}
 }
 
 // RecordColumn describes a column returned by a record-valued table function.
@@ -270,27 +298,30 @@ func (f RecordFunction) DefineColumns(columns ...RecordColumn) RecordFunction {
 }
 
 // TableFunc creates a relation from a table-function expression.
-func TableFunc(expr Expr) Relation { return Relation{kind: relationFunction, value: Function(expr)} }
+func TableFunc(expr Expr) Relation {
+	return Relation{kind: relationSource, source: Function(expr)}
+}
 
 // DefineColumns replaces the record columns of a table-function relation.
 func (r Relation) DefineColumns(columns ...RecordColumn) Relation {
-	if r.kind != relationFunction {
+	f, ok := r.source.(RecordFunction)
+	if !ok {
 		return RelationSQL(invalidExpr("function", "column definitions require a table function"))
 	}
-	f := ownedPayload[RecordFunction](r.value)
 	f.columns = cloneSlice(columns)
-	r.value = f
+	r.source = f
 	return r
 }
 
 // RowsFrom creates a relation using PostgreSQL's ROWS FROM construct.
 func RowsFrom(functions ...RecordFunction) Relation {
-	return Relation{kind: relationRowsFrom, value: cloneSlice(functions)}
+	return Relation{kind: relationSource, source: cloneSlice(functions)}
 }
 
 // FROM accepts CAST's keyword form as a function expression, but not :: casts.
 func (w *renderer) functionRelationExpr(e Expr) {
-	if e.kind != exprCast {
+	n, ok := e.node().(*castExpression)
+	if !ok {
 		w.expr(e)
 		return
 	}
@@ -298,7 +329,6 @@ func (w *renderer) functionRelationExpr(e Expr) {
 		return
 	}
 	defer func() { w.depth-- }()
-	n := ownedPayload[*castExpression](e.value)
 	w.text("CAST(")
 	w.expr(n.expr)
 	w.text(" AS ")
@@ -325,7 +355,7 @@ func (w *renderer) relation(r Relation) {
 		return
 	}
 	defer func() { w.depth-- }()
-	physical := r.kind == relationTable || r.kind == relationTableIdent
+	physical := r.physical()
 	if !w.require(!r.only || physical, "ONLY", "requires a physical table") {
 		return
 	}
@@ -333,7 +363,7 @@ func (w *renderer) relation(r Relation) {
 		return
 	}
 	if r.lateral {
-		if !w.require(r.kind == relationSubquery || r.kind == relationFunction || r.kind == relationRowsFrom || r.kind == relationJSONTable || r.kind == relationXMLTable || r.kind == relationSQL, "LATERAL", "requires a subquery or table function") {
+		if !w.require(r.lateralSource(), "LATERAL", "requires a subquery or table function") {
 			return
 		}
 		w.text("LATERAL ")
@@ -357,42 +387,46 @@ func (w *renderer) relation(r Relation) {
 func (w *renderer) relationBody(r Relation) (aliasRendered, ok bool) {
 	switch r.kind {
 	case relationTable:
-		w.identifierPath(r.name, false)
-	case relationTableIdent:
-		w.identifierParts(Expr{value: r.value})
-	case relationSubquery:
-		return false, w.subqueryRelation(r)
-	case relationJoin:
-		w.join(ownedPayload[*joinExpression](r.value))
-	case relationFunction:
-		return w.functionRelation(r)
-	case relationRowsFrom:
-		return false, w.rowsFromRelation(r)
-	case relationSQL:
-		w.expr(ownedPayload[Expr](r.value))
-	case relationJSONTable:
-		w.jsonTable(ownedPayload[*JSONTableBuilder](r.value))
-	case relationXMLTable:
-		w.xmlTable(ownedPayload[*XMLTableBuilder](r.value))
-	case relationMatching:
-		return false, w.matchingRelation(ownedPayload[*SelectBuilder](r.value))
+		w.identifierPart(r.name)
+		return false, true
+	case relationSource:
 	default:
 		w.fail(ErrInvalid, "FROM", "zero relation")
+		return false, false
+	}
+	switch source := r.source.(type) {
+	case *qualifiedIdentifier:
+		w.qualifiedName(source.parts, "identifier")
+	case *joinExpression:
+		w.join(source)
+	case RecordFunction:
+		return w.functionRelation(r, source)
+	case []RecordFunction:
+		return false, w.rowsFromRelation(source)
+	case Expr:
+		w.expr(source)
+	case *JSONTableBuilder:
+		width := jsonTableWidth(source.columns, w.options.MaxDepth)
+		if width >= 0 && !w.require(len(r.columns) <= width, "JSON_TABLE", "too many column aliases") {
+			return false, false
+		}
+		w.jsonTable(source)
+	case matchingRows:
+		return false, w.matchingRelation((*SelectBuilder)(&source))
+	case nil:
+		return false, w.subqueryRelation(r, nil)
+	case Rowset:
+		return false, w.subqueryRelation(r, source)
+	default:
+		w.fail(ErrInvalid, "FROM", "unknown relation form")
 		return false, false
 	}
 	return false, true
 }
 
-func (w *renderer) subqueryRelation(r Relation) bool {
+func (w *renderer) subqueryRelation(r Relation, query Rowset) bool {
 	if !w.require(r.alias != "" || r.noAlias, "subquery", "explicit alias required; use Derived for an unaliased subquery") {
 		return false
-	}
-	if r.alias == "" {
-		w.feature(PostgreSQL16, "unaliased subquery")
-	}
-	var query Rowset
-	if r.value != nil {
-		query = ownedPayload[Rowset](r.value)
 	}
 	if !w.require(query != nil, "subquery", "requires a query source") {
 		return false
@@ -410,8 +444,7 @@ func (w *renderer) subqueryRelation(r Relation) bool {
 	return true
 }
 
-func (w *renderer) functionRelation(r Relation) (aliasRendered, ok bool) {
-	f := ownedPayload[RecordFunction](r.value)
+func (w *renderer) functionRelation(r Relation, f RecordFunction) (aliasRendered, ok bool) {
 	if !w.require(len(f.columns) == 0 || (!r.ordinality && len(r.columns) == 0), "function", "use ROWS FROM for typed records with ordinality; do not combine column aliases and definitions") {
 		return false, false
 	}
@@ -428,8 +461,7 @@ func (w *renderer) functionRelation(r Relation) (aliasRendered, ok bool) {
 	return true, true
 }
 
-func (w *renderer) rowsFromRelation(r Relation) bool {
-	functions := ownedPayload[[]RecordFunction](r.value)
+func (w *renderer) rowsFromRelation(functions []RecordFunction) bool {
 	if !w.require(len(functions) > 0, "ROWS FROM", "requires functions") {
 		return false
 	}
@@ -452,7 +484,7 @@ func (w *renderer) relationOrdinality(r Relation) bool {
 	if !r.ordinality {
 		return true
 	}
-	if !w.require(r.kind == relationFunction || r.kind == relationRowsFrom, "WITH ORDINALITY", "requires a table function") {
+	if !w.require(r.tableFunction(), "WITH ORDINALITY", "requires a table function") {
 		return false
 	}
 	w.text(" WITH ORDINALITY")
@@ -483,7 +515,7 @@ func (w *renderer) relationSample(r Relation) {
 		return
 	}
 	w.text(" TABLESAMPLE ")
-	w.identifierPath(r.sample.method, false)
+	w.identifierPart(r.sample.method)
 	w.byte('(')
 	w.exprs(r.sample.arguments, ", ")
 	w.byte(')')
@@ -543,7 +575,6 @@ func (w *renderer) join(j *joinExpression) {
 		w.names(j.using)
 		w.byte(')')
 		if j.usingAlias != "" {
-			w.feature(PostgreSQL14, "JOIN USING alias")
 			w.text(" AS ")
 			w.identifierPart(j.usingAlias)
 		}
@@ -566,7 +597,7 @@ func (w *renderer) recordColumns(columns []RecordColumn) {
 }
 
 func (w *renderer) target(r Relation, insert bool) {
-	if !w.require((r.kind == relationTable || r.kind == relationTableIdent) && r.sample == nil && !r.lateral && !r.ordinality && len(r.columns) == 0 && (!insert || !r.only), "target", "requires a physical table without sampling or column aliases") {
+	if !w.require(r.physical() && r.sample == nil && !r.lateral && !r.ordinality && len(r.columns) == 0 && (!insert || !r.only), "target", "requires a physical table without sampling or column aliases") {
 		return
 	}
 	w.relation(r)

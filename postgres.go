@@ -241,12 +241,12 @@ func RangeLowerInfinite(value Expr) Condition { return AsCondition(builtin("lowe
 // RangeUpperInfinite tests whether a range has no upper bound.
 func RangeUpperInfinite(value Expr) Condition { return AsCondition(builtin("upper_inf", value)) }
 
-// RangeAgg aggregates ranges into a multirange (PostgreSQL 14+).
-func RangeAgg(value Expr) Expr { return versionedCall(PostgreSQL14, "range_agg", value) }
+// RangeAgg aggregates ranges into a multirange.
+func RangeAgg(value Expr) Expr { return builtin("range_agg", value) }
 
-// RangeIntersectAgg intersects range inputs as an aggregate (PostgreSQL 14+).
+// RangeIntersectAgg intersects range inputs as an aggregate.
 func RangeIntersectAgg(value Expr) Expr {
-	return versionedCall(PostgreSQL14, "range_intersect_agg", value)
+	return builtin("range_intersect_agg", value)
 }
 
 // Int4Range uses PostgreSQL constructor overloads for int4 bounds and inclusivity.

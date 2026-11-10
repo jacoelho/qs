@@ -1,6 +1,9 @@
 package qs
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 type overridingMode uint8
 
@@ -29,9 +32,9 @@ func InsertIntoTable(table Relation) InsertTarget { return InsertTarget{table: t
 
 func newInsertColumnsTarget(table Relation, first string, rest []string) InsertColumnsTarget {
 	targets := make([]Expr, 1+len(rest))
-	targets[0] = Ident(first)
+	targets[0] = unqualifiedColumn(first)
 	for i, column := range rest {
-		targets[i+1] = Ident(column)
+		targets[i+1] = unqualifiedColumn(column)
 	}
 	return InsertColumnsTarget{columnsTable: table, columnsTargets: targets}
 }
@@ -41,7 +44,7 @@ func newInsertColumnsTarget(table Relation, first string, rest []string) InsertC
 func (t InsertTarget) ColumnsSlice(columns []string) InsertColumnsTarget {
 	targets := make([]Expr, len(columns))
 	for i, column := range columns {
-		targets[i] = Ident(column)
+		targets[i] = unqualifiedColumn(column)
 	}
 	return InsertColumnsTarget{columnsTable: t.table, columnsTargets: targets}
 }
@@ -92,62 +95,57 @@ func (t InsertColumnsTarget) base() insertBase {
 }
 
 func insertReturningCols(base *insertBase, columns ...string) {
-	for _, column := range columns {
-		base.returning = append(base.returning, Col(column))
-	}
+	base.returning = extendWith(base.returning, columns, unqualifiedColumn)
 }
 
 // Values selects a direct value-row source.
-func (t InsertTarget) Values(first WriteValue, rest ...WriteValue) *InsertRows {
-	b := &InsertRows{base: t.base()}
-	return b.Values(first, rest...)
+func (t InsertTarget) Values(first WriteValue, rest ...WriteValue) InsertRows {
+	return InsertRows{base: t.base()}.Values(first, rest...)
 }
 
 // ValuesSlice selects one direct value row and copies its structural slice.
-// An empty row is invalid when rendered; nested statements remain live.
-func (t InsertTarget) ValuesSlice(values []WriteValue) *InsertRows {
-	b := &InsertRows{base: t.base()}
-	return b.ValuesSlice(values)
+// An empty row is invalid when rendered.
+func (t InsertTarget) ValuesSlice(values []WriteValue) InsertRows {
+	return InsertRows{base: t.base()}.ValuesSlice(values)
 }
 
 // From selects a rowset source.
-func (t InsertTarget) From(source Rowset) *InsertSelect {
-	return &InsertSelect{base: t.base(), source: source}
+func (t InsertTarget) From(source Rowset) InsertSelect {
+	return InsertSelect{base: t.base(), source: source}
 }
 
 // Set selects an assignment source.
-func (t InsertTarget) Set(first Assignment, rest ...Assignment) *InsertAssignments {
-	b := &InsertAssignments{base: t.base()}
-	return b.Set(first, rest...)
+func (t InsertTarget) Set(first Assignment, rest ...Assignment) InsertAssignments {
+	return InsertAssignments{base: t.base()}.Set(first, rest...)
 }
 
 // DefaultValues selects the target table's server-side defaults.
-func (t InsertTarget) DefaultValues() *InsertDefaults {
-	return &InsertDefaults{base: t.base()}
+func (t InsertTarget) DefaultValues() InsertDefaults {
+	return InsertDefaults{base: t.base()}
 }
 
 // Values appends a direct value row to the INSERT.
-func (b *InsertRows) Values(first WriteValue, rest ...WriteValue) *InsertRows {
-	b.rows = append(b.rows, ownedWriteValues(first, rest))
+func (b InsertRows) Values(first WriteValue, rest ...WriteValue) InsertRows {
+	b.rows = extend(b.rows, ownedList(first, rest))
 	return b
 }
 
 // ValuesSlice appends one direct value row and copies its structural slice.
-// An empty row remains invalid; nested statements remain live and payloads shallow.
-func (b *InsertRows) ValuesSlice(values []WriteValue) *InsertRows {
-	b.rows = append(b.rows, cloneSlice(values))
+// An empty row is invalid when rendered. Bound values are not copied.
+func (b InsertRows) ValuesSlice(values []WriteValue) InsertRows {
+	b.rows = extend(b.rows, cloneSlice(values))
 	return b
 }
 
 // From replaces the rowset source of the INSERT.
-func (b *InsertSelect) From(source Rowset) *InsertSelect {
+func (b InsertSelect) From(source Rowset) InsertSelect {
 	b.source = source
 	return b
 }
 
 // Set appends assignments to the single-row INSERT source.
-func (b *InsertAssignments) Set(first Assignment, rest ...Assignment) *InsertAssignments {
-	b.assignments = appendAssignments(b.assignments, first, rest)
+func (b InsertAssignments) Set(first Assignment, rest ...Assignment) InsertAssignments {
+	b.assignments = slices.Concat(b.assignments, []Assignment{first}, rest)
 	return b
 }
 
@@ -229,7 +227,7 @@ func (b *insertBase) appendTail(w *renderer) {
 	w.foot(b.statementBase)
 }
 
-func (b *InsertRows) append(w *renderer) {
+func (w *renderer) insertRows(b *InsertRows) {
 	if !b.base.validateTargets(w) {
 		return
 	}
@@ -251,7 +249,7 @@ func (b *InsertRows) append(w *renderer) {
 	b.base.appendTail(w)
 }
 
-func (b *InsertSelect) append(w *renderer) {
+func (w *renderer) insertSelect(b *InsertSelect) {
 	if !b.base.validateTargets(w) {
 		return
 	}
@@ -270,7 +268,7 @@ func (b *InsertSelect) append(w *renderer) {
 	b.base.appendTail(w)
 }
 
-func (b *InsertAssignments) append(w *renderer) {
+func (w *renderer) insertAssignments(b *InsertAssignments) {
 	if !w.require(len(b.assignments) > 0, "INSERT", "requires assignments") {
 		return
 	}
@@ -294,7 +292,7 @@ func (b *InsertAssignments) append(w *renderer) {
 	b.base.appendTail(w)
 }
 
-func (b *InsertDefaults) append(w *renderer) {
+func (w *renderer) insertDefaults(b *InsertDefaults) {
 	if !b.base.validateTargets(w) {
 		return
 	}

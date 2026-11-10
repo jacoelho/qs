@@ -51,21 +51,17 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 			}
 		})
 	}
-	if session.options.PostgreSQL >= qs.PostgreSQL13 {
-		t.Run("normalize_nfc", func(t *testing.T) {
-			if got := syntaxText(t, session, qs.Normalize(qs.LiteralString("e\u0301"), qs.NFC)); got != "é" {
-				t.Fatalf("got %q; want é", got)
-			}
-		})
-	}
-	if session.options.PostgreSQL >= qs.PostgreSQL14 {
-		t.Run("substring_similar", func(t *testing.T) {
-			expr := qs.SubstringSimilar(qs.LiteralString("abcdef"), qs.LiteralString(`%#"b#"%`), qs.LiteralString("#"))
-			if got := syntaxText(t, session, expr); got != "b" {
-				t.Fatalf("got %q; want b", got)
-			}
-		})
-	}
+	t.Run("normalize_nfc", func(t *testing.T) {
+		if got := syntaxText(t, session, qs.Normalize(qs.LiteralString("e\u0301"), qs.NFC)); got != "é" {
+			t.Fatalf("got %q; want é", got)
+		}
+	})
+	t.Run("substring_similar", func(t *testing.T) {
+		expr := qs.SubstringSimilar(qs.LiteralString("abcdef"), qs.LiteralString(`%#"b#"%`), qs.LiteralString("#"))
+		if got := syntaxText(t, session, expr); got != "b" {
+			t.Fatalf("got %q; want b", got)
+		}
+	})
 
 	if got := syntaxText(t, session, qs.Overlaps(
 		qs.LiteralString("2026-01-01").Cast(qs.TypeDate),
@@ -75,17 +71,15 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 	).Expr()); got != "true" {
 		t.Fatalf("overlaps got %q; want true", got)
 	}
-	if session.options.PostgreSQL >= qs.PostgreSQL13 {
-		if got := syntaxText(t, session, qs.IsNormalized(qs.LiteralString("e\u0301"), qs.NFC).Expr()); got != "false" {
-			t.Fatalf("is normalized got %q; want false", got)
-		}
-		if got := syntaxText(t, session, qs.IsNotNormalized(qs.LiteralString("e\u0301"), qs.NFC).Expr()); got != "true" {
-			t.Fatalf("is not normalized got %q; want true", got)
-		}
+	if got := syntaxText(t, session, qs.IsNormalized(qs.LiteralString("e\u0301"), qs.NFC).Expr()); got != "false" {
+		t.Fatalf("is normalized got %q; want false", got)
+	}
+	if got := syntaxText(t, session, qs.IsNotNormalized(qs.LiteralString("e\u0301"), qs.NFC).Expr()); got != "true" {
+		t.Fatalf("is not normalized got %q; want true", got)
 	}
 
 	localValue := qs.LiteralString("2026-01-02 03:04:05+02").Cast(qs.TypeTimestampTZ)
-	if session.options.PostgreSQL >= qs.PostgreSQL17 {
+	if session.major >= 17 {
 		for _, local := range []qs.Expr{qs.AtLocal(localValue), localValue.AtLocal()} {
 			if got := syntaxText(t, session, local); got != "2026-01-02 01:04:05" {
 				t.Fatalf("AT LOCAL got %q; want 2026-01-02 01:04:05", got)

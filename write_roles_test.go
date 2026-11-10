@@ -24,11 +24,11 @@ func TestValueBindsMixedDestinationValues(t *testing.T) {
 func TestWriteRolesRenderDefaultsAndPreserveArguments(t *testing.T) {
 	t.Parallel()
 	checkSQL(t,
-		Update("people").Set(SetDefault("name")),
+		Update("people").Set(SetDefault("name")).AllRows(),
 		`UPDATE "people" SET "name" = DEFAULT`,
 	)
 	checkSQL(t,
-		Update("people").Set(Assign(Col("name"), Value("Ada"))),
+		Update("people").Set(Assign(Col("name"), Value("Ada"))).AllRows(),
 		`UPDATE "people" SET "name" = $1`, "Ada",
 	)
 	checkSQL(t,
@@ -43,14 +43,14 @@ func TestWriteRolesRenderDefaultsAndPreserveArguments(t *testing.T) {
 		Update("people").Set(AssignRow(
 			[]Expr{Col("first"), Col("last")},
 			WriteTuple(Default(), Value("Lovelace")),
-		)),
+		)).AllRows(),
 		`UPDATE "people" SET ("first", "last") = (DEFAULT, $1)`, "Lovelace",
 	)
 	checkSQL(t,
 		Update("people").Set(AssignRow(
 			[]Expr{Col("first"), Col("last")},
 			WriteRow(Default(), Value("Lovelace")),
-		)),
+		)).AllRows(),
 		`UPDATE "people" SET ("first", "last") = ROW(DEFAULT, $1)`, "Lovelace",
 	)
 	checkSQL(t,
@@ -66,14 +66,14 @@ func TestWriteRejectsNestedDefaultAndPreservesRollback(t *testing.T) {
 	privateDefault := Expr{kind: exprKeyword, text: "DEFAULT"}
 	nested := Write(privateDefault.Add(Param("nested")))
 	for _, statement := range []Statement{
-		Update("people").Set(Set("name", nested)),
-		Update("people").Set(AssignRow([]Expr{Col("first"), Col("last")}, WriteTuple(nested, Write(Param("Lovelace"))))),
+		Update("people").Set(Set("name", nested)).AllRows(),
+		Update("people").Set(AssignRow([]Expr{Col("first"), Col("last")}, WriteTuple(nested, Write(Param("Lovelace"))))).AllRows(),
 	} {
 		checkError(t, statement, ErrInvalid)
 	}
 	// A rejected nested DEFAULT must not leak either SQL or arguments into the
 	// caller-owned buffers.
-	statement := Update("people").Set(Set("name", nested))
+	statement := Update("people").Set(Set("name", nested)).AllRows()
 	sql, args, err := AppendSQL([]byte("prefix "), []any{"existing"}, statement)
 	if !errors.Is(err, ErrInvalid) || string(sql) != "prefix " || len(args) != 1 || args[0] != "existing" {
 		t.Fatalf("nested DEFAULT rollback: %q %#v %v", sql, args, err)
@@ -120,19 +120,15 @@ func TestInsertColumnSelectorOwnsTargetsAcrossRoles(t *testing.T) {
 	checkSQL(t, defaults, `INSERT INTO "archive" ("name") DEFAULT VALUES RETURNING "name"`)
 }
 
-func TestInsertTargetKeepsNestedChildrenLiveAndClonesThem(t *testing.T) {
+func TestInsertTargetBranchesShareTheirTargets(t *testing.T) {
 	t.Parallel()
 	child := Select(Param(1))
 	selector := InsertInto("events").Targets(Col("items").Index(Scalar(child)))
 	left := selector.Values(Write(Param("left")))
 	right := selector.Values(Write(Param("right")))
-	clone := Clone(left)
 
-	child.Reset()
-	child.Columns(Param(2))
-	checkSQL(t, left, `INSERT INTO "events" ("items"[(SELECT $1)]) VALUES ($2)`, 2, "left")
-	checkSQL(t, right, `INSERT INTO "events" ("items"[(SELECT $1)]) VALUES ($2)`, 2, "right")
-	checkSQL(t, clone, `INSERT INTO "events" ("items"[(SELECT $1)]) VALUES ($2)`, 1, "left")
+	checkSQL(t, left, `INSERT INTO "events" ("items"[(SELECT $1)]) VALUES ($2)`, 1, "left")
+	checkSQL(t, right, `INSERT INTO "events" ("items"[(SELECT $1)]) VALUES ($2)`, 1, "right")
 }
 
 func TestWriteConstructorsCaptureStructuralSlices(t *testing.T) {
@@ -154,5 +150,5 @@ func TestWriteConstructorsCaptureStructuralSlices(t *testing.T) {
 	rowTargets := []Expr{Col("first"), Col("last")}
 	row := AssignRow(rowTargets, WriteTuple(Write(Param("Ada")), Write(Param("Lovelace"))))
 	rowTargets[0], rowTargets[1] = Col("changed_first"), Col("changed_last")
-	checkSQL(t, Update("people").Set(row), `UPDATE "people" SET ("first", "last") = ($1, $2)`, "Ada", "Lovelace")
+	checkSQL(t, Update("people").Set(row).AllRows(), `UPDATE "people" SET ("first", "last") = ($1, $2)`, "Ada", "Lovelace")
 }

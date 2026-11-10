@@ -29,49 +29,9 @@ type Rowset interface {
 	rowset()
 }
 
-// PlaceholderStyle selects parameter syntax without rewriting SQL text.
-// It does not change the PostgreSQL dialect or the argument order.
-type PlaceholderStyle uint8
-
-const (
-	// Dollar emits PostgreSQL placeholders numbered from the argument position.
-	Dollar PlaceholderStyle = iota // $1, $2, ...; the PostgreSQL default.
-	// Question emits one question mark per argument without changing PostgreSQL syntax.
-	Question // ?, ?, ...; requires a consumer supporting this format.
-)
-
-// PostgreSQLVersion selects the major release used for feature validation.
-// Zero selects PostgreSQL18; other values must be one of the named releases.
-type PostgreSQLVersion int
-
-// Supported PostgreSQL major releases for feature validation.
-const (
-	// PostgreSQL12 enables syntax supported by PostgreSQL 12.
-	PostgreSQL12 PostgreSQLVersion = 12 + iota
-	// PostgreSQL13 enables syntax supported by PostgreSQL 13.
-	PostgreSQL13
-	// PostgreSQL14 enables syntax supported by PostgreSQL 14.
-	PostgreSQL14
-	// PostgreSQL15 enables syntax supported by PostgreSQL 15.
-	PostgreSQL15
-	// PostgreSQL16 enables syntax supported by PostgreSQL 16.
-	PostgreSQL16
-	// PostgreSQL17 enables syntax supported by PostgreSQL 17.
-	PostgreSQL17
-	// PostgreSQL18 enables syntax supported by PostgreSQL 18 and is the zero-option default.
-	PostgreSQL18
-)
-
-func (v PostgreSQLVersion) valid() bool { return v >= PostgreSQL12 && v <= PostgreSQL18 }
-
-// Options changes parameter syntax, rendering limits and feature validation.
-// Zero fields select Dollar, PostgreSQL 18, 65535 parameters and 256 nesting levels.
-// A supported version does not guarantee that referenced schema objects exist.
+// Options changes rendering limits. Zero fields select 65535 parameters and
+// 256 nesting levels.
 type Options struct {
-	// PlaceholderStyle selects parameter tokens; zero selects Dollar.
-	PlaceholderStyle PlaceholderStyle
-	// PostgreSQL selects known feature gates; zero selects PostgreSQL18.
-	PostgreSQL PostgreSQLVersion
 	// MaxParameters bounds total arguments including append prefixes; zero selects 65535.
 	MaxParameters int
 	// MaxDepth bounds nested traversal; zero selects 256 and valid nonzero values are 1..4096.
@@ -89,9 +49,6 @@ type renderer struct {
 }
 
 func normalOptions(o Options) Options {
-	if o.PostgreSQL == 0 {
-		o.PostgreSQL = PostgreSQL18
-	}
 	if o.MaxParameters == 0 {
 		o.MaxParameters = 65535
 	}
@@ -106,14 +63,21 @@ func ToSQL(s Statement) (string, []any, error) { return ToSQLWith(s, Options{}) 
 
 // ToSQLWith renders an owned result with explicit options.
 func ToSQLWith(s Statement, options Options) (string, []any, error) {
-	// A small initial buffer avoids repeated growth for common queries. The
-	// owned string is copied out and never aliases reusable storage.
-	var scratch [256]byte
-	buf, args, err := AppendWith(scratch[:0], nil, s, options)
+	var scratch [ownedSQLScratch]byte
+	return ownedSQL(AppendWith(scratch[:0], nil, s, options))
+}
+
+// ownedSQLScratch is the initial buffer of a render that returns a string. It
+// avoids repeated growth for common queries.
+const ownedSQLScratch = 256
+
+// ownedSQL copies a rendered buffer into a string, so the result never aliases
+// reusable storage. On error it returns no SQL or args.
+func ownedSQL(sql []byte, args []any, err error) (string, []any, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	return string(buf), args, nil
+	return string(sql), args, nil
 }
 
 // MustToSQL is intended for tests and static statements; it panics on errors.
@@ -134,17 +98,29 @@ func AppendSQL(sql []byte, args []any, s Statement) ([]byte, []any, error) {
 
 // AppendWith is AppendSQL with explicit parameter syntax, limits and feature validation.
 func AppendWith(sql []byte, args []any, s Statement, options Options) ([]byte, []any, error) {
-	w := renderer{sql: sql, args: args, options: normalOptions(options)}
-	switch {
-	case w.options.PlaceholderStyle > Question:
-		w.fail(ErrInvalid, "options", "unknown placeholder style")
-	case !w.options.PostgreSQL.valid() || w.options.MaxParameters < 1 || w.options.MaxParameters > 65535 || w.options.MaxDepth < 1 || w.options.MaxDepth > 4096:
-		w.fail(ErrInvalid, "options", "require PostgreSQL 12..18, 1..65535 parameters and 1..4096 nesting levels")
-	case len(args) > w.options.MaxParameters:
-		w.fail(ErrParameterLimit, "parameters", "existing argument prefix exceeds the limit")
-	default:
+	w, ok := newRenderer(sql, args, options)
+	if ok {
 		w.statement(s)
 	}
+	return w.result(sql, args)
+}
+
+// newRenderer starts a render into sql and args. It reports false, with the
+// failure recorded, when the options or the argument prefix are invalid.
+func newRenderer(sql []byte, args []any, options Options) (renderer, bool) {
+	w := renderer{sql: sql, args: args, options: normalOptions(options)}
+	switch {
+	case w.options.MaxParameters < 1 || w.options.MaxParameters > 65535 || w.options.MaxDepth < 1 || w.options.MaxDepth > 4096:
+		w.fail(ErrInvalid, "options", "require 1..65535 parameters and 1..4096 nesting levels")
+	case len(args) > w.options.MaxParameters:
+		w.fail(ErrParameterLimit, "parameters", "existing argument prefix exceeds the limit")
+	}
+	return w, w.err == nil
+}
+
+// result returns the rendered slices, or the caller's sql and args unchanged
+// when rendering failed.
+func (w *renderer) result(sql []byte, args []any) ([]byte, []any, error) {
 	if w.err != nil {
 		// Binding only appends to the argument slice, so the final length bounds
 		// every slot that rendering could have written in the original array.
@@ -171,17 +147,12 @@ func (w *renderer) require(ok bool, clause, detail string) bool {
 	}
 	return ok
 }
-func (w *renderer) feature(version PostgreSQLVersion, name string) {
-	if w.options.PostgreSQL < version {
-		w.fail(ErrUnsupported, name, "not available in the configured PostgreSQL version")
-	}
-}
 func (w *renderer) enter() bool {
 	if w.err != nil {
 		return false
 	}
 	if w.depth >= w.options.MaxDepth {
-		w.fail(ErrDepth, "structure", "check for a builder containing itself or increase MaxDepth")
+		w.fail(ErrDepth, "structure", "nesting exceeds MaxDepth; flatten the query or raise the limit")
 		return false
 	}
 	w.depth++
@@ -199,12 +170,8 @@ func (w *renderer) bind(value any) {
 		w.args = make([]any, 0, 8)
 	}
 	w.args = append(w.args, value)
-	if w.options.PlaceholderStyle == Dollar {
-		w.byte('$')
-		w.sql = strconv.AppendInt(w.sql, int64(len(w.args)), 10)
-	} else {
-		w.byte('?')
-	}
+	w.byte('$')
+	w.sql = strconv.AppendInt(w.sql, int64(len(w.args)), 10)
 }
 
 // Concrete dispatch keeps renderer pointers out of public interfaces; this is
@@ -213,15 +180,12 @@ func (w *renderer) statement(s Statement) {
 	if w.err != nil {
 		return
 	}
-	outerHasWindow, ok := w.openStatement()
-	if !ok {
-		w.statementErrorPath(s)
-		return
+	if outerHasWindow, ok := w.openStatement(); ok {
+		w.dispatchStatement(s)
+		w.closeStatement(outerHasWindow)
 	}
-	w.dispatchStatement(s)
-	w.closeStatement(outerHasWindow)
 	if w.err != nil {
-		w.statementErrorPath(s)
+		w.errorPath(statementLabel(s), 0)
 	}
 }
 
@@ -243,149 +207,8 @@ func (w *renderer) closeStatement(outerHasWindow bool) {
 	w.depth--
 }
 
-func (w *renderer) dispatchStatement(s Statement) {
-	switch b := s.(type) {
-	case *SelectBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil SELECT")
-		} else {
-			b.append(w)
-		}
-	case *InsertRows:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil INSERT")
-		} else {
-			b.append(w)
-		}
-	case *InsertSelect:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil INSERT")
-		} else {
-			b.append(w)
-		}
-	case *InsertAssignments:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil INSERT")
-		} else {
-			b.append(w)
-		}
-	case *InsertDefaults:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil INSERT")
-		} else {
-			b.append(w)
-		}
-	case *UpdateBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil UPDATE")
-		} else {
-			b.append(w)
-		}
-	case *DeleteBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil DELETE")
-		} else {
-			b.append(w)
-		}
-	case *MergeBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil MERGE")
-		} else {
-			b.append(w)
-		}
-	case *SetBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil set operation")
-		} else {
-			b.append(w)
-		}
-	case *ValuesBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil VALUES")
-		} else {
-			b.append(w)
-		}
-	case *TableBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil TABLE")
-		} else {
-			b.append(w)
-		}
-	case *ExplainBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil EXPLAIN")
-		} else {
-			b.append(w)
-		}
-	case *TruncateBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil TRUNCATE")
-		} else {
-			b.append(w)
-		}
-	case *ExecuteBuilder:
-		w.queryUtilityStatement(s)
-	case *CreateTableAsBuilder, *MaterializedViewBuilder, *DeclareCursorBuilder, *SelectIntoBuilder:
-		w.queryUtilityStatement(s)
-	case *SQLStatement:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil SQL statement")
-		} else {
-			w.expr(b.expr)
-		}
-	default:
-		w.fail(ErrInvalid, "statement", "nil or unknown statement")
-	}
-}
-
-func (w *renderer) queryUtilityStatement(s Statement) {
-	switch b := s.(type) {
-	case *ExecuteBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil EXECUTE")
-			return
-		}
-		b.append(w)
-	case *CreateTableAsBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil CREATE TABLE AS")
-			return
-		}
-		b.append(w)
-	case *MaterializedViewBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil CREATE MATERIALIZED VIEW")
-			return
-		}
-		b.append(w)
-	case *DeclareCursorBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil DECLARE CURSOR")
-			return
-		}
-		b.append(w)
-	case *SelectIntoBuilder:
-		if b == nil {
-			w.fail(ErrInvalid, "statement", "nil SELECT INTO")
-			return
-		}
-		b.append(w)
-	default:
-		w.fail(ErrInvalid, "statement", "unknown query utility statement")
-	}
-}
-
-// appendTransparentStatement renders a utility statement's query at the
-// same statement level as its enclosing command. PostgreSQL permits a
-// data-modifying CTE in a top-level CREATE TABLE AS or SELECT INTO query, but
-// ordinary statement dispatch must still account for physical nesting depth.
-func (w *renderer) appendTransparentStatement(s Statement) {
-	if w.statementDepth > 0 {
-		w.statementDepth--
-		defer func() { w.statementDepth++ }()
-	}
-	w.statement(s)
-}
+// sqlStatement renders a trusted statement.
+func (w *renderer) sqlStatement(b *SQLStatement) { w.expr(b.expr) }
 
 // ExprToSQL renders a standalone expression; useful for testing reusable parts.
 func ExprToSQL(expr Expr) (string, []any, error) {

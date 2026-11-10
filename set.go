@@ -27,45 +27,45 @@ const (
 	setExceptAll
 )
 
-func setOperation(operator setOperator, left, right Rowset, rest []Rowset) *SetBuilder {
-	b := &SetBuilder{operator: operator, left: left, right: right}
+func setOperation(operator setOperator, left, right Rowset, rest []Rowset) SetBuilder {
+	b := SetBuilder{operator: operator, left: left, right: right}
 	for _, next := range rest {
-		b = &SetBuilder{operator: operator, left: b, right: next}
+		b = SetBuilder{operator: operator, left: b, right: next}
 	}
 	return b
 }
 
 // Union combines two or more rowsets with UNION, preserving each branch's
 // parentheses and appending any additional rowsets in order.
-func Union(left, right Rowset, rest ...Rowset) *SetBuilder {
+func Union(left, right Rowset, rest ...Rowset) SetBuilder {
 	return setOperation(setUnion, left, right, rest)
 }
 
 // UnionAll combines two or more rowsets with UNION ALL.
-func UnionAll(left, right Rowset, rest ...Rowset) *SetBuilder {
+func UnionAll(left, right Rowset, rest ...Rowset) SetBuilder {
 	return setOperation(setUnionAll, left, right, rest)
 }
 
 // Intersect combines two or more rowsets with INTERSECT.
-func Intersect(left, right Rowset, rest ...Rowset) *SetBuilder {
+func Intersect(left, right Rowset, rest ...Rowset) SetBuilder {
 	return setOperation(setIntersect, left, right, rest)
 }
 
 // IntersectAll combines two or more rowsets with INTERSECT ALL.
-func IntersectAll(left, right Rowset, rest ...Rowset) *SetBuilder {
+func IntersectAll(left, right Rowset, rest ...Rowset) SetBuilder {
 	return setOperation(setIntersectAll, left, right, rest)
 }
 
 // Except combines two or more rowsets with EXCEPT.
-func Except(left, right Rowset, rest ...Rowset) *SetBuilder {
+func Except(left, right Rowset, rest ...Rowset) SetBuilder {
 	return setOperation(setExcept, left, right, rest)
 }
 
 // ExceptAll combines two or more rowsets with EXCEPT ALL.
-func ExceptAll(left, right Rowset, rest ...Rowset) *SetBuilder {
+func ExceptAll(left, right Rowset, rest ...Rowset) SetBuilder {
 	return setOperation(setExceptAll, left, right, rest)
 }
-func (b *SetBuilder) append(w *renderer) {
+func (w *renderer) setOperation(b *SetBuilder) {
 	left, right := statementWidth(b.left, w.options.MaxDepth), statementWidth(b.right, w.options.MaxDepth)
 	if left >= 0 && right >= 0 && !w.require(left == right, "set operation", "projection widths differ") {
 		return
@@ -118,39 +118,37 @@ type ValuesBuilder struct {
 }
 
 // Values starts a VALUES rowset with one bound-parameter row.
-func Values(values ...any) *ValuesBuilder {
-	b := &ValuesBuilder{}
-	if len(values) > 0 {
-		b.Row(values...)
+func Values(values ...any) ValuesBuilder {
+	if len(values) == 0 {
+		return ValuesBuilder{}
 	}
-	return b
+	return ValuesBuilder{}.Row(values...)
 }
 
 // ValuesExpr starts a VALUES rowset with one explicit-expression row.
-func ValuesExpr(expressions ...Expr) *ValuesBuilder {
-	b := &ValuesBuilder{}
-	if len(expressions) > 0 {
-		b.RowExpr(expressions...)
+func ValuesExpr(expressions ...Expr) ValuesBuilder {
+	if len(expressions) == 0 {
+		return ValuesBuilder{}
 	}
-	return b
+	return ValuesBuilder{}.RowExpr(expressions...)
 }
 
 // Row appends a row whose values become bound parameters.
-func (b *ValuesBuilder) Row(values ...any) *ValuesBuilder {
+func (b ValuesBuilder) Row(values ...any) ValuesBuilder {
 	exprs := make([]Expr, len(values))
 	for i, v := range values {
 		exprs[i] = parameter(v)
 	}
-	b.rows = append(b.rows, exprs)
+	b.rows = extend(b.rows, exprs)
 	return b
 }
 
 // RowExpr appends a row of explicit expressions.
-func (b *ValuesBuilder) RowExpr(expressions ...Expr) *ValuesBuilder {
-	b.rows = append(b.rows, cloneSlice(expressions))
+func (b ValuesBuilder) RowExpr(expressions ...Expr) ValuesBuilder {
+	b.rows = extend(b.rows, cloneSlice(expressions))
 	return b
 }
-func (b *ValuesBuilder) append(w *renderer) {
+func (w *renderer) valuesStatement(b *ValuesBuilder) {
 	w.head(b.base)
 	if w.err != nil {
 		return
@@ -266,11 +264,11 @@ type TableBuilder struct {
 }
 
 // TableRows starts a TABLE rowset for a named table.
-func TableRows(name string) *TableBuilder { return &TableBuilder{table: Table(name)} }
+func TableRows(name string) TableBuilder { return TableBuilder{table: Table(name)} }
 
 // Only restricts TABLE to the named table, excluding inherited tables.
-func (b *TableBuilder) Only() *TableBuilder { b.table = b.table.Only(); return b }
-func (b *TableBuilder) append(w *renderer) {
+func (b TableBuilder) Only() TableBuilder { b.table = b.table.Only(); return b }
+func (w *renderer) tableStatement(b *TableBuilder) {
 	w.head(b.base)
 	if w.err != nil {
 		return
@@ -292,77 +290,56 @@ func projectionWidth(exprs []Expr) int {
 }
 func unknownProjection(e Expr) bool {
 	for {
-		if e.kind == exprAlias {
-			e = e.unary()
-			continue
-		}
-		if e.kind == exprGroup {
-			items := ownedPayload[[]Expr](e.value)
-			if len(items) == 1 {
-				e = items[0]
-				continue
+		switch n := e.node().(type) {
+		case *aliasExpression:
+			e = n.expr
+		case *groupExpression:
+			if len(n.items) != 1 {
+				return false
 			}
+			e = n.items[0]
+		case *fragmentExpression, *fieldsExpression, *starExpression:
+			return true
+		default:
+			return e.kind == exprRaw
 		}
-		break
 	}
-	if e.kind == exprRaw || e.kind == exprFragment || e.kind == exprFields {
-		return true
-	}
-	if e.kind == exprIdentifier && (e.text == "*" || len(e.text) > 2 && e.text[len(e.text)-2:] == ".*") {
-		return true
-	}
-	return false
 }
 
 // statementWidth returns a known output-column count or -1 when the statement
 // is opaque or its graph exceeds the caller's rendering depth. Set operations
 // inherit the left branch's width; their renderer validates both branches.
-// Walking the set spine iteratively keeps width inspection bounded even when a
-// builder graph contains a cycle.
+// The set spine is walked iteratively, bounded by maxDepth.
 func statementWidth(s Statement, maxDepth int) int {
 	for range maxDepth {
 		switch b := s.(type) {
-		case *SelectBuilder:
-			if b != nil {
-				return projectionWidth(b.columns)
+		case SelectBuilder:
+			if len(b.columns) == 0 && !b.noColumns {
+				// An empty SelectSlice is invalid; its own render says so.
+				return -1
 			}
-		case *SetBuilder:
-			if b != nil {
-				s = b.left
-				continue
-			}
-		case *ValuesBuilder:
-			if b != nil && len(b.rows) > 0 {
+			return projectionWidth(b.columns)
+		case SetBuilder:
+			s = b.left
+			continue
+		case ValuesBuilder:
+			if len(b.rows) > 0 {
 				return projectionWidth(b.rows[0])
 			}
-		case *InsertRows:
-			if b != nil {
-				return projectionWidth(b.base.returning)
-			}
-		case *InsertSelect:
-			if b != nil {
-				return projectionWidth(b.base.returning)
-			}
-		case *InsertAssignments:
-			if b != nil {
-				return projectionWidth(b.base.returning)
-			}
-		case *InsertDefaults:
-			if b != nil {
-				return projectionWidth(b.base.returning)
-			}
-		case *UpdateBuilder:
-			if b != nil {
-				return projectionWidth(b.returning)
-			}
-		case *DeleteBuilder:
-			if b != nil {
-				return projectionWidth(b.returning)
-			}
-		case *MergeBuilder:
-			if b != nil {
-				return projectionWidth(b.returning)
-			}
+		case InsertRows:
+			return projectionWidth(b.base.returning)
+		case InsertSelect:
+			return projectionWidth(b.base.returning)
+		case InsertAssignments:
+			return projectionWidth(b.base.returning)
+		case InsertDefaults:
+			return projectionWidth(b.base.returning)
+		case UpdateBuilder:
+			return projectionWidth(b.returning)
+		case DeleteBuilder:
+			return projectionWidth(b.returning)
+		case MergeBuilder:
+			return projectionWidth(b.returning)
 		}
 		return -1
 	}

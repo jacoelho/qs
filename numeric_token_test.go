@@ -1,47 +1,30 @@
 package qs
 
-import (
-	"errors"
-	"testing"
-)
+import "testing"
 
 func TestLiteralNumericAcceptedTokensPreserveSpelling(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name    string
-		token   string
-		gated16 bool
+		name  string
+		token string
 	}{
-		{"decimal_large", "123456789012345678901234567890.123456789", false},
-		{"decimal_leading_dot", ".5", false},
-		{"decimal_trailing_dot", "1.", false},
-		{"decimal_signed_separators", "+12_345.67_89e-10_11", true},
-		{"binary", "0b101010", true},
-		{"binary_upper_signed", "-0B_1010", true},
-		{"octal", "0o_1_755", true},
-		{"hex", "0xDEAD_beef", true},
-		{"hex_e_digit", "0xE", true},
-		{"hex_huge", "0x10000000000000000", true},
+		{"decimal_large", "123456789012345678901234567890.123456789"},
+		{"decimal_leading_dot", ".5"},
+		{"decimal_trailing_dot", "1."},
+		{"decimal_signed_separators", "+12_345.67_89e-10_11"},
+		{"binary", "0b101010"},
+		{"binary_upper_signed", "-0B_1010"},
+		{"octal", "0o_1_755"},
+		{"hex", "0xDEAD_beef"},
+		{"hex_e_digit", "0xE"},
+		{"hex_huge", "0x10000000000000000"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			checkSQL(t, Select(LiteralNumeric(tc.token)), "SELECT "+tc.token)
-
-			for _, version := range []PostgreSQLVersion{PostgreSQL15, PostgreSQL16} {
-				sql, args, err := ToSQLWith(Select(LiteralNumeric(tc.token)), Options{PostgreSQL: version})
-				if tc.gated16 && version == PostgreSQL15 {
-					if !errors.Is(err, ErrUnsupported) || sql != "" || args != nil {
-						t.Fatalf("PostgreSQL 15 accepted %q: %q %#v %v", tc.token, sql, args, err)
-					}
-					continue
-				}
-				if err != nil || sql != "SELECT "+tc.token || args != nil {
-					t.Fatalf("PostgreSQL %d rendered %q as %q %#v: %v", version, tc.token, sql, args, err)
-				}
-			}
 		})
 	}
 }
@@ -69,42 +52,28 @@ func TestLiteralNumericRejectsMalformedTokens(t *testing.T) {
 func TestDerivedRelations(t *testing.T) {
 	t.Parallel()
 
-	inner := Select(Param("inner")).Where(Eq("inner_key", 1))
-	outer := Select(Param("outer")).FromExpr(Derived(inner)).Where(Eq("outer_key", 2))
+	inner := Select(Param("inner")).Where(Col("inner_key").Eq(Param(1)))
+	outer := Select(Param("outer")).FromExpr(Derived(inner)).Where(Col("outer_key").Eq(Param(2)))
 	checkSQL(t, outer, `SELECT $1 FROM (SELECT $2 WHERE ("inner_key" = $3)) WHERE ("outer_key" = $4)`, "outer", "inner", 1, 2)
 
 	aliased := Derived(Select(Param(1))).As("d", "value")
-	checkSQL(t, Select(Col("d.value")).FromExpr(aliased), `SELECT "d"."value" FROM (SELECT $1) AS "d" ("value")`, 1)
+	checkSQL(t, Select(Col("d", "value")).FromExpr(aliased), `SELECT "d"."value" FROM (SELECT $1) AS "d" ("value")`, 1)
 	checkError(t, Select(Star()).FromExpr(Derived(Select(Param(1))).As("d", "a", "b")), ErrInvalid)
 	checkError(t, Select(Star()).FromExpr(Subquery(Select(Param(1)), "")), ErrInvalid)
 	checkError(t, Select(Star()).FromExpr(Derived(nil)), ErrInvalid)
 	checkError(t, Select(Derived(Select(Param(1))).Col("value")), ErrInvalid)
 
-	for _, version := range []PostgreSQLVersion{PostgreSQL15, PostgreSQL16} {
-		sql, args, err := ToSQLWith(Select(Star()).FromExpr(Derived(Select(Param(1)))), Options{PostgreSQL: version})
-		if version == PostgreSQL15 {
-			if !errors.Is(err, ErrUnsupported) || sql != "" || args != nil {
-				t.Fatalf("PostgreSQL 15 accepted unaliased derived relation: %q %#v %v", sql, args, err)
-			}
-		} else if err != nil || sql != `SELECT * FROM (SELECT $1)` || len(args) != 1 || args[0] != 1 {
-			t.Fatalf("PostgreSQL 16 derived relation: %q %#v %v", sql, args, err)
-		}
-	}
-
-	aliasedSQL, args, err := ToSQLWith(Select(Star()).FromExpr(aliased), Options{PostgreSQL: PostgreSQL15})
-	if err != nil || aliasedSQL != `SELECT * FROM (SELECT $1) AS "d" ("value")` || len(args) != 1 || args[0] != 1 {
-		t.Fatalf("PostgreSQL 15 aliased derived relation: %q %#v %v", aliasedSQL, args, err)
-	}
+	checkSQL(t, Select(Star()).FromExpr(Derived(Select(Param(1)))), `SELECT * FROM (SELECT $1)`, 1)
+	checkSQL(t, Select(Star()).FromExpr(aliased), `SELECT * FROM (SELECT $1) AS "d" ("value")`, 1)
 }
 
-func TestDerivedCloneOwnsChild(t *testing.T) {
+func TestDerivedRelationKeepsTheQueryItWasBuiltFrom(t *testing.T) {
 	t.Parallel()
 
 	child := Select(Param(1))
 	query := Select(Star()).FromExpr(Derived(child))
-	clone := query.Clone()
-	child.Columns(Param(2))
+	widened := Select(Star()).FromExpr(Derived(child.Columns(Param(2))))
 
-	checkSQL(t, clone, `SELECT * FROM (SELECT $1)`, 1)
-	checkSQL(t, query, `SELECT * FROM (SELECT $1, $2)`, 1, 2)
+	checkSQL(t, query, `SELECT * FROM (SELECT $1)`, 1)
+	checkSQL(t, widened, `SELECT * FROM (SELECT $1, $2)`, 1, 2)
 }

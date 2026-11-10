@@ -30,21 +30,21 @@ func TestConflictUpdateSlice(t *testing.T) {
 	}{
 		{
 			name:     "columns",
-			complete: ConflictColumns("id").TargetWhere(Eq("active", true)).DoUpdateSlice,
+			complete: ConflictColumns("id").TargetWhere(Col("active").Eq(Param(true))).DoUpdateSlice,
 			sql:      `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ("id") WHERE ("active" = $2) DO UPDATE SET "name" = (SELECT $3), "note" = $4 WHERE ("version" = $5)`,
-			args:     []any{42, true, "live", "retained", 7},
+			args:     []any{42, true, "original", "retained", 7},
 		},
 		{
 			name:     "index",
-			complete: ConflictIndex(IndexColumn("id")).TargetWhere(Eq("enabled", false)).DoUpdateSlice,
+			complete: ConflictIndex(IndexColumn("id")).TargetWhere(Col("enabled").Eq(Param(false))).DoUpdateSlice,
 			sql:      `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ("id") WHERE ("enabled" = $2) DO UPDATE SET "name" = (SELECT $3), "note" = $4 WHERE ("version" = $5)`,
-			args:     []any{42, false, "live", "retained", 7},
+			args:     []any{42, false, "original", "retained", 7},
 		},
 		{
 			name:     "constraint",
 			complete: ConflictConstraint("users_pkey").DoUpdateSlice,
 			sql:      `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ON CONSTRAINT "users_pkey" DO UPDATE SET "name" = (SELECT $2), "note" = $3 WHERE ("version" = $4)`,
-			args:     []any{42, "live", "retained", 7},
+			args:     []any{42, "original", "retained", 7},
 		},
 	}
 	for _, tc := range cases {
@@ -57,10 +57,9 @@ func TestConflictUpdateSlice(t *testing.T) {
 					Set("name", Write(Scalar(child))),
 					Set("note", Value("retained")),
 				}
-				action := tc.complete(assignments).Where(Eq("version", 7))
+				action := tc.complete(assignments).Where(Col("version").Eq(Param(7)))
 				assignments[0] = Set("wrong", Value("replaced"))
 				assignments[1] = Set("other", Value("also replaced"))
-				child.RemoveColumns().Columns(Param("live"))
 				statement := InsertInto("users").Columns("id").Values(Value(42)).OnConflict(action)
 				checkSQL(t, statement, tc.sql, tc.args...)
 			})

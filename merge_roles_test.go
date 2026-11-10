@@ -9,7 +9,7 @@ func TestMergeRoleActions(t *testing.T) {
 	t.Parallel()
 
 	base := func(branch MergeWhen) Statement {
-		return MergeInto("target").Using(Table("source")).On(EqColumns("target.id", "source.id")).When(branch)
+		return MergeInto("target").Using(Table("source")).On(Col("target", "id").Eq(Col("source", "id"))).When(branch)
 	}
 	for _, tc := range []struct {
 		name string
@@ -94,10 +94,10 @@ func TestMergeRoleActions(t *testing.T) {
 func TestMergeRoleConditionsAndSiblingImmutability(t *testing.T) {
 	t.Parallel()
 
-	matched := Matched().And(Eq("source.state", "open"))
-	notMatched := NotMatched().And(Eq("source.state", "new"))
+	matched := Matched().And(Col("source", "state").Eq(Param("open")))
+	notMatched := NotMatched().And(Col("source", "state").Eq(Param("new")))
 	override := notMatched.OverridingSystemValue()
-	query := MergeInto("target").Using(Table("source")).On(EqColumns("target.id", "source.id")).When(
+	query := MergeInto("target").Using(Table("source")).On(Col("target", "id").Eq(Col("source", "id"))).When(
 		matched.ThenUpdate(Set("value", Write(Param(1)))),
 		matched.ThenDelete(),
 		notMatched.ThenInsert(Set("id", Write(Param(2)))),

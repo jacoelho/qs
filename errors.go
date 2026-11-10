@@ -9,12 +9,10 @@ import (
 var (
 	// ErrInvalid identifies structurally invalid queries, inputs or rendering options.
 	ErrInvalid = errors.New("qs: invalid query")
-	// ErrUnsupported identifies syntax unavailable in the selected PostgreSQL version.
-	ErrUnsupported = errors.New("qs: unsupported PostgreSQL feature")
 	// ErrParameterLimit identifies arguments exceeding the configured render limit.
 	ErrParameterLimit = errors.New("qs: parameter limit exceeded")
-	// ErrDepth identifies a query cycle or traversal exceeding the configured depth.
-	ErrDepth = errors.New("qs: cyclic query or nesting limit exceeded")
+	// ErrDepth identifies nesting deeper than the configured render limit.
+	ErrDepth = errors.New("qs: nesting limit exceeded")
 )
 
 // RenderError identifies a query validation or rendering failure without bound values.

@@ -2,18 +2,13 @@ package qs
 
 import "testing"
 
-func TestSelectNoColumnsRendersAndRetainsExplicitIntent(t *testing.T) {
+func TestSelectNoColumnsRendersWhileEmptySelectFails(t *testing.T) {
 	t.Parallel()
 
-	q := SelectNoColumns().Columns(Col("removed")).RemoveColumns()
-	checkSQL(t, q, `SELECT `)
-
-	clone := q.Clone()
-	checkSQL(t, clone, `SELECT `)
-
-	q.Reset()
-	checkError(t, q, ErrInvalid)
-	checkError(t, Select().Columns(Col("removed")).RemoveColumns(), ErrInvalid)
+	checkSQL(t, SelectNoColumns(), `SELECT `)
+	checkSQL(t, SelectNoColumns().Where(True()), `SELECT  WHERE TRUE`)
+	checkError(t, SelectSlice(nil), ErrInvalid)
+	checkError(t, SelectBuilder{}, ErrInvalid)
 }
 
 func TestSelectNoColumnsRejectsDistinctAndKnownWidthMismatches(t *testing.T) {

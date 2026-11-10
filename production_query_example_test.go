@@ -15,7 +15,7 @@ func ExampleInsertInto_arrayUpsert() {
 		qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
 	)
 	query, args, err := qs.InsertInto("users").Columns("id", "name").From(rows).
-		OnConflict(qs.ConflictColumns("id").TargetWhere(qs.IsNull("deleted_at")).
+		OnConflict(qs.ConflictColumns("id").TargetWhere(qs.Col("deleted_at").IsNull()).
 			DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
 		ReturningCols("id", "name").ToSQL()
 	if err != nil {
@@ -44,17 +44,17 @@ func ExampleSelectBuilder_GroupByExpr_parameterized() {
 
 func ExampleSelectBuilder_SeekAfter() {
 	// Every key is NOT NULL and the last key is unique, so pages are disjoint.
-	feed := qs.SelectCols("id", "created_at").From("posts").Where(qs.Eq("author_id", 7))
-	order := []qs.Order{qs.Desc("posts.created_at"), qs.Desc("posts.id")}
+	feed := qs.SelectCols("id", "created_at").From("posts").Where(qs.Col("author_id").Eq(qs.Param(7)))
+	order := []qs.Order{qs.Col("posts", "created_at").Desc(), qs.Col("posts", "id").Desc()}
 	// Seek after the last row shown: created_at 1700000000, id 42.
-	next := feed.Clone().OrderBy(order...).SeekAfter(int64(1700000000), int64(42)).Limit(20)
+	next := feed.OrderBy(order...).SeekAfter(int64(1700000000), int64(42)).Limit(20)
 	// Seek after the first row shown in reverse order, then reverse the rows.
-	previous := feed.Clone().OrderBy(order[0].Reverse(), order[1].Reverse()).
+	previous := feed.OrderBy(order[0].Reverse(), order[1].Reverse()).
 		SeekAfter(int64(1700000500), int64(61)).Limit(20)
 	// The count omits the ORDER BY clause, the cursor and LIMIT. Column keys
 	// cannot change the rows, so none move into the counted projection.
 	total := qs.CountRows(next)
-	for _, q := range []*qs.SelectBuilder{next, previous, total} {
+	for _, q := range []qs.SelectBuilder{next, previous, total} {
 		query, args, err := q.ToSQL()
 		fmt.Println(query)
 		fmt.Println(args, err)

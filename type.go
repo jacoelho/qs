@@ -73,8 +73,8 @@ func TypeVarchar(length int) DataType {
 	return DataType{name: "varchar", params: []int{length}}
 }
 
-// TypeDecimal describes a numeric precision and scale. PostgreSQL 15 added negative
-// scales; the renderer validates those against the configured server version.
+// TypeDecimal describes a numeric precision and scale. A negative scale rounds
+// to the left of the decimal point.
 func TypeDecimal(precision, scale int) DataType {
 	if precision < 1 || precision > 1000 || scale < -1000 || scale > 1000 {
 		return DataType{invalid: "numeric precision or scale out of range"}
@@ -137,10 +137,6 @@ func (w *renderer) dataType(t DataType) {
 		return
 	}
 	if len(t.params) != 0 {
-		numeric := t.name == numericTypeName || len(t.parts) == 2 && t.parts[0] == "pg_catalog" && t.parts[1] == numericTypeName
-		if numeric && len(t.params) == 2 && (t.params[1] < 0 || t.params[1] > t.params[0]) {
-			w.feature(PostgreSQL15, "numeric scale")
-		}
 		w.byte('(')
 		for i, n := range t.params {
 			if i != 0 {

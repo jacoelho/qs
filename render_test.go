@@ -6,11 +6,11 @@ import (
 	"testing"
 )
 
-func placeholderQuery() *SelectBuilder {
-	child := Select(Param("nested")).Where(Eq("id", 42))
-	doc := JSONBCol("payload")
+func placeholderQuery() SelectBuilder {
+	child := Select(Param("nested")).Where(Col("id").Eq(Param(42)))
+	doc := JSONBExpr(Col("payload"))
 	return Select(
-		Ident(`odd"column?;`),
+		Col(`odd"column?;`),
 		LiteralString("quote'; ? $1 \\end"),
 		UnsafeSQL(`'?; $1' /* ?; $1 */`),
 		Scalar(child).As("nested"),
@@ -19,93 +19,52 @@ func placeholderQuery() *SelectBuilder {
 		FromExpr(child.As("again")).
 		Where(doc.HasKey("?;"), doc.HasAnyKeys("red", "blue"),
 			doc.HasAllKeys("alpha", "beta"), doc.PathExists("$.a ? (@ > 1)"),
-			Eq("name", `x'); DROP TABLE t;--`)).Limit(3)
+			Col("name").Eq(Param(`x'); DROP TABLE t;--`))).Limit(3)
 }
 
-func TestPlaceholderStyles(t *testing.T) {
+// Text that looks like a placeholder inside identifiers, literals, trusted SQL
+// and operators must not disturb the numbering of bound values.
+func TestPlaceholdersNumberBoundValuesOnly(t *testing.T) {
 	t.Parallel()
 
 	query := placeholderQuery()
 	args := []any{"seed", "nested", 42, "profile", "name", "nested", 42,
 		"?;", "red", "blue", "alpha", "beta", "$.a ? (@ > 1)", `x'); DROP TABLE t;--`, 3}
-	cases := []struct {
-		name  string
-		style PlaceholderStyle
-		sql   string
-	}{
-		{"dollar", Dollar, `WITH "seed" ("value") AS (SELECT $1) SELECT "odd""column?;", E'quote''; ? $1 \\end', '?; $1' /* ?; $1 */, (SELECT $2 WHERE ("id" = $3)) AS "nested", (("payload" -> $4) ->> $5) AS "name" FROM (SELECT $6 WHERE ("id" = $7)) AS "again" WHERE ("payload" ? $8) AND ("payload" ?| (ARRAY[$9, $10])::text[]) AND ("payload" ?& (ARRAY[$11, $12])::text[]) AND ("payload" @? ($13)::jsonpath) AND ("name" = $14) LIMIT $15`},
-		{"question", Question, `WITH "seed" ("value") AS (SELECT ?) SELECT "odd""column?;", E'quote''; ? $1 \\end', '?; $1' /* ?; $1 */, (SELECT ? WHERE ("id" = ?)) AS "nested", (("payload" -> ?) ->> ?) AS "name" FROM (SELECT ? WHERE ("id" = ?)) AS "again" WHERE ("payload" ? ?) AND ("payload" ?| (ARRAY[?, ?])::text[]) AND ("payload" ?& (ARRAY[?, ?])::text[]) AND ("payload" @? (?)::jsonpath) AND ("name" = ?) LIMIT ?`},
-	}
-	for _, graph := range []struct {
-		name  string
-		query Statement
-	}{{"original", query}, {"clone", query.Clone()}} {
-		t.Run(graph.name, func(t *testing.T) {
-			t.Parallel()
-
-			for _, tc := range cases {
-				t.Run(tc.name, func(t *testing.T) {
-					t.Parallel()
-
-					for range 2 {
-						sql, got, err := graph.query.ToSQLWith(Options{PlaceholderStyle: tc.style})
-						if err != nil || sql != tc.sql || !reflect.DeepEqual(got, args) {
-							t.Fatalf("SQL=%s\nargs=%#v\nerror=%v", sql, got, err)
-						}
-					}
-				})
-			}
-			// Rendering options belong to the call, so Question cannot change defaults.
-			sql, got, err := graph.query.ToSQL()
-			if err != nil || sql != cases[0].sql || !reflect.DeepEqual(got, args) {
-				t.Fatalf("default changed: SQL=%s args=%#v error=%v", sql, got, err)
-			}
-		})
-	}
+	checkSQL(t, query, `WITH "seed" ("value") AS (SELECT $1) SELECT "odd""column?;", E'quote''; ? $1 \\end', '?; $1' /* ?; $1 */, (SELECT $2 WHERE ("id" = $3)) AS "nested", (("payload" -> $4) ->> $5) AS "name" FROM (SELECT $6 WHERE ("id" = $7)) AS "again" WHERE ("payload" ? $8) AND ("payload" ?| (ARRAY[$9, $10])::text[]) AND ("payload" ?& (ARRAY[$11, $12])::text[]) AND ("payload" @? ($13)::jsonpath) AND ("name" = $14) LIMIT $15`, args...)
 }
 
 func TestPlaceholderAppendPrefix(t *testing.T) {
 	t.Parallel()
 
-	query := Select(Param("value")).Where(Eq("id", 17))
+	query := Select(Param("value")).Where(Col("id").Eq(Param(17)))
 	prefix := []any{"a", "b", "c", "d", "e", "f", "g", "h", "i"}
 	wantArgs := []any{"a", "b", "c", "d", "e", "f", "g", "h", "i", "value", 17}
-	for _, tc := range []struct {
-		name  string
-		style PlaceholderStyle
-		sql   string
-	}{
-		{"dollar", Dollar, `/* ? $1 */ SELECT $10 WHERE ("id" = $11)`},
-		{"question", Question, `/* ? $1 */ SELECT ? WHERE ("id" = ?)`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+	const want = `/* ? $1 */ SELECT $10 WHERE ("id" = $11)`
 
-			buf := append(make([]byte, 0, 256), "/* ? $1 */ "...)
-			args := make([]any, len(prefix), 16)
-			copy(args, prefix)
-			sql, got, err := AppendWith(buf, args, query, Options{PlaceholderStyle: tc.style})
-			if err != nil || string(sql) != tc.sql || !reflect.DeepEqual(got, wantArgs) {
-				t.Fatalf("SQL=%s args=%#v error=%v", sql, got, err)
-			}
-			if string(buf) != "/* ? $1 */ " || !reflect.DeepEqual(args, prefix) {
-				t.Fatal("rendering changed the visible prefix")
-			}
-			var statement Statement = query
-			sql, got, err = statement.AppendWith(buf, args, Options{PlaceholderStyle: tc.style})
-			if err != nil || string(sql) != tc.sql || !reflect.DeepEqual(got, wantArgs) {
-				t.Fatalf("method: SQL=%s args=%#v error=%v", sql, got, err)
-			}
-		})
+	buf := append(make([]byte, 0, 256), "/* ? $1 */ "...)
+	args := make([]any, len(prefix), 16)
+	copy(args, prefix)
+	sql, got, err := AppendWith(buf, args, query, Options{})
+	if err != nil || string(sql) != want || !reflect.DeepEqual(got, wantArgs) {
+		t.Fatalf("SQL=%s args=%#v error=%v", sql, got, err)
 	}
-	var nilSelect *SelectBuilder
-	sql, args, err := nilSelect.AppendWith(nil, nil, Options{PlaceholderStyle: Question})
-	if !errors.Is(err, ErrInvalid) || sql != nil || args != nil {
-		t.Fatalf("typed nil method: SQL=%s args=%#v error=%v", sql, args, err)
+	if string(buf) != "/* ? $1 */ " || !reflect.DeepEqual(args, prefix) {
+		t.Fatal("rendering changed the visible prefix")
+	}
+	var statement Statement = query
+	sql, got, err = statement.AppendWith(buf, args, Options{})
+	if err != nil || string(sql) != want || !reflect.DeepEqual(got, wantArgs) {
+		t.Fatalf("method: SQL=%s args=%#v error=%v", sql, got, err)
+	}
+
+	var zero SelectBuilder
+	sql, got, err = zero.AppendWith(nil, nil, Options{})
+	if !errors.Is(err, ErrInvalid) || sql != nil || got != nil {
+		t.Fatalf("zero statement: SQL=%s args=%#v error=%v", sql, got, err)
 	}
 }
 
-func TestPlaceholderErrorsAreAtomic(t *testing.T) {
+func TestRenderErrorsAreAtomic(t *testing.T) {
 	t.Parallel()
 
 	valid := Select(Param("first"), Param("second"))
@@ -117,13 +76,6 @@ func TestPlaceholderErrorsAreAtomic(t *testing.T) {
 	unknownOverride.base.overriding = overridingMode(255)
 	unknownMergeOverride := NotMatched().ThenInsertValues([]string{"id"}, Write(Param("second")))
 	unknownMergeOverride.overriding = overridingMode(255)
-	for _, style := range []PlaceholderStyle{2, 255} {
-		_, _, err := valid.ToSQLWith(Options{PlaceholderStyle: style})
-		detail, ok := errors.AsType[*RenderError](err)
-		if !errors.Is(err, ErrInvalid) || !ok || detail.Clause != "options" {
-			t.Fatalf("invalid style %d: %v", style, err)
-		}
-	}
 	for _, tc := range []struct {
 		name     string
 		query    Statement
@@ -131,17 +83,16 @@ func TestPlaceholderErrorsAreAtomic(t *testing.T) {
 		cause    error
 		appended int
 	}{
-		{"invalid_version", valid, Options{PostgreSQL: PostgreSQLVersion(19)}, ErrInvalid, 0},
-		{"invalid_style", valid, Options{PlaceholderStyle: 2}, ErrInvalid, 0},
-		{"late_expression", Select(Param("first"), Param("second"), Expr{}), Options{PlaceholderStyle: Question}, ErrInvalid, 2},
-		{"late_grouped_expression", Select(Param("first"), Param("second"), Expr{}.Parenthesized()), Options{PlaceholderStyle: Question}, ErrInvalid, 2},
-		{"late_function_cast_type", Select(Param("first")).FromExpr(TableFunc(Param("second").Cast(DataType{}))), Options{PlaceholderStyle: Question}, ErrInvalid, 2},
-		{"unknown_select_quantifier", unknownQuantifier, Options{PlaceholderStyle: Question}, ErrInvalid, 1},
-		{"unknown_cte_materialization", Select(Param("third")).Prefix(Param("first")).With(unknownCTE), Options{PlaceholderStyle: Question}, ErrInvalid, 1},
-		{"unknown_insert_overriding", unknownOverride, Options{PlaceholderStyle: Question}, ErrInvalid, 1},
-		{"unknown_merge_overriding", MergeInto("t").Using(Table("s")).On(Eq("t.id", "first")).When(unknownMergeOverride), Options{PlaceholderStyle: Question}, ErrInvalid, 1},
-		{"cycle_keyword", cycleValuesQuery(CurrentDate(), LiteralInt(0)), Options{PlaceholderStyle: Question}, ErrInvalid, 1},
-		{"parameter_limit", valid, Options{PlaceholderStyle: Question, MaxParameters: 10}, ErrParameterLimit, 1},
+		{"invalid_options", valid, Options{MaxDepth: -1}, ErrInvalid, 0},
+		{"late_expression", Select(Param("first"), Param("second"), Expr{}), Options{}, ErrInvalid, 2},
+		{"late_grouped_expression", Select(Param("first"), Param("second"), Expr{}.Parenthesized()), Options{}, ErrInvalid, 2},
+		{"late_function_cast_type", Select(Param("first")).FromExpr(TableFunc(Param("second").Cast(DataType{}))), Options{}, ErrInvalid, 2},
+		{"unknown_select_quantifier", unknownQuantifier, Options{}, ErrInvalid, 1},
+		{"unknown_cte_materialization", Select(Param("third")).Prefix(Param("first")).With(unknownCTE), Options{}, ErrInvalid, 1},
+		{"unknown_insert_overriding", unknownOverride, Options{}, ErrInvalid, 1},
+		{"unknown_merge_overriding", MergeInto("t").Using(Table("s")).On(Col("t", "id").Eq(Param("first"))).When(unknownMergeOverride), Options{}, ErrInvalid, 1},
+		{"cycle_keyword", cycleValuesQuery(CurrentDate(), LiteralInt(0)), Options{}, ErrInvalid, 1},
+		{"parameter_limit", valid, Options{MaxParameters: 10}, ErrParameterLimit, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -185,29 +136,17 @@ func TestPlaceholderErrorsAreAtomic(t *testing.T) {
 	}
 }
 
-func TestPlaceholderReusableAppendAllocations(t *testing.T) {
-	query := Select(Param("value")).Where(JSONBCol("payload").HasKey("name"))
-	for _, tc := range []struct {
-		name  string
-		style PlaceholderStyle
-		sql   string
-	}{
-		{"dollar", Dollar, `SELECT $1 WHERE ("payload" ? $2)`},
-		{"question", Question, `SELECT ? WHERE ("payload" ? ?)`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			options := Options{PlaceholderStyle: tc.style}
-			buf, args := make([]byte, 0, 256), make([]any, 0, 8)
-			buf, args, err := query.AppendWith(buf, args, options)
-			if err != nil || string(buf) != tc.sql || !reflect.DeepEqual(args, []any{"value", "name"}) {
-				t.Fatalf("SQL=%s args=%#v error=%v", buf, args, err)
-			}
-			allocations := testing.AllocsPerRun(100, func() {
-				buf, args, err = query.AppendWith(buf[:0], args[:0], options)
-			})
-			if err != nil || allocations != 0 {
-				t.Fatalf("warmed rendering: %g allocations, error=%v", allocations, err)
-			}
-		})
+func TestReusableAppendWithAllocations(t *testing.T) {
+	query := Select(Param("value")).Where(JSONBExpr(Col("payload")).HasKey("name"))
+	buf, args := make([]byte, 0, 256), make([]any, 0, 8)
+	buf, args, err := query.AppendWith(buf, args, Options{})
+	if err != nil || string(buf) != `SELECT $1 WHERE ("payload" ? $2)` || !reflect.DeepEqual(args, []any{"value", "name"}) {
+		t.Fatalf("SQL=%s args=%#v error=%v", buf, args, err)
+	}
+	allocations := testing.AllocsPerRun(100, func() {
+		buf, args, err = query.AppendWith(buf[:0], args[:0], Options{})
+	})
+	if err != nil || allocations != 0 {
+		t.Fatalf("warmed rendering: %g allocations, error=%v", allocations, err)
 	}
 }

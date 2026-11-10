@@ -19,6 +19,7 @@ jobs:
           go-version-file: go.mod
           cache: false
       - run: make golangci-lint
+      - run: make generate-check
       - run: make test
       - run: make race
   postgres:
@@ -28,7 +29,7 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        postgres: [12, 13, 14, 15, 16, 17, 18]
+        postgres: [15, 16, 17, 18]
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}

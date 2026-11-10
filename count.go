@@ -3,13 +3,11 @@ package qs
 import "strconv"
 
 // CountRows returns SELECT count(*) over the rows query selects, ignoring its
-// SeekAfter cursor, LIMIT, OFFSET, FETCH and row locks. query is rendered live,
+// SeekAfter cursor, row limit, OFFSET and row locks. query is rendered
 // as the derived table "matching", without those clauses or its ORDER BY clause.
 // Its WITH, DISTINCT, GROUP BY, HAVING, set-returning projections and trusted
 // prefix and suffix fragments still apply, and nested subqueries keep all of
-// their clauses. Later changes to query are rendered; pass query.Clone() to
-// count a fixed query. A nil query, and a data-modifying WITH in query, fail
-// rendering with ErrInvalid.
+// their clauses. A data-modifying WITH in query fails rendering with ErrInvalid.
 //
 // The count does not sort, but an ORDER BY expression can change the rows: a
 // set-returning function there multiplies them and an aggregate groups them.
@@ -23,15 +21,15 @@ import "strconv"
 //
 // The count is a separate statement. It agrees with the pages only when both
 // run in one REPEATABLE READ or SERIALIZABLE transaction.
-func CountRows(query *SelectBuilder) *SelectBuilder {
-	return Select(CountAll()).FromExpr(Relation{kind: relationMatching, value: query, alias: "matching"})
+func CountRows(query SelectBuilder) SelectBuilder {
+	return Select(CountAll()).FromExpr(Relation{kind: relationSource, source: matchingRows(query), alias: "matching"})
 }
 
 // appendMatching renders the rows CountRows counts. The statement suffix still
 // follows, because qs cannot tell whether a trusted fragment belongs to the
 // omitted clauses.
-func (b *SelectBuilder) appendMatching(w *renderer) {
-	b.appendRows(w, nil, nil, b.tail.order)
+func (w *renderer) selectMatching(b *SelectBuilder) {
+	w.selectRows(b, nil, b.tail.order)
 	if w.err != nil {
 		return
 	}
@@ -49,16 +47,15 @@ func (b *SelectBuilder) appendMatching(w *renderer) {
 // ordinal may refer to an output column, which a projection cannot. SELECT
 // DISTINCT requires every ORDER BY expression to appear in the projection
 // already.
-func (b *SelectBuilder) appendOrderExprs(w *renderer, order []Order) {
+func (w *renderer) selectOrderExprs(b *SelectBuilder, order []Order) {
 	if b.distinct == selectDistinct {
 		return
 	}
 	separate := len(b.columns) > 0
 	for i, term := range order {
-		switch orderTermSyntax(term.expr).kind {
-		case exprIdentifier, exprIdentifierParts, exprLiteral, exprParameter:
+		key := orderTermSyntax(term.expr)
+		if _, qualified := key.node().(*qualifiedIdentifier); qualified || key.kind == exprIdentifier || key.kind == exprQualified || key.kind == exprLiteral || key.kind == exprParameter {
 			continue
-		default:
 		}
 		if separate {
 			w.text(", ")
@@ -80,11 +77,7 @@ func (b *SelectBuilder) appendOrderExprs(w *renderer, order []Order) {
 func (w *renderer) matchingRelation(query *SelectBuilder) bool {
 	w.byte('(')
 	if outerHasWindow, ok := w.openStatement(); ok {
-		if query == nil {
-			w.fail(ErrInvalid, "statement", "nil SELECT")
-		} else {
-			query.appendMatching(w)
-		}
+		w.selectMatching(query)
 		w.closeStatement(outerHasWindow)
 	}
 	if w.err != nil {

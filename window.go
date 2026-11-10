@@ -170,7 +170,7 @@ type namedWindow struct {
 func (w *renderer) validateWindows(windows []namedWindow) bool {
 	for i, current := range windows {
 		for j := range i {
-			if windows[j].name == current.name {
+			if sameName(windows[j].name, current.name) {
 				w.fail(ErrInvalid, "WINDOW", "duplicate window name")
 				return false
 			}

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestInsertSlicesCaptureStructureAndRetainLiveChildren(t *testing.T) {
+func TestInsertSlicesCaptureStructure(t *testing.T) {
 	t.Parallel()
 	columns := []string{"a.b", `a"b`}
 	child := Select(Param("original"))
@@ -16,11 +16,11 @@ func TestInsertSlicesCaptureStructureAndRetainLiveChildren(t *testing.T) {
 	columns[0] = "wrong"
 	first := target.ValuesSlice(row)
 	second := target.ValuesSlice(row)
-	first.ValuesSlice([]WriteValue{Value("later"), Value(nil)})
+	extended := first.ValuesSlice([]WriteValue{Value("later"), Value(nil)})
 	row[0], row[1] = Value("replaced"), Value("replaced")
-	child.RemoveColumns().Columns(Param("live"))
-	checkSQL(t, first, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2), ($3, $4)`, "live", "retained", "later", nil)
-	checkSQL(t, second, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2)`, "live", "retained")
+	checkSQL(t, extended, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2), ($3, $4)`, "original", "retained", "later", nil)
+	checkSQL(t, first, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2)`, "original", "retained")
+	checkSQL(t, second, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2)`, "original", "retained")
 	positional := []WriteValue{Value(nil)}
 	statement := InsertInto("items").ValuesSlice(positional)
 	positional[0] = Value("changed")
@@ -34,24 +34,21 @@ func TestInsertSlicesRejectEmptySelectionsAndRows(t *testing.T) {
 		for _, statement := range []Statement{
 			target.Values(Value(1)), target.From(Select(Star())), target.DefaultValues(),
 		} {
-			for _, query := range []Statement{statement, Clone(statement)} {
-				_, _, err := ToSQL(query)
-				var renderErr *RenderError
-				if !errors.As(err, &renderErr) || renderErr.Clause != "INSERT" || renderErr.Detail != "requires at least one target column" {
-					t.Fatalf("empty target: %v", err)
-				}
-				checkError(t, query, ErrInvalid)
+			_, _, err := ToSQL(statement)
+			var renderErr *RenderError
+			if !errors.As(err, &renderErr) || renderErr.Clause != "INSERT" || renderErr.Detail != "requires at least one target column" {
+				t.Fatalf("empty target: %v", err)
 			}
+			checkError(t, statement, ErrInvalid)
 		}
 	}
 	for _, row := range [][]WriteValue{nil, {}} {
-		for _, statement := range []*InsertRows{
+		for _, statement := range []InsertRows{
 			InsertInto("items").ValuesSlice(row).Values(Value(1)),
 			InsertInto("items").Columns("a").ValuesSlice(row).Values(Value(1)),
 			InsertInto("items").Values(Value(1)).ValuesSlice(row).Values(Value(2)),
 		} {
 			checkError(t, statement, ErrInvalid)
-			checkError(t, statement.Clone(), ErrInvalid)
 		}
 	}
 	checkSQL(t, InsertInto("items").DefaultValues(), `INSERT INTO "items" DEFAULT VALUES`)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/jacoelho/qs"
 	"github.com/jacoelho/qs/projection"
+	samename "github.com/jacoelho/qs/projection/internal/pgtype"
 )
 
 type user struct {
@@ -220,7 +221,7 @@ func TestNestedGroups(t *testing.T) {
 	}
 	type row struct{ Team *team }
 	p := projection.EmbedNull(projection.New(
-		projection.Column(qs.Col("t.id"), func(t *team) *int64 { return &t.ID }),
+		projection.Column(qs.Col("t", "id"), func(t *team) *int64 { return &t.ID }),
 		projection.EmbedNull(users(qs.Table("users").As("l"), "lead_"), func(t *team, u *user) { t.Lead = u }),
 	), func(r *row, t *team) { r.Team = t })
 
@@ -696,6 +697,32 @@ func TestDeclarationAllowsDriverFillableTargets(t *testing.T) {
 	}
 }
 
+// The fixture types print as pgtype.DriverBytes and pgtype.CompositeFields but are
+// not the driver's, so reading them through a pointer is allowed.
+func TestDeclarationIdentifiesDriverTypesByImportPath(t *testing.T) {
+	t.Parallel()
+
+	type row struct {
+		Bytes  samename.DriverBytes
+		Fields samename.CompositeFields
+	}
+	p := projection.New(
+		projection.ColumnNull(qs.Col("a"), func(r *row, v *samename.DriverBytes) {
+			if v != nil {
+				r.Bytes = *v
+			}
+		}),
+		projection.ColumnOrZero(qs.Col("b"), func(r *row) *samename.CompositeFields { return &r.Fields }),
+	)
+	got, err := p.Scan(fakeRow(samename.DriverBytes("x"), samename.CompositeFields{"y"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got.Bytes) != "x" || len(got.Fields) != 1 || got.Fields[0] != "y" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
 func TestScansAreIndependent(t *testing.T) {
 	t.Parallel()
 
@@ -745,13 +772,13 @@ func TestOutputInSelectAndReturning(t *testing.T) {
 	t.Parallel()
 
 	p := projection.New(
-		projection.Column(qs.Col("d.id").As("id"), func(u *user) *int64 { return &u.ID }),
+		projection.Column(qs.Col("d", "id").As("id"), func(u *user) *int64 { return &u.ID }),
 		projection.Column(qs.Param("draft").As("status"), func(u *user) *string { return &u.Name }),
 	)
-	checkSQL(t, qs.Select(p.Expressions()...).FromExpr(qs.Table("documents").As("d")),
+	checkSQL(t, qs.SelectSlice(p.Expressions()).FromExpr(qs.Table("documents").As("d")),
 		`SELECT "d"."id" AS "id", $1 AS "status" FROM "documents" AS "d"`, "draft")
 	checkSQL(t, qs.UpdateTable(qs.Table("documents").As("d")).
-		Set(qs.SetNull("archived_at")).Where(qs.Eq("d.id", "doc-1")).Returning(p.Expressions()...),
+		Set(qs.SetNull("archived_at")).Where(qs.Col("d", "id").Eq(qs.Param("doc-1"))).Returning(p.Expressions()...),
 		`UPDATE "documents" AS "d" SET "archived_at" = NULL WHERE ("d"."id" = $1) RETURNING "d"."id" AS "id", $2 AS "status"`,
 		"doc-1", "draft")
 }
@@ -761,19 +788,17 @@ func TestExpressionsAreOwned(t *testing.T) {
 
 	p := projection.Column(qs.Col("id"), func(u *user) *int64 { return &u.ID })
 	p.Expressions()[0] = qs.Col("changed")
-	checkSQL(t, qs.Select(p.Expressions()...), `SELECT "id"`)
+	checkSQL(t, qs.SelectSlice(p.Expressions()), `SELECT "id"`)
 }
 
-func TestNestedQueriesStayLive(t *testing.T) {
+func TestNestedQueryIsTheOneDeclared(t *testing.T) {
 	t.Parallel()
 
 	child := qs.SelectCols("id").From("documents")
 	p := projection.Column(qs.Scalar(child), func(u *user) *int64 { return &u.ID })
-	extracted := p.Expressions()
-	child.Where(qs.Eq("status", "draft"))
-	want := `SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`
-	checkSQL(t, qs.Select(p.Expressions()...), want, "draft")
-	checkSQL(t, qs.Select(extracted...), want, "draft")
+	drafts := projection.Column(qs.Scalar(child.Where(qs.Col("status").Eq(qs.Param("draft")))), func(u *user) *int64 { return &u.ID })
+	checkSQL(t, qs.SelectSlice(p.Expressions()), `SELECT (SELECT "id" FROM "documents")`)
+	checkSQL(t, qs.SelectSlice(drafts.Expressions()), `SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
 }
 
 func TestEmptyProjection(t *testing.T) {
@@ -784,10 +809,10 @@ func TestEmptyProjection(t *testing.T) {
 		if len(p.Expressions()) != 0 {
 			t.Fatal("empty projection has content")
 		}
-		if _, _, err := qs.Select(p.Expressions()...).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
+		if _, _, err := qs.SelectSlice(p.Expressions()).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 			t.Fatalf("empty SELECT error = %v, want ErrInvalid", err)
 		}
-		checkSQL(t, qs.Update("documents").Set(qs.SetNull("archived_at")).Returning(p.Expressions()...),
+		checkSQL(t, qs.Update("documents").Set(qs.SetNull("archived_at")).AllRows().Returning(p.Expressions()...),
 			`UPDATE "documents" SET "archived_at" = NULL`)
 		if got, err := p.Scan(fakeRow()); err != nil || !reflect.DeepEqual(got, user{}) {
 			t.Fatalf("got %+v, %v", got, err)
@@ -805,7 +830,7 @@ func TestInvalidExpressionFailsRendering(t *testing.T) {
 
 	for _, expression := range []qs.Expr{{}, qs.Col("id").As(""), qs.Col("id").As("bad\x00alias")} {
 		p := projection.Column(expression, func(u *user) *int64 { return &u.ID })
-		if _, _, err := qs.Select(p.Expressions()...).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
+		if _, _, err := qs.SelectSlice(p.Expressions()).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 			t.Fatalf("render error = %v, want ErrInvalid", err)
 		}
 	}

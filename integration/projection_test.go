@@ -118,13 +118,13 @@ func TestProjectionSelfJoin(t *testing.T) {
 		projection.Embed(projectionUsersOf(employee, ""), func(r *projectionRow) *projectionUser { return &r.Employee }),
 		projection.EmbedNull(projectionUsersOf(manager, "manager_"), func(r *projectionRow, u *projectionUser) { r.Manager = u }),
 	)
-	join := qs.LeftJoin(employee, manager).On(employee.Col("manager_id").EqExpr(manager.Col("id")))
-	valid, _, err := qs.Select(p.Expressions()...).FromExpr(join).
-		Where(employee.Col("id").Lte(2)).OrderBy(employee.Col("id").Asc()).ToSQL()
+	join := qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id")))
+	valid, _, err := qs.SelectSlice(p.Expressions()).FromExpr(join).
+		Where(employee.Col("id").Lte(qs.Param(2))).OrderBy(employee.Col("id").Asc()).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	partial, _, err := qs.Select(p.Expressions()...).FromExpr(join).Where(employee.Col("id").Eq(4)).ToSQL()
+	partial, _, err := qs.SelectSlice(p.Expressions()).FromExpr(join).Where(employee.Col("id").Eq(qs.Param(4))).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,8 +161,8 @@ func TestProjectionSelfJoin(t *testing.T) {
 func TestProjectionAllLeavesRowsOpen(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	p := projectionUsersOf(employee, "")
-	text, _, err := qs.Select(p.Expressions()...).FromExpr(employee).
-		Where(employee.Col("id").Ne(3)).OrderBy(employee.Col("id").Asc()).ToSQL()
+	text, _, err := qs.SelectSlice(p.Expressions()).FromExpr(employee).
+		Where(employee.Col("id").Ne(qs.Param(3))).OrderBy(employee.Col("id").Asc()).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,9 +212,9 @@ func TestProjectionScanIntoReusedDestination(t *testing.T) {
 		projection.Embed(projectionUsersOf(employee, ""), func(r *projectionRow) *projectionUser { return &r.Employee }),
 		projection.EmbedNull(projectionUsersOf(manager, "manager_"), func(r *projectionRow, u *projectionUser) { r.Manager = u }),
 	)
-	text, _, err := qs.Select(p.Expressions()...).FromExpr(
-		qs.LeftJoin(employee, manager).On(employee.Col("manager_id").EqExpr(manager.Col("id"))),
-	).Where(employee.Col("id").Lte(2)).OrderBy(employee.Col("id").Desc()).ToSQL()
+	text, _, err := qs.SelectSlice(p.Expressions()).FromExpr(
+		qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
+	).Where(employee.Col("id").Lte(qs.Param(2))).OrderBy(employee.Col("id").Desc()).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,8 +329,8 @@ func (c countedRows) Scan(dest ...any) error { return c.Rows.Scan(append(dest, c
 func TestProjectionReadsOutputSelectedAfterExpressions(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	p := projectionUsersOf(employee, "")
-	text, _, err := qs.Select(append(p.Expressions(), qs.CountAll().Over(qs.Window()))...).FromExpr(employee).
-		Where(employee.Col("id").Ne(3)).OrderBy(employee.Col("id").Asc()).Limit(2).ToSQL()
+	text, _, err := qs.SelectSlice(p.Expressions()).Columns(qs.CountAll().Over(qs.Window())).FromExpr(employee).
+		Where(employee.Col("id").Ne(qs.Param(3))).OrderBy(employee.Col("id").Asc()).Limit(2).ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +547,6 @@ func checkAgainstHandWritten[T any](t *testing.T, drivers []projectionDriver, te
 }
 
 func TestProjectionReadsAsHandWritten(t *testing.T) {
-	session := connect(t)
 	drivers := projectionDrivers(t)
 	present := func(check func(*testing.T, []projectionDriver, string, bool), texts ...string) {
 		t.Helper()
@@ -565,9 +564,7 @@ func TestProjectionReadsAsHandWritten(t *testing.T) {
 	present(checkAgainstHandWritten[sql.NullString], `SELECT 'x'::text`, `SELECT 'ab'::bytea`)
 	present(checkAgainstHandWritten[pgtype.Text], `SELECT 'x'::text`, `SELECT 'ab'::bytea`)
 	present(checkAgainstHandWritten[pgtype.Numeric], `SELECT 'NaN'::numeric`, `SELECT 1.50::numeric`)
-	if session.options.PostgreSQL >= qs.PostgreSQL14 {
-		present(checkAgainstHandWritten[pgtype.Numeric], `SELECT 'Infinity'::numeric`)
-	}
+	present(checkAgainstHandWritten[pgtype.Numeric], `SELECT 'Infinity'::numeric`)
 	present(checkAgainstHandWritten[pgtype.Timestamptz], `SELECT 'infinity'::timestamptz`)
 	present(checkAgainstHandWritten[pgtype.Date], `SELECT 'infinity'::date`)
 	present(checkAgainstHandWritten[time.Time], `SELECT '2026-01-02 03:04:05+00'::timestamptz`)
@@ -656,7 +653,6 @@ type projectionMultirange = pgtype.Multirange[pgtype.Range[pgtype.Int4]]
 // Multirange reads flat; only the read through a nil pointer is unusable. It is declared
 // here and never scanned through a pointer, which would hang database/sql.
 func TestProjectionReadsMultirangeFlat(t *testing.T) {
-	requireVersion(t, connect(t), qs.PostgreSQL14)
 	p := projection.Column(qs.Col("x"), func(v *projectionMultirange) *projectionMultirange { return v })
 	for _, d := range projectionDrivers(t) {
 		t.Run(d.name, func(t *testing.T) {

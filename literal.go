@@ -1,7 +1,5 @@
 package qs
 
-import "strings"
-
 // LiteralNumeric preserves a numeric token exactly, without float64 rounding.
 // It accepts a sign, decimal point/exponent, and PostgreSQL 16+ integer bases
 // and digit separators. Use Param for application values.
@@ -9,15 +7,7 @@ func LiteralNumeric(value string) Expr {
 	if !validNumericLiteral(value) {
 		return invalidExpr("numeric literal", "requires a numeric token with valid digits and separators")
 	}
-	e := Expr{kind: exprLiteral, text: value}
-	i := 0
-	if value[0] == '+' || value[0] == '-' {
-		i++
-	}
-	if strings.IndexByte(value, '_') >= 0 || len(value)-i >= 2 && value[i] == '0' && numericBase(value[i+1]) != 0 {
-		return versionExpression(PostgreSQL16, "numeric bases and separators", e)
-	}
-	return e
+	return Expr{kind: exprLiteral, text: value}
 }
 
 func validNumericLiteral(value string) bool {

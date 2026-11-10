@@ -102,7 +102,7 @@ func TestRowsOfOneResultDoNotShareState(t *testing.T) {
 		}
 		type row struct{ Team *team }
 		p := projection.EmbedNull(projection.New(
-			projection.Column(qs.Col("t.id"), func(t *team) *int64 { return &t.ID }),
+			projection.Column(qs.Col("t", "id"), func(t *team) *int64 { return &t.ID }),
 			projection.EmbedNull(users(qs.Table("users").As("l"), "lead_"), func(t *team, u *user) { t.Lead = u }),
 		), func(r *row, t *team) { r.Team = t })
 		checkRowsRead(t, p, []row{

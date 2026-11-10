@@ -26,14 +26,6 @@ func TestSetWidthAnalysisUsesConfiguredDepth(t *testing.T) {
 	checkSQL(t, Union(Select(Star()).From("t"), Select(Param(1), Param(2))), `(SELECT * FROM "t") UNION (SELECT $1, $2)`, 1, 2)
 }
 
-func TestSetWidthAnalysisBoundsCycles(t *testing.T) {
-	t.Parallel()
-
-	cycle := Union(Select(LiteralInt(1)), Select(LiteralInt(2)))
-	cycle.left = cycle
-	checkErrorWithOptions(t, cycle, Options{MaxDepth: 32}, ErrDepth)
-}
-
 func TestSetOperatorValidation(t *testing.T) {
 	t.Parallel()
 

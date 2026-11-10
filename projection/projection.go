@@ -3,6 +3,7 @@ package projection
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -202,25 +203,41 @@ func (c *scannerCell) finish() error {
 // for json and jsonb columns, changing the value. Drivers refuse sql.RawBytes and
 // pgtype.DriverBytes where they would outlive the row, but only for the exact *T. A
 // zero pgtype.CompositeFields, and a nil *pgtype.Multirange, panic in the codec on
-// every row. Best effort by name: the package imports neither database/sql nor pgx.
+// every row. The driver types are identified by import path and name, since the
+// package imports neither database/sql nor pgx; a type defined from one of them is
+// not detected.
 func indirectReadProblem[T any]() string {
-	name := fmt.Sprintf("%T", (*T)(nil))[1:]
-	switch {
-	case strings.HasPrefix(name, "*"):
-		return fmt.Sprintf("T %s is a pointer; use ColumnNull[%s]", name, name[1:])
-	case name == "sql.RawBytes", name == "pgtype.DriverBytes", name == "pgtype.CompositeFields",
-		strings.HasPrefix(name, "pgtype.Multirange["):
-		return fmt.Sprintf("T %s cannot be read through a pointer", name)
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Pointer {
+		return fmt.Sprintf("T %s is a pointer; use ColumnNull[%s]", t, t.Elem())
+	}
+	// A generic type's name carries its type arguments.
+	name := t.Name()
+	if i := strings.IndexByte(name, '['); i >= 0 {
+		name = name[:i]
+	}
+	switch path := t.PkgPath(); {
+	case path == "database/sql" && name == "RawBytes",
+		pgtypePackage(path) && (name == "DriverBytes" || name == "CompositeFields" || name == "Multirange"):
+		return fmt.Sprintf("T %s cannot be read through a pointer", t)
 	}
 	return ""
+}
+
+// pgtypePackage reports whether path is the pgtype package of pgx v5 or later.
+func pgtypePackage(path string) bool {
+	major, ok := strings.CutPrefix(path, "github.com/jackc/pgx/v")
+	if !ok {
+		return false
+	}
+	_, rest, ok := strings.Cut(major, "/")
+	return ok && rest == "pgtype"
 }
 
 // checkGroupTarget rejects a target the driver cannot fill. It allocates a fresh zero
 // T behind **T and the value is assigned through target afterwards, so a target that
 // differs per call is never reached and an initialised wrapper loses its write-through.
-// Printing cannot tell that wrapper from a plain default, so both are rejected.
-// Declaration-only: panicking at Scan would strand the query, and printing is the zero
-// test that needs neither reflect nor a comparable T.
+// Declaration-only: panicking at Scan would strand the query.
 func checkGroupTarget[T any](target, again *T, position int, expression qs.Expr) {
 	label := func() string { return "projection: EmbedNull: group " + columnLabel(position, expression) }
 	if problem := indirectReadProblem[T](); problem != "" {
@@ -234,12 +251,11 @@ func checkGroupTarget[T any](target, again *T, position int, expression qs.Expr)
 // targetProblem names why a value the driver allocated cannot be assigned through
 // target, or returns "": see checkGroupTarget.
 func targetProblem[T any](target, again *T) string {
-	var zero T
 	switch {
 	case target != again:
-		return fmt.Sprintf("dest for %T must return a stable address", zero)
-	case fmt.Sprintf("%#v", *target) != fmt.Sprintf("%#v", zero):
-		return fmt.Sprintf("dest for %T must return a zero target", zero)
+		return fmt.Sprintf("dest for %s must return a stable address", reflect.TypeFor[T]())
+	case !reflect.ValueOf(target).Elem().IsZero():
+		return fmt.Sprintf("dest for %s must return a zero target", reflect.TypeFor[T]())
 	}
 	return ""
 }

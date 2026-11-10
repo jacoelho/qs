@@ -11,10 +11,10 @@ func TestJoinCompletionForms(t *testing.T) {
 		join Relation
 		sql  string
 	}{
-		{"inner on", InnerJoin(left, right).On(EqColumns("left_table.id", "right_table.id")), `SELECT * FROM ("left_table" JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
-		{"left on", LeftJoin(left, right).On(EqColumns("left_table.id", "right_table.id")), `SELECT * FROM ("left_table" LEFT JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
-		{"right on", RightJoin(left, right).On(EqColumns("left_table.id", "right_table.id")), `SELECT * FROM ("left_table" RIGHT JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
-		{"full on", FullJoin(left, right).On(EqColumns("left_table.id", "right_table.id")), `SELECT * FROM ("left_table" FULL JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
+		{"inner on", InnerJoin(left, right).On(Col("left_table", "id").Eq(Col("right_table", "id"))), `SELECT * FROM ("left_table" JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
+		{"left on", LeftJoin(left, right).On(Col("left_table", "id").Eq(Col("right_table", "id"))), `SELECT * FROM ("left_table" LEFT JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
+		{"right on", RightJoin(left, right).On(Col("left_table", "id").Eq(Col("right_table", "id"))), `SELECT * FROM ("left_table" RIGHT JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
+		{"full on", FullJoin(left, right).On(Col("left_table", "id").Eq(Col("right_table", "id"))), `SELECT * FROM ("left_table" FULL JOIN "right_table" ON ("left_table"."id" = "right_table"."id"))`},
 		{"inner using", InnerJoin(left, right).Using("id"), `SELECT * FROM ("left_table" JOIN "right_table" USING ("id"))`},
 		{"left using", LeftJoin(left, right).Using("id"), `SELECT * FROM ("left_table" LEFT JOIN "right_table" USING ("id"))`},
 		{"right using", RightJoin(left, right).Using("id"), `SELECT * FROM ("left_table" RIGHT JOIN "right_table" USING ("id"))`},
@@ -38,9 +38,9 @@ func TestJoinCompletionOwnsQualifiersAndSharesOperands(t *testing.T) {
 
 	left, right := Table("a"), Table("b")
 	pending := InnerJoin(left, right)
-	conditions := []Condition{Eq("a.id", 1), Eq("b.active", true)}
+	conditions := []Condition{Col("a", "id").Eq(Param(1)), Col("b", "active").Eq(Param(true))}
 	completed := pending.On(conditions[0], conditions[1:]...)
-	conditions[0] = Eq("a.id", 99)
+	conditions[0] = Col("a", "id").Eq(Param(99))
 	conditions[1] = Condition{}
 	checkSQL(t, Select(Star()).FromExpr(completed), `SELECT * FROM ("a" JOIN "b" ON ("a"."id" = $1) AND ("b"."active" = $2))`, 1, true)
 
@@ -49,21 +49,18 @@ func TestJoinCompletionOwnsQualifiersAndSharesOperands(t *testing.T) {
 	columns[0], columns[1] = "changed", "also_changed"
 	checkSQL(t, Select(Star()).FromExpr(using), `SELECT * FROM ("a" JOIN "b" USING ("id", "tenant_id"))`)
 
-	checkSQL(t, Select(Star()).FromExpr(pending.On(EqColumns("a.id", "b.id"))), `SELECT * FROM ("a" JOIN "b" ON ("a"."id" = "b"."id"))`)
+	checkSQL(t, Select(Star()).FromExpr(pending.On(Col("a", "id").Eq(Col("b", "id")))), `SELECT * FROM ("a" JOIN "b" ON ("a"."id" = "b"."id"))`)
 	checkSQL(t, Select(Star()).FromExpr(pending.Using("id")), `SELECT * FROM ("a" JOIN "b" USING ("id"))`)
 }
 
-func TestNestedJoinAndCloneLiveSubquery(t *testing.T) {
+func TestNestedJoinOverSubquery(t *testing.T) {
 	t.Parallel()
 
 	child := Select(Param("before"))
 	query := Select(Star()).FromExpr(
 		InnerJoin(InnerJoin(Subquery(child, "a"), Table("b")).On(True()), Table("c")).On(True()),
 	)
-	cloned := query.Clone()
-	child.RemoveColumns().Columns(Param("after"))
-	checkSQL(t, query, `SELECT * FROM (((SELECT $1) AS "a" JOIN "b" ON TRUE) JOIN "c" ON TRUE)`, "after")
-	checkSQL(t, cloned, `SELECT * FROM (((SELECT $1) AS "a" JOIN "b" ON TRUE) JOIN "c" ON TRUE)`, "before")
+	checkSQL(t, query, `SELECT * FROM (((SELECT $1) AS "a" JOIN "b" ON TRUE) JOIN "c" ON TRUE)`, "before")
 }
 
 func TestJoinCompletionInvalidInputsRemainAtomic(t *testing.T) {

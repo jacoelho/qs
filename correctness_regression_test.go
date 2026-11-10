@@ -18,10 +18,10 @@ func TestCorrectnessRelationColUsesLiteralColumnComponent(t *testing.T) {
 		want     string
 	}{
 		{"table", qs.Table("settings"), "a.b", `SELECT "settings"."a.b" FROM "settings"`},
-		{"table_ident", qs.TableIdent("settings"), "a.b", `SELECT "settings"."a.b" FROM "settings"`},
-		{"table_ident_star", qs.TableIdent("*"), "a.b", `SELECT "*"."a.b" FROM "*"`},
+		{"table_ident", qs.Table("settings"), "a.b", `SELECT "settings"."a.b" FROM "settings"`},
+		{"table_ident_star", qs.Table("*"), "a.b", `SELECT "*"."a.b" FROM "*"`},
 		{"alias", qs.Table("settings").As("s"), "a.b", `SELECT "s"."a.b" FROM "settings" AS "s"`},
-		{"schema", qs.Table("app.settings"), "a.b", `SELECT "app"."settings"."a.b" FROM "app"."settings"`},
+		{"schema", qs.Table("app", "settings"), "a.b", `SELECT "app"."settings"."a.b" FROM "app"."settings"`},
 		{"quoted", qs.Table("settings"), `weird"name`, `SELECT "settings"."weird""name" FROM "settings"`},
 		{"table_star", qs.Table("settings"), "*", `SELECT "settings"."*" FROM "settings"`},
 		{"alias_star", qs.Table("settings").As("s"), "*", `SELECT "s"."*" FROM "settings" AS "s"`},
@@ -40,9 +40,9 @@ func TestCorrectnessRelationColUsesLiteralColumnComponent(t *testing.T) {
 		want     string
 	}{
 		{"table", qs.Table("settings"), `SELECT "settings".* FROM "settings"`},
-		{"schema", qs.Table("app.settings"), `SELECT "app"."settings".* FROM "app"."settings"`},
+		{"schema", qs.Table("app", "settings"), `SELECT "app"."settings".* FROM "app"."settings"`},
 		{"alias", qs.Table("settings").As("s"), `SELECT "s".* FROM "settings" AS "s"`},
-		{"table_ident", qs.TableIdent("settings"), `SELECT "settings".* FROM "settings"`},
+		{"table_ident", qs.Table("settings"), `SELECT "settings".* FROM "settings"`},
 	} {
 		t.Run("star/"+tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -52,19 +52,19 @@ func TestCorrectnessRelationColUsesLiteralColumnComponent(t *testing.T) {
 		})
 	}
 
-	for _, relation := range []qs.Relation{qs.Table(""), qs.Table("a..b"), qs.Table("*"), qs.Table("a.*"), qs.Table("*.a"), qs.Table("a.\x00"), qs.Table("a.\xff")} {
+	for _, relation := range []qs.Relation{qs.Table(""), qs.Table("a", "", "b"), qs.Table("a", "\x00"), qs.Table("a", "\xff")} {
 		if _, _, err := qs.Select(relation.Col("id")).FromExpr(relation).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 			t.Fatalf("malformed table path accepted: %v", err)
 		}
 	}
-	for _, relation := range []qs.Relation{qs.Table("settings"), qs.TableIdent("settings"), qs.Table("settings").As("s")} {
+	for _, relation := range []qs.Relation{qs.Table("settings"), qs.Table("settings"), qs.Table("settings").As("s")} {
 		for _, column := range []string{"", "bad\x00name", "\xff"} {
 			if _, _, err := qs.Select(relation.Col(column)).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 				t.Fatalf("invalid literal column %q accepted: %v", column, err)
 			}
 		}
 	}
-	if got, _, err := qs.Select(qs.Col("public.settings.a.b")).ToSQL(); err != nil || got != `SELECT "public"."settings"."a"."b"` {
+	if got, _, err := qs.Select(qs.Col("public", "settings", "a", "b")).ToSQL(); err != nil || got != `SELECT "public"."settings"."a"."b"` {
 		t.Fatalf("top-level Col changed: SQL=%q err=%v", got, err)
 	}
 }
@@ -123,17 +123,15 @@ func TestCorrectnessMembershipAllowsUnknownWidths(t *testing.T) {
 	}
 }
 
-func TestCorrectnessMembershipQueryWidthIsLiveAndCloneable(t *testing.T) {
+func TestCorrectnessMembershipQueryWidthFollowsTheQueryGiven(t *testing.T) {
 	t.Parallel()
 	child := qs.Select(qs.Col("a"), qs.Col("b")).From("t")
-	parent := qs.Select(qs.Row(qs.Col("a"), qs.Col("b")).InQuery(child).Expr())
-	clone := parent.Clone()
-	child.RemoveColumns().Columns(qs.Col("a"))
-	if _, _, err := parent.ToSQL(); !errors.Is(err, qs.ErrInvalid) {
-		t.Fatalf("mutated live child did not produce mismatch: %v", err)
+	row := qs.Row(qs.Col("a"), qs.Col("b"))
+	if _, _, err := qs.Select(row.InQuery(child).Expr()).ToSQL(); err != nil {
+		t.Fatalf("matching width rejected: %v", err)
 	}
-	if _, _, err := clone.ToSQL(); err != nil {
-		t.Fatalf("clone was contaminated by live child mutation: %v", err)
+	if _, _, err := qs.Select(row.InQuery(child.Columns(qs.Col("c"))).Expr()).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
+		t.Fatalf("wider query did not produce mismatch: %v", err)
 	}
 }
 
@@ -216,84 +214,47 @@ func TestCorrectnessOperatorValidationMatchesPostgreSQLSpelling(t *testing.T) {
 	}
 }
 
-func TestCorrectnessDedicatedSyntaxVersionGates(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name    string
-		query   qs.Statement
-		before  qs.PostgreSQLVersion
-		support qs.PostgreSQLVersion
-	}{
-		{"normalize", qs.Select(qs.Normalize(qs.Param("x"))), qs.PostgreSQL12, qs.PostgreSQL13},
-		{"is_normalized", qs.Select(qs.IsNormalized(qs.Param("x")).Expr()), qs.PostgreSQL12, qs.PostgreSQL13},
-		{"is_not_normalized", qs.Select(qs.IsNotNormalized(qs.Param("x")).Expr()), qs.PostgreSQL12, qs.PostgreSQL13},
-		{"substring_similar", qs.Select(qs.SubstringSimilar(qs.Param("x"), qs.Param("%x%"), qs.Param("\\"))), qs.PostgreSQL13, qs.PostgreSQL14},
-		{"at_local", qs.Select(qs.AtLocal(qs.Param("x"))), qs.PostgreSQL16, qs.PostgreSQL17},
-		{"at_local_method", qs.Select(qs.Param("x").AtLocal()), qs.PostgreSQL16, qs.PostgreSQL17},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			if sql, args, err := qs.ToSQLWith(tc.query, qs.Options{PostgreSQL: tc.before}); !errors.Is(err, qs.ErrUnsupported) || sql != "" || args != nil {
-				t.Fatalf("unsupported syntax rendered: sql=%q args=%#v err=%v", sql, args, err)
-			}
-			if _, _, err := qs.ToSQLWith(tc.query, qs.Options{PostgreSQL: tc.support}); err != nil {
-				t.Fatalf("supported syntax rejected: %v", err)
-			}
-		})
-	}
-	for _, tc := range tests {
-		for version := qs.PostgreSQL12; version <= qs.PostgreSQL18; version++ {
-			_, _, err := qs.ToSQLWith(tc.query, qs.Options{PostgreSQL: version})
-			if version < tc.support && !errors.Is(err, qs.ErrUnsupported) {
-				t.Fatalf("%s accepted on PostgreSQL %d: %v", tc.name, version, err)
-			}
-			if version >= tc.support && err != nil {
-				t.Fatalf("%s rejected on PostgreSQL %d: %v", tc.name, version, err)
-			}
-		}
-	}
-	for _, query := range []qs.Statement{
-		qs.Select(qs.SubstringFrom(qs.Param("x"), qs.Param(1))),
-		qs.Select(qs.SubstringFor(qs.Param("x"), qs.Param(1))),
-	} {
-		if _, _, err := qs.ToSQLWith(query, qs.Options{PostgreSQL: qs.PostgreSQL12}); err != nil {
-			t.Fatalf("older substring form rejected on PostgreSQL 12: %v", err)
-		}
-	}
-}
-
 func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 	t.Parallel()
 	var nilSlice []any
-	field := qs.Typed[any]("value")
-	a, b, c, d := qs.Typed[any]("a"), qs.Typed[any]("b"), qs.Typed[any]("c"), qs.Typed[any]("d")
+	field := qs.TypedCol[any]("value")
+	a, b, c, d := qs.TypedCol[any]("a"), qs.TypedCol[any]("b"), qs.TypedCol[any]("c"), qs.TypedCol[any]("d")
 	for _, tc := range []struct {
 		name      string
 		condition qs.Condition
 	}{
-		{"eq", qs.Eq("value", nil)},
-		{"ne", qs.Ne("value", nil)},
-		{"lt", qs.Lt("value", nil)},
-		{"lte", qs.Lte("value", nil)},
-		{"gt", qs.Gt("value", nil)},
-		{"gte", qs.Gte("value", nil)},
-		{"expr_eq", qs.Col("value").Eq(nil)},
-		{"expr_gte", qs.Col("value").Gte(nil)},
+		{"eq", qs.Col("value").Eq(qs.Param(nil))},
+		{"ne", qs.Col("value").Ne(qs.Param(nil))},
+		{"lt", qs.Col("value").Lt(qs.Param(nil))},
+		{"lte", qs.Col("value").Lte(qs.Param(nil))},
+		{"gt", qs.Col("value").Gt(qs.Param(nil))},
+		{"gte", qs.Col("value").Gte(qs.Param(nil))},
+		{"expr_eq", qs.Col("value").Eq(qs.Param(nil))},
+		{"expr_gte", qs.Col("value").Gte(qs.Param(nil))},
 		{"field_eq", field.Eq(nil)},
-		{"in_first", qs.In[any]("value", nil, 1)},
-		{"in_last", qs.In[any]("value", 1, nil)},
-		{"in_all", qs.In[any]("value", nil, nil)},
-		{"not_in", qs.NotIn[any]("value", 1, nil)},
-		{"expr_in", qs.Col("value").In(1, nil)},
-		{"expr_not_in", qs.Col("value").NotIn(nil)},
+		{"in_first", qs.Col("value").In(qs.Param(nil), qs.Param(1))},
+		{"in_last", qs.Col("value").In(qs.Param(1), qs.Param(nil))},
+		{"in_all", qs.Col("value").In(qs.Param(nil), qs.Param(nil))},
+		{"not_in", qs.Col("value").NotIn(qs.Param(1), qs.Param(nil))},
+		{"expr_in", qs.Col("value").In(qs.Param(1), qs.Param(nil))},
+		{"expr_not_in", qs.Col("value").NotIn(qs.Param(nil))},
 		{"field_in", field.In(1, nil)},
 		{"field_not_in", field.NotIn(nil, 1)},
-		{"between_low", qs.Between[any]("value", nil, 1)},
-		{"between_high", qs.Col("value").Between(1, nil)},
-		{"not_between", qs.Col("value").NotBetween(1, nil)},
+		{"between_low", qs.Col("value").Between(qs.Param(nil), qs.Param(1))},
+		{"between_high", qs.Col("value").Between(qs.Param(1), qs.Param(nil))},
+		{"not_between", qs.Col("value").NotBetween(qs.Param(1), qs.Param(nil))},
 		{"field_between", field.Between(nil, 1)},
-		{"row_values", qs.Row(qs.Col("a"), qs.Col("b")).EqValues(1, nil)},
+		{"row_values", qs.Row(qs.Col("a"), qs.Col("b")).Eq(qs.Row(qs.Param(1), qs.Param(nil)))},
+		{"left_operand", qs.Param(nil).Eq(qs.Col("value"))},
+		{"between_value", qs.Param(nil).Between(qs.Col("a"), qs.Col("b"))},
+		{"in_left", qs.Param(nil).In(qs.Param(1))},
+		{"in_query_left", qs.Param(nil).InQuery(qs.SelectCols("id").From("t"))},
+		{"row_in_left", qs.Row(qs.Param(nil), qs.Col("a")).In(qs.Row(qs.Param(1), qs.Param(2)))},
+		{"row_in_query_left", qs.Row(qs.Param(nil), qs.Col("a")).InQuery(qs.SelectCols("a", "b").From("t"))},
+		{"nested_row", qs.Col("value").Eq(qs.Row(qs.Row(qs.Param(nil)).Expr(), qs.Param(1)).Expr())},
+		{"any_array", qs.Col("value").Eq(qs.AnyArray(qs.Param(nil)))},
+		{"like_pattern", qs.Col("value").LikeExpr(qs.Param(nil))},
+		{"similar_pattern", qs.Col("value").SimilarTo(qs.Param(nil))},
 		{"tuple2", qs.Tuple2(a, b).GtValues(1, nil)},
 		{"tuple3", qs.Tuple3(a, b, c).LtValues(1, 2, nil)},
 		{"tuple4", qs.Tuple4(a, b, c, d).NeValues(1, 2, 3, nil)},
@@ -306,9 +267,9 @@ func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 			}
 		})
 	}
-	for _, query := range []*qs.SelectBuilder{
-		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("t.a"), qs.Asc("t.id")).SeekAfter(nil, 1),
-		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Asc("t.a"), qs.Asc("t.id")).SeekAfter(1, nil),
+	for _, query := range []qs.SelectBuilder{
+		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Col("t", "a").Asc(), qs.Col("t", "id").Asc()).SeekAfter(nil, 1),
+		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Col("t", "a").Asc(), qs.Col("t", "id").Asc()).SeekAfter(1, nil),
 	} {
 		if sql, args, err := query.ToSQL(); !errors.Is(err, qs.ErrInvalid) || sql != "" || args != nil {
 			t.Fatalf("SeekAfter nil: SQL=%q args=%#v err=%v; want atomic ErrInvalid", sql, args, err)
@@ -321,10 +282,10 @@ func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 		want      string
 		args      []any
 	}{
-		{"typed_nil_pointer", qs.Select(qs.Eq("value", (*int)(nil)).Expr()), `SELECT ("value" = $1)`, []any{(*int)(nil)}},
-		{"typed_dynamic_value", qs.Select(qs.Eq("value", int64(1)).Expr()), `SELECT ("value" = $1)`, []any{int64(1)}},
-		{"empty_in", qs.Select(qs.In[any]("value").Expr()), `SELECT FALSE`, nil},
-		{"empty_in_spread", qs.Select(qs.In("value", nilSlice...).Expr()), `SELECT FALSE`, nil},
+		{"typed_nil_pointer", qs.Select(qs.Col("value").Eq(qs.Param((*int)(nil))).Expr()), `SELECT ("value" = $1)`, []any{(*int)(nil)}},
+		{"typed_dynamic_value", qs.Select(qs.Col("value").Eq(qs.Param(int64(1))).Expr()), `SELECT ("value" = $1)`, []any{int64(1)}},
+		{"empty_in", qs.Select(qs.Col("value").In().Expr()), `SELECT FALSE`, nil},
+		{"empty_in_spread", qs.Select(qs.TypedCol[any]("value").In(nilSlice...).Expr()), `SELECT FALSE`, nil},
 		{"param", qs.Select(qs.Param(nil)), `SELECT $1`, []any{nil}},
 		{"param_null", qs.Select(qs.ParamNull(qs.Null[int]{})), `SELECT $1`, []any{nil}},
 		{"write_value", qs.InsertInto("t").Values(qs.Value(nil)), `INSERT INTO "t" VALUES ($1)`, []any{nil}},

@@ -1,24 +1,5 @@
 package qs
 
-import (
-	"slices"
-	"strings"
-)
-
-// keysetCursor holds the bound ORDER BY key values that a page starts after.
-// An empty list means no cursor. The pointer keeps SelectBuilder in a smaller
-// allocation size class, and RemoveOrderBy and Reset keep its storage for reuse.
-type keysetCursor struct{ values []Expr }
-
-func (c *keysetCursor) active() bool { return c != nil && len(c.values) > 0 }
-
-func (c *keysetCursor) clear() {
-	if c != nil {
-		clear(c.values)
-		c.values = c.values[:0]
-	}
-}
-
 // SeekAfter restricts the query to rows strictly after a cursor in ORDER BY
 // order, for keyset pagination. Pass the ORDER BY key values of the last row of
 // the previous page, one per term; each call replaces the cursor. Rendering
@@ -31,7 +12,7 @@ func (c *keysetCursor) clear() {
 // ORDER BY resolves a bare name to a same-named output column first, including
 // a derived one: SELECT a::text names its column a, so ORDER BY a would sort
 // text while the cursor compares integers. Qualify column keys, as in
-// Desc("users.id"), or users.Col("id").Desc() for a Relation users; qualified
+// Col("users", "id").Desc(), or users.Col("id").Desc() for a Relation users; qualified
 // names and other expressions, such as Lower(Col("name")), resolve the same way
 // in both clauses. Name a USING join with UsingAs, and a Derived relation with
 // As, to qualify their columns. To page by an output alias, an aggregate, a
@@ -42,8 +23,9 @@ func (c *keysetCursor) clear() {
 // qs cannot check the schema. Pages are complete and disjoint only when every
 // key is NOT NULL and the last term is unique, such as a primary key. Window
 // functions in the projection see only rows after the cursor. Trusted SQL and
-// Fragment keys are compared in parentheses and are not inspected; they must
-// not render a bare name or an integer. Untyped nil fails rendering. A typed
+// Fragment keys are not inspected. Each is compared as one operand, in
+// parentheses or as one field of a row, so it must not render a bare name, an
+// integer or a top-level comma. Untyped nil fails rendering. A typed
 // nil binds NULL: rows that tie with the cursor on every earlier key are
 // skipped, and a NULL first key selects no rows.
 //
@@ -52,27 +34,22 @@ func (c *keysetCursor) clear() {
 // expand to an equivalent disjunction that binds earlier keys again: three keys
 // bind seven arguments.
 //
-// RemoveOrderBy and Reset remove the cursor; Clone copies it. For the previous
-// page, reverse each term with Order.Reverse, seek after the first row of the
+// For the previous page, reverse each term with Order.Reverse, seek after the first row of the
 // current page, and reverse the fetched rows.
-func (b *SelectBuilder) SeekAfter(first any, rest ...any) *SelectBuilder {
-	if b.cursor == nil {
-		b.cursor = new(keysetCursor)
-	}
-	b.cursor.clear()
-	values := slices.Grow(b.cursor.values, 1+len(rest))
-	values = append(values, comparand(first))
+func (b SelectBuilder) SeekAfter(first any, rest ...any) SelectBuilder {
+	values := make([]Expr, 1, 1+len(rest))
+	values[0] = comparand(first)
 	for _, value := range rest {
 		values = append(values, comparand(value))
 	}
-	b.cursor.values = values
+	b.cursor = values
 	return b
 }
 
 // keyset renders the WHERE conjunct admitting rows strictly after values in
 // the ORDER BY of b. Terms are validated here rather than at SeekAfter because
 // ORDER BY, DISTINCT ON and the cursor may change until rendering.
-func (b *SelectBuilder) keyset(w *renderer, values []Expr) {
+func (w *renderer) selectKeyset(b *SelectBuilder, values []Expr) {
 	order := b.tail.order
 	if !w.require(len(order) == len(values), "keyset", "cursor width must equal ORDER BY width") {
 		return
@@ -120,18 +97,9 @@ func (w *renderer) keysetTerm(term Order) {
 	}
 }
 
-// bareName reports whether e is a single-component identifier, which
-// PostgreSQL may resolve to an output column in ORDER BY.
-func bareName(e Expr) bool {
-	switch e.kind {
-	case exprIdentifier:
-		return e.text != "*" && strings.IndexByte(e.text, '.') < 0
-	case exprIdentifierParts:
-		return len(ownedPayload[identifierParts](e.value)) == 1
-	default:
-		return false
-	}
-}
+// bareName reports whether e is an unqualified identifier, which PostgreSQL
+// may resolve to an output column in ORDER BY.
+func bareName(e Expr) bool { return e.kind == exprIdentifier }
 
 // keysetRow renders one row comparison; a B-tree index on the keys in ORDER BY
 // order serves it for either uniform direction.

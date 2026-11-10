@@ -28,12 +28,6 @@ type Order struct {
 	nulls     nullOrdering
 }
 
-// Asc returns an ascending order term for a column path.
-func Asc(column string) Order { return Col(column).Asc() }
-
-// Desc returns a descending order term for a column path.
-func Desc(column string) Order { return Col(column).Desc() }
-
 // Asc returns an ascending order term for an expression.
 func (e Expr) Asc() Order { return Order{expr: e, direction: ascending} }
 

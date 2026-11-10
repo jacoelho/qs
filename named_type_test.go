@@ -1,9 +1,6 @@
 package qs
 
-import (
-	"errors"
-	"testing"
-)
+import "testing"
 
 func TestNamedTypeRendering(t *testing.T) {
 	t.Parallel()
@@ -45,30 +42,11 @@ func TestNamedTypeValidation(t *testing.T) {
 	checkError(t, cast(TypeNamed("pg_catalog", "time").Modifiers(0, 1)), ErrInvalid)
 }
 
-func TestNamedTypeVersionValidation(t *testing.T) {
+func TestNamedTypeNumericScaleOutsidePrecision(t *testing.T) {
 	t.Parallel()
 
 	negativeScale := Select(Param("1234").Cast(TypeNamed("pg_catalog", "numeric").Modifiers(5, -1)))
 	tooLargeScale := Select(Param("12.345").Cast(TypeNamed("pg_catalog", "numeric").Modifiers(5, 6)))
-	for _, tc := range []struct {
-		name string
-		stmt Statement
-	}{
-		{"negative_scale", negativeScale},
-		{"scale_exceeds_precision", tooLargeScale},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			sql, args, err := tc.stmt.ToSQLWith(Options{PostgreSQL: PostgreSQL14})
-			if !errors.Is(err, ErrUnsupported) || sql != "" || args != nil {
-				t.Fatalf("expected PostgreSQL 14 rejection, got %q %#v %v", sql, args, err)
-			}
-		})
-	}
 	checkSQL(t, negativeScale, `SELECT ($1)::"pg_catalog"."numeric"(5, -1)`, "1234")
 	checkSQL(t, tooLargeScale, `SELECT ($1)::"pg_catalog"."numeric"(5, 6)`, "12.345")
-	if sql, args, err := negativeScale.ToSQLWith(Options{PostgreSQL: PostgreSQL15}); err != nil || sql != `SELECT ($1)::"pg_catalog"."numeric"(5, -1)` || len(args) != 1 || args[0] != "1234" {
-		t.Fatalf("PostgreSQL 15 rendering: %q %#v %v", sql, args, err)
-	}
 }

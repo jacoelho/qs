@@ -8,81 +8,91 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path"
 	"strings"
+)
+
+const (
+	manifestSchema   = "qs-postgres-corpus-v3"
+	fixtureDirectory = "testdata"
 )
 
 // ParserManifest pins the independent development-time SQL oracle.
 type ParserManifest struct {
-	// Package is the parser package name, currently pglast.
 	Package string `json:"package"`
-	// Version is the parser package version used to produce the corpus.
 	Version string `json:"version"`
-	// PostgreSQL is the PostgreSQL grammar/version reported by the parser package.
+	// PostgreSQL is the grammar version the parser package reports.
 	PostgreSQL string `json:"postgresql"`
 }
 
+// StatusCounts counts occurrences per Status.
+type StatusCounts struct {
+	Verified   int `json:"verified"`
+	OutOfScope int `json:"out_of_scope"`
+	Gap        int `json:"gap"`
+	Rejected   int `json:"rejected"`
+}
+
+func (c *StatusCounts) add(status Status) {
+	switch status {
+	case StatusVerified:
+		c.Verified++
+	case StatusOutOfScope:
+		c.OutOfScope++
+	case StatusGap:
+		c.Gap++
+	case StatusRejected:
+		c.Rejected++
+	}
+}
+
+func (c *StatusCounts) merge(other StatusCounts) {
+	c.Verified += other.Verified
+	c.OutOfScope += other.OutOfScope
+	c.Gap += other.Gap
+	c.Rejected += other.Rejected
+}
+
+func (c *StatusCounts) total() int { return c.Verified + c.OutOfScope + c.Gap + c.Rejected }
+
+func (c *StatusCounts) valid() bool {
+	return c.Verified >= 0 && c.OutOfScope >= 0 && c.Gap >= 0 && c.Rejected >= 0
+}
+
 // CountsManifest records occurrence coverage and whole-corpus shape coverage.
+// A shape counts as verified only when every occurrence of it is verified.
 type CountsManifest struct {
-	// Total is the number of occurrences across all shards.
 	Total int `json:"total"`
-	// Verified is the number of occurrences with StatusVerified.
-	Verified int `json:"verified"`
-	// ConstructionError is the number of occurrences with StatusConstructionErr.
-	ConstructionError int `json:"construction_error"`
-	// Unsupported is the number of occurrences with StatusUnsupported.
-	Unsupported int `json:"unsupported"`
-	// PlannerTotal is the number of planner-focused occurrences.
-	PlannerTotal int `json:"planner_total"`
-	// PlannerVerified is the number of verified planner-focused occurrences.
-	PlannerVerified int `json:"planner_verified"`
-	// DistinctShapes is the number of unique normalized query shapes.
-	DistinctShapes int `json:"distinct_shapes"`
-	// DistinctVerifiedShapes is the number of shapes whose every occurrence is verified.
-	DistinctVerifiedShapes int `json:"distinct_verified_shapes"`
-	// PlannerDistinctShapes is the number of shapes containing at least one planner occurrence.
-	PlannerDistinctShapes int `json:"planner_distinct_shapes"`
-	// PlannerDistinctVerifiedShapes is the number of planner shapes whose every occurrence is verified.
+	StatusCounts
+	PlannerTotal                  int `json:"planner_total"`
+	PlannerVerified               int `json:"planner_verified"`
+	DistinctShapes                int `json:"distinct_shapes"`
+	DistinctVerifiedShapes        int `json:"distinct_verified_shapes"`
+	PlannerDistinctShapes         int `json:"planner_distinct_shapes"`
 	PlannerDistinctVerifiedShapes int `json:"planner_distinct_verified_shapes"`
 }
 
-// ShardManifest pins one package's complete strided occurrence inventory.
-type ShardManifest struct {
-	// Package is the shard package directory name, such as shard00.
-	Package string `json:"package"`
-	// JSONL is the shard's manifest-relative JSONL path.
-	JSONL string `json:"jsonl"`
-	// SHA256 is the lowercase SHA-256 digest of the complete JSONL file.
-	SHA256 string `json:"sha256"`
-	// Index is the zero-based shard index.
-	Index int `json:"index"`
-	// Count is the number of records in the shard.
-	Count int `json:"count"`
-	// FirstID is the first global occurrence ID assigned to the shard.
-	FirstID int `json:"first_id"`
-	// LastID is the last global occurrence ID assigned to the shard.
-	LastID int `json:"last_id"`
-	// Verified is the number of verified records in the shard.
-	Verified int `json:"verified"`
-	// ConstructionError is the number of construction-error records in the shard.
-	ConstructionError int `json:"construction_error"`
-	// Unsupported is the number of unsupported records in the shard.
-	Unsupported int `json:"unsupported"`
+// FileManifest pins one fixture file and its contiguous ID range.
+type FileManifest struct {
+	// Path is relative to the manifest.
+	Path string `json:"path"`
+	// SHA256 is the lowercase digest of the complete file.
+	SHA256  string `json:"sha256"`
+	FirstID int    `json:"first_id"`
+	Count   int    `json:"count"`
+	StatusCounts
 }
 
-// Manifest is the canonical inventory of the pinned corpus artifacts.
+// Manifest is the canonical inventory of the pinned corpus fixtures.
 type Manifest struct {
-	// Schema identifies the manifest format and validation rules.
 	Schema string `json:"schema"`
-	// Revision is the source PostgreSQL repository revision used for the corpus.
+	// Revision is the PostgreSQL source revision.
 	Revision string `json:"revision"`
-	// SQLSHA256 is the digest of the source regression SQL corpus.
-	SQLSHA256 string `json:"sql_sha256"`
-	// Parser records the independent parser provenance for the corpus.
-	Parser ParserManifest `json:"parser"`
-	// Shards lists every strided JSONL and generated-test shard.
-	Shards []ShardManifest `json:"shards"`
-	// Counts records the global occurrence and shape coverage totals.
-	Counts CountsManifest `json:"counts"`
+	// SQLSHA256 is the digest of the source regression SQL files.
+	SQLSHA256 string         `json:"sql_sha256"`
+	Parser    ParserManifest `json:"parser"`
+	Files     []FileManifest `json:"files"`
+	Counts    CountsManifest `json:"counts"`
 }
 
 // ReadManifest decodes and validates one manifest, rejecting unknown fields
@@ -116,7 +126,7 @@ func validHex(value string, length int) bool {
 }
 
 func (m Manifest) validate() error {
-	if m.Schema != "qs-postgres-corpus-v2" {
+	if m.Schema != manifestSchema {
 		return fmt.Errorf("unsupported corpus schema %q", m.Schema)
 	}
 	if !validHex(m.Revision, 40) || !validHex(m.SQLSHA256, 64) || m.Parser.Package != "pglast" || m.Parser.Version == "" || m.Parser.PostgreSQL == "" {
@@ -125,12 +135,11 @@ func (m Manifest) validate() error {
 	if err := m.Counts.validate(); err != nil {
 		return err
 	}
-	return m.validateShards()
+	return m.validateFiles()
 }
 
 func (c CountsManifest) validate() error {
-	if c.Total < 1 || c.Verified < 0 || c.ConstructionError < 0 || c.Unsupported < 0 ||
-		c.Verified+c.ConstructionError+c.Unsupported != c.Total ||
+	if c.Total < 1 || !c.valid() || c.total() != c.Total ||
 		c.PlannerTotal < 0 || c.PlannerTotal > c.Total || c.PlannerVerified < 0 || c.PlannerVerified > c.PlannerTotal ||
 		c.DistinctShapes < 1 || c.DistinctShapes > c.Total || c.DistinctVerifiedShapes < 0 || c.DistinctVerifiedShapes > c.DistinctShapes ||
 		c.PlannerDistinctShapes < 0 || c.PlannerDistinctShapes > c.DistinctShapes || c.PlannerDistinctVerifiedShapes < 0 || c.PlannerDistinctVerifiedShapes > c.PlannerDistinctShapes {
@@ -139,42 +148,30 @@ func (c CountsManifest) validate() error {
 	return nil
 }
 
-func (m Manifest) validateShards() error {
-	c := m.Counts
-	if len(m.Shards) != ShardCount {
-		return fmt.Errorf("corpus has %d shards, want %d", len(m.Shards), ShardCount)
-	}
-	var verified, constructionError, unsupported int
-	for index, shard := range m.Shards {
-		name := fmt.Sprintf("shard%02d", index)
-		count := (c.Total + ShardCount - 1 - index) / ShardCount
-		first, last := index, index+(count-1)*ShardCount
-		if count == 0 {
-			first, last = -1, -1
-		}
-		if shard.Index != index || shard.Package != name || shard.JSONL != name+"/corpus.jsonl" || !validHex(shard.SHA256, 64) {
-			return fmt.Errorf("invalid shard %d name/path/hash", index)
-		}
-		if shard.Count != count || shard.FirstID != first || shard.LastID != last ||
-			shard.Verified < 0 || shard.ConstructionError < 0 || shard.Unsupported < 0 || shard.Verified+shard.ConstructionError+shard.Unsupported != count {
-			return fmt.Errorf("%s: invalid occurrence inventory/counts", name)
-		}
-		verified += shard.Verified
-		constructionError += shard.ConstructionError
-		unsupported += shard.Unsupported
-	}
-	if verified != c.Verified || constructionError != c.ConstructionError || unsupported != c.Unsupported {
-		return errors.New("shard status counts disagree with global counts")
-	}
-	return nil
+func fixturePath(index int) string {
+	return fmt.Sprintf("%s/corpus-%02d.jsonl", fixtureDirectory, index)
 }
 
-func (s ShardManifest) spec() ShardSpec {
-	ids := make([]int, s.Count)
-	for index := range ids {
-		ids[index] = s.Index + index*ShardCount
+func (m Manifest) validateFiles() error {
+	if len(m.Files) == 0 {
+		return errors.New("corpus manifest lists no fixture files")
 	}
-	return ShardSpec{Name: s.Package, Index: s.Index, ExpectedIDs: ids}
+	var statuses StatusCounts
+	next := 0
+	for index, file := range m.Files {
+		if file.Path != fixturePath(index) || !validHex(file.SHA256, 64) {
+			return fmt.Errorf("fixture file %d: invalid path or hash", index)
+		}
+		if file.FirstID != next || file.Count < 1 || !file.valid() || file.total() != file.Count {
+			return fmt.Errorf("%s: invalid occurrence inventory/counts", file.Path)
+		}
+		next += file.Count
+		statuses.merge(file.StatusCounts)
+	}
+	if next != m.Counts.Total || statuses != m.Counts.StatusCounts {
+		return errors.New("fixture file counts disagree with global counts")
+	}
+	return nil
 }
 
 type shapeCoverage struct {
@@ -182,52 +179,39 @@ type shapeCoverage struct {
 	failed  bool
 }
 
-// Audit checks the actual shard inventory, every JSONL hash and occurrence,
-// and the global union of shapes against the manifest. It never retains all
-// decoded cases at once.
+// Audit checks the fixture inventory, every file hash and record, and the
+// global union of shapes against the manifest. It holds one record at a time.
 func Audit(root fs.FS, manifest Manifest) error {
 	if err := manifest.validate(); err != nil {
 		return err
 	}
-	if err := auditPackages(root); err != nil {
+	if err := auditInventory(root, manifest); err != nil {
 		return err
 	}
 	var counts CountsManifest
 	shapes := make(map[string]shapeCoverage, manifest.Counts.DistinctShapes)
-	for _, shard := range manifest.Shards {
-		local := [3]int{}
-		err := auditShard(root, shard, func(_ int, cases []Case) error {
-			for _, item := range cases {
-				counts.Total++
-				switch item.Status {
-				case StatusVerified:
-					counts.Verified++
-					local[0]++
-				case StatusConstructionErr:
-					counts.ConstructionError++
-					local[1]++
-				case StatusUnsupported:
-					counts.Unsupported++
-					local[2]++
+	for _, file := range manifest.Files {
+		var local StatusCounts
+		err := auditFile(root, file, func(item Case) {
+			counts.Total++
+			counts.add(item.Status)
+			local.add(item.Status)
+			if item.Planner {
+				counts.PlannerTotal++
+				if item.Status == StatusVerified {
+					counts.PlannerVerified++
 				}
-				if item.Planner {
-					counts.PlannerTotal++
-					if item.Status == StatusVerified {
-						counts.PlannerVerified++
-					}
-				}
-				shape := shapes[item.Shape]
-				shape.planner = shape.planner || item.Planner
-				shape.failed = shape.failed || item.Status != StatusVerified
-				shapes[item.Shape] = shape
 			}
-			return nil
+			shape := shapes[item.Shape]
+			shape.planner = shape.planner || item.Planner
+			shape.failed = shape.failed || item.Status != StatusVerified
+			shapes[item.Shape] = shape
 		})
 		if err != nil {
 			return err
 		}
-		if local != [3]int{shard.Verified, shard.ConstructionError, shard.Unsupported} {
-			return fmt.Errorf("%s: status counts %v disagree with manifest", shard.Package, local)
+		if local != file.StatusCounts {
+			return fmt.Errorf("%s: status counts %+v disagree with manifest %+v", file.Path, local, file.StatusCounts)
 		}
 	}
 	counts.DistinctShapes = len(shapes)
@@ -248,53 +232,44 @@ func Audit(root fs.FS, manifest Manifest) error {
 	return nil
 }
 
-func auditPackages(root fs.FS) error {
-	entries, err := fs.ReadDir(root, ".")
+// auditInventory rejects fixture files the manifest does not list; a listed
+// file that is missing fails when it is opened.
+func auditInventory(root fs.FS, manifest Manifest) error {
+	entries, err := fs.ReadDir(root, fixtureDirectory)
 	if err != nil {
-		return fmt.Errorf("read corpus inventory: %w", err)
+		return fmt.Errorf("read fixture inventory: %w", err)
 	}
-	seen := make(map[string]bool, ShardCount)
+	listed := make(map[string]bool, len(manifest.Files))
+	for _, file := range manifest.Files {
+		listed[file.Path] = true
+	}
 	for _, entry := range entries {
-		name := entry.Name()
-		if name == "corpus_generated.go" || name == "corpus_generated_test.go" {
-			return fmt.Errorf("stale monolithic corpus %s", name)
-		}
-		if !entry.IsDir() {
-			continue
-		}
-		seen[name] = true
-		files, err := fs.ReadDir(root, name)
-		if err != nil {
-			return fmt.Errorf("read %s inventory: %w", name, err)
-		}
-		if len(files) != 2 || files[0].Name() != "corpus.jsonl" || files[1].Name() != "corpus_generated_test.go" || files[0].IsDir() || files[1].IsDir() {
-			return fmt.Errorf("%s: unexpected artifact inventory", name)
-		}
-	}
-	if len(seen) != ShardCount {
-		return fmt.Errorf("found %d corpus packages, want %d", len(seen), ShardCount)
-	}
-	for index := range ShardCount {
-		name := fmt.Sprintf("shard%02d", index)
-		if !seen[name] {
-			return fmt.Errorf("missing corpus package %s", name)
+		if name := path.Join(fixtureDirectory, entry.Name()); !listed[name] {
+			return fmt.Errorf("unlisted fixture artifact %s", name)
 		}
 	}
 	return nil
 }
 
-func auditShard(root fs.FS, shard ShardManifest, consume func(int, []Case) error) error {
-	file, err := root.Open(shard.JSONL)
+func auditFile(root fs.FS, file FileManifest, consume func(Case)) error {
+	reader, err := root.Open(file.Path)
 	if err != nil {
-		return fmt.Errorf("open %s: %w", shard.JSONL, err)
+		return fmt.Errorf("open %s: %w", file.Path, err)
 	}
 	hash := sha256.New()
-	streamErr := StreamShard(io.TeeReader(file, hash), shard.spec(), nil, consume)
-	if err := errors.Join(streamErr, file.Close()); err != nil {
+	var streamErr error
+	for item, err := range Cases(io.TeeReader(reader, hash), file.FirstID, file.Count) {
+		if err != nil {
+			streamErr = fmt.Errorf("%s: %w", file.Path, err)
+			break
+		}
+		consume(item)
+	}
+	if err := errors.Join(streamErr, reader.Close()); err != nil {
 		return err
 	}
-	if actual := fmt.Sprintf("%x", hash.Sum(nil)); actual != shard.SHA256 {
-		return fmt.Errorf("%s: JSONL hash %s, want %s", shard.Package, actual, shard.SHA256)
+	if actual := hex.EncodeToString(hash.Sum(nil)); actual != file.SHA256 {
+		return fmt.Errorf("%s: hash %s, want %s", file.Path, actual, file.SHA256)
 	}
 	return nil
 }
