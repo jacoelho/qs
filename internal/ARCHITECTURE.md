@@ -135,8 +135,12 @@ Rejected alternatives:
   pointer into its row would then see the next row's data.
 - Two cell lists and the scratch pointer inside the reader: the reader passes by value
   through every part, and past eight words a flat three-column `Scan` measured about a
-  tenth slower on arm64. One list with reserved leading slots, a bit set for the mode
-  and the scratch as a second argument keep it at eight.
+  tenth slower on arm64. One list kept in finish order, a bit set for the mode and the
+  scratch as a second argument keep it at eight.
+- Reserving the assigning cells' slots from a declared count and filling them by
+  position: a count that disagreed with the parts would skip a setter, finish a stale
+  cell or panic at `Scan`. Inserting each assigning cell ahead of the others needs no
+  count, measures the same, and leaves the count a capacity hint.
 - A row read of its own for `Scan`, to save the call into the shared one: about 2 ns a
   row, against two bodies to keep alike.
 - An exported scratch for `ScanInto` loops: no caller needs it while `All` and

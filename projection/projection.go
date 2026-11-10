@@ -105,37 +105,36 @@ const (
 // to a three-column Scan. That is why the scratch travels beside it and mode is one field.
 type reader struct {
 	dests []any
-	// cells holds this row's cells in the order they finish. The first ones are those
-	// that assign a column after the scan: every ColumnOrZero, and a group's Columns.
-	// They finish before the rest, so set and convert see every column of their row, as
-	// they see a flat Column, which the driver writes. Their slots are reserved when the
-	// list is made and assigned counts those filled; the rest are appended.
+	// cells holds this row's cells in the order they finish. The first assigned of them
+	// are those that assign a column after the scan: every ColumnOrZero, and a group's
+	// Columns. They finish before the rest, so set and convert see every column of their
+	// row, as they see a flat Column, which the driver writes.
 	cells    []cell
 	assigned int
 	mode     mode
 }
 
-// list returns a cell list with reserved leading slots for assigning cells and room
-// for capacity cells in all, taken from the arena when s is not nil and it has room.
-func (s *scratch) list(reserved, capacity int) []cell {
+// list returns an empty cell list with room for capacity cells, taken from the arena
+// when s is not nil and it has room. capacity is a hint: a list that outgrows it is
+// reallocated by append.
+func (s *scratch) list(capacity int) []cell {
 	if s != nil {
 		s.need += capacity
 		if start := len(s.arena); capacity <= cap(s.arena)-start {
 			s.arena = s.arena[:start+capacity]
-			return s.arena[start : start+reserved : start+capacity]
+			return s.arena[start : start : start+capacity]
 		}
 	}
-	return make([]cell, reserved, capacity)
+	return make([]cell, 0, capacity)
 }
 
-// assign adds c to the cells that finish first. A declaration pass reserved no slots
-// and only counts.
+// assign adds c after the assigning cells already in the list and ahead of the rest,
+// which move up one place. Order within each kind stays creation order, whatever the
+// declaration interleaves.
 func (r reader) assign(c cell) reader {
-	if r.mode&declaring != 0 {
-		r.cells = append(r.cells, c)
-	} else {
-		r.cells[r.assigned] = c
-	}
+	r.cells = append(r.cells, c)
+	copy(r.cells[r.assigned+1:], r.cells[r.assigned:])
+	r.cells[r.assigned] = c
 	r.assigned++
 	return r
 }
@@ -148,10 +147,9 @@ type part[D any] func(d *D, r reader, reuse *scratch) reader
 type Projection[D any] struct {
 	expressions []qs.Expr
 	parts       []part[D]
-	// assigns is the number of cells the parts assign outside a group, exactly: read
-	// reserves that many leading slots. See reader.cells.
-	assigns int
-	cells   int // other cells the parts append outside a group
+	// cells is how many cells the parts add outside a group. It sizes the list, so a
+	// wrong count costs an allocation, not correctness.
+	cells int
 }
 
 // scanner mirrors database/sql.Scanner without importing it.
@@ -364,7 +362,7 @@ func ColumnOrZero[D, T any](expression qs.Expr, dest func(*D) *T) Projection[D] 
 	if problem := targetProblem(target, dest(&zero)); problem != "" {
 		panic("projection: ColumnOrZero: " + problem)
 	}
-	return Projection[D]{expressions: []qs.Expr{expression}, assigns: 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
+	return Projection[D]{expressions: []qs.Expr{expression}, cells: 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
 		c := cellAt[zeroCell[T]](reuse)
 		*c = zeroCell[T]{dest: dest(d)}
 		if r.mode&declaring != 0 {
@@ -400,7 +398,7 @@ func Embed[D, N any](inner Projection[N], dest func(*D) *N) Projection[D] {
 		declared = p(row, declared, nil)
 	}
 	// One part, not one per column: an allocating dest must not split a row.
-	return Projection[D]{expressions: inner.expressions, assigns: inner.assigns, cells: inner.cells, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
+	return Projection[D]{expressions: inner.expressions, cells: inner.cells, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
 		row := dest(d)
 		for _, p := range inner.parts {
 			r = p(row, r, reuse)
@@ -488,7 +486,7 @@ func EmbedNull[D, N any](inner Projection[N], set func(*D, *N)) Projection[D] {
 	for _, p := range inner.parts {
 		declared = p(&row, declared, nil)
 	}
-	assigns, capacity := declared.assigned, len(declared.cells)
+	capacity := len(declared.cells)
 	return Projection[D]{expressions: inner.expressions, cells: 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
 		c := cellAt[groupCell[D, N]](reuse)
 		if c.present {
@@ -499,7 +497,7 @@ func EmbedNull[D, N any](inner Projection[N], set func(*D, *N)) Projection[D] {
 			reuse.replace(c)
 		}
 		c.d, c.set = d, set
-		group := reader{dests: r.dests, mode: inGroup, cells: reuse.list(assigns, capacity)}
+		group := reader{dests: r.dests, mode: inGroup, cells: reuse.list(capacity)}
 		for _, p := range inner.parts {
 			group = p(&c.row, group, reuse)
 		}
@@ -545,7 +543,7 @@ func Map[D, B, T any](inner Projection[B], convert func(B) (T, error), set func(
 	if set == nil {
 		panic("projection: Map with nil set")
 	}
-	return Projection[D]{expressions: inner.expressions, assigns: inner.assigns, cells: inner.cells + 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
+	return Projection[D]{expressions: inner.expressions, cells: inner.cells + 1, parts: []part[D]{func(d *D, r reader, reuse *scratch) reader {
 		// Never taken from the scratch: inner sets receive &c.row and may keep it, as a
 		// child's pointer to its parent does.
 		c := &mapCell[D, B, T]{d: d, convert: convert, set: set}
@@ -559,17 +557,15 @@ func Map[D, B, T any](inner Projection[B], convert func(B) (T, error), set func(
 
 // New concatenates projections in order, preserving duplicates.
 func New[D any](projections ...Projection[D]) Projection[D] {
-	var expressions, parts, assigns, cells int
+	var expressions, parts, cells int
 	for _, q := range projections {
 		expressions += len(q.expressions)
 		parts += len(q.parts)
-		assigns += q.assigns
 		cells += q.cells
 	}
 	p := Projection[D]{
 		expressions: make([]qs.Expr, 0, expressions),
 		parts:       make([]part[D], 0, parts),
-		assigns:     assigns,
 		cells:       cells,
 	}
 	for _, q := range projections {
@@ -635,8 +631,8 @@ func (p Projection[D]) read(d *D, scan func(dest ...any) error, reused *scratch)
 	if r.dests == nil {
 		r.dests = make([]any, 0, len(p.expressions))
 	}
-	if cells := p.assigns + p.cells; cells > 0 {
-		r.cells = reused.list(p.assigns, cells)
+	if p.cells > 0 {
+		r.cells = reused.list(p.cells)
 	}
 	for _, q := range p.parts {
 		r = q(d, r, reused)
