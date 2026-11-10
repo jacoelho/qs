@@ -191,7 +191,7 @@ func TestErrNullPositionThroughMap(t *testing.T) {
 		ID   int64
 		Name *string
 	}
-	names := projection.Map(users(qs.Table("users").As("m"), "m_"), func(u user) (string, error) { return u.Name, nil })
+	names := projection.Map(users(qs.Table("users").As("m"), "m_"), func(u user) (string, error) { return u.Name, nil }, func(d *string, v string) { *d = v })
 	p := projection.New(
 		projection.Column(qs.Col("id"), func(r *row) *int64 { return &r.ID }),
 		projection.EmbedNull(names, func(r *row, v *string) { r.Name = v }),
@@ -293,20 +293,24 @@ func TestMap(t *testing.T) {
 	t.Parallel()
 
 	inner := projection.Column(qs.Col("name"), func(s *string) *string { return s })
-	upper := projection.Map(inner, func(s string) (string, error) { return strings.ToUpper(s), nil })
+	upper := projection.Map(inner, func(s string) (string, error) { return strings.ToUpper(s), nil }, func(d *string, v string) { *d = v })
 	got, err := upper.Scan(fakeRow("ada"))
 	if err != nil || got != "ADA" {
 		t.Fatalf("got %q, %v", got, err)
 	}
 
 	failure := errors.New("bad value")
-	failing := projection.Map(inner, func(string) (string, error) { return "partial", failure })
+	setRan := false
+	failing := projection.Map(inner, func(string) (string, error) { return "partial", failure }, func(d *string, v string) {
+		setRan = true
+		*d = v
+	})
 	got, err = failing.Scan(fakeRow("ada"))
-	if !errors.Is(err, failure) {
-		t.Fatalf("err = %v, want convert error", err)
+	if err != failure { //nolint:errorlint // The contract is the unchanged error value.
+		t.Fatalf("err = %v, want the convert error unchanged", err)
 	}
-	if got != "" {
-		t.Fatalf("got %q, want zero value", got)
+	if got != "" || setRan {
+		t.Fatalf("got %q, set ran = %v, want the zero value and no set", got, setRan)
 	}
 }
 
@@ -314,11 +318,12 @@ func TestMapDoesNotRunForAbsentGroup(t *testing.T) {
 	t.Parallel()
 
 	inner := projection.Column(qs.Col("name"), func(s *string) *string { return s })
-	mapped := projection.Map(inner, func(string) (string, error) { return "", errors.New("convert ran") })
+	setRan := false
+	mapped := projection.Map(inner, func(string) (string, error) { return "", errors.New("convert ran") }, func(*string, string) { setRan = true })
 	p := projection.EmbedNull(mapped, func(d **string, v *string) { *d = v })
 	got, err := p.Scan(fakeRow(nil))
-	if err != nil || got != nil {
-		t.Fatalf("got %v, %v", got, err)
+	if err != nil || got != nil || setRan {
+		t.Fatalf("got %v, %v, set ran = %v", got, err, setRan)
 	}
 }
 
@@ -590,7 +595,10 @@ func TestDeclarationPanics(t *testing.T) {
 		"ColumnNull nil set": func() { projection.ColumnNull[field, int64](qs.Col("a"), nil) },
 		"Embed nil dest":     func() { projection.Embed[struct{}, field](inner, nil) },
 		"EmbedNull nil set":  func() { projection.EmbedNull[struct{}, field](inner, nil) },
-		"Map nil convert":    func() { projection.Map[field, int64](inner, nil) },
+		"Map nil convert":    func() { projection.Map[field, field, int64](inner, nil, func(*field, int64) {}) },
+		"Map nil set": func() {
+			projection.Map[field, field, int64](inner, func(field) (int64, error) { return 0, nil }, nil)
+		},
 		"ColumnNull borrowed": func() {
 			projection.ColumnNull(qs.Col("a"), func(*field, *sql.RawBytes) {})
 		},
@@ -607,7 +615,7 @@ func TestDeclarationPanics(t *testing.T) {
 		"group Column pointer through Map": func() {
 			pointer := projection.Column(qs.Col("a"), func(f *field) **int64 { return &f.Value })
 			projection.EmbedNull(
-				projection.Map(pointer, func(f field) (field, error) { return f, nil }),
+				projection.Map(pointer, func(f field) (field, error) { return f, nil }, func(d *field, f field) { *d = f }),
 				func(*struct{}, *field) {},
 			)
 		},

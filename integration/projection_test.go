@@ -97,21 +97,18 @@ func projectionDrivers(t *testing.T) []projectionDriver {
 	}
 }
 
+var (
+	_ projection.Rows = pgx.Rows(nil)
+	_ projection.Rows = (*sql.Rows)(nil)
+)
+
 func scanAll[D any](ctx context.Context, d projectionDriver, p projection.Projection[D], text string, args ...any) ([]D, error) {
 	rows, err := d.query(ctx, text, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []D
-	for rows.Next() {
-		row, err := p.Scan(rows.Scan)
-		if err != nil {
-			return out, err
-		}
-		out = append(out, row)
-	}
-	return out, rows.Err()
+	return p.Collect(rows)
 }
 
 func TestProjectionSelfJoin(t *testing.T) {
@@ -154,6 +151,207 @@ func TestProjectionSelfJoin(t *testing.T) {
 			again, err := scanAll(ctx, d, p, projectionUsers+valid, int64(2))
 			if err != nil || len(again) != len(want) {
 				t.Fatalf("connection after ErrNull: %d rows, %v", len(again), err)
+			}
+		})
+	}
+}
+
+// An abandoned iteration leaves the result set open and readable, and the caller's
+// Close then releases the connection on both drivers.
+func TestProjectionAllLeavesRowsOpen(t *testing.T) {
+	employee := qs.Table("users").As("employee")
+	p := projectionUsersOf(employee, "")
+	text, _, err := qs.Select(p.Expressions()...).FromExpr(employee).
+		Where(employee.Col("id").Ne(3)).OrderBy(employee.Col("id").Asc()).ToSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range projectionDrivers(t) {
+		t.Run(d.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+			defer cancel()
+			rows, err := d.query(ctx, projectionUsers+text, int64(3))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var first projectionUser
+			for u, err := range p.All(rows) {
+				if err != nil {
+					rows.Close()
+					t.Fatal(err)
+				}
+				first = u
+				break
+			}
+			if want := (projectionUser{ID: 1, Name: "ada"}); first != want {
+				rows.Close()
+				t.Fatalf("first row: got %+v, want %+v", first, want)
+			}
+			open := rows.Next()
+			var second projectionUser
+			if open {
+				second, err = p.Scan(rows.Scan)
+			}
+			rows.Close()
+			if !open || err != nil || second.ID != 2 {
+				t.Fatalf("after leaving the loop: next %v, got %+v, %v, want row 2 still readable", open, second, err)
+			}
+			again, err := scanAll(ctx, d, p, projectionUsers+text, int64(3))
+			if err != nil || len(again) != 3 {
+				t.Fatalf("connection after an abandoned iteration: %d rows, %v, want 3", len(again), err)
+			}
+		})
+	}
+}
+
+// A reused destination must not keep the previous row's nullable column or group.
+func TestProjectionScanIntoReusedDestination(t *testing.T) {
+	employee := qs.Table("users").As("employee")
+	manager := qs.Table("users").As("manager")
+	p := projection.New(
+		projection.Embed(projectionUsersOf(employee, ""), func(r *projectionRow) *projectionUser { return &r.Employee }),
+		projection.EmbedNull(projectionUsersOf(manager, "manager_"), func(r *projectionRow, u *projectionUser) { r.Manager = u }),
+	)
+	text, _, err := qs.Select(p.Expressions()...).FromExpr(
+		qs.LeftJoin(employee, manager).On(employee.Col("manager_id").EqExpr(manager.Col("id"))),
+	).Where(employee.Col("id").Lte(2)).OrderBy(employee.Col("id").Desc()).ToSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ada := projectionUser{ID: 1, Name: "ada"}
+	email := "bob@example.com"
+	want := []projectionRow{
+		{Employee: projectionUser{ID: 2, Name: "bob", Email: &email}, Manager: &ada},
+		{Employee: ada},
+	}
+	for _, d := range projectionDrivers(t) {
+		t.Run(d.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+			defer cancel()
+			rows, err := d.query(ctx, projectionUsers+text, int64(2))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			var reused projectionRow
+			read := 0
+			for ; rows.Next(); read++ {
+				if err := p.ScanInto(&reused, rows.Scan); err != nil {
+					t.Fatal(err)
+				}
+				if read >= len(want) || !reflect.DeepEqual(reused, want[read]) {
+					t.Fatalf("row %d: got %+v", read, reused)
+				}
+			}
+			if err := rows.Err(); err != nil || read != len(want) {
+				t.Fatalf("read %d rows, %v, want %d", read, err, len(want))
+			}
+		})
+	}
+}
+
+// ColumnOrZero reads NULL as zero on every driver, also into a type that represents
+// NULL itself, and a join key no field holds decides the group's presence.
+func TestProjectionColumnOrZero(t *testing.T) {
+	type human struct {
+		Nickname string
+		Logins   sql.NullInt64
+	}
+	type row struct {
+		ID    int64
+		Human *human
+	}
+	p := projection.New(
+		projection.Column(qs.Col("id"), func(r *row) *int64 { return &r.ID }),
+		projection.EmbedNull(projection.New(
+			projection.ColumnNull(qs.Col("user_id"), func(*human, *int64) {}),
+			projection.ColumnOrZero(qs.Col("nickname"), func(h *human) *string { return &h.Nickname }),
+			projection.ColumnOrZero(qs.Col("logins"), func(h *human) *sql.NullInt64 { return &h.Logins }),
+		), func(r *row, h *human) { r.Human = h }),
+	)
+	const text = `SELECT * FROM (VALUES
+		(1::bigint, 1::bigint, 'ada'::text, 7::bigint),
+		(2, 2, NULL, NULL),
+		(3, NULL, NULL, NULL)) AS t(id, user_id, nickname, logins) ORDER BY id`
+	want := []row{
+		{ID: 1, Human: &human{Nickname: "ada", Logins: sql.NullInt64{Int64: 7, Valid: true}}},
+		{ID: 2, Human: &human{}},
+		{ID: 3},
+	}
+	type flat struct {
+		ID       int64
+		Nickname string
+	}
+	reused := projection.New(
+		projection.Column(qs.Col("id"), func(f *flat) *int64 { return &f.ID }),
+		projection.ColumnOrZero(qs.Col("nickname"), func(f *flat) *string { return &f.Nickname }),
+	)
+	const reusedText = `SELECT * FROM (VALUES (1::bigint, 'ada'::text), (2, NULL)) AS t(id, nickname) ORDER BY id`
+	for _, d := range projectionDrivers(t) {
+		t.Run(d.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+			defer cancel()
+			got, err := scanAll(ctx, d, p, text)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("got %+v, want %+v", got, want)
+			}
+
+			rows, err := d.query(ctx, reusedText)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			var last flat
+			read := 0
+			for ; rows.Next(); read++ {
+				if err := reused.ScanInto(&last, rows.Scan); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := rows.Err(); err != nil || read != 2 || last != (flat{ID: 2}) {
+				t.Fatalf("reused destination: read %d rows, last %+v, %v, want {ID:2} after 2 rows", read, last, err)
+			}
+		})
+	}
+}
+
+// countedRows reads a trailing window count beside each row a projection reads.
+type countedRows struct {
+	projection.Rows
+	total *int64
+}
+
+func (c countedRows) Scan(dest ...any) error { return c.Rows.Scan(append(dest, c.total)...) }
+
+func TestProjectionReadsOutputSelectedAfterExpressions(t *testing.T) {
+	employee := qs.Table("users").As("employee")
+	p := projectionUsersOf(employee, "")
+	text, _, err := qs.Select(append(p.Expressions(), qs.CountAll().Over(qs.Window()))...).FromExpr(employee).
+		Where(employee.Col("id").Ne(3)).OrderBy(employee.Col("id").Asc()).Limit(2).ToSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	email := "bob@example.com"
+	want := []projectionUser{{ID: 1, Name: "ada"}, {ID: 2, Name: "bob", Email: &email}}
+	for _, d := range projectionDrivers(t) {
+		t.Run(d.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+			defer cancel()
+			rows, err := d.query(ctx, projectionUsers+text, int64(3), int64(2))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			var total int64
+			got, err := p.Collect(countedRows{Rows: rows, total: &total})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, want) || total != 3 {
+				t.Fatalf("got %+v with total %d, want %+v with total 3", got, total, want)
 			}
 		})
 	}
