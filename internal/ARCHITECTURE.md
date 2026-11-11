@@ -86,9 +86,9 @@ assign `T`. Inside a group a Scanner destination receives only non-NULL values
 through a probing cell, which keeps a write-through target reachable, at the cost of
 pgx's native codec: such a read can differ from a flat one, in value as well as error.
 
-All destination checks run at declaration: `Column` and `Embed` call their dest on a
-zero value, and `Embed` and `EmbedNull` run inner's dests in a declaring pass, where a dest under
-`Embed` receives what that `Embed` returned. A panic at Scan would come before `Row.Scan`, the only closer of a pgx
+All destination checks run at declaration: `Column`, `ColumnOrZero` and `Embed` call
+their dest on a zero value, and `Embed` and `EmbedNull` run inner's dests in a declaring
+pass, where a dest under `Embed` receives what that `Embed` returned. A panic at Scan would come before `Row.Scan`, the only closer of a pgx
 `QueryRow` and the only release of a pooled one, and a recover around a failed driver
 read leaves the connection unusable. Expressions render before any query, so a
 declaration panic holds no connection. Scan itself checks nothing, so a

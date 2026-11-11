@@ -45,11 +45,12 @@
 // declaration reads the same in both places. Both, and group columns, read as
 // var v *T; rows.Scan(&v) does: see EmbedNull.
 //
-// Column and Embed dests run on a zero value at declaration, repeatedly under Embed and EmbedNull,
-// and once per Scan, before the row is read. They must be deterministic and must not
-// retain their argument beyond the field they return. A dest that panics at Scan would
-// strand the query, leaving a pgx connection busy; a declaration panic holds nothing,
-// so dests are checked there. set and convert run after the row is read, in declaration
+// Column, ColumnOrZero and Embed dests run on a zero value at declaration, again at the
+// declaration of each Embed and EmbedNull that encloses them, and once per Scan, before
+// the row is read. They must be deterministic and must not retain their argument beyond
+// the field they return. A dest that panics at Scan would strand the query, leaving a
+// pgx connection busy; a declaration panic holds nothing, so dests are checked there.
+// set and convert run after the row is read, in declaration
 // order, and each finds every Column and ColumnOrZero of its row and of the rows
 // enclosing it assigned. The package writes into a row only through the addresses
 // Column and ColumnOrZero dests returned; every other write is a statement in a set.

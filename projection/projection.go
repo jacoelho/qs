@@ -77,16 +77,16 @@ func pooledCell[C any, P interface {
 }](s *scratch) P {
 	slot := s.next
 	s.next++
-	if slot < len(s.pool) {
-		if c, ok := s.pool[slot].(P); ok {
-			return c
-		}
-		c := P(new(C))
-		s.pool[slot] = c
-		return c
+	if slot == len(s.pool) {
+		s.pool = append(s.pool, nil)
 	}
-	c := P(new(C))
-	s.pool = append(s.pool, c)
+	c, ok := s.pool[slot].(P)
+	if !ok {
+		// The slot's first use. It keeps its type afterwards: every row runs the same
+		// parts, and each asks for its cells in the same order.
+		c = new(C)
+		s.pool[slot] = c
+	}
 	return c
 }
 
@@ -485,12 +485,13 @@ func (c *groupCell[D, N]) finish() error {
 // group. On pgx it bypasses T's native codec, so a read outside a group can differ: an
 // error where the codec would convert, or another value.
 //
-// EmbedNull runs inner's Column and Embed dests at declaration and panics on what it
-// detects: a pointer T, sql.RawBytes, pgtype.DriverBytes, pgtype.CompositeFields,
-// pgtype.Multirange, or, unless T is a Scanner, an unstable address or a target that
-// prints differently from zero. Detection is best effort: a defined type over any of
-// these passes, as does any other driver's equivalent, and then behaves as the
-// hand-written read does, including a pgx panic or a database/sql hang.
+// EmbedNull runs inner's Column, ColumnOrZero and Embed dests at declaration and panics
+// on what it detects: a pointer T, sql.RawBytes, pgtype.DriverBytes,
+// pgtype.CompositeFields, pgtype.Multirange, or, unless it is a Column whose T is a
+// Scanner, an unstable address or a target that is not zero.
+// Detection is best effort: a defined type over any of these passes, as does any other
+// driver's equivalent, and then behaves as the hand-written read does, including a pgx
+// panic or a database/sql hang.
 //
 // EmbedNull panics if set is nil.
 func EmbedNull[D, N any](inner Projection[N], set func(*D, *N)) Projection[D] {

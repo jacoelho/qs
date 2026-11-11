@@ -1097,8 +1097,9 @@ driver. Declaring one panics on a pointer `T` (use `ColumnNull[string]` rather
 than `*string`) and on the driver types qs detects as unreadable that way.
 Detection is best effort.
 
-`Column` and `Embed` accessors run on a zero value at declaration and panic if
-they return nil, so they must tolerate one and be deterministic.
+`Column`, `ColumnOrZero` and `Embed` accessors run on a zero value at
+declaration and panic if they return nil, so they must tolerate one and be
+deterministic.
 
 `go doc ./projection` states these contracts in full: the per-driver limits of
 nullable reads, the types rejected at declaration, the order in which setters
