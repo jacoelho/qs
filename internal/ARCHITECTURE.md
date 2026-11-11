@@ -324,11 +324,15 @@ selection creates `InsertColumnsTarget`, which captures one target list and
 exposes only rows, SELECT and default sources. Required-first methods prevent
 empty target lists; `ColumnsSlice` instead records explicit selection in
 `insertBase.targetsSelected` and rejects empty lists when rendered. Assignment
-INSERTs start directly from `InsertTarget`. Neither target selector is a
+INSERTs start directly from `InsertTarget`, as do `FromArrays` and `FromNamed`,
+which select the columns and the SELECT source in one call (rows 44 and 46).
+Neither target selector is a
 statement or rowset. Each source selection creates an `InsertRows`,
 `InsertSelect`, `InsertAssignments` or `InsertDefaults`. These are statements,
 never rowsets, and a completed one cannot change its column list or switch
-source roles. `ValuesSlice` copies each row slice and retains empty rows as
+source roles. An `InsertSelect` has no method that replaces its source: the
+columns `FromArrays` and `FromNamed` select are paired with that source, and a
+replacement would keep one without the other. `ValuesSlice` copies each row slice and retains empty rows as
 invalid input; later rows cannot erase that failure. Defaults omit identity
 overriding.
 
@@ -368,8 +372,9 @@ none, a count, ALL or a count WITH TIES. The `Limit` family replaces it, as
 WITH TIES renders as FETCH FIRST after OFFSET and still needs ORDER BY and no
 SKIP LOCKED lock, which are checked at render as PostgreSQL's grammar does.
 
-SQL grammar owners enforce local policy: JSON integer selectors are
-int4-bounded and cast to avoid PostgreSQL's unknown-parameter text overload.
+SQL grammar owners enforce local policy: JSON document selectors render as
+literals (row 43), and integer selectors are int4-bounded so the literal
+selects the array-index overload.
 Assignment destinations have their own grammar. Parenthesized indirection
 preserves successive indexing and projection width. Window definitions validate
 local inheritance and effective frame ordering. Unknown widths remain unknown;
@@ -636,3 +641,7 @@ alternatives are not supported APIs or implementation commitments.
 | 40 | Shared parameters | Opt-in `SharedParam` with pointer identity. Reject deduplicating equal `Param` values: equality of `any` is not defined for every driver value, and PostgreSQL infers one type per `$n`, so merging would change which queries type-check. Reject making every `Param` an identity: an allocation per value and the same silent change of inference. Reject named parameters: a string identity can collide, and two values under one name need a render error. Reject render-once, rebind-arguments: statement shape depends on values (`In` lists, nil checks, limits) and no measurement shows render cost matters. |
 | 41 | Run-time lists | `first, rest...` where a literal call can be checked by its signature, plus a `Slice` form for lists built at run time (`SelectSlice`, `ValuesSlice`, `DoUpdateSlice`, `WhereSlice`, `UnionSlice` and its siblings). `SeekAfter` is variadic only, because its width is checked against ORDER BY at render either way and an empty cursor means the first page. A set-operation `Slice` of one rowset is that rowset: the alternative pushed a length branch onto every caller. An empty mutation `WhereSlice` fails rendering, keeping the all-rows guard. |
 | 42 | Condition and expression | Two types, converted by `Expr.Condition` and `Condition.Expr`, with `Condition.As`, `Asc` and `Desc` for the positions callers reached most. Reject one type: `Where` could not refuse a non-boolean expression's role, and the trusted-condition boundary has no owner. Reject an interface accepted by `Select` and `OrderBy`: it boxes every expression. `AsCondition` was removed so the conversion has one spelling. |
+| 43 | JSON document selectors | `JSONDocument` and `JSONBDocument` methods render keys, path steps, indexes and JSONPath text as SQL literals; `JSONGet` and its relatives over `Param` bind a selector chosen at run time, where a bound index needs its own `integer` cast to avoid the text-key overload. Reject binding them (the previous shape): each call made a fresh parameter, so one selector in the select list and in GROUP BY, or in DISTINCT and ORDER BY, was two expressions that PostgreSQL refuses, and a generic plan could not match an expression index. Reject both spellings on the document types: two methods per operator whose difference shows only at the server. The cost accepted is that a selector taken from request data yields one statement text per value. |
+| 44 | Columnar arrays | `NamedArray` pairs a column name with its array; `UnnestAs` and `InsertTarget.FromArrays` render both lists from those pairs. Reject separate name and array lists (the previous shape, `Columns` beside a projection of `Unnest` calls, or `TableFunc(Unnest(...)).As(alias, names...)`): the pairing was positional across two lists. Reject deriving insert columns from a relation's aliases: the ordinality column and renamed columns make the coupling implicit. Reject inferring the element type from the Go slice type: a Go type does not determine the PostgreSQL type and foreign types would need reflection. `FromArrays` exists only on `InsertTarget`, because it selects the columns itself. |
+| 45 | Value-taking shortcuts | `Field[T].EqAny` binds one array for a typed field. Reject `Field` wrappers over scalar functions such as COALESCE (a facade that would grow per function, and a bound fallback where callers wrote a constant), lateral-join methods on `SelectBuilder` (a second spelling of `LeftJoinExpr(Lateral(r), True())` that widens the join method set of row 4), and alternating key and value lists for JSON objects (`JSONKey` with `JSONObject` is the pair-typed form). |
+| 46 | INSERT targets by name | `InsertTarget.FromNamed` takes the target columns from a SELECT's output columns, read when it is called: the last part of a column reference, or an alias. Reject an ordinality option on `FromArrays`: it covers arrays plus a position and nothing else, not a constant, a join or `jsonb_array_elements`. Reject deriving insert columns from a relation's aliases (row 44). Reject the label PostgreSQL would give an unaliased expression, as row 34 does: it is version-specific and blind to trusted SQL, so such a column fails rendering. Reject a pair list of target and expression with its own FROM: it would grow WHERE and joins and become a second SELECT builder. Reject `InsertSelect.From` (the previous shape), which replaced the source of a completed INSERT and kept its columns: after `FromArrays` or `FromNamed` that pairs the old names with new expressions by position. A caller builds the other INSERT from its target. |

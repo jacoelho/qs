@@ -188,6 +188,10 @@ Each `SharedParam` call is a distinct parameter, so two calls with equal values
 bind twice. PostgreSQL infers one type for a parameter from all of its uses:
 when two uses would infer different types, `Cast` the ones that differ.
 
+Where PostgreSQL cannot infer a type at all, such as a select list, a CASE
+branch or `$1 IS NULL`, keep the cast with the value and reuse both:
+`id := qs.SharedParam(v).Cast(qs.TypeUUID)` renders `($1)::uuid` at every use.
+
 ### Handle SQL NULL
 
 For SQL NULL tests, use `IsNull` or `IsNotNull`.
@@ -436,21 +440,24 @@ and casts it to `text[]`, leaving array encoding to the driver. A nil slice
 binds an empty array rather than NULL, so `= ANY` is FALSE and `<> ALL` is TRUE.
 
 `EqAny` compares with a single array argument instead of one parameter per
-value, so the statement text is the same for any number of ids:
+value, so the statement text is the same for any number of ids. A `Field[T]`
+takes the slice and the element type; an `Expr` takes an array expression:
 
 ```go
+qs.Select(id.Expr()).FromExpr(users).Where(id.EqAny(ids, qs.TypeInt8))
 qs.SelectCols("id").From("users").Where(qs.EqAny(qs.Col("id"), qs.ArrayParam(ids, qs.TypeInt8)))
 ```
 
 ```sql
+SELECT "u"."id" FROM "users" AS "u" WHERE ("u"."id" = ANY(($1)::bigint[]))
 SELECT "id" FROM "users" WHERE ("id" = ANY(($1)::bigint[]))
 ```
 
-To join against the values instead, turn the array into rows with
-`TableFunc(Unnest(...))`:
+To join against the values instead, turn arrays into rows with `UnnestAs`,
+which names each column beside the array that fills it:
 
 ```go
-wanted := qs.TableFunc(qs.Unnest(qs.ArrayParam(ids, qs.TypeInt8))).As("wanted", "id")
+wanted := qs.UnnestAs("wanted", qs.NamedArray("id", qs.ArrayParam(ids, qs.TypeInt8)))
 q := qs.Select(users.Col("id"), users.Col("username")).
     FromExpr(qs.InnerJoin(users, wanted).On(users.Col("id").Eq(wanted.Col("id"))))
 ```
@@ -696,20 +703,75 @@ time.
 
 ### Insert columnar batches
 
-For data already arranged in columns, bind one array per column and expand them
-with `Unnest`. This keeps the parameter count proportional to columns:
+For data already arranged in columns, bind one array per column with
+`FromArrays`. Each `NamedArray` pairs a target column with the array that fills
+it, and the parameter count stays proportional to columns:
 
 ```go
 ids := []int32{42, 43}
 names := []string{"Ana", "Ben"}
-rows := qs.Select(
-    qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
-    qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
-)
-query, args, err := qs.InsertInto("users").Columns("id", "name").From(rows).ToSQL()
+query, args, err := qs.InsertInto("users").FromArrays(
+    qs.NamedArray("id", qs.ArrayParam(ids, qs.TypeInt4)),
+    qs.NamedArray("name", qs.ArrayParam(names, qs.TypeText)),
+).ToSQL()
 ```
 
-The driver encodes the arrays.
+```sql
+INSERT INTO "users" ("id", "name") SELECT * FROM unnest(($1)::integer[], ($2)::text[])
+```
+
+Arguments: `[[42 43] [Ana Ben]]`.
+
+The driver encodes the arrays. When the rows need more than the arrays, such as
+a constant column, a join, or the element position, build the relation with
+`UnnestAs` and select from it:
+
+```go
+batch := qs.UnnestAs("b",
+    qs.NamedArray("name", qs.ArrayParam(names, qs.TypeText)),
+    qs.NamedArray("kind", qs.ArrayParam(kinds, qs.TypeText)),
+).WithOrdinality()
+query, args, err := qs.InsertInto("events").FromNamed(qs.Select(
+    batch.Col("name"),
+    batch.Col("kind"),
+    batch.Col("ordinality").As("position"),
+).FromExpr(batch)).ToSQL()
+```
+
+```sql
+INSERT INTO "events" ("name", "kind", "position")
+SELECT "b"."name", "b"."kind", "b"."ordinality" AS "position"
+FROM unnest(($1)::text[], ($2)::text[]) WITH ORDINALITY AS "b" ("name", "kind")
+```
+
+`FromNamed` takes the target columns from the query's output columns: a column
+reference names its column, and `As` names anything else. Each target is
+written beside the expression that fills it, so the two cannot be reordered
+apart as a `Columns` list and a projection can. Rendering fails for an output
+column that has neither form, such as a star or an unaliased expression. It
+works for any SELECT, for example one over `jsonb_array_elements`:
+
+```go
+e := qs.TableFunc(qs.JSONBArrayElements(qs.JSONBParam(payload).Expr())).
+    WithOrdinality().As("e", "item", "position")
+item := qs.JSONBExpr(e.Col("item"))
+qs.InsertInto("events").FromNamed(qs.Select(
+    item.TextKey("name").As("name"),
+    item.TextKey("kind").As("kind"),
+    e.Col("position"),
+).FromExpr(e))
+```
+
+```sql
+INSERT INTO "events" ("name", "kind", "position")
+SELECT ("e"."item" ->> E'name') AS "name", ("e"."item" ->> E'kind') AS "kind", "e"."position"
+FROM jsonb_array_elements(($1)::jsonb) WITH ORDINALITY AS "e" ("item", "position")
+```
+
+PostgreSQL names the position column of `UnnestAs` `ordinality`. `As` replaces the alias and
+the column names together, so pass every name again to rename one. Use arrays
+with a scalar element type: an array of a composite type expands to one column
+per field.
 
 Supply arrays of equal length. PostgreSQL
 [pads shorter results with NULL](https://www.postgresql.org/docs/18/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET),
@@ -995,9 +1057,9 @@ clause, `JSONExists` has no `Returning`, and `JSONQuery` has no `TrueOnError`.
 
 ```go
 user := qs.JSONObject(
-    qs.JSONPair(qs.LiteralString("id"), qs.Col("id")),
-    qs.JSONPair(qs.LiteralString("name"), qs.Col("name")),
-    qs.JSONPair(qs.LiteralString("settings"), qs.FormatJSON(qs.Col("settings_text"))),
+    qs.JSONKey("id", qs.Col("id")),
+    qs.JSONKey("name", qs.Col("name")),
+    qs.JSONKey("settings", qs.FormatJSON(qs.Col("settings_text"))),
 ).AbsentOnNull().Returning(qs.TypeJSONB)
 
 query, args, err := qs.Select(user.As("user")).
@@ -1012,8 +1074,9 @@ SELECT JSON_OBJECT(E'id' : "id", E'name' : "name", E'settings' : "settings_text"
 
 Arguments: `[7]`.
 
-`FormatJSON` marks text that already holds JSON, so PostgreSQL embeds it instead
-of quoting it as a string. `AbsentOnNull` omits a member whose value is NULL.
+`JSONKey` takes a key that is a string constant and renders it as a literal;
+`JSONPair` takes a key that is an expression. `FormatJSON` marks text that
+already holds JSON, so PostgreSQL embeds it instead of quoting it as a string. `AbsentOnNull` omits a member whose value is NULL.
 Without a NULL clause, objects keep NULL values and arrays drop them.
 
 `JSONArray` builds an array from values, and `JSONArrayQuery` builds one from a
@@ -1021,6 +1084,46 @@ query that returns one column. `JSONObjectAggregate` and `JSONArrayAggregate` ar
 the SQL-standard aggregates. Both accept `Filter`, `Over` and `OverNamed`, and
 `JSONArrayAggregate` also accepts `OrderBy`. `JSONObjectAgg` and `JSONAgg` call
 PostgreSQL's `json_object_agg` and `json_agg` functions instead.
+
+### Navigate a document with operators
+
+`JSONBExpr` and `JSONExpr` wrap an expression that is already `jsonb` or `json`
+and give it PostgreSQL's operators as methods: `Key`, `Index`, `Path`, and their
+text forms `TextKey`, `TextIndex`, and `PathText`, which return a
+`Field[string]`. A `jsonb` document also has `Contains`, `HasKey`, `Concat`,
+`DeleteKey`, `DeletePath`, `PathExists`, and their relatives.
+
+```go
+doc := qs.JSONBExpr(qs.Col("e", "payload"))
+kind := doc.TextKey("kind")
+
+query, args, err := qs.Select(kind.Expr(), qs.CountAll()).
+    FromExpr(qs.Table("events").As("e")).
+    Where(
+        doc.Path("transforms", "0", "inputs").IsNotNull(),
+        doc.Key("customer").TextKey("tier").Eq("gold"),
+    ).
+    GroupByExpr(kind.Expr()).
+    ToSQL()
+```
+
+```sql
+SELECT ("e"."payload" ->> E'kind'), count(*) FROM "events" AS "e"
+WHERE (("e"."payload" #> (ARRAY[E'transforms', E'0', E'inputs'])::text[]) IS NOT NULL)
+  AND ((("e"."payload" -> E'customer') ->> E'tier') = $1)
+GROUP BY ("e"."payload" ->> E'kind')
+```
+
+Arguments: `[gold]`.
+
+Keys, path steps, indexes, and JSONPath text render as SQL literals and bind
+nothing. The same selector is therefore the same expression at every use, which
+GROUP BY, DISTINCT with ORDER BY, and an expression index all require. Compared
+values still bind. A selector chosen at run time changes the statement text, so
+bind one instead with the operator functions:
+`qs.JSONGetText(qs.Col("payload"), qs.Param(key))`. Cast a bound array index,
+as in `qs.Param(int32(i)).Cast(qs.TypeInt4)`, because PostgreSQL reads an
+untyped parameter there as a text key.
 
 ### Read values from a document
 
@@ -1545,7 +1648,6 @@ Repeated calls on one builder combine as follows:
 | SELECT | `From`, `FromExpr` | Replaces the FROM list |
 | Pending UPDATE | `From`, `FromExpr` | Appends FROM items |
 | Pending DELETE | `Using`, `UsingExpr` | Appends USING items |
-| INSERT SELECT | `From` | Replaces the source query |
 | SELECT | `Where` | Appends conditions with AND |
 | Pending UPDATE, pending DELETE | `Where`, `WhereCurrentOf`, `AllRows` | Completes the statement; the result has none of the three |
 | SELECT and other queries | `Limit`, `LimitExpr`, `LimitAll`, `LimitWithTies`, `LimitWithTiesExpr` | Replaces the row limit |

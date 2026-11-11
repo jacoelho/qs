@@ -23,6 +23,13 @@
 // SelectNoColumns states a zero-column SELECT. A query has one row limit,
 // which Limit, LimitAll and LimitWithTies each replace.
 //
+// JSONExpr and JSONBExpr give a document PostgreSQL's operators as methods.
+// Their keys, path steps and indexes are names and render as literals, so a
+// selector is the same expression at every use; JSONGet and its relatives take
+// a bound one. NamedArray pairs a column with the array that fills it, for
+// UnnestAs and for InsertTarget.FromArrays. InsertTarget.FromNamed takes the
+// target columns from the names of a SELECT's output columns.
+//
 // SQL/JSON forms are builders of their own: JSONObject, JSONArray,
 // JSONArrayQuery, JSONObjectAggregate, JSONArrayAggregate, JSONParse,
 // JSONScalar, JSONSerialize, IsJSON, JSONExists, JSONValue, JSONQuery and

@@ -8,10 +8,19 @@ type JSONInput interface {
 
 // JSONDocument describes a json expression. Extraction can produce SQL NULL;
 // the wrapper describes the SQL type, not a schema or nullability guarantee.
+//
+// Keys, path steps, indexes and JSONPath text are names: they render as SQL
+// literals and bind nothing, so the same selector is the same expression at
+// every use, in GROUP BY as in the select list, and matches an expression
+// index. A selector chosen at run time therefore changes the statement text;
+// bind one with JSONGet, JSONGetText and their relatives over Param. Cast a
+// bound index, as in Param(int32(i)).Cast(TypeInt4): PostgreSQL reads an
+// untyped parameter there as a text key.
 type JSONDocument struct{ expr Expr }
 
 // JSONBDocument describes a jsonb expression and its PostgreSQL operators.
 // Text extraction returns Field[string], whose payload can still be SQL NULL.
+// Its selectors are literals, as JSONDocument's are.
 type JSONBDocument struct{ expr Expr }
 
 func (JSONDocument) qxExpression()  {}
@@ -67,12 +76,12 @@ func (d JSONBDocument) Set(value JSONBDocument) Assignment {
 
 // Key returns the JSON value at a text object key.
 func (d JSONDocument) Key(key string) JSONDocument {
-	return JSONExpr(JSONGet(d.expr, Param(key)))
+	return JSONExpr(JSONGet(d.expr, LiteralString(key)))
 }
 
 // Key returns the JSONB value at a text object key.
 func (d JSONBDocument) Key(key string) JSONBDocument {
-	return JSONBExpr(JSONGet(d.expr, Param(key)))
+	return JSONBExpr(JSONGet(d.expr, LiteralString(key)))
 }
 
 // Index returns the JSON array element at index. PostgreSQL accepts negative
@@ -89,12 +98,12 @@ func (d JSONBDocument) Index(index int) JSONBDocument {
 
 // TextKey returns the text value at a JSON object key.
 func (d JSONDocument) TextKey(key string) Field[string] {
-	return Typed[string](JSONGetText(d.expr, Param(key)))
+	return Typed[string](JSONGetText(d.expr, LiteralString(key)))
 }
 
 // TextKey returns the text value at a JSONB object key.
 func (d JSONBDocument) TextKey(key string) Field[string] {
-	return Typed[string](JSONGetText(d.expr, Param(key)))
+	return Typed[string](JSONGetText(d.expr, LiteralString(key)))
 }
 
 // TextIndex returns the text value at a JSON array index.
@@ -142,7 +151,7 @@ func (d JSONBDocument) ContainedBy(other JSONBDocument) Condition {
 }
 
 // HasKey reports whether the JSONB object contains key.
-func (d JSONBDocument) HasKey(key string) Condition { return JSONHas(d.expr, Param(key)) }
+func (d JSONBDocument) HasKey(key string) Condition { return JSONHas(d.expr, LiteralString(key)) }
 
 // HasAnyKeys reports whether the JSONB object contains at least one key.
 func (d JSONBDocument) HasAnyKeys(keys ...string) Condition {
@@ -156,7 +165,7 @@ func (d JSONBDocument) HasAllKeys(keys ...string) Condition {
 
 // DeleteKey returns a JSONB expression with one object key removed.
 func (d JSONBDocument) DeleteKey(key string) JSONBDocument {
-	return JSONBExpr(JSONDelete(d.expr, Param(key)))
+	return JSONBExpr(JSONDelete(d.expr, LiteralString(key)))
 }
 
 // DeleteIndex returns a JSONB expression with one array element removed.
@@ -182,30 +191,29 @@ func (d JSONBDocument) Concat(other JSONBDocument) JSONBDocument {
 // PathExists returns a condition testing whether a JSONPath matches this
 // document.
 func (d JSONBDocument) PathExists(path string) Condition {
-	return JSONPathExists(d.expr, Param(path).Cast(TypeJSONPath))
+	return JSONPathExists(d.expr, LiteralString(path).Cast(TypeJSONPath))
 }
 
 // PathMatches returns a condition testing whether a JSONPath predicate matches
 // this document.
 func (d JSONBDocument) PathMatches(path string) Condition {
-	return JSONPathMatches(d.expr, Param(path).Cast(TypeJSONPath))
+	return JSONPathMatches(d.expr, LiteralString(path).Cast(TypeJSONPath))
 }
 
 func jsonIndex(index int) Expr {
 	if index < -1<<31 || index > 1<<31-1 {
 		return invalidExpr("JSON index", "index must fit a PostgreSQL integer")
 	}
-	// The cast selects the array-index overload even when the driver sends an
-	// unknown parameter type; an untyped bind can resolve to the text-key one.
-	return Param(int32(index)).Cast(TypeInt4)
+	// An integer literal is int4, which selects the array-index overload.
+	return LiteralInt(int64(index))
 }
 
 func jsonTextArray(parts []string) Expr {
 	expressions := make([]Expr, len(parts))
 	for i, part := range parts {
-		expressions[i] = Param(part)
+		expressions[i] = LiteralString(part)
 	}
-	// Individual binds avoid requiring a driver's array codec. The cast also
-	// gives ARRAY[] a type; an empty extraction path is valid PostgreSQL syntax.
+	// The cast gives ARRAY[] a type; an empty extraction path is valid
+	// PostgreSQL syntax.
 	return nodeExpr(&listExpression{prefix: sqlArray, items: expressions}).Cast(TypeArray(TypeText))
 }

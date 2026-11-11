@@ -28,9 +28,8 @@ func TestPlaceholdersNumberBoundValuesOnly(t *testing.T) {
 	t.Parallel()
 
 	query := placeholderQuery()
-	args := []any{"seed", "nested", 42, "profile", "name", "nested", 42,
-		"?;", "red", "blue", "alpha", "beta", "$.a ? (@ > 1)", `x'); DROP TABLE t;--`, 3}
-	checkSQL(t, query, `WITH "seed" ("value") AS (SELECT $1) SELECT "odd""column?;", E'quote''; ? $1 \\end', '?; $1' /* ?; $1 */, (SELECT $2 WHERE ("id" = $3)) AS "nested", (("payload" -> $4) ->> $5) AS "name" FROM (SELECT $6 WHERE ("id" = $7)) AS "again" WHERE ("payload" ? $8) AND ("payload" ?| (ARRAY[$9, $10])::text[]) AND ("payload" ?& (ARRAY[$11, $12])::text[]) AND ("payload" @? ($13)::jsonpath) AND ("name" = $14) LIMIT $15`, args...)
+	args := []any{"seed", "nested", 42, "nested", 42, `x'); DROP TABLE t;--`, 3}
+	checkSQL(t, query, `WITH "seed" ("value") AS (SELECT $1) SELECT "odd""column?;", E'quote''; ? $1 \\end', '?; $1' /* ?; $1 */, (SELECT $2 WHERE ("id" = $3)) AS "nested", (("payload" -> E'profile') ->> E'name') AS "name" FROM (SELECT $4 WHERE ("id" = $5)) AS "again" WHERE ("payload" ? E'?;') AND ("payload" ?| (ARRAY[E'red', E'blue'])::text[]) AND ("payload" ?& (ARRAY[E'alpha', E'beta'])::text[]) AND ("payload" @? (E'$.a ? (@ > 1)')::jsonpath) AND ("name" = $6) LIMIT $7`, args...)
 }
 
 func TestPlaceholderAppendPrefix(t *testing.T) {
@@ -140,7 +139,7 @@ func TestReusableAppendWithAllocations(t *testing.T) {
 	query := Select(Param("value")).Where(JSONBExpr(Col("payload")).HasKey("name"))
 	buf, args := make([]byte, 0, 256), make([]any, 0, 8)
 	buf, args, err := query.AppendWith(buf, args, Options{})
-	if err != nil || string(buf) != `SELECT $1 WHERE ("payload" ? $2)` || !reflect.DeepEqual(args, []any{"value", "name"}) {
+	if err != nil || string(buf) != `SELECT $1 WHERE ("payload" ? E'name')` || !reflect.DeepEqual(args, []any{"value"}) {
 		t.Fatalf("SQL=%s args=%#v error=%v", buf, args, err)
 	}
 	allocations := testing.AllocsPerRun(100, func() {

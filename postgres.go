@@ -53,6 +53,41 @@ func Cardinality(array Expr) Expr { return builtin("cardinality", array) }
 // Unnest expands one or more arrays into rows.
 func Unnest(arrays ...Expr) Expr { return builtin("unnest", arrays...) }
 
+// ArrayColumn is one array and the name of the column its elements fill.
+type ArrayColumn struct {
+	name  string
+	array Expr
+}
+
+// NamedArray names the column that array fills. The array is an expression,
+// usually ArrayParam; name is one identifier, quoted as written.
+func NamedArray(name string, array Expr) ArrayColumn { return ArrayColumn{name: name, array: array} }
+
+// UnnestAs expands arrays in step into the rows of one relation whose columns
+// take the arrays' names: unnest($1, $2) AS "u" ("id", "name"). Each array
+// must have a scalar element type, because an array of a composite type
+// expands to one column per field and shifts the names after it. PostgreSQL
+// pads shorter arrays with NULL.
+//
+// WithOrdinality adds a last column that PostgreSQL names ordinality. As
+// replaces the alias and the column names together, so to rename the relation
+// or the ordinality column pass every column name again.
+func UnnestAs(alias string, first ArrayColumn, rest ...ArrayColumn) Relation {
+	names, arrays := splitArrayColumns(first, rest)
+	r := TableFunc(Unnest(arrays...))
+	r.alias, r.columns = alias, names
+	return r
+}
+
+func splitArrayColumns(first ArrayColumn, rest []ArrayColumn) (names []string, arrays []Expr) {
+	names, arrays = make([]string, 1+len(rest)), make([]Expr, 1+len(rest))
+	names[0], arrays[0] = first.name, first.array
+	for i, column := range rest {
+		names[i+1], arrays[i+1] = column.name, column.array
+	}
+	return names, arrays
+}
+
 // StringToArray splits a string into an array using delimiter.
 func StringToArray(value, delimiter Expr) Expr { return builtin("string_to_array", value, delimiter) }
 

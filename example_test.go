@@ -372,8 +372,8 @@ func ExampleExpr_ILikeContains() {
 
 func ExampleJSONObject() {
 	user := qs.JSONObject(
-		qs.JSONPair(qs.LiteralString("id"), qs.Col("id")),
-		qs.JSONPair(qs.LiteralString("settings"), qs.FormatJSON(qs.Col("settings_text"))),
+		qs.JSONKey("id", qs.Col("id")),
+		qs.JSONKey("settings", qs.FormatJSON(qs.Col("settings_text"))),
 	).AbsentOnNull().Returning(qs.TypeJSONB)
 	query, args, err := qs.Select(user.As("user")).From("users").
 		Where(qs.Col("team_id").Eq(qs.Param(7))).ToSQL()
