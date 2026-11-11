@@ -243,11 +243,11 @@ func TestScanFunctionAppendsDestinations(t *testing.T) {
 
 // totalRows reads a trailing count beside each row a projection reads.
 type totalRows struct {
-	projection.Rows
+	*fakeRows
 	total *int64
 }
 
-func (r totalRows) Scan(dest ...any) error { return r.Rows.Scan(append(dest, r.total)...) }
+func (r totalRows) Scan(dest ...any) error { return r.fakeRows.Scan(append(dest, r.total)...) }
 
 func TestCollectThroughRowsThatAppendDestinations(t *testing.T) {
 	t.Parallel()
@@ -257,7 +257,7 @@ func TestCollectThroughRowsThatAppendDestinations(t *testing.T) {
 		fakeRow(int64(1), "ada", nil, int64(2)),
 		fakeRow(int64(2), "bob", nil, int64(2)),
 	}}
-	got, err := flatUsers().Collect(totalRows{Rows: rows, total: &total})
+	got, err := flatUsers().Collect(totalRows{fakeRows: rows, total: &total})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestCollectThroughRowsThatAppendDestinations(t *testing.T) {
 	}
 
 	total = -1
-	if _, err := flatUsers().Collect(totalRows{Rows: &fakeRows{}, total: &total}); err != nil || total != -1 {
+	if _, err := flatUsers().Collect(totalRows{fakeRows: &fakeRows{}, total: &total}); err != nil || total != -1 {
 		t.Fatalf("no rows: total %d, %v, want it left at -1", total, err)
 	}
 }

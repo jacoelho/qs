@@ -289,6 +289,21 @@ func Least(first Expr, rest ...Expr) Expr {
 // Concat returns concat(exprs...) as a function expression.
 func Concat(exprs ...Expr) Expr { return builtin("concat", exprs...) }
 
+// ConcatWS returns concat_ws(separator, exprs...), which joins the non-NULL
+// arguments with separator.
+func ConcatWS(separator Expr, exprs ...Expr) Expr {
+	return builtin("concat_ws", append([]Expr{separator}, exprs...)...)
+}
+
+// StartsWith tests whether value begins with prefix, using starts_with. Unlike
+// LIKE it takes the prefix literally, with no pattern characters to escape.
+func StartsWith(value, prefix Expr) Condition {
+	return builtin("starts_with", value, prefix).Condition()
+}
+
+// GenRandomUUID returns gen_random_uuid(), a version 4 UUID.
+func GenRandomUUID() Expr { return builtin("gen_random_uuid") }
+
 // Lower returns lower(expr) as a function expression.
 func Lower(expr Expr) Expr { return builtin("lower", expr) }
 
@@ -346,6 +361,10 @@ func Power(base, exponent Expr) Expr { return builtin("power", base, exponent) }
 
 // Sqrt returns sqrt(expr) as a function expression.
 func Sqrt(expr Expr) Expr { return builtin("sqrt", expr) }
+
+// ClockTimestamp returns clock_timestamp(), the current time, which advances
+// within a statement. Now is fixed at the start of the transaction.
+func ClockTimestamp() Expr { return builtin("clock_timestamp") }
 
 // Now returns the now() time function.
 func Now() Expr { return builtin("now") }

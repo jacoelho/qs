@@ -9,17 +9,28 @@ type Condition struct{ expr Expr }
 // Expr returns the underlying boolean expression.
 func (c Condition) Expr() Expr { return c.expr }
 
-// AsCondition treats an expression as a SQL condition. When qs combines a
-// condition from UnsafeSQL or Fragment with another condition, in a WHERE,
-// HAVING or ON list, with a SeekAfter cursor, or through And, Or or Not, it
-// parenthesizes that condition. A lone condition renders verbatim.
-func AsCondition(expr Expr) Condition { return Condition{expr} }
+// Condition treats e as a SQL condition, for a boolean column, a boolean
+// parameter or trusted syntax: Col("active").Condition(). It is the inverse of
+// Condition.Expr. When qs combines a condition from UnsafeSQL or Fragment with
+// another condition, in a WHERE, HAVING or ON list, with a SeekAfter cursor,
+// or through And, Or or Not, it parenthesizes that condition. A lone condition
+// renders verbatim.
+func (e Expr) Condition() Condition { return Condition{e} }
+
+// As names the condition's boolean value as an output column.
+func (c Condition) As(alias string) Expr { return c.expr.As(alias) }
+
+// Asc orders by the condition's boolean value, FALSE first.
+func (c Condition) Asc() Order { return c.expr.Asc() }
+
+// Desc orders by the condition's boolean value, TRUE first.
+func (c Condition) Desc() Order { return c.expr.Desc() }
 
 // True returns a condition that is always TRUE.
-func True() Condition { return AsCondition(LiteralBool(true)) }
+func True() Condition { return LiteralBool(true).Condition() }
 
 // False returns a condition that is always FALSE.
-func False() Condition { return AsCondition(LiteralBool(false)) }
+func False() Condition { return LiteralBool(false).Condition() }
 
 // And combines conditions with SQL AND. With no conditions, it returns TRUE.
 func And(conditions ...Condition) Condition { return junction(sqlAnd, true, conditions) }
@@ -28,7 +39,7 @@ func And(conditions ...Condition) Condition { return junction(sqlAnd, true, cond
 func Or(conditions ...Condition) Condition { return junction(sqlOr, false, conditions) }
 
 // Not negates a condition while preserving SQL three-valued logic.
-func Not(condition Condition) Condition { return AsCondition(prefix(sqlNot, condition.bounded())) }
+func Not(condition Condition) Condition { return prefix(sqlNot, condition.bounded()).Condition() }
 
 // And combines c with each condition in other. With no other conditions, it
 // returns c unchanged.
@@ -54,7 +65,7 @@ const (
 
 func junction(operator string, identity bool, conditions []Condition) Condition {
 	if len(conditions) == 0 {
-		return AsCondition(LiteralBool(identity))
+		return LiteralBool(identity).Condition()
 	}
 	return conditions[0].junction(operator, conditions[1:])
 }
@@ -68,7 +79,7 @@ func (c Condition) junction(operator string, other []Condition) Condition {
 	for i := range other {
 		values[i+1] = other[i].bounded()
 	}
-	return AsCondition(nodeExpr(&groupExpression{separator: operator, items: values}))
+	return nodeExpr(&groupExpression{separator: operator, items: values}).Condition()
 }
 
 // bounded returns the condition as an operand that qs combines with another.
@@ -82,13 +93,16 @@ func (c Condition) bounded() Expr {
 }
 
 func compare(left Expr, operator string, right Expr) Condition {
-	return AsCondition(binary(left, operator, right))
+	return binary(left, operator, right).Condition()
 }
 
 const nilComparison = "a bound NULL never compares true; use IsNull or a DISTINCT form"
 
 // nilParameter reports whether e binds untyped nil.
-func nilParameter(e Expr) bool { return e.kind == exprParameter && e.value == nil }
+func nilParameter(e Expr) bool {
+	value, ok := e.bound()
+	return ok && value == nil
+}
 
 // nilOperand reports whether e binds untyped nil directly, as a field of a row
 // constructor at any depth, or as the array of ANY or ALL: none of those
@@ -111,18 +125,9 @@ func nilOperand(e Expr) bool {
 // here and still bind.
 func comparison(left Expr, operator string, right Expr) Condition {
 	if nilOperand(left) || nilOperand(right) {
-		return AsCondition(invalidExpr("comparison", nilComparison))
+		return invalidExpr("comparison", nilComparison).Condition()
 	}
 	return compare(left, operator, right)
-}
-
-// comparand binds a value as a comparison operand, rejecting untyped nil as
-// comparison does.
-func comparand(value any) Expr {
-	if value == nil {
-		return invalidExpr("comparison", nilComparison)
-	}
-	return parameter(value)
 }
 
 // Eq compares e with another expression using SQL equality. Bind a Go value
@@ -156,34 +161,34 @@ func (e Expr) IsNotDistinctFrom(other Expr) Condition {
 }
 
 // IsNull tests whether e is SQL NULL.
-func (e Expr) IsNull() Condition { return AsCondition(postfix(e, "IS NULL")) }
+func (e Expr) IsNull() Condition { return postfix(e, "IS NULL").Condition() }
 
 // IsNotNull tests whether e is not SQL NULL.
-func (e Expr) IsNotNull() Condition { return AsCondition(postfix(e, "IS NOT NULL")) }
+func (e Expr) IsNotNull() Condition { return postfix(e, "IS NOT NULL").Condition() }
 
 // IsTrue tests whether e is TRUE, excluding FALSE and NULL.
-func (e Expr) IsTrue() Condition { return AsCondition(postfix(e, "IS TRUE")) }
+func (e Expr) IsTrue() Condition { return postfix(e, "IS TRUE").Condition() }
 
 // IsNotTrue tests whether e is not TRUE, including FALSE and NULL.
-func (e Expr) IsNotTrue() Condition { return AsCondition(postfix(e, "IS NOT TRUE")) }
+func (e Expr) IsNotTrue() Condition { return postfix(e, "IS NOT TRUE").Condition() }
 
 // IsFalse tests whether e is FALSE, excluding TRUE and NULL.
-func (e Expr) IsFalse() Condition { return AsCondition(postfix(e, "IS FALSE")) }
+func (e Expr) IsFalse() Condition { return postfix(e, "IS FALSE").Condition() }
 
 // IsNotFalse tests whether e is not FALSE, including TRUE and NULL.
-func (e Expr) IsNotFalse() Condition { return AsCondition(postfix(e, "IS NOT FALSE")) }
+func (e Expr) IsNotFalse() Condition { return postfix(e, "IS NOT FALSE").Condition() }
 
 // IsUnknown tests whether e is SQL NULL.
-func (e Expr) IsUnknown() Condition { return AsCondition(postfix(e, "IS UNKNOWN")) }
+func (e Expr) IsUnknown() Condition { return postfix(e, "IS UNKNOWN").Condition() }
 
 // IsNotUnknown tests whether e is not SQL NULL.
-func (e Expr) IsNotUnknown() Condition { return AsCondition(postfix(e, "IS NOT UNKNOWN")) }
+func (e Expr) IsNotUnknown() Condition { return postfix(e, "IS NOT UNKNOWN").Condition() }
 
 func between(value Expr, operator string, lower, upper Expr) Condition {
 	if nilOperand(value) || nilOperand(lower) || nilOperand(upper) {
-		return AsCondition(invalidExpr("comparison", nilComparison))
+		return invalidExpr("comparison", nilComparison).Condition()
 	}
-	return AsCondition(nodeExpr(&betweenExpression{value, operator, lower, upper}))
+	return nodeExpr(&betweenExpression{value, operator, lower, upper}).Condition()
 }
 
 // Between checks e against two expressions using BETWEEN, inclusively.
@@ -214,9 +219,9 @@ func membership(left Expr, operator string, values []Expr) Condition {
 		return False()
 	}
 	if nilOperand(left) || slices.ContainsFunc(values, nilOperand) {
-		return AsCondition(invalidExpr("comparison", nilComparison))
+		return invalidExpr("comparison", nilComparison).Condition()
 	}
-	return AsCondition(nodeExpr(&membershipExpression{left: left, operator: operator, values: values}))
+	return nodeExpr(&membershipExpression{left: left, operator: operator, values: values}).Condition()
 }
 
 func inValues[T any](left Expr, operator string, values []T) Condition {
@@ -241,9 +246,9 @@ func (e Expr) InQuery(query Rowset) Condition { return inQuery(e, "IN", query, 1
 func (e Expr) NotInQuery(query Rowset) Condition { return inQuery(e, "NOT IN", query, 1) }
 func inQuery(e Expr, operator string, query Rowset, width int) Condition {
 	if nilOperand(e) {
-		return AsCondition(invalidExpr("comparison", nilComparison))
+		return invalidExpr("comparison", nilComparison).Condition()
 	}
-	return AsCondition(nodeExpr(&membershipExpression{left: e, operator: operator, query: ownedRowset(query), width: width}))
+	return nodeExpr(&membershipExpression{left: e, operator: operator, query: ownedRowset(query), width: width}).Condition()
 }
 
 func (w *renderer) membership(n *membershipExpression) {
@@ -279,7 +284,7 @@ func (w *renderer) membership(n *membershipExpression) {
 
 // Exists tests whether query returns at least one row.
 func Exists(query Rowset) Condition {
-	return AsCondition(nodeExpr(&subqueryExpression{query: ownedRowset(query), keyword: "EXISTS "}))
+	return nodeExpr(&subqueryExpression{query: ownedRowset(query), keyword: "EXISTS "}).Condition()
 }
 
 // NotExists tests whether query returns no rows.

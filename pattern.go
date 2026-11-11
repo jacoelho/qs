@@ -87,7 +87,7 @@ func (e Expr) NotSimilarTo(pattern Expr) Condition { return comparison(e, "NOT S
 // disables escaping; otherwise PostgreSQL requires one character.
 func (c Condition) Escape(character string) Condition {
 	if !utf8.ValidString(character) || utf8.RuneCountInString(character) > 1 {
-		return AsCondition(invalidExpr("ESCAPE", "requires zero or one character"))
+		return invalidExpr("ESCAPE", "requires zero or one character").Condition()
 	}
 	return c.EscapeExpr(Param(character))
 }
@@ -96,14 +96,14 @@ func (c Condition) Escape(character string) Condition {
 func (c Condition) EscapeExpr(character Expr) Condition {
 	n, ok := c.expr.node().(*binaryExpression)
 	if !ok {
-		return AsCondition(invalidExpr("ESCAPE", "requires a pattern predicate"))
+		return invalidExpr("ESCAPE", "requires a pattern predicate").Condition()
 	}
 	switch n.operator {
 	case "LIKE", "NOT LIKE", "ILIKE", "NOT ILIKE", "SIMILAR TO", "NOT SIMILAR TO":
 	default:
-		return AsCondition(invalidExpr("ESCAPE", "requires a pattern predicate"))
+		return invalidExpr("ESCAPE", "requires a pattern predicate").Condition()
 	}
-	return AsCondition(enclosed(n.left, UnsafeSQL(" "+n.operator+" "), n.right, UnsafeSQL(" ESCAPE "), character))
+	return enclosed(n.left, UnsafeSQL(" "+n.operator+" "), n.right, UnsafeSQL(" ESCAPE "), character).Condition()
 }
 
 func literalLikePattern(text string, mode literalLikeMode) string {

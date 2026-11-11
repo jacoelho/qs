@@ -39,13 +39,24 @@ type Options struct {
 }
 
 type renderer struct {
-	err            error
+	err error
+	// The SharedParams this render has numbered: the first few inline, so a
+	// warm render of a keyset page allocates nothing, and the rest in spill. A
+	// statement rarely shares more than a few, so a scan beats a map.
+	shared         [4]sharedSlot
 	sql            []byte
 	args           []any
+	sharedSpill    []sharedSlot
+	sharedCount    int
 	options        Options
 	depth          int
 	statementDepth int
 	hasWindow      bool // Structural OVER encountered in the current statement.
+}
+
+type sharedSlot struct {
+	parameter *sharedParameter
+	number    int
 }
 
 func normalOptions(o Options) Options {
@@ -198,6 +209,44 @@ func (w *renderer) bind(value any) {
 	w.args = append(w.args, value)
 	w.byte('$')
 	w.sql = strconv.AppendInt(w.sql, int64(len(w.args)), 10)
+}
+
+// bindShared binds a SharedParam at its first use in this render and repeats
+// the number it took at each later one, which adds no argument.
+func (w *renderer) bindShared(e Expr) {
+	p, ok := e.value.(*sharedParameter)
+	if !w.require(ok, "expression", "zero expression") {
+		return
+	}
+	number := 0
+	for i := range min(w.sharedCount, len(w.shared)) {
+		if w.shared[i].parameter == p {
+			number = w.shared[i].number
+		}
+	}
+	for _, slot := range w.sharedSpill {
+		if slot.parameter == p {
+			number = slot.number
+		}
+	}
+	if number != 0 {
+		if w.err == nil {
+			w.byte('$')
+			w.sql = strconv.AppendInt(w.sql, int64(number), 10)
+		}
+		return
+	}
+	w.bind(p.value)
+	if w.err != nil {
+		return
+	}
+	slot := sharedSlot{parameter: p, number: len(w.args)}
+	if w.sharedCount < len(w.shared) {
+		w.shared[w.sharedCount] = slot
+	} else {
+		w.sharedSpill = append(w.sharedSpill, slot)
+	}
+	w.sharedCount++
 }
 
 // Concrete dispatch keeps renderer pointers out of public interfaces; this is

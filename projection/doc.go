@@ -10,8 +10,7 @@
 //	if err != nil {
 //		return err
 //	}
-//	defer rows.Close()
-//	users, err := p.Collect(rows)
+//	users, err := p.Collect(rows) // closes rows
 //
 // Column reads a required column, ColumnNull a nullable one, and ColumnOrZero a
 // nullable one whose NULL reads as the zero value. Embed nests a declaration in a field, and EmbedNull nests it as an optional group for the
@@ -23,8 +22,10 @@
 // Scan reads one row through the caller's scan function, normally rows.Scan or
 // row.Scan, and ScanInto reads it into a value the caller already holds. All and
 // Collect read a result set through the methods pgx.Rows and *sql.Rows share, reuse
-// their working memory from row to row, and leave closing the result set to the caller. Reading is positional and goes through the caller's
-// values, so the package performs no I/O and imports no driver. Put Expressions first
+// their working memory from row to row, and close the result set when they are done
+// with it, so a caller cannot leave its connection busy: see Rows for what they need
+// to do so. Reading is positional and goes through the caller's
+// values, so the package imports no driver, and its only I/O is what Next, Scan and Close perform. Put Expressions first
 // in a SELECT or RETURNING list, unchanged: other output before or among them breaks
 // the correspondence, and a reorder of equal width can go unnoticed. Output selected
 // after them is read by destinations the scan function appends: see ScanInto. SQL

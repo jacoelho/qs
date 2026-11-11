@@ -167,7 +167,7 @@ func Overlay(value, replacement, start Expr, length ...Expr) Expr {
 // pairs.  The four-argument form makes the required pair arity explicit and
 // avoids silently accepting a row of the wrong width.
 func Overlaps(leftStart, leftEnd, rightStart, rightEnd Expr) Condition {
-	return AsCondition(newSQLSyntax(sqlOverlaps, []Expr{leftStart, leftEnd, rightStart, rightEnd}))
+	return newSQLSyntax(sqlOverlaps, []Expr{leftStart, leftEnd, rightStart, rightEnd}).Condition()
 }
 
 // AtLocal emits value AT LOCAL.  AtTimeZone remains the existing expression
@@ -204,12 +204,12 @@ func CollationFor(value Expr) Expr {
 
 // IsNormalized emits value IS [form] NORMALIZED.
 func IsNormalized(value Expr, form ...UnicodeNormalForm) Condition {
-	return AsCondition(normalized(value, false, form...))
+	return normalized(value, false, form...).Condition()
 }
 
 // IsNotNormalized emits value IS NOT [form] NORMALIZED.
 func IsNotNormalized(value Expr, form ...UnicodeNormalForm) Condition {
-	return AsCondition(normalized(value, true, form...))
+	return normalized(value, true, form...).Condition()
 }
 
 func normalized(value Expr, negated bool, form ...UnicodeNormalForm) Expr {

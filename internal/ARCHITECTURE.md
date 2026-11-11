@@ -27,8 +27,14 @@ those when a row is scanned.
 The caller owns the value passed to `ScanInto`, including what reusing it across rows
 shares. `All` and `Collect` own the row loop and its completion check, `rows.Err`, and
 read through `Rows`, the three methods `pgx.Rows` and `*sql.Rows` have in common. They
-never close the rows: the caller opened the result set, and its deferred `Close` also
-covers an abandoned loop.
+also own closing the result set, on every way out of the loop including a panic, so a
+caller cannot leave a connection busy by forgetting it. `pgx.Rows.Close()` and
+`sql.Rows.Close() error` share no signature, so `Close` is found on the value by a type
+switch and a value with neither fails with `ErrNoClose` before a row is read. The order
+is loop, `Close`, `rows.Err`, then the error from `Close`: pgx reports a failure found
+while closing through `Err`. The first error is returned unchanged. An `All` loop left
+early drops the error from `Close`, because yielding after the loop body has returned
+false panics; an iterator never ranged over closes nothing.
 
 Between rows of one result set they keep a scratch: the destination list, the cell
 lists and the cells of the previous row, which each part overwrites in creation order,
@@ -124,8 +130,16 @@ Rejected alternatives:
   every caller wrote the binding and scan code.
 - Finishing a group's cells in declaration order: a `set` declared before a `Column`
   read its zero value in a group and its row value when flat.
-- Closing rows in `All` and `Collect`: `pgx.Rows.Close()` and `sql.Rows.Close() error`
-  share no signature, and both drivers already close on exhaustion.
+- Leaving `Close` to the caller of `All` and `Collect` (the previous design): both
+  drivers close on exhaustion, but a row error or an abandoned loop left the connection
+  busy unless every call site kept its own deferred `Close`.
+- `Close` as a method of `Rows`, a second entry point per driver, or a close function
+  passed by the caller: Go cannot state "either signature" in one interface, and the
+  other two put the driver difference at every call site. The cost of the type switch
+  is that a wrapper embedding `projection.Rows` rather than the driver's rows hides
+  `Close` and fails at run time, on its first use.
+- Joining the row, `Err` and `Close` errors: callers match the driver's error, which
+  the package returns unchanged.
 - A method usable as `pgx.RowToFunc`: function types must be identical, so no signature
   that omits pgx is assignable; pgx callers wrap `p.Scan(row.Scan)` or use `Collect`.
 - A default-value column (`ColumnOr(expr, value, dest)`): `COALESCE` in the expression
@@ -451,7 +465,12 @@ builder's own `ToSQL` and `AppendSQL` methods render the receiver in place,
 and the functions that take a `Statement` copy it out of the interface once.
 `internal/buildergen` holds the one list of statement types and writes those
 methods, the dispatch over a `Statement` and the error-path labels from it. Parameter nodes bind
-values and emit their placeholder. `Param(any)` retains dynamic value types;
+values and emit their placeholder. A `SharedParam` carries a pointer identity made at
+construction; the render keeps the numbers it has given such identities, binds at the
+first use and repeats the number afterwards. The table belongs to one render, so the
+expression stays an immutable value and numbering stays with the renderer. `Expr.bound`
+is the one test for "binds a value", so nil-comparison, keyset and count checks treat
+both parameter kinds alike. `Param(any)` retains dynamic value types;
 a generic type parameter would establish no additional invariant. `Param`,
 `Value` and `ParamNull` bind untyped nil as NULL. A nil `ArrayParam` slice binds
 an empty array, matching empty `In`/`NotIn` lists. Identifiers, literals,
@@ -477,7 +496,9 @@ depends on the renderer appending arguments without shortening their length.
 ORDER BY is the only ordering owner. `SelectBuilder` owns its keyset cursor
 values; rendering derives the predicate from the final ORDER BY terms and appends
 it as the last WHERE conjunct, so later ORDER BY, DISTINCT ON or cursor changes
-are validated where they take effect. `CountRows` holds the query it was given
+are validated where they take effect. A Go cursor value is bound as a `SharedParam`,
+so the mixed-direction expansion names it several times and binds it once; a cursor
+`Expr` is compared as written and rendered at each use. An empty cursor is no cursor. `CountRows` holds the query it was given
 in a private relation source. That relation renders the query in its own
 statement scope without ORDER BY, cursor, row limit, OFFSET or locks; it
 keeps the suffix, whose relation to the omitted clauses qs cannot know.
@@ -548,7 +569,15 @@ that the last key is unique; rows violating those assumptions are skipped or
 repeated across pages.
 
 Identifiers are quoted; values bind unless an explicit literal is selected.
-Unsafe fragments are trusted code. `Condition` owns their boolean boundary: an
+Unsafe fragments are trusted code. `UnsafeSQL` is the only constructor of raw text and
+owns its validation, at construction: the text must be non-empty valid UTF-8 without
+NUL, lexically complete, and free of numbered placeholders and stray `$`, read with
+`standard_conforming_strings` on. The renderer is the only owner of `$n`, so a
+placeholder in trusted text would share a slot with a bound value, and an open quote or
+comment would swallow what is rendered next. A complete part can still join its
+neighbour into one token (`t` and `$1`, `$1` and `0`, `-` and `-1`), which only the
+place where parts meet can see: `Fragment` rendering owns that check, on the rendered
+bytes at each part boundary, and rejects the join rather than inserting a separator. `Condition` owns their boolean boundary: an
 `UnsafeSQL` or `Fragment` condition is parenthesized where qs combines it with
 another condition, which covers condition lists including the keyset conjunct,
 `And`/`Or` members and `Not`. Keyset rendering likewise parenthesizes a trusted
@@ -603,3 +632,7 @@ alternatives are not supported APIs or implementation commitments.
 | 36 | SELECT projection | Required-first `Select`, `SelectCols` and `SelectSQL`; `SelectSlice` for run-time lists; `SelectNoColumns` for zero columns. Reject a variadic `Select` that fails rendering when empty: a literal call can be checked by its signature. Reject a nonempty-list type for `SelectSlice`: projections and callers assemble lists at run time, so the check would only move. |
 | 37 | SQL/JSON | One builder type per form, itself the expression node; method sets generated from one table of the clauses PostgreSQL accepts per form. Reject one builder with option enums (the previous shape: `JSONBehavior`, `JSONWrapper`, `JSONQuotes`, `JSONNullPolicy` values legal on some forms only, each checked at render or by the server). Reject an input-role type per operand position: one sealed `JSONOperand` covers every position that takes FORMAT JSON. Reject `Not` on `IsJSON`: PostgreSQL parses IS NOT JSON as NOT over the predicate, which `Condition().Not()` already states. Reject `JSONCol` and `JSONBCol` shorthands: `JSONExpr(Col(...))` says the same. Reject typed column kinds for `JSON_VALUE` and `JSON_QUERY` evaluation of a `JSON_TABLE` column: PostgreSQL chooses by SQL type, which qs does not model. |
 | 38 | Row lists | A bulk `Rows` entry that copies once; single-row methods keep the clipped append and document its cost. Reject amortised growth through an array shared by copies with an atomic high-water mark: sound, but it puts shared mutable state inside values documented as immutable, adds a second list representation, lets a short value retain its siblings' rows, and costs an allocation on the two-row statement. Reject backward-linked immutable chunks: no shared mutation, but more bytes than the shared array and the renderer and width checks would iterate chunks. Reject applying either to every list: the others are sized by the query a person writes, not by data. |
+| 39 | Placeholders in trusted SQL | Reject at `UnsafeSQL`, with no opt-out. Reject documenting the rule only (the previous shape): `x = $1` beside a bound value rendered two uses of one slot. Reject renumbering trusted placeholders: it needs their arguments, which trusted text does not carry. Reject an opt-out for `PREPARE` and SQL function bodies: utility statements are out of scope, and a dollar-quoted or string body is not inspected. |
+| 40 | Shared parameters | Opt-in `SharedParam` with pointer identity. Reject deduplicating equal `Param` values: equality of `any` is not defined for every driver value, and PostgreSQL infers one type per `$n`, so merging would change which queries type-check. Reject making every `Param` an identity: an allocation per value and the same silent change of inference. Reject named parameters: a string identity can collide, and two values under one name need a render error. Reject render-once, rebind-arguments: statement shape depends on values (`In` lists, nil checks, limits) and no measurement shows render cost matters. |
+| 41 | Run-time lists | `first, rest...` where a literal call can be checked by its signature, plus a `Slice` form for lists built at run time (`SelectSlice`, `ValuesSlice`, `DoUpdateSlice`, `WhereSlice`, `UnionSlice` and its siblings). `SeekAfter` is variadic only, because its width is checked against ORDER BY at render either way and an empty cursor means the first page. A set-operation `Slice` of one rowset is that rowset: the alternative pushed a length branch onto every caller. An empty mutation `WhereSlice` fails rendering, keeping the all-rows guard. |
+| 42 | Condition and expression | Two types, converted by `Expr.Condition` and `Condition.Expr`, with `Condition.As`, `Asc` and `Desc` for the positions callers reached most. Reject one type: `Where` could not refuse a non-boolean expression's role, and the trusted-condition boundary has no owner. Reject an interface accepted by `Select` and `OrderBy`: it boxes every expression. `AsCondition` was removed so the conversion has one spelling. |

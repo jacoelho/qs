@@ -63,6 +63,14 @@ func (p PendingDelete) Where(first Condition, rest ...Condition) DeleteBuilder {
 	return p.statement
 }
 
+// WhereSlice is Where for a run-time list, which is copied. An empty list
+// selects no rows to delete and fails rendering, as conditions that are TRUE
+// for every row do.
+func (p PendingDelete) WhereSlice(conditions []Condition) DeleteBuilder {
+	p.statement.rows = rowSelection{kind: rowsMatching, conditions: cloneSlice(conditions)}
+	return p.statement
+}
+
 // WhereCurrentOf completes the DELETE with the row a cursor is positioned on.
 func (p PendingDelete) WhereCurrentOf(cursor string) DeleteBuilder {
 	p.statement.rows = rowSelection{kind: rowsAtCursor, cursor: cursor}

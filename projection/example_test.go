@@ -139,6 +139,7 @@ func (r *records) Scan(dest ...any) error {
 }
 
 func (r *records) Err() error { return nil }
+func (r *records) Close()     {}
 
 func ExampleProjection_Collect() {
 	type Document struct {
@@ -150,7 +151,7 @@ func ExampleProjection_Collect() {
 		projection.Column(qs.Col("country"), func(d *Document) *string { return &d.Country }),
 	)
 
-	// Application code passes the driver's rows and keeps its deferred Close.
+	// Application code passes the driver's rows; Collect closes them.
 	rows := &records{unread: []string{"document-1 PT", "document-2 ES"}}
 	documents, err := p.Collect(rows)
 	if err != nil {
@@ -227,12 +228,13 @@ func ExampleColumnOrZero() {
 }
 
 // counted reads a trailing window count beside each row a projection reads.
+// Embedding the driver's rows, here records, keeps their Close.
 type counted struct {
-	projection.Rows
+	*records
 	total *int64
 }
 
-func (c counted) Scan(dest ...any) error { return c.Rows.Scan(append(dest, c.total)...) }
+func (c counted) Scan(dest ...any) error { return c.records.Scan(append(dest, c.total)...) }
 
 // A value that belongs to no row, selected after Expressions.
 func ExampleProjection_Collect_windowCount() {
@@ -255,7 +257,7 @@ func ExampleProjection_Collect_windowCount() {
 
 	var total int64
 	rows := &records{unread: []string{"document-1 PT 5", "document-2 ES 5"}}
-	page, err := p.Collect(counted{Rows: rows, total: &total})
+	page, err := p.Collect(counted{records: rows, total: &total})
 	if err != nil {
 		panic(err)
 	}

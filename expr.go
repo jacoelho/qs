@@ -18,22 +18,23 @@ const (
 type exprKind uint8
 
 const (
-	exprZero          exprKind = iota // the zero Expr, which is invalid
-	exprIdentifier                    // text is one identifier
-	exprQualified                     // value is the qualifying identifier, a string, and text the name
-	exprParameter                     // value is the bound value
-	exprRaw                           // text is trusted SQL
-	exprLiteral                       // text is the literal's SQL spelling
-	exprKeyword                       // text is a keyword
-	exprStringLiteral                 // text is the unescaped string
-	exprNode                          // value is a node
+	exprZero            exprKind = iota // the zero Expr, which is invalid
+	exprIdentifier                      // text is one identifier
+	exprQualified                       // value is the qualifying identifier, a string, and text the name
+	exprParameter                       // value is the bound value
+	exprSharedParameter                 // value is a *sharedParameter
+	exprRaw                             // text is trusted SQL
+	exprLiteral                         // text is the literal's SQL spelling
+	exprKeyword                         // text is a keyword
+	exprStringLiteral                   // text is the unescaped string
+	exprNode                            // value is a node
 )
 
 // Expr is an immutable SQL expression. A zero Expr is invalid, never an omitted
 // filter. Use Param for values, Col for identifiers, and UnsafeSQL only for
 // trusted syntax. It represents a SQL expression, not a schema proof.
 type Expr struct {
-	value any // the bound value of an exprParameter, the node of an exprNode or the qualifier of an exprQualified
+	value any // the bound value of an exprParameter, the *sharedParameter of an exprSharedParameter, the node of an exprNode or the qualifier of an exprQualified
 	text  string
 	kind  exprKind
 }
@@ -207,6 +208,42 @@ func parameter(value any) Expr {
 	return Expr{kind: exprParameter, value: value}
 }
 
+// sharedParameter is the identity of one SharedParam call. Every copy of the
+// Expr holds the same pointer, which is how a render recognises a second use.
+// It is never written after construction.
+type sharedParameter struct{ value any }
+
+// SharedParam binds one value that renders as the same $n wherever the
+// returned expression is used within one rendered statement, and appears once
+// in its arguments. Param, by contrast, binds again at each use. Each call
+// creates a distinct parameter, so two calls with equal values still bind
+// twice. In another render the same expression takes whatever number that
+// render reaches first.
+//
+// PostgreSQL infers one type for a parameter from all of its uses, so uses
+// that would infer different types, such as an integer comparison and a text
+// concatenation, fail in the database: Cast the uses that need another type.
+// SharedParam accepts and rejects the values Param does.
+func SharedParam(value any) Expr {
+	e := parameter(value)
+	if e.kind != exprParameter {
+		return e
+	}
+	return Expr{kind: exprSharedParameter, value: &sharedParameter{value}}
+}
+
+// bound returns the value e binds and whether e is a bound value at all. It is
+// the one way to ask, so that a check on Param also holds for SharedParam.
+func (e Expr) bound() (any, bool) {
+	if e.kind == exprParameter {
+		return e.value, true
+	}
+	if p, ok := e.value.(*sharedParameter); ok && e.kind == exprSharedParameter {
+		return p.value, true
+	}
+	return nil, false
+}
+
 // ParamNull binds a valid value or binds SQL NULL when value is invalid.
 func ParamNull[T any](value Null[T]) Expr {
 	if !value.Valid {
@@ -260,15 +297,32 @@ func LiteralFloat(value float64) Expr {
 // values. E-strings are independent of standard_conforming_strings settings.
 func LiteralString(value string) Expr { return Expr{kind: exprStringLiteral, text: value} }
 
-// UnsafeSQL accepts trusted SQL syntax. It does not process placeholders or
-// parse statements. Never pass request data or manually numbered bind slots.
-// Operators render it verbatim; use Parenthesized when its own operators could
-// bind to a neighbouring operand. See AsCondition for combined conditions.
-func UnsafeSQL(trusted string) Expr { return Expr{kind: exprRaw, text: trusted} }
+// UnsafeSQL accepts trusted SQL syntax and renders it verbatim. It does not
+// parse statements. Never pass request data. Rendering fails with ErrInvalid
+// when the text holds a numbered placeholder such as $1, because qs numbers
+// parameters itself: bind the value with Param beside the text in a Fragment.
+// It also fails when the text is not lexically complete on its own, that is
+// when it ends inside a string, a quoted identifier, a comment or a
+// dollar-quoted string, or holds a stray $. Text inside those tokens is not
+// inspected. Strings are read as PostgreSQL reads them with
+// standard_conforming_strings on.
+//
+// Use Parenthesized when its own operators could bind to a neighbouring
+// operand. See Expr.Condition for combined conditions.
+func UnsafeSQL(trusted string) Expr {
+	if problem := rawSQLProblem(trusted); problem != "" {
+		return invalidExpr("SQL", problem)
+	}
+	return Expr{kind: exprRaw, text: trusted}
+}
 
 // Fragment concatenates expressions with no implicit separators or parentheses.
 // SQL syntax must be explicit UnsafeSQL parts; values remain Param expressions.
-// See AsCondition for the boundary qs adds when it combines conditions.
+// Rendering fails with ErrInvalid when two neighbouring parts would be read as
+// one token: a name or number directly followed by a name, a number, a
+// parameter or a string, two quotes of the same kind, or the halves of a
+// comment marker. Put a space in the trusted SQL between them.
+// See Expr.Condition for the boundary qs adds when it combines conditions.
 func Fragment(parts ...Expr) Expr {
 	if len(parts) == 0 {
 		return invalidExpr("fragment", "empty SQL fragment")
@@ -390,7 +444,9 @@ func (e Expr) Div(other Expr) Expr { return binary(e, "/", other) }
 // Mod returns the SQL remainder of e divided by other.
 func (e Expr) Mod(other Expr) Expr { return binary(e, "%", other) }
 
-// Concat returns the SQL string concatenation of e and other.
+// Concat returns e || other. PostgreSQL chooses the operator by operand type:
+// it concatenates strings, arrays and jsonb values, and for jsonb objects the
+// right operand's keys win. The function Concat is concat(...), for text only.
 func (e Expr) Concat(other Expr) Expr { return binary(e, "||", other) }
 
 // Negate returns the SQL unary negation of e.
@@ -500,6 +556,27 @@ func (w *renderer) exprs(exprs []Expr, separator string) {
 	}
 }
 
+// fragment renders parts with nothing between them and fails when two
+// neighbours would be read as one token. Each part is checked alone where it
+// is built; only here is it known what it lands beside. The test is on the
+// rendered bytes, so it also holds across nested fragments.
+func (w *renderer) fragment(parts []Expr) {
+	if w.err != nil {
+		return
+	}
+	for i, e := range parts {
+		at := len(w.sql)
+		w.expr(e)
+		if w.err == nil && i != 0 && at > 0 && at < len(w.sql) && tokensJoin(w.sql[at-1], w.sql[at]) {
+			w.fail(ErrInvalid, "fragment", "this part would join the one before it into a single token; separate them with a space in the trusted SQL")
+		}
+		if w.err != nil {
+			w.errorPath("expression", i+1)
+			return
+		}
+	}
+}
+
 func (w *renderer) expr(e Expr) {
 	if !w.enter() {
 		return
@@ -514,9 +591,9 @@ func (w *renderer) expr(e Expr) {
 		w.identifierPart(e.text)
 	case exprParameter:
 		w.bind(e.value)
-	case exprRaw:
-		w.renderRaw(e.text)
-	case exprLiteral:
+	case exprSharedParameter:
+		w.bindShared(e)
+	case exprRaw, exprLiteral:
 		w.text(e.text)
 	case exprKeyword:
 		w.renderKeyword(e.text)
@@ -548,7 +625,7 @@ func (w *renderer) node(n any) {
 		w.exprs(n.items, n.separator)
 		w.byte(')')
 	case *fragmentExpression:
-		w.exprs(n.parts, "")
+		w.fragment(n.parts)
 	case *aliasExpression:
 		w.expr(n.expr)
 		w.text(" AS ")
@@ -642,12 +719,6 @@ func (w *renderer) renderKeyword(keyword string) {
 		return
 	}
 	w.text(keyword)
-}
-
-func (w *renderer) renderRaw(sql string) {
-	if w.require(strings.TrimSpace(sql) != "" && strings.IndexByte(sql, 0) < 0 && utf8.ValidString(sql), "SQL", "empty, NUL-containing or invalid UTF-8 raw SQL") {
-		w.text(sql)
-	}
 }
 
 func (w *renderer) renderStringLiteral(value string) {

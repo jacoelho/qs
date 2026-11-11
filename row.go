@@ -62,7 +62,7 @@ func (r RowExpr) IsNotDistinctFrom(other RowExpr) Condition {
 // accept it.
 func (r RowExpr) compare(operator string, other RowExpr) Condition {
 	if r.width == 0 || other.width == 0 || r.width >= 0 && other.width >= 0 && r.width != other.width {
-		return AsCondition(invalidExpr("row", "row arities differ or are zero"))
+		return invalidExpr("row", "row arities differ or are zero").Condition()
 	}
 	if operator == "IS DISTINCT FROM" || operator == "IS NOT DISTINCT FROM" {
 		return compare(r.expr, operator, other.expr)
@@ -102,7 +102,7 @@ func (r RowExpr) in(operator string, rows []RowExpr) Condition {
 	exprs := make([]Expr, len(rows))
 	for i, row := range rows {
 		if row.width == 0 || r.width == 0 || row.width >= 0 && r.width >= 0 && row.width != r.width {
-			return AsCondition(invalidExpr("row IN", "row arities differ"))
+			return invalidExpr("row IN", "row arities differ").Condition()
 		}
 		exprs[i] = row.expr
 	}

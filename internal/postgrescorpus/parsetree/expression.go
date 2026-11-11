@@ -15,7 +15,7 @@ func (b *builder) exprs(items []node) []qs.Expr {
 }
 
 // condition builds an expression in a boolean clause position.
-func (b *builder) condition(n node) qs.Condition { return qs.AsCondition(b.expr(n)) }
+func (b *builder) condition(n node) qs.Condition { return b.expr(n).Condition() }
 
 func (b *builder) conditions(items []node) []qs.Condition {
 	conditions := make([]qs.Condition, len(items))

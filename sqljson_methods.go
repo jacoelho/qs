@@ -281,7 +281,7 @@ func (b JSONPredicateBuilder) Expr() Expr { return nodeExpr(&b) }
 func (b JSONPredicateBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // Condition returns b as a condition.
-func (b JSONPredicateBuilder) Condition() Condition { return AsCondition(b.Expr()) }
+func (b JSONPredicateBuilder) Condition() Condition { return b.Expr().Condition() }
 
 // WithUniqueKeys returns b rejecting an object with duplicate keys, replacing an earlier uniqueness clause.
 func (b JSONPredicateBuilder) WithUniqueKeys() JSONPredicateBuilder {
@@ -304,7 +304,7 @@ func (b JSONExistsBuilder) Expr() Expr { return nodeExpr(&b) }
 func (b JSONExistsBuilder) As(alias string) Expr { return b.Expr().As(alias) }
 
 // Condition returns b as a condition.
-func (b JSONExistsBuilder) Condition() Condition { return AsCondition(b.Expr()) }
+func (b JSONExistsBuilder) Condition() Condition { return b.Expr().Condition() }
 
 // Passing returns b with value passed to the path as the variable $name.
 func (b JSONExistsBuilder) Passing(name string, value JSONOperand) JSONExistsBuilder {

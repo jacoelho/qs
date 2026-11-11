@@ -2,11 +2,16 @@ package qs
 
 // SeekAfter restricts the query to rows strictly after a cursor in ORDER BY
 // order, for keyset pagination. Pass the ORDER BY key values of the last row of
-// the previous page, one per term; each call replaces the cursor. Rendering
-// fails with ErrInvalid unless the cursor width equals the ORDER BY width and
-// every term is an ASC or DESC expression over rows, without NULLS FIRST/LAST
-// or USING, that is not an ordinal, a bound value or a bare name. It also fails
-// for DISTINCT ON.
+// the previous page, one per term; each call replaces the cursor. An empty
+// cursor removes the restriction, so SeekAfter(keys...) with no keys reads the
+// first page. Rendering fails with ErrInvalid unless the cursor width equals
+// the ORDER BY width and every term is an ASC or DESC expression over rows,
+// without NULLS FIRST/LAST or USING, that is not an ordinal, a bound value or a
+// bare name. It also fails for DISTINCT ON.
+//
+// A Go value is bound; an Expr is compared as written, which is how a cursor
+// value takes a cast: SeekAfter(Param(id).Cast(TypeUUID)). A lone []any is
+// refused as a forgotten "...".
 //
 // The cursor is compared in WHERE, which resolves names to input columns, but
 // ORDER BY resolves a bare name to a same-named output column first, including
@@ -23,27 +28,51 @@ package qs
 // qs cannot check the schema. Pages are complete and disjoint only when every
 // key is NOT NULL and the last term is unique, such as a primary key. Window
 // functions in the projection see only rows after the cursor. Trusted SQL and
-// Fragment keys are not inspected. Each is compared as one operand, in
-// parentheses or as one field of a row, so it must not render a bare name, an
-// integer or a top-level comma. Untyped nil fails rendering. A typed
-// nil binds NULL: rows that tie with the cursor on every earlier key are
+// Fragment keys and cursor expressions are not inspected. Each is compared as
+// one operand, in parentheses or as one field of a row, so it must not render a
+// bare name, an integer or a top-level comma. Untyped nil fails rendering. A
+// typed nil binds NULL: rows that tie with the cursor on every earlier key are
 // skipped, and a NULL first key selects no rows.
 //
 // Uniform directions render one row comparison, ("t"."a", "t"."b") > ($1, $2),
 // which a B-tree index on the keys in that order can serve. Mixed directions
-// expand to an equivalent disjunction that binds earlier keys again: three keys
-// bind seven arguments.
+// expand to an equivalent disjunction that names earlier keys again. A bound Go
+// value keeps its one parameter there, as SharedParam does, so three keys bind
+// three arguments; a cursor Expr is rendered at each use, so its own Params
+// bind again and a volatile expression is evaluated more than once.
 //
 // For the previous page, reverse each term with Order.Reverse, seek after the first row of the
 // current page, and reverse the fetched rows.
-func (b SelectBuilder) SeekAfter(first any, rest ...any) SelectBuilder {
-	values := make([]Expr, 1, 1+len(rest))
-	values[0] = comparand(first)
-	for _, value := range rest {
-		values = append(values, comparand(value))
+func (b SelectBuilder) SeekAfter(cursor ...any) SelectBuilder {
+	if len(cursor) == 0 {
+		b.cursor = nil
+		return b
+	}
+	values := make([]Expr, len(cursor))
+	for i, value := range cursor {
+		values[i] = cursorValue(value)
+	}
+	if _, forgotten := cursor[0].([]any); forgotten && len(cursor) == 1 {
+		values[0] = invalidExpr("keyset", "cursor is a single []any; spread it with ... to pass one value per ORDER BY term")
 	}
 	b.cursor = values
 	return b
+}
+
+// cursorValue is one SeekAfter operand: an expression as written, or a Go
+// value bound once however many times the comparison names it.
+func cursorValue(value any) Expr {
+	switch v := value.(type) {
+	case nil:
+		return invalidExpr("comparison", nilComparison)
+	case Expr:
+		if nilOperand(v) {
+			return invalidExpr("comparison", nilComparison)
+		}
+		return v
+	default:
+		return SharedParam(value)
+	}
 }
 
 // keyset renders the WHERE conjunct admitting rows strictly after values in
@@ -89,7 +118,8 @@ func (w *renderer) keysetTerm(term Order) {
 		return
 	}
 	key := orderTermSyntax(term.expr)
-	if !w.require(key.kind != exprLiteral && key.kind != exprParameter, "keyset", "order term must be an expression over rows, not an ordinal or bound value") {
+	_, bound := key.bound()
+	if !w.require(key.kind != exprLiteral && !bound, "keyset", "order term must be an expression over rows, not an ordinal or bound value") {
 		return
 	}
 	if bareName(key) {
@@ -162,7 +192,7 @@ func (w *renderer) keysetExpansion(order []Order, values []Expr) {
 				return
 			}
 			w.text(" = ")
-			w.expr(values[j])
+			w.bounded(values[j])
 			if w.stopped("cursor", j+1) {
 				return
 			}
@@ -191,7 +221,7 @@ func (w *renderer) keysetComparison(order []Order, values []Expr, i int, inclusi
 		operator = keysetInclusiveOperator(order[i].direction)
 	}
 	w.text(operator)
-	w.expr(values[i])
+	w.bounded(values[i])
 	w.stopped("cursor", i+1)
 }
 

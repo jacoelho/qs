@@ -4,7 +4,9 @@
 // name, quoted as written: Col("u", "id") is "u"."id" and Col("u.id") is the
 // single identifier "u.id". SQL-suffixed methods and UnsafeSQL accept trusted
 // application-authored SQL, never request text. A single renderer numbers
-// parameters through nested statements.
+// parameters through nested statements, so trusted SQL that writes a
+// placeholder such as $1 itself fails rendering. Param binds at each use;
+// SharedParam binds one value that every use in a statement refers to.
 //
 // Comparisons are methods of Expr and take expressions; Param binds a value.
 // A Field, from TypedCol or Typed, compares with Go values of its type and

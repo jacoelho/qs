@@ -167,7 +167,7 @@ func TestMutationWhereRejectsPredicatesTrueForEveryRow(t *testing.T) {
 		"not_empty_in":            {Not(Col("a").In(ids...))},
 		"not_empty_or":            {Or(none...).Not()},
 		"or_with_true":            {Or(Col("a").IsNull(), True())},
-		"parenthesized_true":      {AsCondition(LiteralBool(true).Parenthesized())},
+		"parenthesized_true":      {LiteralBool(true).Parenthesized().Condition()},
 		"nested_and_of_or_of_not": {And(Or(False(), Not(False())), And(True(), True()))},
 	} {
 		t.Run(name, func(t *testing.T) {

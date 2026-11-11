@@ -14,16 +14,41 @@ import (
 var _ projection.Rows = (*sql.Rows)(nil)
 
 // fakeRows serves one scan function per row, then reports err. unread is what a
-// caller that stopped early left behind. Close is not part of projection.Rows: it
-// records a close reached through a type assertion.
+// caller that stopped early left behind. Its Close has the pgx.Rows signature, and
+// like pgx it may only learn of a failure while closing: closeErr surfaces through Err
+// once closed.
 type fakeRows struct {
-	unread  []func(dest ...any) error
-	current func(dest ...any) error
-	err     error
-	closed  bool
+	unread   []func(dest ...any) error
+	current  func(dest ...any) error
+	err      error
+	closeErr error
+	closed   int
 }
 
-func (r *fakeRows) Close() { r.closed = true }
+func (r *fakeRows) Close() {
+	r.closed++
+	if r.err == nil {
+		r.err = r.closeErr
+	}
+}
+
+// errorClosingRows has the *sql.Rows signature of Close.
+type errorClosingRows struct {
+	*fakeRows
+	closeFailed error
+}
+
+func (r errorClosingRows) Close() error {
+	r.fakeRows.Close()
+	return r.closeFailed
+}
+
+// uncloseableRows has only the methods of projection.Rows.
+type uncloseableRows struct{ rows *fakeRows }
+
+func (r uncloseableRows) Next() bool             { return r.rows.Next() }
+func (r uncloseableRows) Scan(dest ...any) error { return r.rows.Scan(dest...) }
+func (r uncloseableRows) Err() error             { return r.rows.Err() }
 
 func (r *fakeRows) Next() bool {
 	if len(r.unread) == 0 {
@@ -69,8 +94,8 @@ func TestCollectWithoutRowsReturnsEmptySlice(t *testing.T) {
 	if err != nil || got == nil || len(got) != 0 {
 		t.Fatalf("got %#v, %v, want an empty non-nil slice", got, err)
 	}
-	if rows.closed {
-		t.Fatal("Collect closed the caller's rows")
+	if rows.closed != 1 {
+		t.Fatalf("rows closed %d times, want once", rows.closed)
 	}
 }
 
@@ -90,8 +115,8 @@ func TestCollectReturnsRowErrorAndStopsReading(t *testing.T) {
 	if len(rows.unread) != 1 {
 		t.Fatalf("%d rows left unread, want 1: reading continued past the failure", len(rows.unread))
 	}
-	if rows.closed {
-		t.Fatal("Collect closed the caller's rows")
+	if rows.closed != 1 {
+		t.Fatalf("rows closed %d times after a failed row, want once", rows.closed)
 	}
 }
 
@@ -175,8 +200,139 @@ func TestAllStopsReadingWhenLoopBreaks(t *testing.T) {
 	if len(rows.unread) != 2 {
 		t.Fatalf("%d rows left unread, want 2: the iterator read ahead", len(rows.unread))
 	}
-	if rows.closed {
-		t.Fatal("All closed the caller's rows")
+	if rows.closed != 1 {
+		t.Fatalf("rows closed %d times after break, want once", rows.closed)
+	}
+}
+
+// pgx reports a failure found while closing through Err, so Err is read after Close.
+func TestCollectReturnsErrorFoundWhileClosing(t *testing.T) {
+	t.Parallel()
+
+	late := errors.New("found while closing")
+	rows := &fakeRows{unread: []func(dest ...any) error{fakeRow(int64(1), "ada", nil)}, closeErr: late}
+	got, err := flatUsers().Collect(rows)
+	if err != late || got != nil { //nolint:errorlint // unchanged.
+		t.Fatalf("got %+v, %v, want nil and the error Err reports after Close", got, err)
+	}
+}
+
+func TestCollectReturnsCloseError(t *testing.T) {
+	t.Parallel()
+
+	closeFailed := errors.New("close failed")
+	rows := errorClosingRows{fakeRows: &fakeRows{unread: []func(dest ...any) error{fakeRow(int64(1), "ada", nil)}}, closeFailed: closeFailed}
+	got, err := flatUsers().Collect(rows)
+	if err != closeFailed || got != nil { //nolint:errorlint // unchanged.
+		t.Fatalf("got %+v, %v, want nil and the error from Close", got, err)
+	}
+}
+
+// The error nearest the cause wins: a row's error, then rows.Err, then Close.
+func TestCollectPrefersEarlierErrorToCloseError(t *testing.T) {
+	t.Parallel()
+
+	failed := errors.New("row failed")
+	interrupted := errors.New("connection lost")
+	closeFailed := errors.New("close failed")
+	for name, tc := range map[string]struct {
+		rows *fakeRows
+		want error
+	}{
+		"row error": {&fakeRows{unread: []func(dest ...any) error{failingRow(failed)}, err: interrupted}, failed},
+		"rows.Err":  {&fakeRows{unread: []func(dest ...any) error{fakeRow(int64(1), "ada", nil)}, err: interrupted}, interrupted},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, err := flatUsers().Collect(errorClosingRows{fakeRows: tc.rows, closeFailed: closeFailed})
+			if err != tc.want || got != nil { //nolint:errorlint // unchanged.
+				t.Fatalf("got %+v, %v, want nil and %v", got, err, tc.want)
+			}
+			if tc.rows.closed != 1 {
+				t.Fatalf("rows closed %d times, want once", tc.rows.closed)
+			}
+		})
+	}
+}
+
+func TestCollectClosesRowsWhenDestPanics(t *testing.T) {
+	t.Parallel()
+
+	rows := &fakeRows{unread: []func(dest ...any) error{func(...any) error { panic("scan panicked") }}}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("panic did not propagate")
+			}
+		}()
+		_, _ = flatUsers().Collect(rows)
+	}()
+	if rows.closed != 1 {
+		t.Fatalf("rows closed %d times after a panic, want once", rows.closed)
+	}
+}
+
+func TestRowsWithoutCloseAreRefusedBeforeReading(t *testing.T) {
+	t.Parallel()
+
+	rows := &fakeRows{unread: []func(dest ...any) error{fakeRow(int64(1), "ada", nil)}}
+	got, err := flatUsers().Collect(uncloseableRows{rows})
+	if !errors.Is(err, projection.ErrNoClose) || got != nil {
+		t.Fatalf("Collect: got %+v, %v, want nil and ErrNoClose", got, err)
+	}
+	yielded := 0
+	for u, err := range flatUsers().All(uncloseableRows{rows}) {
+		yielded++
+		if !errors.Is(err, projection.ErrNoClose) || u != (user{}) {
+			t.Fatalf("All: got %+v, %v, want the zero value and ErrNoClose", u, err)
+		}
+	}
+	if yielded != 1 || len(rows.unread) != 1 {
+		t.Fatalf("All yielded %d times with %d rows unread, want one error and the row unread", yielded, len(rows.unread))
+	}
+}
+
+func TestAllClosesRowsWhenExhausted(t *testing.T) {
+	t.Parallel()
+
+	rows := &fakeRows{unread: []func(dest ...any) error{fakeRow(int64(1), "ada", nil)}}
+	for _, err := range flatUsers().All(rows) {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if rows.closed != 1 {
+		t.Fatalf("rows closed %d times, want once", rows.closed)
+	}
+}
+
+func TestAllYieldsCloseErrorAfterTheRows(t *testing.T) {
+	t.Parallel()
+
+	closeFailed := errors.New("close failed")
+	rows := errorClosingRows{fakeRows: &fakeRows{unread: []func(dest ...any) error{fakeRow(int64(1), "ada", nil)}}, closeFailed: closeFailed}
+	var ids []int64
+	var errs []error
+	for u, err := range flatUsers().All(rows) {
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		ids = append(ids, u.ID)
+	}
+	if !reflect.DeepEqual(ids, []int64{1}) || len(errs) != 1 || errs[0] != closeFailed { //nolint:errorlint // unchanged.
+		t.Fatalf("ids %v, errors %v, want [1] then the error from Close once", ids, errs)
+	}
+}
+
+func TestAllClosesRowsAfterRowError(t *testing.T) {
+	t.Parallel()
+
+	rows := &fakeRows{unread: []func(dest ...any) error{failingRow(errors.New("row failed")), fakeRow(int64(2), "bob", nil)}}
+	for range flatUsers().All(rows) {
+	}
+	if rows.closed != 1 {
+		t.Fatalf("rows closed %d times after a failed row, want once", rows.closed)
 	}
 }
 

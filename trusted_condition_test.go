@@ -4,12 +4,12 @@ import "testing"
 
 // trustedDisjunction is a trusted condition whose OR binds looser than the AND
 // that joins conditions, so splicing it unparenthesized changes the filter.
-func trustedDisjunction() Condition { return AsCondition(UnsafeSQL("a = 1 OR b = 2")) }
+func trustedDisjunction() Condition { return UnsafeSQL("a = 1 OR b = 2").Condition() }
 
 func TestTrustedConditionsAreUnitsWhenCombined(t *testing.T) {
 	t.Parallel()
 	raw := trustedDisjunction
-	fragment := AsCondition(Fragment(Col("m"), UnsafeSQL(" ? "), Param("k")))
+	fragment := Fragment(Col("m"), UnsafeSQL(" ? "), Param("k")).Condition()
 	x := Col("x").Eq(Param(1))
 	sel := func() SelectBuilder { return Select(Col("id")).From("t") }
 	runCases(t, []renderCase{
@@ -24,7 +24,7 @@ func TestTrustedConditionsAreUnitsWhenCombined(t *testing.T) {
 		{"cursor_uniform", sel().Where(raw()).OrderBy(Col("t", "id").Asc()).SeekAfter(5),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("t"."id" > $1) ORDER BY "t"."id" ASC`, []any{5}},
 		{"cursor_mixed", sel().Where(raw()).OrderBy(Col("t", "a").Asc(), Col("t", "id").Desc()).SeekAfter(1, 5),
-			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ("t"."id" < $4)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 1, 1, 5}},
+			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ("t"."id" < $2)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 5}},
 		{"cursor_before_where", sel().OrderBy(Col("t", "id").Asc()).SeekAfter(5).Where(raw()),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("t"."id" > $1) ORDER BY "t"."id" ASC`, []any{5}},
 		{"and_first", sel().Where(And(raw(), x)),
@@ -86,14 +86,14 @@ func TestSingleTrustedConditionStaysVerbatim(t *testing.T) {
 			`SELECT count(*) FROM (SELECT "id" FROM "t" WHERE a = 1 OR b = 2) AS "matching"`, nil},
 		{"case_when", Select(Case().When(raw(), Param(1)).End()).From("t"),
 			`SELECT CASE WHEN a = 1 OR b = 2 THEN $1 END FROM "t"`, []any{1}},
-		{"current_of", Update("t").Set(Set("y", Value(2))).Where(AsCondition(UnsafeSQL("CURRENT OF c"))),
+		{"current_of", Update("t").Set(Set("y", Value(2))).Where(UnsafeSQL("CURRENT OF c").Condition()),
 			`UPDATE "t" SET "y" = $1 WHERE CURRENT OF c`, []any{2}},
 	})
 }
 
 func TestParenthesizedTrustedConditionIsNotRewrapped(t *testing.T) {
 	t.Parallel()
-	parenthesized := AsCondition(UnsafeSQL("a = 1 OR b = 2").Parenthesized())
+	parenthesized := UnsafeSQL("a = 1 OR b = 2").Parenthesized().Condition()
 	runCases(t, []renderCase{
 		{"lone", Select(Col("id")).From("t").Where(parenthesized),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2)`, nil},
@@ -127,14 +127,14 @@ func TestTrustedOrderKeysAreUnitsInCursor(t *testing.T) {
 		{"single_desc", sel().OrderBy(raw.Desc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT archived) < $1) ORDER BY NOT archived DESC`, []any{true}},
 		{"mixed_leading", sel().OrderBy(raw.Asc(), Col("t", "id").Desc()).SeekAfter(true, 2),
-			`SELECT "id" FROM "t" WHERE (((NOT archived) >= $1) AND (((NOT archived) > $2) OR (((NOT archived) = $3) AND ("t"."id" < $4)))) ORDER BY NOT archived ASC, "t"."id" DESC`,
-			[]any{true, true, true, 2}},
+			`SELECT "id" FROM "t" WHERE (((NOT archived) >= $1) AND (((NOT archived) > $1) OR (((NOT archived) = $1) AND ("t"."id" < $2)))) ORDER BY NOT archived ASC, "t"."id" DESC`,
+			[]any{true, 2}},
 		{"mixed_trailing", sel().OrderBy(Col("t", "a").Asc(), raw.Desc()).SeekAfter(1, true),
-			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ((NOT archived) < $4)))) ORDER BY "t"."a" ASC, NOT archived DESC`,
-			[]any{1, 1, 1, true}},
+			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ((NOT archived) < $2)))) ORDER BY "t"."a" ASC, NOT archived DESC`,
+			[]any{1, true}},
 		{"mixed_middle", sel().OrderBy(Col("t", "a").Asc(), raw.Desc(), Col("t", "id").Asc()).SeekAfter(1, true, 3),
-			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ((NOT archived) < $4)) OR (("t"."a" = $5) AND ((NOT archived) = $6) AND ("t"."id" > $7)))) ORDER BY "t"."a" ASC, NOT archived DESC, "t"."id" ASC`,
-			[]any{1, 1, 1, true, 1, true, 3}},
+			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ((NOT archived) < $2)) OR (("t"."a" = $1) AND ((NOT archived) = $2) AND ("t"."id" > $3)))) ORDER BY "t"."a" ASC, NOT archived DESC, "t"."id" ASC`,
+			[]any{1, true, 3}},
 		{"fragment", sel().OrderBy(Fragment(UnsafeSQL("NOT "), Col("archived")).Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT "archived") > $1) ORDER BY NOT "archived" ASC`, []any{true}},
 		{"disjunction", sel().OrderBy(UnsafeSQL("a OR b").Asc()).SeekAfter(true),
@@ -144,7 +144,7 @@ func TestTrustedOrderKeysAreUnitsInCursor(t *testing.T) {
 		{"parenthesized_not_rewrapped", sel().OrderBy(raw.Parenthesized().Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT archived) > $1) ORDER BY (NOT archived) ASC`, []any{true}},
 		{"structural_unchanged", sel().OrderBy(Lower(Col("name")).Asc(), Col("t", "id").Desc()).SeekAfter("ann", 4),
-			`SELECT "id" FROM "t" WHERE ((lower("name") >= $1) AND ((lower("name") > $2) OR ((lower("name") = $3) AND ("t"."id" < $4)))) ORDER BY lower("name") ASC, "t"."id" DESC`,
-			[]any{"ann", "ann", "ann", 4}},
+			`SELECT "id" FROM "t" WHERE ((lower("name") >= $1) AND ((lower("name") > $1) OR ((lower("name") = $1) AND ("t"."id" < $2)))) ORDER BY lower("name") ASC, "t"."id" DESC`,
+			[]any{"ann", 4}},
 	})
 }

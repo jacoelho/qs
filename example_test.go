@@ -74,7 +74,7 @@ func ExampleInsertInto() {
 func ExampleFragment() {
 	// Trusted text is separate from identifiers and bound values. The JSONB
 	// operator is not confused with a placeholder.
-	condition := qs.AsCondition(qs.Fragment(qs.Col("metadata"), qs.UnsafeSQL(" ? "), qs.Param("reference")))
+	condition := qs.Fragment(qs.Col("metadata"), qs.UnsafeSQL(" ? "), qs.Param("reference")).Condition()
 	query, args, err := qs.SelectCols("id").From("payments").Where(condition).ToSQL()
 	fmt.Println(query)
 	fmt.Println(args, err)
