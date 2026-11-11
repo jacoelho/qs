@@ -379,7 +379,7 @@ var jsonClauses = map[string][]jsonClause{
 		{"As", "alias string", exprResult, "return b.Expr().As(alias)", "returns b as an expression with an output alias."},
 	},
 	jsonCondition: {
-		{"Condition", "", "Condition", "return AsCondition(b.Expr())", "returns b as a condition."},
+		{"Condition", "", "Condition", "return b.Expr().Condition()", "returns b as a condition."},
 	},
 	jsonNulls: {
 		{"NullOnNull", "", "", "b.nulls = jsonNullOnNull; return b", "returns b keeping a NULL value as JSON null, replacing an earlier NULL clause."},

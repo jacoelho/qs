@@ -71,6 +71,14 @@ func (p PendingUpdate) Where(first Condition, rest ...Condition) UpdateBuilder {
 	return p.statement
 }
 
+// WhereSlice is Where for a run-time list, which is copied. An empty list
+// selects no rows to update and fails rendering, as conditions that are TRUE
+// for every row do.
+func (p PendingUpdate) WhereSlice(conditions []Condition) UpdateBuilder {
+	p.statement.rows = rowSelection{kind: rowsMatching, conditions: cloneSlice(conditions)}
+	return p.statement
+}
+
 // WhereCurrentOf completes the UPDATE with the row a cursor is positioned on.
 func (p PendingUpdate) WhereCurrentOf(cursor string) UpdateBuilder {
 	p.statement.rows = rowSelection{kind: rowsAtCursor, cursor: cursor}

@@ -107,7 +107,6 @@ func scanAll[D any](ctx context.Context, d projectionDriver, p projection.Projec
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	return p.Collect(rows)
 }
 
@@ -156,9 +155,9 @@ func TestProjectionSelfJoin(t *testing.T) {
 	}
 }
 
-// An abandoned iteration leaves the result set open and readable, and the caller's
-// Close then releases the connection on both drivers.
-func TestProjectionAllLeavesRowsOpen(t *testing.T) {
+// An abandoned iteration closes the result set, which releases the connection on
+// both drivers without a Close from the caller.
+func TestProjectionAllClosesRowsWhenLoopBreaks(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	p := projectionUsersOf(employee, "")
 	text, _, err := qs.SelectSlice(p.Expressions()).FromExpr(employee).
@@ -177,24 +176,17 @@ func TestProjectionAllLeavesRowsOpen(t *testing.T) {
 			var first projectionUser
 			for u, err := range p.All(rows) {
 				if err != nil {
-					rows.Close()
 					t.Fatal(err)
 				}
 				first = u
 				break
 			}
 			if want := (projectionUser{ID: 1, Name: "ada"}); first != want {
-				rows.Close()
 				t.Fatalf("first row: got %+v, want %+v", first, want)
 			}
-			open := rows.Next()
-			var second projectionUser
-			if open {
-				second, err = p.Scan(rows.Scan)
-			}
-			rows.Close()
-			if !open || err != nil || second.ID != 2 {
-				t.Fatalf("after leaving the loop: next %v, got %+v, %v, want row 2 still readable", open, second, err)
+			if rows.Next() {
+				rows.Close()
+				t.Fatal("rows still readable after leaving the loop, want them closed")
 			}
 			again, err := scanAll(ctx, d, p, projectionUsers+text, int64(3))
 			if err != nil || len(again) != 3 {
@@ -320,11 +312,13 @@ func TestProjectionColumnOrZero(t *testing.T) {
 
 // countedRows reads a trailing window count beside each row a projection reads.
 type countedRows struct {
-	projection.Rows
+	projectionRows
 	total *int64
 }
 
-func (c countedRows) Scan(dest ...any) error { return c.Rows.Scan(append(dest, c.total)...) }
+func (c countedRows) Scan(dest ...any) error {
+	return c.projectionRows.Scan(append(dest, c.total)...)
+}
 
 func TestProjectionReadsOutputSelectedAfterExpressions(t *testing.T) {
 	employee := qs.Table("users").As("employee")
@@ -346,7 +340,7 @@ func TestProjectionReadsOutputSelectedAfterExpressions(t *testing.T) {
 			}
 			defer rows.Close()
 			var total int64
-			got, err := p.Collect(countedRows{Rows: rows, total: &total})
+			got, err := p.Collect(countedRows{projectionRows: rows, total: &total})
 			if err != nil {
 				t.Fatal(err)
 			}

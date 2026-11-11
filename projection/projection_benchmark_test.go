@@ -124,6 +124,7 @@ func (r *benchRows) Next() bool {
 
 func (r *benchRows) Scan(dest ...any) error { return r.scan(dest...) }
 func (r *benchRows) Err() error             { return nil }
+func (r *benchRows) Close()                 {}
 
 func presentScan(dest ...any) error {
 	for _, d := range dest {

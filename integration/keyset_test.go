@@ -319,7 +319,7 @@ func TestCountRowsMatchesRowsOfOrderedQuery(t *testing.T) {
 			}
 			paged := tc.query().Limit(2).Offset(1)
 			if tc.seek != nil {
-				paged = paged.SeekAfter(tc.seek[0], tc.seek[1:]...)
+				paged = paged.SeekAfter(tc.seek...)
 			}
 			if got := scalarCount(t, session, qs.CountRows(paged)); got != tc.want {
 				t.Fatalf("count %d; want %d", got, tc.want)
@@ -340,7 +340,7 @@ func keysetFixture() [][3]int64 {
 
 // trustedDisjunction binds looser than AND, so pages and combined filters are
 // wrong unless qs keeps it a unit.
-func trustedDisjunction() qs.Condition { return qs.AsCondition(qs.UnsafeSQL("a = 0 OR b = 1")) }
+func trustedDisjunction() qs.Condition { return qs.UnsafeSQL("a = 0 OR b = 1").Condition() }
 
 func matchesTrustedDisjunction(row [3]int64) bool { return row[0] == 0 || row[1] == 1 }
 
@@ -388,7 +388,7 @@ func TestKeysetPaginationWithTrustedDisjunction(t *testing.T) {
 				}
 				got = append(got, rows...)
 				keys := tc.keys(rows[len(rows)-1])
-				query = page().SeekAfter(keys[0], keys[1:]...).Limit(size)
+				query = page().SeekAfter(keys...).Limit(size)
 			}
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("%s size %d: pages %v; want %v", tc.name, size, got, want)
@@ -495,7 +495,7 @@ func TestKeysetPaginationWithTrustedKey(t *testing.T) {
 				}
 				got = append(got, rows...)
 				keys := tc.keys(rows[len(rows)-1])
-				query = page().SeekAfter(keys[0], keys[1:]...).Limit(size)
+				query = page().SeekAfter(keys...).Limit(size)
 			}
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("%s size %d: pages %v; want %v", tc.name, size, got, want)

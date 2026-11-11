@@ -7,13 +7,13 @@ func Array(values ...Expr) Expr { return listExpr("ARRAY", values) }
 func ArrayFrom(query Rowset) Expr { return Fragment(UnsafeSQL("ARRAY"), Scalar(query)) }
 
 // ArrayContains tests whether an array contains every element of another array.
-func ArrayContains(array, values Expr) Condition { return AsCondition(binary(array, "@>", values)) }
+func ArrayContains(array, values Expr) Condition { return binary(array, "@>", values).Condition() }
 
 // ArrayContainedBy tests whether an array is contained by another array.
-func ArrayContainedBy(array, values Expr) Condition { return AsCondition(binary(array, "<@", values)) }
+func ArrayContainedBy(array, values Expr) Condition { return binary(array, "<@", values).Condition() }
 
 // ArrayOverlaps tests whether two arrays share any elements.
-func ArrayOverlaps(left, right Expr) Condition { return AsCondition(binary(left, "&&", right)) }
+func ArrayOverlaps(left, right Expr) Condition { return binary(left, "&&", right).Condition() }
 
 // ArrayAppend appends a value to an array.
 func ArrayAppend(array, value Expr) Expr { return builtin("array_append", array, value) }
@@ -72,21 +72,21 @@ func JSONGetPath(document, path Expr) Expr { return binary(document, "#>", path)
 func JSONGetPathText(document, path Expr) Expr { return binary(document, "#>>", path) }
 
 // JSONContains tests whether a JSON value contains another JSON value.
-func JSONContains(document, value Expr) Condition { return AsCondition(binary(document, "@>", value)) }
+func JSONContains(document, value Expr) Condition { return binary(document, "@>", value).Condition() }
 
 // JSONContainedBy tests whether a JSON value is contained by another value.
 func JSONContainedBy(document, value Expr) Condition {
-	return AsCondition(binary(document, "<@", value))
+	return binary(document, "<@", value).Condition()
 }
 
 // JSONHas tests whether a JSON object contains a key or an array contains a string.
-func JSONHas(document, key Expr) Condition { return AsCondition(binary(document, "?", key)) }
+func JSONHas(document, key Expr) Condition { return binary(document, "?", key).Condition() }
 
 // JSONHasAny tests whether a JSON object contains any key from keys.
-func JSONHasAny(document, keys Expr) Condition { return AsCondition(binary(document, "?|", keys)) }
+func JSONHasAny(document, keys Expr) Condition { return binary(document, "?|", keys).Condition() }
 
 // JSONHasAll tests whether a JSON object contains every key from keys.
-func JSONHasAll(document, keys Expr) Condition { return AsCondition(binary(document, "?&", keys)) }
+func JSONHasAll(document, keys Expr) Condition { return binary(document, "?&", keys).Condition() }
 
 // JSONDelete removes a JSON object field or array element with the - operator.
 func JSONDelete(document, key Expr) Expr { return binary(document, "-", key) }
@@ -95,10 +95,10 @@ func JSONDelete(document, key Expr) Expr { return binary(document, "-", key) }
 func JSONDeletePath(document, path Expr) Expr { return binary(document, "#-", path) }
 
 // JSONPathExists tests whether a JSON path returns any item.
-func JSONPathExists(document, path Expr) Condition { return AsCondition(binary(document, "@?", path)) }
+func JSONPathExists(document, path Expr) Condition { return binary(document, "@?", path).Condition() }
 
 // JSONPathMatches tests whether a JSON path predicate matches a document.
-func JSONPathMatches(document, path Expr) Condition { return AsCondition(binary(document, "@@", path)) }
+func JSONPathMatches(document, path Expr) Condition { return binary(document, "@@", path).Condition() }
 
 // ToJSON converts a value to json.
 func ToJSON(value Expr) Expr { return builtin("to_json", value) }
@@ -184,31 +184,31 @@ func JSONBPathQueryFirst(arguments ...Expr) Expr {
 }
 
 // RangeContains tests whether a range contains a value or another range.
-func RangeContains(r, value Expr) Condition { return AsCondition(binary(r, "@>", value)) }
+func RangeContains(r, value Expr) Condition { return binary(r, "@>", value).Condition() }
 
 // RangeContainedBy tests whether a range is contained by another range.
-func RangeContainedBy(r, value Expr) Condition { return AsCondition(binary(r, "<@", value)) }
+func RangeContainedBy(r, value Expr) Condition { return binary(r, "<@", value).Condition() }
 
 // RangeOverlaps tests whether two ranges overlap.
-func RangeOverlaps(left, right Expr) Condition { return AsCondition(binary(left, "&&", right)) }
+func RangeOverlaps(left, right Expr) Condition { return binary(left, "&&", right).Condition() }
 
 // RangeAdjacent tests whether two ranges are adjacent.
-func RangeAdjacent(left, right Expr) Condition { return AsCondition(binary(left, "-|-", right)) }
+func RangeAdjacent(left, right Expr) Condition { return binary(left, "-|-", right).Condition() }
 
 // RangeBefore tests whether the left range ends before the right range starts.
-func RangeBefore(left, right Expr) Condition { return AsCondition(binary(left, "<<", right)) }
+func RangeBefore(left, right Expr) Condition { return binary(left, "<<", right).Condition() }
 
 // RangeAfter tests whether the left range starts after the right range ends.
-func RangeAfter(left, right Expr) Condition { return AsCondition(binary(left, ">>", right)) }
+func RangeAfter(left, right Expr) Condition { return binary(left, ">>", right).Condition() }
 
 // RangeDoesNotExtendRight tests whether the left range does not extend right of the right range.
 func RangeDoesNotExtendRight(left, right Expr) Condition {
-	return AsCondition(binary(left, "&<", right))
+	return binary(left, "&<", right).Condition()
 }
 
 // RangeDoesNotExtendLeft tests whether the left range does not extend left of the right range.
 func RangeDoesNotExtendLeft(left, right Expr) Condition {
-	return AsCondition(binary(left, "&>", right))
+	return binary(left, "&>", right).Condition()
 }
 
 // RangeUnion returns the union of two ranges.
@@ -227,19 +227,19 @@ func RangeLower(value Expr) Expr { return builtin("lower", value) }
 func RangeUpper(value Expr) Expr { return builtin("upper", value) }
 
 // RangeEmpty tests whether a range is empty.
-func RangeEmpty(value Expr) Condition { return AsCondition(builtin("isempty", value)) }
+func RangeEmpty(value Expr) Condition { return builtin("isempty", value).Condition() }
 
 // RangeLowerInclusive tests whether a range includes its lower bound.
-func RangeLowerInclusive(value Expr) Condition { return AsCondition(builtin("lower_inc", value)) }
+func RangeLowerInclusive(value Expr) Condition { return builtin("lower_inc", value).Condition() }
 
 // RangeUpperInclusive tests whether a range includes its upper bound.
-func RangeUpperInclusive(value Expr) Condition { return AsCondition(builtin("upper_inc", value)) }
+func RangeUpperInclusive(value Expr) Condition { return builtin("upper_inc", value).Condition() }
 
 // RangeLowerInfinite tests whether a range has no lower bound.
-func RangeLowerInfinite(value Expr) Condition { return AsCondition(builtin("lower_inf", value)) }
+func RangeLowerInfinite(value Expr) Condition { return builtin("lower_inf", value).Condition() }
 
 // RangeUpperInfinite tests whether a range has no upper bound.
-func RangeUpperInfinite(value Expr) Condition { return AsCondition(builtin("upper_inf", value)) }
+func RangeUpperInfinite(value Expr) Condition { return builtin("upper_inf", value).Condition() }
 
 // RangeAgg aggregates ranges into a multirange.
 func RangeAgg(value Expr) Expr { return builtin("range_agg", value) }
@@ -283,7 +283,7 @@ func PhraseToTSQuery(arguments ...Expr) Expr { return builtin("phraseto_tsquery"
 func WebsearchToTSQuery(arguments ...Expr) Expr { return builtin("websearch_to_tsquery", arguments...) }
 
 // TSMatches tests whether a tsvector matches a tsquery.
-func TSMatches(vector, query Expr) Condition { return AsCondition(binary(vector, "@@", query)) }
+func TSMatches(vector, query Expr) Condition { return binary(vector, "@@", query).Condition() }
 
 // TSAnd combines two tsquery expressions with AND.
 func TSAnd(left, right Expr) Expr { return binary(left, "&&", right) }

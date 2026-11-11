@@ -20,11 +20,11 @@ func TestSeekAfterRendersKeysetPredicate(t *testing.T) {
 		{"uniform_desc_three_keys", page().OrderBy(Col("t", "a").Desc(), Col("t", "b").Desc(), Col("t", "id").Desc()).SeekAfter("x", 2.5, int64(9)),
 			`SELECT "id" FROM "t" WHERE (("t"."a", "t"."b", "t"."id") < ($1, $2, $3)) ORDER BY "t"."a" DESC, "t"."b" DESC, "t"."id" DESC`, []any{"x", 2.5, int64(9)}},
 		{"mixed_leading_asc", page().OrderBy(Col("t", "a").Asc(), Col("t", "id").Desc()).SeekAfter(1, 2),
-			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ("t"."id" < $4)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 1, 1, 2}},
+			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ("t"."id" < $2)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 2}},
 		{"mixed_leading_desc", page().OrderBy(Col("t", "a").Desc(), Col("t", "id").Asc()).SeekAfter(1, 2),
-			`SELECT "id" FROM "t" WHERE (("t"."a" <= $1) AND (("t"."a" < $2) OR (("t"."a" = $3) AND ("t"."id" > $4)))) ORDER BY "t"."a" DESC, "t"."id" ASC`, []any{1, 1, 1, 2}},
+			`SELECT "id" FROM "t" WHERE (("t"."a" <= $1) AND (("t"."a" < $1) OR (("t"."a" = $1) AND ("t"."id" > $2)))) ORDER BY "t"."a" DESC, "t"."id" ASC`, []any{1, 2}},
 		{"mixed_three_keys", page().OrderBy(Col("t", "a").Asc(), Col("t", "b").Desc(), Col("t", "id").Asc()).SeekAfter(1, 2, 3),
-			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $2) OR (("t"."a" = $3) AND ("t"."b" < $4)) OR (("t"."a" = $5) AND ("t"."b" = $6) AND ("t"."id" > $7)))) ORDER BY "t"."a" ASC, "t"."b" DESC, "t"."id" ASC`, []any{1, 1, 1, 2, 1, 2, 3}},
+			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ("t"."b" < $2)) OR (("t"."a" = $1) AND ("t"."b" = $2) AND ("t"."id" > $3)))) ORDER BY "t"."a" ASC, "t"."b" DESC, "t"."id" ASC`, []any{1, 2, 3}},
 		{"expression_key", page().OrderBy(Lower(Col("name")).Asc(), Col("t", "id").Asc()).SeekAfter("ann", 4),
 			`SELECT "id" FROM "t" WHERE ((lower("name"), "t"."id") > ($1, $2)) ORDER BY lower("name") ASC, "t"."id" ASC`, []any{"ann", 4}},
 		{"cursor_follows_later_where", page().OrderBy(Col("t", "id").Asc()).SeekAfter(5).Where(Col("tenant").Eq(Param(7))),
@@ -89,8 +89,8 @@ func TestSeekAfterNumbersParametersAfterAppendPrefix(t *testing.T) {
 	q := Select(Col("id")).From("t").OrderBy(Col("t", "a").Asc(), Col("t", "id").Desc()).SeekAfter(1, 2)
 
 	buf, args, err := AppendSQL([]byte("prefix;"), []any{"p1", "p2"}, q)
-	want := `prefix;SELECT "id" FROM "t" WHERE (("t"."a" >= $3) AND (("t"."a" > $4) OR (("t"."a" = $5) AND ("t"."id" < $6)))) ORDER BY "t"."a" ASC, "t"."id" DESC`
-	if err != nil || string(buf) != want || !reflect.DeepEqual(args, []any{"p1", "p2", 1, 1, 1, 2}) {
+	want := `prefix;SELECT "id" FROM "t" WHERE (("t"."a" >= $3) AND (("t"."a" > $3) OR (("t"."a" = $3) AND ("t"."id" < $4)))) ORDER BY "t"."a" ASC, "t"."id" DESC`
+	if err != nil || string(buf) != want || !reflect.DeepEqual(args, []any{"p1", "p2", 1, 2}) {
 		t.Fatalf("AppendSQL: SQL=%q args=%#v err=%v", buf, args, err)
 	}
 }
@@ -169,7 +169,7 @@ func TestSeekAfterLifecycle(t *testing.T) {
 	t.Run("copies_variadic_values", func(t *testing.T) {
 		t.Parallel()
 		values := []any{1, 2}
-		q := Select(Col("id")).From("t").OrderBy(Col("t", "a").Asc(), Col("t", "id").Asc()).SeekAfter(values[0], values[1:]...)
+		q := Select(Col("id")).From("t").OrderBy(Col("t", "a").Asc(), Col("t", "id").Asc()).SeekAfter(values...)
 		values[1] = 99
 		checkSQL(t, q, `SELECT "id" FROM "t" WHERE (("t"."a", "t"."id") > ($1, $2)) ORDER BY "t"."a" ASC, "t"."id" ASC`, 1, 2)
 	})

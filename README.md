@@ -165,6 +165,29 @@ Arguments: `[1000 admin editor 4.5]`.
 fields, use the `Field` variants, such as `EqField`. `Field.Expr` returns the
 expression for everything else.
 
+### Bind one value once
+
+`Param` binds again at each use, so a value used three times is three
+arguments. `SharedParam` binds a value that renders as the same `$n` wherever
+the returned expression appears in one statement, including nested queries:
+
+```go
+tenant := qs.SharedParam("acme")
+query, args, err := qs.SelectCols("id").From("documents").
+    Where(qs.Col("tenant").Eq(tenant), qs.Col("owner_tenant").Eq(tenant)).
+    ToSQL()
+```
+
+```sql
+SELECT "id" FROM "documents" WHERE ("tenant" = $1) AND ("owner_tenant" = $1)
+```
+
+Arguments: `[acme]`.
+
+Each `SharedParam` call is a distinct parameter, so two calls with equal values
+bind twice. PostgreSQL infers one type for a parameter from all of its uses:
+when two uses would infer different types, `Cast` the ones that differ.
+
 ### Handle SQL NULL
 
 For SQL NULL tests, use `IsNull` or `IsNotNull`.
@@ -217,6 +240,10 @@ String shorthands such as `SelectCols`, `From`, `GroupBy`, and `ReturningCols`
 take one identifier per string. For a qualified name, use the expression form:
 `Select`, `FromExpr`, `GroupByExpr`, or `Returning`.
 
+A relation's alias used as a column is PostgreSQL's whole-row reference:
+with `qs.Table("sessions").As("s")`, `qs.ToJSONB(qs.Col("s"))` renders
+`to_jsonb("s")`, the row as one JSON object.
+
 `Relation.Col` qualifies a column by the relation's alias, or by its table name
 when it has no alias. `qs.Table("public", "settings").Col("a.b")` renders
 `"public"."settings"."a.b"`. Use `relation.Star()` for a wildcard;
@@ -228,12 +255,29 @@ when it has no alias. `qs.Table("public", "settings").Col("a.b")` renders
 application-authored SQL with qs expressions.
 
 Never pass request text to these constructors; keep request values in bind
-parameters. Raw fragments do not bind placeholders written directly in the SQL
-text.
+parameters. qs numbers parameters itself, so trusted SQL that contains a
+numbered placeholder such as `$1` fails rendering with `ErrInvalid`: it would
+share a slot with a bound value. Put the value beside the text instead:
+
+```go
+qs.Fragment(qs.UnsafeSQL("similarity(name, "), qs.Param(name), qs.UnsafeSQL(") > 0.3"))
+```
+
+Each `UnsafeSQL` text must also be lexically complete. Rendering fails when it
+ends inside a string, a quoted identifier, a comment, or a dollar-quoted
+string, because the open token would swallow whatever qs renders next. A `$`
+inside a string, a quoted identifier, a comment, a dollar-quoted body, or an
+identifier such as `t$1` is left alone. Strings are read as PostgreSQL reads
+them with `standard_conforming_strings` on.
+
+`Fragment` adds nothing between its parts, so it also fails rendering when two
+neighbours would be read as one token: `UnsafeSQL("x = t")` followed by a
+`Param` would render `t$1`, and `UnsafeSQL("a -")` followed by a negative
+literal would render a `--` comment. Put a space in the trusted text.
 
 When qs combines a trusted condition with another, it parenthesizes the trusted
 condition. This applies to two `Where` conditions, a `SeekAfter` cursor, and
-`And`, `Or` and `Not`. `Where(qs.AsCondition(qs.UnsafeSQL("a OR b")))` with a
+`And`, `Or` and `Not`. `Where(qs.UnsafeSQL("a OR b").Condition())` with a
 cursor renders `WHERE (a OR b) AND (...)`. Other operators render trusted SQL
 verbatim, so call `Parenthesized` where its operators could bind to a
 neighboring operand.
@@ -302,6 +346,13 @@ WHERE ("tenant_id" = $1)
 ```
 
 Arguments: `[42 jo% jo% admin editor]`.
+
+A boolean column or parameter is an expression, not a condition: convert it
+with `Condition`, as in `Where(qs.Col("active").Condition())`. In the other
+direction a condition has `As`, `Asc`, and `Desc`, so
+`qs.Col("deleted_at").IsNull().As("deleted")` goes in a select list and
+`qs.Col("pinned").Condition().Desc()` in ORDER BY. `Condition.Expr` returns the
+expression for any other position.
 
 The example omits filters for empty prefixes and role lists. An empty `In` list
 produces FALSE, so omit the condition when an empty list means "no filter" in
@@ -384,6 +435,31 @@ produces FALSE for an empty list. `ArrayParam` binds a single array argument
 and casts it to `text[]`, leaving array encoding to the driver. A nil slice
 binds an empty array rather than NULL, so `= ANY` is FALSE and `<> ALL` is TRUE.
 
+`EqAny` compares with a single array argument instead of one parameter per
+value, so the statement text is the same for any number of ids:
+
+```go
+qs.SelectCols("id").From("users").Where(qs.EqAny(qs.Col("id"), qs.ArrayParam(ids, qs.TypeInt8)))
+```
+
+```sql
+SELECT "id" FROM "users" WHERE ("id" = ANY(($1)::bigint[]))
+```
+
+To join against the values instead, turn the array into rows with
+`TableFunc(Unnest(...))`:
+
+```go
+wanted := qs.TableFunc(qs.Unnest(qs.ArrayParam(ids, qs.TypeInt8))).As("wanted", "id")
+q := qs.Select(users.Col("id"), users.Col("username")).
+    FromExpr(qs.InnerJoin(users, wanted).On(users.Col("id").Eq(wanted.Col("id"))))
+```
+
+```sql
+SELECT "u"."id", "u"."username"
+FROM ("users" AS "u" JOIN unnest(($1)::bigint[]) AS "wanted" ("id") ON ("u"."id" = "wanted"."id"))
+```
+
 Choose the text comparison form according to your application's matching
 requirements. `LOWER(column) LIKE` and PostgreSQL `ILIKE` can give different
 results for some locales and Unicode input, and Go's `strings.ToLower` can
@@ -451,7 +527,12 @@ ORDER BY "users"."created_at" DESC, "users"."id" DESC LIMIT $4
 ```
 
 The cursor follows every other WHERE condition, whatever the call order. Each
-`SeekAfter` call replaces the cursor.
+`SeekAfter` call replaces the cursor, and a call with no values removes it. One
+code path therefore serves every page: `SeekAfter(keys...)` reads the first
+page when `keys` is empty. A slice passed without `...` fails rendering.
+
+A Go value is bound. An expression is compared as written, which is how a
+cursor value takes a cast: `SeekAfter(qs.Param(lastID).Cast(qs.TypeUUID))`.
 
 qs cannot inspect the schema. Pages are complete and disjoint only when every
 key is NOT NULL and the last key is unique.
@@ -482,7 +563,10 @@ name or an integer.
 
 Uniform directions render one row comparison, which a B-tree index on the keys
 in ORDER BY order can serve. Mixed directions render an equivalent disjunction
-that binds earlier keys again: three keys bind seven arguments.
+that names earlier keys again. Each bound Go value keeps its one parameter
+there, so three keys bind three arguments. A cursor expression is rendered at
+each use: its own `Param` binds again, and a volatile expression is evaluated
+more than once.
 
 For the previous page, reverse each term, seek after the first row of the
 current page, and reverse the fetched rows:
@@ -496,6 +580,26 @@ previous := base.
 
 `go doc . SelectBuilder.SeekAfter` states the full contract, including how a
 typed nil cursor value behaves.
+
+### Lock the rows a query reads
+
+`Lock` appends row-lock clauses: `ForUpdate`, `ForNoKeyUpdate`, `ForShare`, and
+`ForKeyShare`, each optionally narrowed with `Of` and made non-blocking with
+`NoWait` or `SkipLocked`. This claims one queued job without waiting on rows
+another worker holds:
+
+```go
+query, args, err := qs.SelectCols("id").From("jobs").
+    Where(qs.Col("state").Eq(qs.Param("queued"))).
+    OrderBy(qs.Col("id").Asc()).
+    Limit(1).
+    Lock(qs.ForUpdate().SkipLocked()).
+    ToSQL()
+```
+
+```sql
+SELECT "id" FROM "jobs" WHERE ("state" = $1) ORDER BY "id" ASC LIMIT $2 FOR UPDATE SKIP LOCKED
+```
 
 ### Count matching rows
 
@@ -666,6 +770,7 @@ Arguments: `[42]`.
 three methods completes it by saying which rows it changes:
 
 - `Where(first, rest...)` selects the rows that satisfy every condition.
+  `WhereSlice(conditions)` takes a run-time list; an empty one fails rendering.
 - `WhereCurrentOf(cursor)` selects the row a cursor is positioned on.
 - `AllRows()` selects every row.
 
@@ -852,6 +957,28 @@ final result order. The [database examples](integration/production_patterns_test
 exercise two collections and a parent with no children. Indexes and query plans
 remain application concerns.
 
+### Combine queries with set operations
+
+`Union`, `UnionAll`, `Intersect`, `IntersectAll`, `Except`, and `ExceptAll`
+take two or more rowsets and keep each branch in parentheses. `OrderBy` and
+`Limit` on the result apply to the combined rows. For a list built at run
+time, use the `Slice` form:
+
+```go
+branches := []qs.Rowset{
+    qs.SelectCols("id").From("customers"),
+    qs.SelectCols("id").From("suppliers"),
+}
+query, args, err := qs.UnionSlice(branches).OrderBy(qs.Col("id").Asc()).ToSQL()
+```
+
+```sql
+(SELECT "id" FROM "customers") UNION (SELECT "id" FROM "suppliers") ORDER BY "id" ASC
+```
+
+A list of one renders that rowset alone, in parentheses, with the same
+`OrderBy` and `Limit`; an empty list fails rendering.
+
 ## Build and query JSON
 
 qs models PostgreSQL's SQL/JSON syntax as typed builders: the `JSON_OBJECT` and
@@ -1030,17 +1157,22 @@ reuse it rather than rebuilding it per query.
 
 Read a result set with `p.Collect(rows)`, or range over `p.All(rows)`. Both
 accept `pgx.Rows` and `*sql.Rows`, report `rows.Err()` with the row errors, and
-leave closing to you. They reuse their working memory from row to row, so prefer
-them to calling `Scan` in a loop:
+close the result set when they are done with it, including when a row fails or
+you leave the `All` loop early. They reuse their working memory from row to row,
+so prefer them to calling `Scan` in a loop:
 
 ```go
 rows, err := conn.Query(ctx, text, args...)
 if err != nil {
     return nil, err
 }
-defer rows.Close()
 return p.Collect(rows)
 ```
+
+The two drivers spell `Close` differently, so `projection.Rows` does not list
+it: `Collect` and `All` find it on the value and return `projection.ErrNoClose`,
+before reading a row, when it has neither `Close()` nor `Close() error`. An
+`All` iterator you never range over closes nothing.
 
 For one row, pass your driver's scan function: `p.Scan(row.Scan)` returns a
 `Row`. `p.ScanInto(&row, row.Scan)` reads into a value you already hold, such as
@@ -1124,11 +1256,12 @@ var total int64
 row, err := p.Scan(func(dest ...any) error { return rows.Scan(append(dest, &total)...) })
 ```
 
-With `Collect` or `All`, wrap the rows instead:
+With `Collect` or `All`, wrap the rows instead. Embed your driver's rows, not
+`projection.Rows`, so the wrapper keeps their `Close`:
 
 ```go
 type counted struct {
-    projection.Rows
+    pgx.Rows
     total *int64
 }
 
@@ -1310,6 +1443,10 @@ names by that part, so two long names with the same first 63 bytes fail
 rendering as duplicates.
 
 ### Handle render errors
+
+`ToSQL` returns the error. `MustToSQL` panics instead; keep it for tests and
+for statements built from constants, where a render error is a programming
+mistake.
 
 Use `errors.Is` to identify the cause of a render error:
 
