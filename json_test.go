@@ -12,32 +12,36 @@ func TestJSONDocuments(t *testing.T) {
 
 	doc := JSONBExpr(Col("payload"))
 	runCases(t, []renderCase{
-		{"key", Select(doc.Key("0").Expr()), `SELECT ("payload" -> $1)`, []any{"0"}},
-		{"index", Select(doc.Index(0).Expr()), `SELECT ("payload" -> ($1)::integer)`, []any{int32(0)}},
-		{"negative_index", Select(doc.Index(-1).Expr()), `SELECT ("payload" -> ($1)::integer)`, []any{int32(-1)}},
-		{"text_key", Select(doc.TextKey("name").Expr()).Where(doc.TextKey("name").Eq("Ada")), `SELECT ("payload" ->> $1) WHERE (("payload" ->> $2) = $3)`, []any{"name", "name", "Ada"}},
-		{"text_index", Select(doc.TextIndex(2).Expr()), `SELECT ("payload" ->> ($1)::integer)`, []any{int32(2)}},
-		{"path", Select(doc.Path("items", "0").Expr()), `SELECT ("payload" #> (ARRAY[$1, $2])::text[])`, []any{"items", "0"}},
-		{"path_text", Select(doc.PathText("items", "0", "name").Expr()), `SELECT ("payload" #>> (ARRAY[$1, $2, $3])::text[])`, []any{"items", "0", "name"}},
+		{"key", Select(doc.Key("0").Expr()), `SELECT ("payload" -> E'0')`, nil},
+		{"index", Select(doc.Index(0).Expr()), `SELECT ("payload" -> 0)`, nil},
+		{"negative_index", Select(doc.Index(-1).Expr()), `SELECT ("payload" -> -1)`, nil},
+		{"text_key", Select(doc.TextKey("name").Expr()).Where(doc.TextKey("name").Eq("Ada")), `SELECT ("payload" ->> E'name') WHERE (("payload" ->> E'name') = $1)`, []any{"Ada"}},
+		{"text_key_grouped", Select(doc.TextKey("kind").Expr(), CountAll()).From("events").GroupByExpr(doc.TextKey("kind").Expr()), `SELECT ("payload" ->> E'kind'), count(*) FROM "events" GROUP BY ("payload" ->> E'kind')`, nil},
+		{"text_index", Select(doc.TextIndex(2).Expr()), `SELECT ("payload" ->> 2)`, nil},
+		{"path", Select(doc.Path("items", "0").Expr()), `SELECT ("payload" #> (ARRAY[E'items', E'0'])::text[])`, nil},
+		{"path_text", Select(doc.PathText("items", "0", "name").Expr()), `SELECT ("payload" #>> (ARRAY[E'items', E'0', E'name'])::text[])`, nil},
 		{"empty_path", Select(doc.Path().Expr()), `SELECT ("payload" #> (ARRAY[])::text[])`, nil},
 		{"contains", Select(doc.Contains(JSONBParam(`{"active":true}`)).Expr()), `SELECT ("payload" @> ($1)::jsonb)`, []any{`{"active":true}`}},
 		{"contained_by", Select(doc.ContainedBy(JSONBExpr(Col("other"))).Expr()), `SELECT ("payload" <@ "other")`, nil},
-		{"has_key", Select(doc.HasKey("a").Expr()), `SELECT ("payload" ? $1)`, []any{"a"}},
-		{"has_any", Select(doc.HasAnyKeys("a", "b").Expr()), `SELECT ("payload" ?| (ARRAY[$1, $2])::text[])`, []any{"a", "b"}},
-		{"has_all", Select(doc.HasAllKeys("a", "b").Expr()), `SELECT ("payload" ?& (ARRAY[$1, $2])::text[])`, []any{"a", "b"}},
-		{"delete_key", Select(doc.DeleteKey("0").Expr()), `SELECT ("payload" - $1)`, []any{"0"}},
-		{"delete_index", Select(doc.DeleteIndex(0).Expr()), `SELECT ("payload" - ($1)::integer)`, []any{int32(0)}},
-		{"delete_keys", Select(doc.DeleteKeys("a", "b").Expr()), `SELECT ("payload" - (ARRAY[$1, $2])::text[])`, []any{"a", "b"}},
-		{"delete_path", Select(doc.DeletePath("a", "0").Expr()), `SELECT ("payload" #- (ARRAY[$1, $2])::text[])`, []any{"a", "0"}},
+		{"has_key", Select(doc.HasKey("a").Expr()), `SELECT ("payload" ? E'a')`, nil},
+		{"has_any", Select(doc.HasAnyKeys("a", "b").Expr()), `SELECT ("payload" ?| (ARRAY[E'a', E'b'])::text[])`, nil},
+		{"has_all", Select(doc.HasAllKeys("a", "b").Expr()), `SELECT ("payload" ?& (ARRAY[E'a', E'b'])::text[])`, nil},
+		{"delete_key", Select(doc.DeleteKey("0").Expr()), `SELECT ("payload" - E'0')`, nil},
+		{"delete_index", Select(doc.DeleteIndex(0).Expr()), `SELECT ("payload" - 0)`, nil},
+		{"delete_negative_index", Select(doc.DeleteIndex(-1).Expr()), `SELECT ("payload" - -1)`, nil},
+		{"delete_keys", Select(doc.DeleteKeys("a", "b").Expr()), `SELECT ("payload" - (ARRAY[E'a', E'b'])::text[])`, nil},
+		{"delete_path", Select(doc.DeletePath("a", "0").Expr()), `SELECT ("payload" #- (ARRAY[E'a', E'0'])::text[])`, nil},
 		{"concat", Select(doc.Concat(JSONBParam(`{"b":2}`)).Expr()), `SELECT ("payload" || ($1)::jsonb)`, []any{`{"b":2}`}},
-		{"path_exists", Select(doc.PathExists("$.a").Expr()), `SELECT ("payload" @? ($1)::jsonpath)`, []any{"$.a"}},
-		{"path_matches", Select(doc.PathMatches("$.a > 1").Expr()), `SELECT ("payload" @@ ($1)::jsonpath)`, []any{"$.a > 1"}},
-		{"json_chain", Select(JSONExpr(Col("doc")).Key("items").Index(-1).TextKey("name").As("name")), `SELECT ((("doc" -> $1) -> ($2)::integer) ->> $3) AS "name"`, []any{"items", int32(-1), "name"}},
-		{"json_index", Select(JSONExpr(Col("doc")).TextIndex(0).Expr()), `SELECT ("doc" ->> ($1)::integer)`, []any{int32(0)}},
-		{"json_path", Select(JSONExpr(Col("doc")).Path("a").Expr(), JSONExpr(Col("doc")).PathText().Expr()), `SELECT ("doc" #> (ARRAY[$1])::text[]), ("doc" #>> (ARRAY[])::text[])`, []any{"a"}},
+		{"path_exists", Select(doc.PathExists("$.a").Expr()), `SELECT ("payload" @? (E'$.a')::jsonpath)`, nil},
+		{"path_matches", Select(doc.PathMatches("$.a > 1").Expr()), `SELECT ("payload" @@ (E'$.a > 1')::jsonpath)`, nil},
+		{"json_chain", Select(JSONExpr(Col("doc")).Key("items").Index(-1).TextKey("name").As("name")), `SELECT ((("doc" -> E'items') -> -1) ->> E'name') AS "name"`, nil},
+		{"json_index", Select(JSONExpr(Col("doc")).TextIndex(0).Expr()), `SELECT ("doc" ->> 0)`, nil},
+		{"json_path", Select(JSONExpr(Col("doc")).Path("a").Expr(), JSONExpr(Col("doc")).PathText().Expr()), `SELECT ("doc" #> (ARRAY[E'a'])::text[]), ("doc" #>> (ARRAY[])::text[])`, nil},
 		{"encoded_json", Select(JSONParam(`{"a":1}`).As("doc")), `SELECT ($1)::json AS "doc"`, []any{`{"a":1}`}},
-		{"injection_key", Select(doc.Key(`x'); DROP TABLE users; --`).Expr()), `SELECT ("payload" -> $1)`, []any{`x'); DROP TABLE users; --`}},
-		{"null", Select(doc.Key("a").IsNull().Expr(), JSONExpr(Col("doc")).IsNotNull().Expr()), `SELECT (("payload" -> $1) IS NULL), ("doc" IS NOT NULL)`, []any{"a"}},
+		{"quote_in_key", Select(doc.Key(`x'); DROP TABLE users; --`).Expr()), `SELECT ("payload" -> E'x''); DROP TABLE users; --')`, nil},
+		{"backslash_in_key", Select(doc.Key(`a\'b`).Expr()), `SELECT ("payload" -> E'a\\''b')`, nil},
+		{"bound_key", Select(JSONGet(doc.Expr(), Param("k"))), `SELECT ("payload" -> $1)`, []any{"k"}},
+		{"null", Select(doc.Key("a").IsNull().Expr(), JSONExpr(Col("doc")).IsNotNull().Expr()), `SELECT (("payload" -> E'a') IS NULL), ("doc" IS NOT NULL)`, nil},
 		{"update", Update("events").Set(doc.Set(doc.Concat(JSONBParam(`{"active":true}`)))).AllRows(), `UPDATE "events" SET "payload" = ("payload" || ($1)::jsonb)`, []any{`{"active":true}`}},
 	})
 }
@@ -49,18 +53,21 @@ func TestJSONSelectorOwnership(t *testing.T) {
 	doc := JSONBExpr(Col("doc"))
 	path := doc.Path(parts...)
 	parts[0] = "changed"
-	checkSQL(t, Select(doc.Expr(), path.Expr(), path.TextKey("name").Expr()), `SELECT "doc", ("doc" #> (ARRAY[$1, $2])::text[]), (("doc" #> (ARRAY[$3, $4])::text[]) ->> $5)`, "items", "0", "items", "0", "name")
+	checkSQL(t, Select(doc.Expr(), path.Expr(), path.TextKey("name").Expr()), `SELECT "doc", ("doc" #> (ARRAY[E'items', E'0'])::text[]), (("doc" #> (ARRAY[E'items', E'0'])::text[]) ->> E'name')`)
 
 	inner := Select(JSONBParam(`{"name":"Ada"}`).Expr())
 	original := Select(JSONBExpr(Scalar(inner)).TextKey("name").Expr())
-	checkSQL(t, original, `SELECT ((SELECT ($1)::jsonb) ->> $2)`, `{"name":"Ada"}`, "name")
+	checkSQL(t, original, `SELECT ((SELECT ($1)::jsonb) ->> E'name')`, `{"name":"Ada"}`)
 	checkError(t, Select(JSONBExpr(Scalar(inner.Columns(Param(1)))).TextKey("name").Expr()), ErrInvalid)
 }
 
 func TestJSONValidationAndNumbering(t *testing.T) {
 	t.Parallel()
 
-	for _, expr := range []Expr{JSONDocument{}.Key("a").Expr(), JSONBDocument{}.Index(0).Expr(), Param(JSONBExpr(Col("doc")))} {
+	for _, expr := range []Expr{
+		JSONDocument{}.Key("a").Expr(), JSONBDocument{}.Index(0).Expr(), Param(JSONBExpr(Col("doc"))),
+		JSONBExpr(Col("doc")).Key("a\x00b").Expr(), JSONBExpr(Col("doc")).Path("a", "\xff").Expr(),
+	} {
 		if _, _, err := ExprToSQL(expr); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("invalid JSON expression accepted: %v", err)
 		}
@@ -80,7 +87,7 @@ func TestJSONValidationAndNumbering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(buf) != `prefix: WITH "source" AS (SELECT ($2)::jsonb WHERE ("id" = $3)) SELECT (("doc" -> ($4)::integer) ->> $5)` || !reflect.DeepEqual(args, []any{"existing", `[]`, 4, int32(0), "name"}) {
+	if string(buf) != `prefix: WITH "source" AS (SELECT ($2)::jsonb WHERE ("id" = $3)) SELECT (("doc" -> 0) ->> E'name')` || !reflect.DeepEqual(args, []any{"existing", `[]`, 4}) {
 		t.Fatalf("SQL=%s args=%#v", buf, args)
 	}
 }
@@ -93,7 +100,7 @@ func typedJSONQuery() SelectBuilder {
 
 func TestJSONReusableAppendAllocations(t *testing.T) {
 	query := typedJSONQuery()
-	checkSQL(t, query, `SELECT ("payload" #>> (ARRAY[$1, $2, $3])::text[]) AS "name" FROM "events" WHERE ("payload" ?& (ARRAY[$4, $5])::text[]) AND ("payload" @> ($6)::jsonb) AND (((("payload" -> $7) -> ($8)::integer) ->> $9) = $10)`, "items", "0", "name", "items", "active", `{"active":true}`, "items", int32(-1), "name", "Ada")
+	checkSQL(t, query, `SELECT ("payload" #>> (ARRAY[E'items', E'0', E'name'])::text[]) AS "name" FROM "events" WHERE ("payload" ?& (ARRAY[E'items', E'active'])::text[]) AND ("payload" @> ($1)::jsonb) AND (((("payload" -> E'items') -> -1) ->> E'name') = $2)`, `{"active":true}`, "Ada")
 	buf, args := make([]byte, 0, 2048), make([]any, 0, 16)
 	var err error
 	allocations := testing.AllocsPerRun(100, func() { buf, args, err = query.AppendSQL(buf[:0], args[:0]) })

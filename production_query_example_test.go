@@ -10,11 +10,11 @@ func ExampleInsertInto_arrayUpsert() {
 	// The driver encodes each array. Keep lengths equal and bound batch size.
 	ids := []int32{42, 43}
 	names := []string{"Ana", "Ben"}
-	rows := qs.Select(
-		qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
-		qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
-	)
-	query, args, err := qs.InsertInto("users").Columns("id", "name").From(rows).
+	query, args, err := qs.InsertInto("users").
+		FromArrays(
+			qs.NamedArray("id", qs.ArrayParam(ids, qs.TypeInt4)),
+			qs.NamedArray("name", qs.ArrayParam(names, qs.TypeText)),
+		).
 		OnConflict(qs.ConflictColumns("id").TargetWhere(qs.Col("deleted_at").IsNull()).
 			DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
 		ReturningCols("id", "name").ToSQL()
@@ -24,7 +24,7 @@ func ExampleInsertInto_arrayUpsert() {
 	fmt.Println(query)
 	fmt.Println(args)
 	// Output:
-	// INSERT INTO "users" ("id", "name") SELECT unnest(($1)::integer[]), unnest(($2)::text[]) ON CONFLICT ("id") WHERE ("deleted_at" IS NULL) DO UPDATE SET "name" = "excluded"."name" RETURNING "id", "name"
+	// INSERT INTO "users" ("id", "name") SELECT * FROM unnest(($1)::integer[], ($2)::text[]) ON CONFLICT ("id") WHERE ("deleted_at" IS NULL) DO UPDATE SET "name" = "excluded"."name" RETURNING "id", "name"
 	// [[42 43] [Ana Ben]]
 }
 

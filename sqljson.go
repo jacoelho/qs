@@ -183,9 +183,16 @@ type JSONMember struct {
 	value jsonOperand
 }
 
-// JSONPair pairs a JSON_OBJECT key with its value.
+// JSONPair pairs a JSON_OBJECT key that is an expression with its value. Use
+// JSONKey for a string constant.
 func JSONPair(key Expr, value JSONOperand) JSONMember {
 	return JSONMember{key: key, value: operandOf(value)}
+}
+
+// JSONKey pairs a JSON_OBJECT key that is a string constant with its value.
+// The key renders as a SQL literal and binds nothing.
+func JSONKey(name string, value JSONOperand) JSONMember {
+	return JSONMember{key: LiteralString(name), value: operandOf(value)}
 }
 
 // JSONObjectBuilder is a JSON_OBJECT constructor. It is an immutable value.

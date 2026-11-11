@@ -73,7 +73,9 @@ type InsertRows struct {
 	base insertBase
 }
 
-// InsertSelect is an INSERT whose source is a rowset.
+// InsertSelect is an INSERT whose source is a rowset. The source and the
+// target columns are fixed together when it is created, so neither can be
+// replaced apart from the other.
 type InsertSelect struct {
 	source Rowset
 	base   insertBase
@@ -120,6 +122,57 @@ func (t InsertTarget) From(source Rowset) InsertSelect {
 	return InsertSelect{base: t.base(), source: ownedRowset(source)}
 }
 
+// FromArrays selects the named columns and fills each from its array, one row
+// per element: INSERT INTO t ("id", "name") SELECT * FROM unnest($1, $2).
+// A column and its array are one argument, where a Columns list and a separate
+// projection pair by position. The parameter count follows the columns, not
+// the rows. Each array must have a scalar element type: an array of a
+// composite type expands to one column per field. Supply arrays of equal
+// length, because PostgreSQL pads shorter ones with NULL; empty arrays insert
+// no rows.
+func (t InsertTarget) FromArrays(first ArrayColumn, rest ...ArrayColumn) InsertSelect {
+	names, arrays := splitArrayColumns(first, rest)
+	return t.ColumnsSlice(names).From(Select(Star()).FromExpr(TableFunc(Unnest(arrays...))))
+}
+
+// FromNamed selects a query source and takes the target columns from the names
+// of the query's output columns, in order: a column reference names its
+// column, and As names anything else. Each target is then written beside the
+// expression that fills it, where Columns followed by From pairs two lists by
+// position:
+//
+//	InsertInto("events").FromNamed(Select(u.Col("name"), u.Col("ordinality").As("position")).FromExpr(u))
+//
+// renders INSERT INTO "events" ("name", "position") SELECT "u"."name",
+// "u"."ordinality" AS "position" FROM ... . Rendering fails for an output
+// column that is neither a column reference nor aliased, such as a star,
+// trusted SQL or an unaliased expression, for an aliased star or composite
+// expansion, for a duplicate name and for an empty projection.
+func (t InsertTarget) FromNamed(query SelectBuilder) InsertSelect {
+	targets := make([]Expr, len(query.columns))
+	for i, column := range query.columns {
+		targets[i] = outputColumn(column)
+	}
+	return InsertColumnsTarget{columnsTable: t.table, columnsTargets: targets}.From(query)
+}
+
+// outputColumn is the insert target that a projected expression names: its
+// alias, or the column a reference ends in. qs does not derive the label
+// PostgreSQL would give any other expression.
+func outputColumn(e Expr) Expr {
+	if e.isColumn() {
+		return unqualifiedTarget(e)
+	}
+	if n, ok := e.node().(*aliasExpression); ok {
+		switch n.expr.node().(type) {
+		case *starExpression, *fieldsExpression:
+			return invalidExpr("INSERT", "FromNamed cannot name a star or a composite expansion with one alias")
+		}
+		return unqualifiedColumn(n.alias)
+	}
+	return invalidExpr("INSERT", "FromNamed requires each output column to be a column reference or to have an alias")
+}
+
 // Set selects an assignment source.
 func (t InsertTarget) Set(first Assignment, rest ...Assignment) InsertAssignments {
 	return InsertAssignments{base: t.base()}.Set(first, rest...)
@@ -152,12 +205,6 @@ func (b InsertRows) ValuesSlice(values []WriteValue) InsertRows {
 // with an empty row, is invalid when rendered.
 func (b InsertRows) Rows(rows ...[]WriteValue) InsertRows {
 	b.rows = extendRows(b.rows, rows)
-	return b
-}
-
-// From replaces the rowset source of the INSERT.
-func (b InsertSelect) From(source Rowset) InsertSelect {
-	b.source = ownedRowset(source)
 	return b
 }
 

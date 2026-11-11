@@ -81,8 +81,8 @@ var benchmarkScenarios = []benchmarkScenario{
 		`SELECT CASE WHEN ("v" = $1) THEN $2 WHEN ("v" = $3) THEN $4 ELSE $5 END`,
 		7, "yes", 9, "later", "no"),
 	scenario("json_document", typedJSONQuery,
-		`SELECT ("payload" #>> (ARRAY[$1, $2, $3])::text[]) AS "name" FROM "events" WHERE ("payload" ?& (ARRAY[$4, $5])::text[]) AND ("payload" @> ($6)::jsonb) AND (((("payload" -> $7) -> ($8)::integer) ->> $9) = $10)`,
-		"items", "0", "name", "items", "active", `{"active":true}`, "items", int32(-1), "name", "Ada"),
+		`SELECT ("payload" #>> (ARRAY[E'items', E'0', E'name'])::text[]) AS "name" FROM "events" WHERE ("payload" ?& (ARRAY[E'items', E'active'])::text[]) AND ("payload" @> ($1)::jsonb) AND (((("payload" -> E'items') -> -1) ->> E'name') = $2)`,
+		`{"active":true}`, "Ada"),
 	scenario("quoted_identifiers", func() SelectBuilder {
 		return Select(Col(`odd"name`), Col(`"leading`), Col(`trailing"`), Col(`two""quotes`)).From("events")
 	},

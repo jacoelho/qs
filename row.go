@@ -191,6 +191,16 @@ func (f Field[T]) In(values ...T) Condition { return inValues(f.expr, "IN", valu
 // NotIn compares f with explicitly expanded values. An empty list is TRUE.
 func (f Field[T]) NotIn(values ...T) Condition { return inValues(f.expr, "NOT IN", values) }
 
+// EqAny compares f with any element of one bound array, cast to an array of
+// element: f = ANY($1::element[]). The statement text and argument count are
+// the same for every length, where In renders one parameter per value. A nil
+// or empty slice binds an empty array, so the condition is FALSE. The driver
+// must encode []T, and the slice must not be mutated before execution
+// completes.
+func (f Field[T]) EqAny(values []T, element DataType) Condition {
+	return EqAny(f.expr, ArrayParam(values, element))
+}
+
 // Between checks whether f lies inclusively between two bound values.
 func (f Field[T]) Between(lower, upper T) Condition {
 	return f.expr.Between(parameter(lower), parameter(upper))

@@ -112,11 +112,11 @@ func TestInsertColumnSelectorOwnsTargetsAcrossRoles(t *testing.T) {
 	selector := InsertInto("events").Columns("name")
 
 	rows := selector.Values(Write(Param("row"))).Values(Write(Param("row-2"))).Into("archive").OnConflict(AnyConflict().DoNothing()).ReturningCols("name")
-	selectSource := selector.From(Select(Param("select"))).From(Select(Param("select-2"))).Into("archive").ReturningCols("name")
+	selectSource := selector.From(Select(Param("select"))).Into("archive").ReturningCols("name")
 	defaults := selector.DefaultValues().Into("archive").ReturningCols("name")
 
 	checkSQL(t, rows, `INSERT INTO "archive" ("name") VALUES ($1), ($2) ON CONFLICT DO NOTHING RETURNING "name"`, "row", "row-2")
-	checkSQL(t, selectSource, `INSERT INTO "archive" ("name") SELECT $1 RETURNING "name"`, "select-2")
+	checkSQL(t, selectSource, `INSERT INTO "archive" ("name") SELECT $1 RETURNING "name"`, "select")
 	checkSQL(t, defaults, `INSERT INTO "archive" ("name") DEFAULT VALUES RETURNING "name"`)
 }
 

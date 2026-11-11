@@ -5,6 +5,7 @@ package integration_test
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"os"
 	"reflect"
 	"strconv"
@@ -115,6 +116,8 @@ func TestTypedJSONDocuments(t *testing.T) {
 		{"array_text_key", array.Key("0").Expr(), "", true, false},
 		{"array_index", array.Index(0).Expr(), `{"name":"Ada"}`, false, true},
 		{"negative_index", array.Index(-1).Expr(), `"0"`, false, true},
+		{"least_index", array.Index(math.MinInt32).Expr(), "", true, false},
+		{"greatest_index", array.Index(math.MaxInt32).Expr(), "", true, false},
 		{"out_of_range", array.Index(99).Expr(), "", true, false},
 		{"missing_key", object.Key("missing").Expr(), "", true, false},
 		{"json_null", object.Key("a").Expr(), `null`, false, true},
