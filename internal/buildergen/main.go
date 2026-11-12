@@ -391,8 +391,8 @@ var jsonClauses = map[string][]jsonClause{
 	},
 	jsonAggregate: {
 		{"Filter", "conditions ...Condition", "", "b.tail = b.tail.filtered(conditions); return b", "returns b with conditions appended to its FILTER clause."},
-		{"Over", "window WindowSpec", "", "b.tail = b.tail.over(window); return b", "returns b as a window function over an inline definition, replacing an earlier window."},
-		{"OverNamed", "name string", "", "b.tail = b.tail.overNamed(name); return b", "returns b as a window function over a named window, replacing an earlier window. An empty name fails rendering."},
+		{"Over", "window WindowSpec", "", "b.tail = b.tail.inlineWindow(window); return b", "returns b as a window function over an inline definition, replacing an earlier window."},
+		{"OverNamed", "name string", "", "b.tail = b.tail.namedWindow(name); return b", "returns b as a window function over a named window, replacing an earlier window. An empty name fails rendering."},
 	},
 	jsonPassing: {
 		{"Passing", "name string, value JSONOperand", "", "b.passing = passed(b.passing, name, value); return b", "returns b with value passed to the path as the variable $name."},

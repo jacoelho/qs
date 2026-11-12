@@ -163,13 +163,13 @@ func (b JSONObjectAggregateBuilder) Filter(conditions ...Condition) JSONObjectAg
 
 // Over returns b as a window function over an inline definition, replacing an earlier window.
 func (b JSONObjectAggregateBuilder) Over(window WindowSpec) JSONObjectAggregateBuilder {
-	b.tail = b.tail.over(window)
+	b.tail = b.tail.inlineWindow(window)
 	return b
 }
 
 // OverNamed returns b as a window function over a named window, replacing an earlier window. An empty name fails rendering.
 func (b JSONObjectAggregateBuilder) OverNamed(name string) JSONObjectAggregateBuilder {
-	b.tail = b.tail.overNamed(name)
+	b.tail = b.tail.namedWindow(name)
 	return b
 }
 func (JSONArrayAggregateBuilder) exprNode()     {}
@@ -219,13 +219,13 @@ func (b JSONArrayAggregateBuilder) Filter(conditions ...Condition) JSONArrayAggr
 
 // Over returns b as a window function over an inline definition, replacing an earlier window.
 func (b JSONArrayAggregateBuilder) Over(window WindowSpec) JSONArrayAggregateBuilder {
-	b.tail = b.tail.over(window)
+	b.tail = b.tail.inlineWindow(window)
 	return b
 }
 
 // OverNamed returns b as a window function over a named window, replacing an earlier window. An empty name fails rendering.
 func (b JSONArrayAggregateBuilder) OverNamed(name string) JSONArrayAggregateBuilder {
-	b.tail = b.tail.overNamed(name)
+	b.tail = b.tail.namedWindow(name)
 	return b
 }
 func (JSONParseBuilder) exprNode()     {}

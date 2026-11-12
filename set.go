@@ -398,7 +398,7 @@ func statementWidth(s Statement, maxDepth int) int {
 	for range maxDepth {
 		switch b := s.(type) {
 		case SelectBuilder:
-			if len(b.columns) == 0 && !b.noColumns {
+			if !b.statesProjection() {
 				// An empty projection is invalid; its own render says so.
 				return -1
 			}

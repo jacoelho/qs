@@ -6,16 +6,30 @@ import (
 
 // Assignment is a scalar, composite-field, subscript or row assignment.
 type Assignment struct {
-	target  Expr
-	value   Expr
-	query   Rowset
-	columns []Expr
-	row     bool
+	target  Expr   // assignColumn
+	value   Expr   // assignColumn and assignRowValues
+	query   Rowset // assignRowQuery
+	columns []Expr // assignRowValues and assignRowQuery
+	form    assignmentForm
 }
+
+// assignmentForm is which of the three SET grammars an Assignment renders. The
+// constructor that chooses it sets it; each form reads only the fields marked
+// with it above. The zero form is the zero Assignment, which fails rendering.
+type assignmentForm uint8
+
+const (
+	// assignColumn is target = value.
+	assignColumn assignmentForm = iota + 1
+	// assignRowValues is (columns) = row value.
+	assignRowValues
+	// assignRowQuery is (columns) = (query).
+	assignRowQuery
+)
 
 // Set assigns a destination value to a column.
 func Set(column string, value WriteValue) Assignment {
-	return Assignment{target: unqualifiedColumn(column), value: value.expr()}
+	return Assignment{form: assignColumn, target: unqualifiedColumn(column), value: value.expr()}
 }
 
 // SetNull assigns SQL NULL to a column.
@@ -31,7 +45,7 @@ func SetNullable[T any](column string, value Null[T]) Assignment {
 
 // Assign permits explicit composite-field and subscript targets.
 func Assign(target Expr, value WriteValue) Assignment {
-	return Assignment{target: target, value: value.expr()}
+	return Assignment{form: assignColumn, target: target, value: value.expr()}
 }
 
 // SetRow assigns destination values to a row of named columns.
@@ -40,7 +54,7 @@ func SetRow(columns []string, first WriteValue, rest ...WriteValue) Assignment {
 	for i, c := range columns {
 		targets[i] = unqualifiedColumn(c)
 	}
-	return Assignment{columns: targets, value: WriteRow(first, rest...).rowExpr().expr, row: true}
+	return Assignment{form: assignRowValues, columns: targets, value: WriteRow(first, rest...).rowExpr().expr}
 }
 
 // SetRowFrom assigns the result columns of a rowset to named columns.
@@ -49,21 +63,21 @@ func SetRowFrom(columns []string, query Rowset) Assignment {
 	for i, c := range columns {
 		targets[i] = unqualifiedColumn(c)
 	}
-	return Assignment{columns: targets, query: ownedRowset(query), row: true}
+	return Assignment{form: assignRowQuery, columns: targets, query: ownedRowset(query)}
 }
 
 // AssignRow preserves explicit or parenthesized row syntax and supports field
 // and subscript targets. The target list is copied.
 func AssignRow(targets []Expr, values WriteRowValue) Assignment {
-	return Assignment{columns: cloneSlice(targets), value: values.rowExpr().expr, row: true}
+	return Assignment{form: assignRowValues, columns: cloneSlice(targets), value: values.rowExpr().expr}
 }
 
 // AssignRowFrom assigns a rowset to explicit or parenthesized row targets.
 func AssignRowFrom(targets []Expr, query Rowset) Assignment {
-	return Assignment{columns: cloneSlice(targets), query: ownedRowset(query), row: true}
+	return Assignment{form: assignRowQuery, columns: cloneSlice(targets), query: ownedRowset(query)}
 }
 func assignTypedTarget(column Expr, value WriteValue) Assignment {
-	return Assignment{target: unqualifiedTarget(column), value: value.expr()}
+	return Assignment{form: assignColumn, target: unqualifiedTarget(column), value: value.expr()}
 }
 
 func unqualifiedTarget(target Expr) Expr {
@@ -117,37 +131,54 @@ func sameIdentifier(a, b Expr) bool {
 	return ok && slices.EqualFunc(left.parts, right.parts, sameName)
 }
 
-func assignmentWidth(a Assignment) int {
-	if a.row {
-		return len(a.columns)
+// width is how many targets a assigns: one for a column, the target list for a row.
+func (a Assignment) width() int {
+	if a.form == assignColumn {
+		return 1
 	}
-	return 1
+	return len(a.columns)
 }
-func assignmentColumn(a Assignment, i int) Expr {
-	if a.row {
-		return a.columns[i]
+
+// targetAt returns the ith of a's width targets.
+func (a Assignment) targetAt(i int) Expr {
+	if a.form == assignColumn {
+		return a.target
 	}
-	return a.target
+	return a.columns[i]
 }
+
+// validateAssignments checks a SET list before any consumer reads it: every
+// assignment has a known form, a row names its targets, and no target repeats.
+// INSERT and MERGE INSERT rely on it to reject the zero Assignment before they
+// test for the column form.
 func (w *renderer) validateAssignments(assignments []Assignment) bool {
 	if !w.require(len(assignments) > 0, "SET", "requires assignments") {
 		return false
 	}
 	for i, a := range assignments {
-		if a.row && !w.require(len(a.columns) > 0, "SET ROW", "requires columns") {
+		var ok bool
+		switch a.form {
+		case assignColumn:
+			ok = true
+		case assignRowValues, assignRowQuery:
+			ok = w.require(len(a.columns) > 0, "SET ROW", "requires columns")
+		default:
+			ok = w.require(false, "SET", "zero or unknown assignment")
+		}
+		if !ok {
 			w.errorPath("assignment", i+1)
 			return false
 		}
-		for x := range assignmentWidth(a) {
-			col := assignmentColumn(a, x)
+		for x := range a.width() {
+			col := a.targetAt(x)
 			for j := range i + 1 {
 				prior := assignments[j]
-				end := assignmentWidth(prior)
+				end := prior.width()
 				if j == i {
 					end = x
 				}
 				for y := range end {
-					if sameIdentifier(col, assignmentColumn(prior, y)) {
+					if sameIdentifier(col, prior.targetAt(y)) {
 						w.fail(ErrInvalid, "SET", "duplicate assignment target")
 						w.errorPath("assignment", i+1)
 						return false
@@ -219,37 +250,42 @@ func (w *renderer) assignments(assignments []Assignment) {
 }
 
 func (w *renderer) assignment(a *Assignment) {
-	if a.row {
-		w.rowAssignment(a)
-		return
-	}
-
-	w.assignmentTarget(a.target)
-	if w.stopped("target", 0) {
-		return
-	}
-	w.text(" = ")
-	w.writeExpr(a.value)
-	if w.stopped("value", 0) {
-		return
-	}
-}
-
-func (w *renderer) rowAssignment(a *Assignment) {
-	w.byte('(')
-	for j, c := range a.columns {
-		if j != 0 {
-			w.text(", ")
-		}
-		w.assignmentTarget(c)
-		if w.stopped("target", j+1) {
+	switch a.form {
+	case assignColumn:
+		w.assignmentTarget(a.target)
+		if w.stopped("target", 0) {
 			return
 		}
-	}
-	w.text(") = ")
-	if a.query != nil {
+		w.text(" = ")
+		w.writeExpr(a.value)
+		if w.stopped("value", 0) {
+			return
+		}
+	case assignRowValues:
+		row, ok := rowList(a.value)
+		if !w.require(ok, "SET ROW", "requires a row value") {
+			return
+		}
+		width := projectionWidth(row.items)
+		if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "value count differs from target count") {
+			return
+		}
+		if !w.rowTargets(a.columns) {
+			return
+		}
+		w.writeRow(a.value)
+		if w.stopped("value", 0) {
+			return
+		}
+	case assignRowQuery:
+		if !w.require(a.query != nil, "SET ROW", "requires a subquery") {
+			return
+		}
 		width := statementWidth(a.query, w.options.MaxDepth)
 		if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "subquery projection width differs") {
+			return
+		}
+		if !w.rowTargets(a.columns) {
 			return
 		}
 		w.byte('(')
@@ -258,20 +294,26 @@ func (w *renderer) rowAssignment(a *Assignment) {
 			return
 		}
 		w.byte(')')
-	} else {
-		row, ok := rowList(a.value)
-		if !w.require(ok, "SET ROW", "requires a row value or subquery") {
-			return
+	default:
+		w.fail(ErrInvalid, "SET", "zero or unknown assignment")
+	}
+}
+
+// rowTargets writes the parenthesized target list of a row assignment and its
+// " = ", and reports whether it succeeded.
+func (w *renderer) rowTargets(columns []Expr) bool {
+	w.byte('(')
+	for j, c := range columns {
+		if j != 0 {
+			w.text(", ")
 		}
-		width := projectionWidth(row.items)
-		if width >= 0 && !w.require(width == len(a.columns), "SET ROW", "value count differs from target count or nil subquery") {
-			return
-		}
-		w.writeRow(a.value)
-		if w.stopped("value", 0) {
-			return
+		w.assignmentTarget(c)
+		if w.stopped("target", j+1) {
+			return false
 		}
 	}
+	w.text(") = ")
+	return true
 }
 
 // ReturningAliases names OLD and NEW output rows (PostgreSQL 18+).
