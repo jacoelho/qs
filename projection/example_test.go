@@ -22,8 +22,14 @@ func ExampleEmbedNull() {
 	users := func(r qs.Relation, prefix string) projection.Projection[User] {
 		return projection.New(
 			projection.Column(r.Col("id").As(prefix+"id"), func(u *User) *int64 { return &u.ID }),
-			projection.Column(r.Col("name").As(prefix+"name"), func(u *User) *string { return &u.Name }),
-			projection.ColumnNull(r.Col("email").As(prefix+"email"), func(u *User, v *string) { u.Email = v }),
+			projection.Column(
+				r.Col("name").As(prefix+"name"),
+				func(u *User) *string { return &u.Name },
+			),
+			projection.ColumnNull(
+				r.Col("email").As(prefix+"email"),
+				func(u *User, v *string) { u.Email = v },
+			),
 		)
 	}
 	employee := qs.Table("users").As("employee")
@@ -32,9 +38,11 @@ func ExampleEmbedNull() {
 		projection.Embed(users(employee, ""), func(r *Row) *User { return &r.Employee }),
 		projection.EmbedNull(users(manager, "manager_"), func(r *Row, u *User) { r.Manager = u }),
 	)
-	text, args, err := qs.SelectSlice(p.Expressions()).FromExpr(
-		qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
-	).ToSQL()
+	text, args, err := qs.SelectSlice(p.Expressions()).
+		FromExpr(
+			qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
+		).
+		ToSQL()
 	if err != nil {
 		panic(err)
 	}
@@ -80,7 +88,10 @@ func ExampleProjection_Scan() {
 	}
 	p := projection.Map(projection.New(
 		projection.Column(qs.Col("id"), func(d *Document) *string { return &d.ID }),
-		projection.Column(qs.JSONBExpr(qs.Col("payload")).TextKey("country").Expr(), func(d *Document) *string { return &d.Country }),
+		projection.Column(
+			qs.JSONBExpr(qs.Col("payload")).TextKey("country").Expr(),
+			func(d *Document) *string { return &d.Country },
+		),
 	), func(d Document) (string, error) { return d.ID + ":" + d.Country, nil }, func(label *string, v string) { *label = v })
 
 	// Application code passes rows.Scan.
@@ -107,8 +118,10 @@ func ExampleProjection_returning() {
 		projection.Column(qs.Col("d", "payload"), func(d *Document) *string { return &d.Payload }),
 	)
 	text, args, err := qs.UpdateTable(qs.Table("documents").As("d")).
-		Set(qs.SetNull("archived_at")).Where(qs.Col("d", "id").Eq(qs.Param("document-1"))).
-		Returning(p.Expressions()...).ToSQL()
+		Set(qs.SetNull("archived_at")).
+		Where(qs.Col("d", "id").Eq(qs.Param("document-1"))).
+		Returning(p.Expressions()...).
+		ToSQL()
 	if err != nil {
 		panic(err)
 	}
@@ -171,8 +184,10 @@ func ExampleProjection_ScanInto() {
 	returning := projection.Column(qs.Col("version"), func(d *Document) *int64 { return &d.Version })
 	document := Document{ID: "document-1", Title: "Draft"}
 	text, args, err := qs.Update("documents").
-		Set(qs.Set("title", qs.Value(document.Title))).Where(qs.Col("id").Eq(qs.Param(document.ID))).
-		Returning(returning.Expressions()...).ToSQL()
+		Set(qs.Set("title", qs.Value(document.Title))).
+		Where(qs.Col("id").Eq(qs.Param(document.ID))).
+		Returning(returning.Expressions()...).
+		ToSQL()
 	if err != nil {
 		panic(err)
 	}
@@ -208,17 +223,25 @@ func ExampleColumnOrZero() {
 	humans := qs.Table("humans").As("h")
 	human := projection.New(
 		projection.ColumnNull(humans.Col("user_id"), func(*Human, *int64) {}),
-		projection.ColumnOrZero(humans.Col("nickname"), func(h *Human) *string { return &h.Nickname }),
-		projection.ColumnOrZero(humans.Col("logins"), func(h *Human) *sql.NullInt64 { return &h.Logins }),
+		projection.ColumnOrZero(
+			humans.Col("nickname"),
+			func(h *Human) *string { return &h.Nickname },
+		),
+		projection.ColumnOrZero(
+			humans.Col("logins"),
+			func(h *Human) *sql.NullInt64 { return &h.Logins },
+		),
 	)
 	users := qs.Table("users").As("u")
 	p := projection.New(
 		projection.Column(users.Col("id"), func(u *User) *int64 { return &u.ID }),
 		projection.EmbedNull(human, func(u *User, h *Human) { u.Human = h }),
 	)
-	text, _, err := qs.SelectSlice(p.Expressions()).FromExpr(
-		qs.LeftJoin(users, humans).On(users.Col("id").Eq(humans.Col("user_id"))),
-	).ToSQL()
+	text, _, err := qs.SelectSlice(p.Expressions()).
+		FromExpr(
+			qs.LeftJoin(users, humans).On(users.Col("id").Eq(humans.Col("user_id"))),
+		).
+		ToSQL()
 	if err != nil {
 		panic(err)
 	}
@@ -247,8 +270,12 @@ func ExampleProjection_Collect_windowCount() {
 		projection.Column(documents.Col("id"), func(d *Document) *string { return &d.ID }),
 		projection.Column(documents.Col("country"), func(d *Document) *string { return &d.Country }),
 	)
-	text, args, err := qs.SelectSlice(p.Expressions()).Columns(qs.CountAll().Over(qs.Window())).
-		FromExpr(documents).OrderBy(documents.Col("id").Asc()).Limit(2).ToSQL()
+	text, args, err := qs.SelectSlice(p.Expressions()).
+		Columns(qs.CountAll().Over(qs.Window())).
+		FromExpr(documents).
+		OrderBy(documents.Col("id").Asc()).
+		Limit(2).
+		ToSQL()
 	if err != nil {
 		panic(err)
 	}

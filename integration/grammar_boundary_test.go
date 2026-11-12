@@ -54,7 +54,9 @@ func TestSuccessiveIndirectionAgainstPostgres(t *testing.T) {
 		t.Fatalf("element=%d flatArrayNull=%v y=%v flatBoxNull=%v field=%d", element, flatArrayNull, y, flatBoxNull, field)
 	}
 
-	expanded := qs.Select(pairs.Index(one).Parenthesized().Fields().Parenthesized()).From("qs_grouped_indirection")
+	expanded := qs.Select(pairs.Index(one).Parenthesized().Fields().Parenthesized()).From(
+		"qs_grouped_indirection",
+	)
 	sql, args, err = session.render(t, expanded)
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +82,10 @@ func TestFunctionRelationCastsAgainstPostgres(t *testing.T) {
 	}{
 		{"direct", qs.TableFunc(sum).As("c", "v")},
 		{"rows_from", qs.RowsFrom(qs.Function(sum)).As("c", "v")},
-		{"nested_parameter_cast", qs.TableFunc(qs.Param(3).Cast(qs.TypeInt4).Cast(qs.TypeInt8)).As("c", "v")},
+		{
+			"nested_parameter_cast",
+			qs.TableFunc(qs.Param(3).Cast(qs.TypeInt4).Cast(qs.TypeInt8)).As("c", "v"),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sql, args, err := session.render(t, qs.Select(qs.Col("v")).FromExpr(tc.relation))

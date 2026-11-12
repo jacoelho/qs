@@ -3,11 +3,13 @@ package qs
 import "testing"
 
 func cycleValuesQuery(mark, otherwise Expr) SelectBuilder {
-	return SelectCols("id").From("c").WithRecursive(
-		CTE("c", Select(Param(1))).Columns("id").Cycle(
-			Cycle("id").Set("seen").Values(mark, otherwise).Using("path"),
-		),
-	)
+	return SelectCols("id").
+		From("c").
+		WithRecursive(
+			CTE("c", Select(Param(1))).Columns("id").Cycle(
+				Cycle("id").Set("seen").Values(mark, otherwise).Using("path"),
+			),
+		)
 }
 
 func TestCycleMarkConstants(t *testing.T) {

@@ -16,7 +16,10 @@ func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 	session := connect(t)
 	ctx, conn := session.Context, session.Conn
 	a := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("a", "id")
-	b := qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3)).As("b", "id")
+	b := qs.ValuesExpr(qs.LiteralInt(1)).
+		RowExpr(qs.LiteralInt(2)).
+		RowExpr(qs.LiteralInt(3)).
+		As("b", "id")
 	for _, tc := range []struct {
 		name string
 		join qs.Relation
@@ -28,7 +31,12 @@ func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 		{"natural", qs.NaturalJoin(a, b), [][2]int{{1, 1}, {2, 2}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := session.render(t, qs.Select(qs.Col("a", "id"), qs.Col("b", "id")).FromExpr(tc.join).OrderBy(qs.Col("a", "id").Asc(), qs.Col("b", "id").Asc()))
+			sql, args, err := session.render(
+				t,
+				qs.Select(qs.Col("a", "id"), qs.Col("b", "id")).
+					FromExpr(tc.join).
+					OrderBy(qs.Col("a", "id").Asc(), qs.Col("b", "id").Asc()),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +92,10 @@ func TestRowMembershipAgainstPostgres(t *testing.T) {
 	t.Parallel()
 	session := connect(t)
 	ctx, conn := session.Context, session.Conn
-	source := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3), qs.LiteralInt(4))
+	source := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).RowExpr(
+		qs.LiteralInt(3),
+		qs.LiteralInt(4),
+	)
 	empty := qs.Select(qs.LiteralInt(1), qs.LiteralInt(2)).Where(qs.False())
 	match := qs.Tuple(qs.LiteralInt(1), qs.LiteralInt(2))
 	swapped := qs.Tuple(qs.LiteralInt(2), qs.LiteralInt(1))
@@ -126,7 +137,10 @@ func TestUnknownWidthMembershipAgainstPostgres(t *testing.T) {
 	session := connect(t)
 	ctx, conn := session.Context, session.Conn
 	querySource := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2))
-	relationSource := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).RowExpr(qs.LiteralInt(3), qs.LiteralInt(4))
+	relationSource := qs.ValuesExpr(qs.LiteralInt(1), qs.LiteralInt(2)).RowExpr(
+		qs.LiteralInt(3),
+		qs.LiteralInt(4),
+	)
 	relation := qs.Subquery(relationSource, "r", "a", "b")
 	unknown := qs.Row(qs.Col("r").Fields())
 	known := qs.Row(qs.LiteralInt(1), qs.LiteralInt(2))

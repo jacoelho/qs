@@ -16,7 +16,14 @@ func TestJSONDocuments(t *testing.T) {
 		{"index", Select(doc.Index(0).Expr()), `SELECT ("payload" -> 0)`, nil},
 		{"negative_index", Select(doc.Index(-1).Expr()), `SELECT ("payload" -> -1)`, nil},
 		{"text_key", Select(doc.TextKey("name").Expr()).Where(doc.TextKey("name").Eq("Ada")), `SELECT ("payload" ->> E'name') WHERE (("payload" ->> E'name') = $1)`, []any{"Ada"}},
-		{"text_key_grouped", Select(doc.TextKey("kind").Expr(), CountAll()).From("events").GroupByExpr(doc.TextKey("kind").Expr()), `SELECT ("payload" ->> E'kind'), count(*) FROM "events" GROUP BY ("payload" ->> E'kind')`, nil},
+		{
+			"text_key_grouped",
+			Select(doc.TextKey("kind").Expr(), CountAll()).
+				From("events").
+				GroupByExpr(doc.TextKey("kind").Expr()),
+			`SELECT ("payload" ->> E'kind'), count(*) FROM "events" GROUP BY ("payload" ->> E'kind')`,
+			nil,
+		},
 		{"text_index", Select(doc.TextIndex(2).Expr()), `SELECT ("payload" ->> 2)`, nil},
 		{"path", Select(doc.Path("items", "0").Expr()), `SELECT ("payload" #> (ARRAY[E'items', E'0'])::text[])`, nil},
 		{"path_text", Select(doc.PathText("items", "0", "name").Expr()), `SELECT ("payload" #>> (ARRAY[E'items', E'0', E'name'])::text[])`, nil},
@@ -36,13 +43,23 @@ func TestJSONDocuments(t *testing.T) {
 		{"path_matches", Select(doc.PathMatches("$.a > 1").Expr()), `SELECT ("payload" @@ (E'$.a > 1')::jsonpath)`, nil},
 		{"json_chain", Select(JSONExpr(Col("doc")).Key("items").Index(-1).TextKey("name").As("name")), `SELECT ((("doc" -> E'items') -> -1) ->> E'name') AS "name"`, nil},
 		{"json_index", Select(JSONExpr(Col("doc")).TextIndex(0).Expr()), `SELECT ("doc" ->> 0)`, nil},
-		{"json_path", Select(JSONExpr(Col("doc")).Path("a").Expr(), JSONExpr(Col("doc")).PathText().Expr()), `SELECT ("doc" #> (ARRAY[E'a'])::text[]), ("doc" #>> (ARRAY[])::text[])`, nil},
+		{
+			"json_path",
+			Select(JSONExpr(Col("doc")).Path("a").Expr(), JSONExpr(Col("doc")).PathText().Expr()),
+			`SELECT ("doc" #> (ARRAY[E'a'])::text[]), ("doc" #>> (ARRAY[])::text[])`,
+			nil,
+		},
 		{"encoded_json", Select(JSONParam(`{"a":1}`).As("doc")), `SELECT ($1)::json AS "doc"`, []any{`{"a":1}`}},
 		{"quote_in_key", Select(doc.Key(`x'); DROP TABLE users; --`).Expr()), `SELECT ("payload" -> E'x''); DROP TABLE users; --')`, nil},
 		{"backslash_in_key", Select(doc.Key(`a\'b`).Expr()), `SELECT ("payload" -> E'a\\''b')`, nil},
 		{"bound_key", Select(JSONGet(doc.Expr(), Param("k"))), `SELECT ("payload" -> $1)`, []any{"k"}},
 		{"null", Select(doc.Key("a").IsNull().Expr(), JSONExpr(Col("doc")).IsNotNull().Expr()), `SELECT (("payload" -> E'a') IS NULL), ("doc" IS NOT NULL)`, nil},
-		{"update", Update("events").Set(doc.Set(doc.Concat(JSONBParam(`{"active":true}`)))).AllRows(), `UPDATE "events" SET "payload" = ("payload" || ($1)::jsonb)`, []any{`{"active":true}`}},
+		{
+			"update",
+			Update("events").Set(doc.Set(doc.Concat(JSONBParam(`{"active":true}`)))).AllRows(),
+			`UPDATE "events" SET "payload" = ("payload" || ($1)::jsonb)`,
+			[]any{`{"active":true}`},
+		},
 	})
 }
 
@@ -94,8 +111,13 @@ func TestJSONValidationAndNumbering(t *testing.T) {
 
 func typedJSONQuery() SelectBuilder {
 	doc := JSONBExpr(Col("payload"))
-	return Select(doc.PathText("items", "0", "name").As("name")).From("events").
-		Where(doc.HasAllKeys("items", "active"), doc.Contains(JSONBParam(`{"active":true}`)), doc.Key("items").Index(-1).TextKey("name").Eq("Ada"))
+	return Select(doc.PathText("items", "0", "name").As("name")).
+		From("events").
+		Where(
+			doc.HasAllKeys("items", "active"),
+			doc.Contains(JSONBParam(`{"active":true}`)),
+			doc.Key("items").Index(-1).TextKey("name").Eq("Ada"),
+		)
 }
 
 func TestJSONReusableAppendAllocations(t *testing.T) {
@@ -103,7 +125,12 @@ func TestJSONReusableAppendAllocations(t *testing.T) {
 	checkSQL(t, query, `SELECT ("payload" #>> (ARRAY[E'items', E'0', E'name'])::text[]) AS "name" FROM "events" WHERE ("payload" ?& (ARRAY[E'items', E'active'])::text[]) AND ("payload" @> ($1)::jsonb) AND (((("payload" -> E'items') -> -1) ->> E'name') = $2)`, `{"active":true}`, "Ada")
 	buf, args := make([]byte, 0, 2048), make([]any, 0, 16)
 	var err error
-	allocations := testing.AllocsPerRun(100, func() { buf, args, err = query.AppendSQL(buf[:0], args[:0]) })
+	allocations := testing.AllocsPerRun(100, func() {
+		buf, args, err = query.AppendSQL(
+			buf[:0],
+			args[:0],
+		)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

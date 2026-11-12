@@ -73,7 +73,10 @@ func TestConflictUpdateSlice(t *testing.T) {
 			} {
 				t.Run(invalid.name, func(t *testing.T) {
 					t.Parallel()
-					statement := InsertInto("users").Columns("id").Values(Value(42)).OnConflict(tc.complete(invalid.assignments))
+					statement := InsertInto("users").
+						Columns("id").
+						Values(Value(42)).
+						OnConflict(tc.complete(invalid.assignments))
 					checkError(t, statement, ErrInvalid)
 				})
 			}
@@ -84,7 +87,9 @@ func TestConflictUpdateSlice(t *testing.T) {
 func TestConflictUpdateSliceFailurePreservesAppendPrefixes(t *testing.T) {
 	t.Parallel()
 
-	statement := InsertInto("users").Columns("id").Values(Value(42)).
+	statement := InsertInto("users").
+		Columns("id").
+		Values(Value(42)).
 		OnConflict(ConflictColumns("id").DoUpdateSlice(nil))
 	sql, args, err := statement.AppendSQL([]byte("prefix "), []any{"existing"})
 	if !errors.Is(err, ErrInvalid) || string(sql) != "prefix " || len(args) != 1 || args[0] != "existing" {

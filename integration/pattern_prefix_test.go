@@ -58,8 +58,10 @@ func TestPostgreSQLLiteralPatterns(t *testing.T) {
 		{"empty_contains", qs.Col("value").ILikeContains(""), []string{"a!%_suffix", "aX_suffix", "a%b", "a_b", "john", "JOHN", "Jöhn", "", "ends!%_", "middle!%_tail", `beforeÖ\!%_tail`, "xJOHN!%_tail", `beforeÖ\!%_`, "ends!XY"}},
 		{"ascii_case_insensitive_suffix", qs.Col("value").ILikeSuffix("!%_TAIL"), []string{"middle!%_tail", `beforeÖ\!%_tail`, "xJOHN!%_tail"}},
 	} {
-		query := qs.Select(qs.Col("value")).From("qs_pattern_prefix").
-			Where(tc.condition).OrderBy(qs.Col("id").Asc())
+		query := qs.Select(qs.Col("value")).
+			From("qs_pattern_prefix").
+			Where(tc.condition).
+			OrderBy(qs.Col("id").Asc())
 		got := queryStrings(t, session, query)
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s: got %#v, want %#v", tc.name, got, tc.want)
@@ -72,7 +74,8 @@ func TestPostgreSQLLiteralPatterns(t *testing.T) {
 		qs.Col("value").ILikeContains("").Expr().IsNull().Expr(),
 		qs.Col("value").ILikeContains("x").Not().Expr().IsNull().Expr(),
 	).
-		From("qs_pattern_prefix").Where(qs.Col("value").IsNull())
+		From("qs_pattern_prefix").
+		Where(qs.Col("value").IsNull())
 	sql, args, err := session.render(t, nullQuery)
 	if err != nil {
 		t.Fatal(err)

@@ -20,7 +20,14 @@ func TestJoinCompletionForms(t *testing.T) {
 		{"right using", RightJoin(left, right).Using("id"), `SELECT * FROM ("left_table" RIGHT JOIN "right_table" USING ("id"))`},
 		{"full using", FullJoin(left, right).Using("id"), `SELECT * FROM ("left_table" FULL JOIN "right_table" USING ("id"))`},
 	} {
-		t.Run(tc.name, func(t *testing.T) { t.Parallel(); checkSQL(t, Select(Star()).FromExpr(tc.join), tc.sql) })
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			checkSQL(
+				t,
+				Select(Star()).FromExpr(tc.join),
+				tc.sql,
+			)
+		})
 	}
 }
 
@@ -28,7 +35,9 @@ func TestJoinUsingAliasAndRelationAlias(t *testing.T) {
 	t.Parallel()
 
 	checkSQL(t,
-		Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).UsingAs("joined", "id").As("whole")),
+		Select(Star()).FromExpr(
+			InnerJoin(Table("a"), Table("b")).UsingAs("joined", "id").As("whole"),
+		),
 		`SELECT * FROM ("a" JOIN "b" USING ("id") AS "joined") AS "whole"`,
 	)
 }
@@ -72,7 +81,11 @@ func TestJoinCompletionInvalidInputsRemainAtomic(t *testing.T) {
 	checkError(t, Select(Star()).FromExpr(InnerJoin(Relation{}, Table("b")).On(True())), ErrInvalid)
 	checkError(t, Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).Using("")), ErrInvalid)
 	checkError(t, Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).UsingAs("bad\x00", "id")), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).Using("id").As("bad\x00")), ErrInvalid)
+	checkError(
+		t,
+		Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).Using("id").As("bad\x00")),
+		ErrInvalid,
+	)
 }
 
 func TestSelectJoinZeroConditionAndMissingFrom(t *testing.T) {

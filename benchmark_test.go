@@ -38,7 +38,11 @@ func scenario[S Statement](name string, build func() S, sql string, args ...any)
 }
 
 func benchQuery() SelectBuilder {
-	return SelectCols("id", "name", "created_at").From("users").Where(Col("active").Eq(Param(true)), Col("id").In(Param(1), Param(2), Param(3))).OrderBy(Col("created_at").Desc(), Col("id").Desc()).Limit(50)
+	return SelectCols("id", "name", "created_at").
+		From("users").
+		Where(Col("active").Eq(Param(true)), Col("id").In(Param(1), Param(2), Param(3))).
+		OrderBy(Col("created_at").Desc(), Col("id").Desc()).
+		Limit(50)
 }
 
 var benchmarkScenarios = []benchmarkScenario{
@@ -46,17 +50,25 @@ var benchmarkScenarios = []benchmarkScenario{
 		`SELECT "id", "name", "created_at" FROM "users" WHERE ("active" = $1) AND ("id" IN ($2, $3, $4)) ORDER BY "created_at" DESC, "id" DESC LIMIT $5`,
 		true, 1, 2, 3, 50),
 	scenario("keyset_page", func() SelectBuilder {
-		return SelectCols("id", "name").From("users").Where(Col("active").Eq(Param(true))).
+		return SelectCols("id", "name").
+			From("users").
+			Where(Col("active").Eq(Param(true))).
 			OrderBy(Col("users", "created_at").Desc(), Col("users", "id").Desc()).
-			SeekAfter(int64(1700000000), int64(42)).Limit(20)
+			SeekAfter(int64(1700000000), int64(42)).
+			Limit(20)
 	},
 		`SELECT "id", "name" FROM "users" WHERE ("active" = $1) AND (("users"."created_at", "users"."id") < ($2, $3)) ORDER BY "users"."created_at" DESC, "users"."id" DESC LIMIT $4`,
 		true, int64(1700000000), int64(42), 20),
 	scenario("cte_window", func() SelectBuilder {
-		recent := CTE("recent", SelectCols("id").From("users").Where(Col("created_at").Gt(Param(100))))
+		recent := CTE(
+			"recent",
+			SelectCols("id").From("users").Where(Col("created_at").Gt(Param(100))),
+		)
 		return Select(Col("r", "id"), CountAll().Over(Window().OrderBy(Col("r", "id").Asc()))).
-			With(recent).FromExpr(recent.Ref().As("r")).
-			Where(Col("r", "id").In(Param(1), Param(2), Param(3))).Limit(20)
+			With(recent).
+			FromExpr(recent.Ref().As("r")).
+			Where(Col("r", "id").In(Param(1), Param(2), Param(3))).
+			Limit(20)
 	},
 		`WITH "recent" AS (SELECT "id" FROM "users" WHERE ("created_at" > $1)) SELECT "r"."id", count(*) OVER (ORDER BY "r"."id" ASC) FROM "recent" AS "r" WHERE ("r"."id" IN ($2, $3, $4)) LIMIT $5`,
 		100, 1, 2, 3, 20),
@@ -76,7 +88,14 @@ var benchmarkScenarios = []benchmarkScenario{
 		`SELECT coalesce("nickname", "name"), date_trunc($1, "created_at"), lag("score", $2) OVER (ORDER BY "id" ASC) FROM "users"`,
 		"day", 1),
 	scenario("searched_case", func() SelectBuilder {
-		return Select(Case().When(Col("v").Eq(Param(7)), Param("yes")).When(Col("v").Eq(Param(9)), Param("later")).Else(Param("no")).End())
+		return Select(
+			Case().When(Col("v").Eq(Param(7)), Param("yes")).When(
+				Col("v").Eq(Param(9)),
+				Param("later"),
+			).Else(
+				Param("no"),
+			).End(),
+		)
 	},
 		`SELECT CASE WHEN ("v" = $1) THEN $2 WHEN ("v" = $3) THEN $4 ELSE $5 END`,
 		7, "yes", 9, "later", "no"),
@@ -84,22 +103,30 @@ var benchmarkScenarios = []benchmarkScenario{
 		`SELECT ("payload" #>> (ARRAY[E'items', E'0', E'name'])::text[]) AS "name" FROM "events" WHERE ("payload" ?& (ARRAY[E'items', E'active'])::text[]) AND ("payload" @> ($1)::jsonb) AND (((("payload" -> E'items') -> -1) ->> E'name') = $2)`,
 		`{"active":true}`, "Ada"),
 	scenario("quoted_identifiers", func() SelectBuilder {
-		return Select(Col(`odd"name`), Col(`"leading`), Col(`trailing"`), Col(`two""quotes`)).From("events")
+		return Select(Col(`odd"name`), Col(`"leading`), Col(`trailing"`), Col(`two""quotes`)).From(
+			"events",
+		)
 	},
 		`SELECT "odd""name", """leading", "trailing""", "two""""quotes" FROM "events"`),
 	scenario("insert_rows", func() InsertRows {
-		return InsertInto("events").Columns("id", "name").Values(Value(1), Value("Ada")).Values(Value(2), Value("Grace"))
+		return InsertInto("events").
+			Columns("id", "name").
+			Values(Value(1), Value("Ada")).
+			Values(Value(2), Value("Grace"))
 	},
 		`INSERT INTO "events" ("id", "name") VALUES ($1, $2), ($3, $4)`,
 		1, "Ada", 2, "Grace"),
 	scenario("insert_expression_and_default", func() InsertRows {
-		return InsertInto("events").Targets(Col("id"), Col("payload"), Col("active")).
+		return InsertInto("events").
+			Targets(Col("id"), Col("payload"), Col("active")).
 			Values(Value(1), Write(JSONBParam(`{"a":1}`).Expr()), Default())
 	},
 		`INSERT INTO "events" ("id", "payload", "active") VALUES ($1, ($2)::jsonb, DEFAULT)`,
 		1, `{"a":1}`),
 	scenario("insert_eight_rows", func() InsertRows {
-		b := InsertInto("events").Columns("id", "name", "active").Values(Value(0), Value("name"), Value(true))
+		b := InsertInto("events").
+			Columns("id", "name", "active").
+			Values(Value(0), Value("name"), Value(true))
 		for i := 1; i < 8; i++ {
 			b = b.Values(Value(i), Value("name"), Value(true))
 		}
@@ -119,22 +146,38 @@ var benchmarkScenarios = []benchmarkScenario{
 	scenario("upsert", func() InsertRows {
 		conflict := ConflictColumns("id").TargetWhere(Col("active").Eq(Param(true))).
 			DoUpdate(Set("name", Value("updated"))).Where(Col("locked").Eq(Param(false)))
-		return InsertInto("events").Columns("id", "name").Values(Value(1), Value("Ada")).OnConflict(conflict)
+		return InsertInto("events").
+			Columns("id", "name").
+			Values(Value(1), Value("Ada")).
+			OnConflict(conflict)
 	},
 		`INSERT INTO "events" ("id", "name") VALUES ($1, $2) ON CONFLICT ("id") WHERE ("active" = $3) DO UPDATE SET "name" = $4 WHERE ("locked" = $5)`,
 		1, "Ada", true, "updated", false),
 	scenario("update_tuple", func() UpdateBuilder {
-		return Update("people").Set(
-			AssignRow([]Expr{Col("first"), Col("last")}, WriteTuple(Default(), Value("Lovelace"))),
-		).Where(Col("id").Eq(Param(7)))
+		return Update("people").
+			Set(
+				AssignRow(
+					[]Expr{Col("first"), Col("last")},
+					WriteTuple(Default(), Value("Lovelace")),
+				),
+			).
+			Where(Col("id").Eq(Param(7)))
 	},
 		`UPDATE "people" SET ("first", "last") = (DEFAULT, $1) WHERE ("id" = $2)`,
 		"Lovelace", 7),
 	scenario("merge", func() MergeBuilder {
-		return MergeInto("t").Using(Table("s")).On(Col("t", "id").Eq(Col("s", "id"))).When(
-			Matched().And(Col("s", "state").Eq(Param("open"))).ThenUpdate(Set("v", Write(Param(7)))),
-			NotMatched().OverridingSystemValue().ThenInsert(Set("id", Write(Param(11))), Set("v", Write(Param(13)))),
-		)
+		return MergeInto("t").
+			Using(Table("s")).
+			On(Col("t", "id").Eq(Col("s", "id"))).
+			When(
+				Matched().And(Col("s", "state").Eq(Param("open"))).ThenUpdate(
+					Set("v", Write(Param(7))),
+				),
+				NotMatched().OverridingSystemValue().ThenInsert(
+					Set("id", Write(Param(11))),
+					Set("v", Write(Param(13))),
+				),
+			)
 	},
 		`MERGE INTO "t" USING "s" ON ("t"."id" = "s"."id") WHEN MATCHED AND ("s"."state" = $1) THEN UPDATE SET "v" = $2 WHEN NOT MATCHED THEN INSERT ("id", "v") OVERRIDING SYSTEM VALUE VALUES ($3, $4)`,
 		"open", 7, 11, 13),

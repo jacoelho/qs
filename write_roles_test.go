@@ -13,9 +13,11 @@ func (v writeDriverValue) Value() (driver.Value, error) { return v.text, nil }
 func TestValueBindsMixedDestinationValues(t *testing.T) {
 	t.Parallel()
 	checkSQL(t,
-		InsertInto("people").Columns("id", "name", "note", "created", "rank").Values(
-			Value(1), Value("Ada"), Value(nil), Default(), Write(LiteralInt(7)),
-		),
+		InsertInto("people").
+			Columns("id", "name", "note", "created", "rank").
+			Values(
+				Value(1), Value("Ada"), Value(nil), Default(), Write(LiteralInt(7)),
+			),
 		`INSERT INTO "people" ("id", "name", "note", "created", "rank") VALUES ($1, $2, $3, DEFAULT, 7)`,
 		1, "Ada", nil,
 	)
@@ -40,23 +42,34 @@ func TestWriteRolesRenderDefaultsAndPreserveArguments(t *testing.T) {
 		`INSERT INTO "people" ("name") VALUES (DEFAULT)`,
 	)
 	checkSQL(t,
-		Update("people").Set(AssignRow(
-			[]Expr{Col("first"), Col("last")},
-			WriteTuple(Default(), Value("Lovelace")),
-		)).AllRows(),
+		Update("people").
+			Set(AssignRow(
+				[]Expr{Col("first"), Col("last")},
+				WriteTuple(Default(), Value("Lovelace")),
+			)).
+			AllRows(),
 		`UPDATE "people" SET ("first", "last") = (DEFAULT, $1)`, "Lovelace",
 	)
 	checkSQL(t,
-		Update("people").Set(AssignRow(
-			[]Expr{Col("first"), Col("last")},
-			WriteRow(Default(), Value("Lovelace")),
-		)).AllRows(),
+		Update("people").
+			Set(AssignRow(
+				[]Expr{Col("first"), Col("last")},
+				WriteRow(Default(), Value("Lovelace")),
+			)).
+			AllRows(),
 		`UPDATE "people" SET ("first", "last") = ROW(DEFAULT, $1)`, "Lovelace",
 	)
 	checkSQL(t,
-		MergeInto("people").Using(Table("incoming")).On(True()).When(
-			NotMatched().ThenInsertValues([]string{"name", "note"}, Default(), Value("from-merge")),
-		),
+		MergeInto("people").
+			Using(Table("incoming")).
+			On(True()).
+			When(
+				NotMatched().ThenInsertValues(
+					[]string{"name", "note"},
+					Default(),
+					Value("from-merge"),
+				),
+			),
 		`MERGE INTO "people" USING "incoming" ON TRUE WHEN NOT MATCHED THEN INSERT ("name", "note") VALUES (DEFAULT, $1)`, "from-merge",
 	)
 }
@@ -67,7 +80,14 @@ func TestWriteRejectsNestedDefaultAndPreservesRollback(t *testing.T) {
 	nested := Write(privateDefault.Add(Param("nested")))
 	for _, statement := range []Statement{
 		Update("people").Set(Set("name", nested)).AllRows(),
-		Update("people").Set(AssignRow([]Expr{Col("first"), Col("last")}, WriteTuple(nested, Write(Param("Lovelace"))))).AllRows(),
+		Update("people").
+			Set(
+				AssignRow(
+					[]Expr{Col("first"), Col("last")},
+					WriteTuple(nested, Write(Param("Lovelace"))),
+				),
+			).
+			AllRows(),
 	} {
 		checkError(t, statement, ErrInvalid)
 	}
@@ -111,7 +131,11 @@ func TestInsertColumnSelectorOwnsTargetsAcrossRoles(t *testing.T) {
 	t.Parallel()
 	selector := InsertInto("events").Columns("name")
 
-	rows := selector.Values(Write(Param("row"))).Values(Write(Param("row-2"))).Into("archive").OnConflict(AnyConflict().DoNothing()).ReturningCols("name")
+	rows := selector.Values(Write(Param("row"))).
+		Values(Write(Param("row-2"))).
+		Into("archive").
+		OnConflict(AnyConflict().DoNothing()).
+		ReturningCols("name")
 	selectSource := selector.From(Select(Param("select"))).Into("archive").ReturningCols("name")
 	defaults := selector.DefaultValues().Into("archive").ReturningCols("name")
 

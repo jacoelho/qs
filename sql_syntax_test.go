@@ -121,7 +121,15 @@ func TestSQLValueFunctions(t *testing.T) {
 	t.Parallel()
 
 	checkSQL(t,
-		Select(CurrentTime(3), CurrentTimestamp(6), LocalTime(), LocalTimestamp(2), SessionUser(), CurrentSchema(), CurrentCatalog()),
+		Select(
+			CurrentTime(3),
+			CurrentTimestamp(6),
+			LocalTime(),
+			LocalTimestamp(2),
+			SessionUser(),
+			CurrentSchema(),
+			CurrentCatalog(),
+		),
 		`SELECT CURRENT_TIME(3), CURRENT_TIMESTAMP(6), LOCALTIME, LOCALTIMESTAMP(2), SESSION_USER, CURRENT_SCHEMA, CURRENT_CATALOG`,
 	)
 	checkSQL(t, Select(CurrentDate(), CurrentUser()), `SELECT CURRENT_DATE, CURRENT_USER`)

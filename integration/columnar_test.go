@@ -33,9 +33,21 @@ func TestInsertFromArraysPairsColumnsWithArrays(t *testing.T) {
 	if tag.RowsAffected() != 2 {
 		t.Fatalf("%d rows inserted; want 2", tag.RowsAffected())
 	}
-	got := queryStrings(t, session, qs.Select(
-		qs.Concat(qs.Col("id"), qs.LiteralString(":"), qs.Col("first"), qs.LiteralString(" "), qs.Col("last")),
-	).From("qs_people").OrderBy(qs.Col("id").Asc()))
+	got := queryStrings(
+		t,
+		session,
+		qs.Select(
+			qs.Concat(
+				qs.Col("id"),
+				qs.LiteralString(":"),
+				qs.Col("first"),
+				qs.LiteralString(" "),
+				qs.Col("last"),
+			),
+		).
+			From("qs_people").
+			OrderBy(qs.Col("id").Asc()),
+	)
 	if want := []string{"1:Ada Lovelace", "2:Grace Hopper"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %q; want %q", got, want)
 	}
@@ -64,14 +76,18 @@ func TestInsertFromNamedPairsTargetsWithExpressions(t *testing.T) {
 	read := qs.Select(qs.Concat(
 		qs.Col("source"), qs.LiteralString(" "), qs.Col("position"), qs.LiteralString(":"),
 		qs.Col("name"), qs.LiteralString("/"), qs.Col("kind"),
-	)).From("qs_steps").OrderBy(qs.Col("source").Asc(), qs.Col("position").Asc())
+	)).
+		From("qs_steps").
+		OrderBy(qs.Col("source").Asc(), qs.Col("position").Asc())
 
 	u := qs.UnnestAs("u",
 		qs.NamedArray("name", qs.ArrayParam([]string{"build", "ship"}, qs.TypeText)),
 		qs.NamedArray("kind", qs.ArrayParam([]string{"ci", "cd"}, qs.TypeText)),
 	).WithOrdinality()
 	arrays := qs.InsertInto("qs_steps").FromNamed(qs.Select(
-		u.Col("kind"), qs.LiteralString("arrays").As("source"), u.Col("ordinality").As("position"), u.Col("name"),
+		u.Col("kind"), qs.LiteralString("arrays").As("source"), u.Col("ordinality").As("position"), u.Col(
+			"name",
+		),
 	).FromExpr(u))
 
 	e := qs.TableFunc(qs.JSONBArrayElements(
@@ -79,7 +95,11 @@ func TestInsertFromNamedPairsTargetsWithExpressions(t *testing.T) {
 	)).WithOrdinality().As("e", "item", "position")
 	item := qs.JSONBExpr(e.Col("item"))
 	elements := qs.InsertInto("qs_steps").FromNamed(qs.Select(
-		item.TextKey("kind").As("kind"), e.Col("position"), qs.LiteralString("json").As("source"), item.TextKey("name").As("name"),
+		item.TextKey("kind").As("kind"), e.Col("position"), qs.LiteralString("json").As("source"), item.TextKey(
+			"name",
+		).As(
+			"name",
+		),
 	).FromExpr(e))
 
 	for _, insert := range []qs.Statement{arrays, elements} {
@@ -104,9 +124,21 @@ func TestUnnestAsNamesColumnsAndOrdinality(t *testing.T) {
 		qs.NamedArray("kind", qs.ArrayParam([]string{"b", "a", "c"}, qs.TypeText)),
 		qs.NamedArray("qty", qs.ArrayParam([]int32{20, 10, 30}, qs.TypeInt4)),
 	).WithOrdinality()
-	got := queryStrings(t, session, qs.Select(
-		qs.Concat(u.Col("ordinality"), qs.LiteralString(":"), u.Col("kind"), qs.LiteralString("="), u.Col("qty")),
-	).FromExpr(u).OrderBy(u.Col("kind").Asc()))
+	got := queryStrings(
+		t,
+		session,
+		qs.Select(
+			qs.Concat(
+				u.Col("ordinality"),
+				qs.LiteralString(":"),
+				u.Col("kind"),
+				qs.LiteralString("="),
+				u.Col("qty"),
+			),
+		).
+			FromExpr(u).
+			OrderBy(u.Col("kind").Asc()),
+	)
 	if want := []string{"2:a=10", "1:b=20", "3:c=30"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %q; want %q", got, want)
 	}
@@ -126,8 +158,14 @@ func TestFieldEqAnyMatchesArrayMembers(t *testing.T) {
 		{"empty", []int32{}, nil},
 		{"nil", nil, nil},
 	} {
-		got := queryStrings(t, session, qs.Select(n.Expr().Cast(qs.TypeText)).FromExpr(v).
-			Where(n.EqAny(tc.values, qs.TypeInt4)).OrderBy(n.Asc()))
+		got := queryStrings(
+			t,
+			session,
+			qs.Select(n.Expr().Cast(qs.TypeText)).
+				FromExpr(v).
+				Where(n.EqAny(tc.values, qs.TypeInt4)).
+				OrderBy(n.Asc()),
+		)
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Fatalf("%s: got %q; want %q", tc.name, got, tc.want)
 		}
@@ -149,37 +187,65 @@ func TestJSONSelectorsGroupAndOrder(t *testing.T) {
 	}
 	doc := qs.JSONBExpr(qs.Col("payload"))
 	kind := func() qs.Field[string] { return doc.TextKey("kind") }
-	got := queryStrings(t, session, qs.Select(
-		qs.Concat(kind().Expr(), qs.LiteralString("="), qs.CountAll()),
-	).From("qs_json_groups").GroupByExpr(kind().Expr()).OrderBy(kind().Asc()))
+	got := queryStrings(
+		t,
+		session,
+		qs.Select(
+			qs.Concat(kind().Expr(), qs.LiteralString("="), qs.CountAll()),
+		).
+			From("qs_json_groups").
+			GroupByExpr(kind().Expr()).
+			OrderBy(kind().Asc()),
+	)
 	if want := []string{"a=2", "b=1"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("grouped: got %q; want %q", got, want)
 	}
 
 	last := func() qs.Field[string] { return doc.Key("tags").TextIndex(-1) }
-	got = queryStrings(t, session, qs.Select(last().Expr()).Distinct().
-		From("qs_json_groups").OrderBy(last().Asc()))
+	got = queryStrings(
+		t,
+		session,
+		qs.Select(last().Expr()).
+			Distinct().
+			From("qs_json_groups").
+			OrderBy(last().Asc()),
+	)
 	if want := []string{"last", "y", "z"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("distinct: got %q; want %q", got, want)
 	}
 
-	got = queryStrings(t, session, qs.Select(doc.Path("it's", "n").Expr().Cast(qs.TypeText)).
-		From("qs_json_groups").Where(doc.HasKey("it's"), doc.PathExists(`$."it's".n ? (@ == 1)`)))
+	got = queryStrings(
+		t,
+		session,
+		qs.Select(doc.Path("it's", "n").Expr().Cast(qs.TypeText)).
+			From("qs_json_groups").
+			Where(doc.HasKey("it's"), doc.PathExists(`$."it's".n ? (@ == 1)`)),
+	)
 	if want := []string{"1"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("quoted key: got %q; want %q", got, want)
 	}
 
 	// A selector chosen at run time is bound; the index needs its cast.
-	got = queryStrings(t, session, qs.Select(
-		qs.JSONGetText(qs.JSONGet(qs.Col("payload"), qs.Param("tags")), qs.Param(int32(1)).Cast(qs.TypeInt4)),
-	).From("qs_json_groups").Where(doc.TextKey("kind").Eq("a"), doc.Key("tags").TextIndex(1).IsNotNull()).
-		OrderBy(qs.Ordinal(1).Asc()))
+	got = queryStrings(
+		t,
+		session,
+		qs.Select(
+			qs.JSONGetText(
+				qs.JSONGet(qs.Col("payload"), qs.Param("tags")),
+				qs.Param(int32(1)).Cast(qs.TypeInt4),
+			),
+		).
+			From("qs_json_groups").
+			Where(doc.TextKey("kind").Eq("a"), doc.Key("tags").TextIndex(1).IsNotNull()).
+			OrderBy(qs.Ordinal(1).Asc()),
+	)
 	if want := []string{"last", "y"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("bound selectors: got %q; want %q", got, want)
 	}
 
 	bound := qs.Select(qs.JSONGetText(qs.Col("payload"), qs.Param("kind")), qs.CountAll()).
-		From("qs_json_groups").GroupByExpr(qs.JSONGetText(qs.Col("payload"), qs.Param("kind")))
+		From("qs_json_groups").
+		GroupByExpr(qs.JSONGetText(qs.Col("payload"), qs.Param("kind")))
 	sql, args, err := session.render(t, bound)
 	if err != nil {
 		t.Fatal(err)

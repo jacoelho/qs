@@ -9,7 +9,11 @@ func TestParenthesizedIndirection(t *testing.T) {
 	t.Parallel()
 
 	base := Col("a").Index(Param(1))
-	query := Select(base.Index(Param(2)), base.Parenthesized().Index(Param(3)), base.Parenthesized().Field("f"))
+	query := Select(
+		base.Index(Param(2)),
+		base.Parenthesized().Index(Param(3)),
+		base.Parenthesized().Field("f"),
+	)
 	checkSQL(t, query, `SELECT ("a")[$1][$2], (("a")[$3])[$4], (("a")[$5])."f"`, 1, 2, 1, 3, 1)
 	checkSQL(t, Select(base), `SELECT ("a")[$1]`, 1)
 	checkSQL(t, Select(base.Parenthesized().Parenthesized().Index(LiteralInt(2))), `SELECT ((("a")[$1]))[2]`, 1)
@@ -34,7 +38,14 @@ func TestFunctionRelationCastGrammar(t *testing.T) {
 
 	query := Select(Param("projection"), Param(4).Cast(TypeInt4)).FromExpr(
 		TableFunc(Param(5).Cast(TypeInt4)).As("direct", "v"),
-		RowsFrom(Function(Param(6).Cast(TypeInt8)), Function(Call("generate_series", Param(7), Param(8)))).As("rows", "v", "n"),
+		RowsFrom(
+			Function(Param(6).Cast(TypeInt8)),
+			Function(Call("generate_series", Param(7), Param(8))),
+		).As(
+			"rows",
+			"v",
+			"n",
+		),
 	)
 	checkSQL(t, query, `SELECT $1, ($2)::integer FROM CAST($3 AS integer) AS "direct" ("v"), ROWS FROM (CAST($4 AS bigint), "generate_series"($5, $6)) AS "rows" ("v", "n")`, "projection", 4, 5, 6, 7, 8)
 	checkSQL(t, Select(Star()).FromExpr(TableFunc(Param(1).Cast(TypeInt4).Cast(TypeInt8))), `SELECT * FROM CAST(($1)::integer AS bigint)`, 1)

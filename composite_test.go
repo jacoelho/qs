@@ -13,13 +13,67 @@ func TestCompositeExpressions(t *testing.T) {
 		{"full_slice", Select(Col("items").SliceAll()), `SELECT ("items")[:]`, nil},
 		{"tuple", Select(Tuple(Col("a"), Param(7)).Expr()), `SELECT ("a", $1)`, []any{7}},
 		{"row", Select(Row(Col("a"), Param(7)).Expr()), `SELECT ROW("a", $1)`, []any{7}},
-		{"like_escape_expr", Select(Col("name").LikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()), `SELECT ("name" LIKE $1 ESCAPE $2)`, []any{`a\\_%`, `\\`}},
-		{"not_like_escape_expr", Select(Col("name").NotLikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()), `SELECT ("name" NOT LIKE $1 ESCAPE $2)`, []any{`a\\_%`, `\\`}},
-		{"not_ilike_escape_expr", Select(Col("name").NotILikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()), `SELECT ("name" NOT ILIKE $1 ESCAPE $2)`, []any{`a\\_%`, `\\`}},
-		{"complex_insert_targets", InsertInto("people").Targets(Col("profile").Field("name"), Col("items").Index(Param(2))).Values(Write(Param("Ada")), Write(Param("tag"))), `INSERT INTO "people" ("profile"."name", "items"[$1]) VALUES ($2, $3)`, []any{2, "Ada", "tag"}},
-		{"multiple_insert_rows", InsertInto("people").Columns("first_name", "age").Values(Write(Param("Ada")), Write(Param(36))).Values(Write(Param("Grace")), Write(Param(37))), `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2), ($3, $4)`, []any{"Ada", 36, "Grace", 37}},
-		{"row_assignment", Update("people").Set(AssignRow([]Expr{Col("person").Field("first_name"), Col("person").Field("age")}, WriteTuple(Write(Param("Grace")), Write(Param(37))))).AllRows(), `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, []any{"Grace", 37}},
-		{"subquery_row_assignment", Update("people").Set(AssignRowFrom([]Expr{Col("first_name"), Col("age")}, Select(Param("Grace"), Param(37)))).AllRows(), `UPDATE "people" SET ("first_name", "age") = (SELECT $1, $2)`, []any{"Grace", 37}},
+		{
+			"like_escape_expr",
+			Select(Col("name").LikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()),
+			`SELECT ("name" LIKE $1 ESCAPE $2)`,
+			[]any{`a\\_%`, `\\`},
+		},
+		{
+			"not_like_escape_expr",
+			Select(Col("name").NotLikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()),
+			`SELECT ("name" NOT LIKE $1 ESCAPE $2)`,
+			[]any{`a\\_%`, `\\`},
+		},
+		{
+			"not_ilike_escape_expr",
+			Select(Col("name").NotILikeExpr(Param(`a\\_%`)).EscapeExpr(Param(`\\`)).Expr()),
+			`SELECT ("name" NOT ILIKE $1 ESCAPE $2)`,
+			[]any{`a\\_%`, `\\`},
+		},
+		{
+			"complex_insert_targets",
+			InsertInto("people").
+				Targets(Col("profile").Field("name"), Col("items").Index(Param(2))).
+				Values(Write(Param("Ada")), Write(Param("tag"))),
+			`INSERT INTO "people" ("profile"."name", "items"[$1]) VALUES ($2, $3)`,
+			[]any{2, "Ada", "tag"},
+		},
+		{
+			"multiple_insert_rows",
+			InsertInto("people").
+				Columns("first_name", "age").
+				Values(Write(Param("Ada")), Write(Param(36))).
+				Values(Write(Param("Grace")), Write(Param(37))),
+			`INSERT INTO "people" ("first_name", "age") VALUES ($1, $2), ($3, $4)`,
+			[]any{"Ada", 36, "Grace", 37},
+		},
+		{
+			"row_assignment",
+			Update("people").
+				Set(
+					AssignRow(
+						[]Expr{Col("person").Field("first_name"), Col("person").Field("age")},
+						WriteTuple(Write(Param("Grace")), Write(Param(37))),
+					),
+				).
+				AllRows(),
+			`UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`,
+			[]any{"Grace", 37},
+		},
+		{
+			"subquery_row_assignment",
+			Update("people").
+				Set(
+					AssignRowFrom(
+						[]Expr{Col("first_name"), Col("age")},
+						Select(Param("Grace"), Param(37)),
+					),
+				).
+				AllRows(),
+			`UPDATE "people" SET ("first_name", "age") = (SELECT $1, $2)`,
+			[]any{"Grace", 37},
+		},
 	})
 }
 
@@ -28,8 +82,23 @@ func TestCompositeUnknownProjectionWidths(t *testing.T) {
 
 	checkSQL(t, Select(Row(Col("person").Fields()).Expr()), `SELECT ROW(("person").*)`)
 	checkSQL(t, ValuesExpr(Col("person").Fields()), `VALUES (("person").*)`)
-	checkSQL(t, InsertInto("people").Columns("first_name", "age").Values(Write(Col("person").Fields())), `INSERT INTO "people" ("first_name", "age") VALUES (("person").*)`)
-	checkSQL(t, Update("people").Set(AssignRow([]Expr{Col("first_name"), Col("age")}, WriteRowExpr(Row(Col("person").Fields())))).AllRows(), `UPDATE "people" SET ("first_name", "age") = ROW(("person").*)`)
+	checkSQL(
+		t,
+		InsertInto("people").Columns("first_name", "age").Values(Write(Col("person").Fields())),
+		`INSERT INTO "people" ("first_name", "age") VALUES (("person").*)`,
+	)
+	checkSQL(
+		t,
+		Update("people").
+			Set(
+				AssignRow(
+					[]Expr{Col("first_name"), Col("age")},
+					WriteRowExpr(Row(Col("person").Fields())),
+				),
+			).
+			AllRows(),
+		`UPDATE "people" SET ("first_name", "age") = ROW(("person").*)`,
+	)
 }
 
 func TestCompositeKnownWidthErrors(t *testing.T) {
@@ -40,11 +109,35 @@ func TestCompositeKnownWidthErrors(t *testing.T) {
 	checkError(t, Select(Row(Col("a"), Col("b")).Eq(Row(Col("a"))).Expr()), ErrInvalid)
 	checkError(t, ValuesExpr(Param(1)).RowExpr(Param(2), Param(3)), ErrInvalid)
 	checkError(t, InsertInto("people").Columns("first_name", "age").Values(Write(Param("Ada"))), ErrInvalid)
-	checkError(t, InsertInto("people").Columns("first_name", "age", "first_name").Values(Write(Param("Ada")), Write(Param(36)), Write(Param("duplicate"))), ErrInvalid)
-	checkError(t, Update("people").Set(AssignRow([]Expr{Col("first_name"), Col("age")}, WriteRowExpr(Tuple(Param("Ada"))))).AllRows(), ErrInvalid)
-	checkError(t, Update("people").Set(AssignRowFrom([]Expr{Col("first_name"), Col("age")}, Select(Param("Ada")))).AllRows(), ErrInvalid)
+	checkError(
+		t,
+		InsertInto("people").
+			Columns("first_name", "age", "first_name").
+			Values(Write(Param("Ada")), Write(Param(36)), Write(Param("duplicate"))),
+		ErrInvalid,
+	)
+	checkError(
+		t,
+		Update("people").
+			Set(AssignRow([]Expr{Col("first_name"), Col("age")}, WriteRowExpr(Tuple(Param("Ada"))))).
+			AllRows(),
+		ErrInvalid,
+	)
+	checkError(
+		t,
+		Update("people").
+			Set(AssignRowFrom([]Expr{Col("first_name"), Col("age")}, Select(Param("Ada")))).
+			AllRows(),
+		ErrInvalid,
+	)
 	checkError(t, Select(Col("name").Eq(Param("Ada")).EscapeExpr(Param(`\\`)).Expr()), ErrInvalid)
-	checkError(t, InsertInto("people").Targets(Col("first_name"), Col("first_name")).Values(Write(Param("Ada")), Write(Param("Grace"))), ErrInvalid)
+	checkError(
+		t,
+		InsertInto("people").
+			Targets(Col("first_name"), Col("first_name")).
+			Values(Write(Param("Ada")), Write(Param("Grace"))),
+		ErrInvalid,
+	)
 }
 
 func TestCompositeConstructorsOwnTheirSlices(t *testing.T) {
@@ -57,7 +150,9 @@ func TestCompositeConstructorsOwnTheirSlices(t *testing.T) {
 	checkSQL(t, Update("people").Set(assignment).AllRows(), `UPDATE "people" SET ("person"."first_name", "person"."age") = ($1, $2)`, "Ada", 36)
 
 	insertTargets := []Expr{Col("first_name"), Col("age")}
-	insert := InsertInto("people").Targets(insertTargets[0], insertTargets[1]).Values(Write(Param("Ada")), Write(Param(36)))
+	insert := InsertInto("people").
+		Targets(insertTargets[0], insertTargets[1]).
+		Values(Write(Param("Ada")), Write(Param(36)))
 	insertTargets[0] = Col("changed")
 	checkSQL(t, insert, `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2)`, "Ada", 36)
 }
@@ -95,9 +190,11 @@ func TestAssignRowFieldTargetKeepsItsSubquery(t *testing.T) {
 	t.Parallel()
 
 	index := Select(Param(1))
-	original := Update("people").Set(AssignRow(
-		[]Expr{Col("profiles").Index(Scalar(index)).Field("name"), Col("age")},
-		WriteTuple(Value("Ada"), Value(36)),
-	)).AllRows()
+	original := Update("people").
+		Set(AssignRow(
+			[]Expr{Col("profiles").Index(Scalar(index)).Field("name"), Col("age")},
+			WriteTuple(Value("Ada"), Value(36)),
+		)).
+		AllRows()
 	checkSQL(t, original, `UPDATE "people" SET ("profiles"[(SELECT $1)]."name", "age") = ($2, $3)`, 1, "Ada", 36)
 }

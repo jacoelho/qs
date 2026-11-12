@@ -89,7 +89,10 @@ func TestParamDescriptorRejectionRollsBackEarlierOutput(t *testing.T) {
 	write := qs.Default()
 	statements := []qs.Statement{qs.Select(qs.Param("first"), qs.Param(&write))}
 	for _, constructor := range boundWriteConstructors() {
-		statements = append(statements, qs.InsertInto("events").Values(constructor.bind("first"), constructor.bind(&write)))
+		statements = append(
+			statements,
+			qs.InsertInto("events").Values(constructor.bind("first"), constructor.bind(&write)),
+		)
 	}
 	for _, statement := range statements {
 		prefix := []byte("prefix ")

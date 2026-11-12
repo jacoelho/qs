@@ -15,9 +15,13 @@ func ExampleInsertInto_arrayUpsert() {
 			qs.NamedArray("id", qs.ArrayParam(ids, qs.TypeInt4)),
 			qs.NamedArray("name", qs.ArrayParam(names, qs.TypeText)),
 		).
-		OnConflict(qs.ConflictColumns("id").TargetWhere(qs.Col("deleted_at").IsNull()).
-			DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
-		ReturningCols("id", "name").ToSQL()
+		OnConflict(
+			qs.ConflictColumns("id").
+				TargetWhere(qs.Col("deleted_at").IsNull()).
+				DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name")))),
+		).
+		ReturningCols("id", "name").
+		ToSQL()
 	if err != nil {
 		panic(err)
 	}
@@ -30,8 +34,11 @@ func ExampleInsertInto_arrayUpsert() {
 
 func ExampleSelectBuilder_GroupByExpr_parameterized() {
 	bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
-	query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).From("events").
-		GroupByExpr(qs.Ordinal(1)).OrderBy(qs.Ordinal(1).Asc()).ToSQL()
+	query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).
+		From("events").
+		GroupByExpr(qs.Ordinal(1)).
+		OrderBy(qs.Ordinal(1).Asc()).
+		ToSQL()
 	if err != nil {
 		panic(err)
 	}
@@ -44,13 +51,16 @@ func ExampleSelectBuilder_GroupByExpr_parameterized() {
 
 func ExampleSelectBuilder_SeekAfter() {
 	// Every key is NOT NULL and the last key is unique, so pages are disjoint.
-	feed := qs.SelectCols("id", "created_at").From("posts").Where(qs.Col("author_id").Eq(qs.Param(7)))
+	feed := qs.SelectCols("id", "created_at").
+		From("posts").
+		Where(qs.Col("author_id").Eq(qs.Param(7)))
 	order := []qs.Order{qs.Col("posts", "created_at").Desc(), qs.Col("posts", "id").Desc()}
 	// Seek after the last row shown: created_at 1700000000, id 42.
 	next := feed.OrderBy(order...).SeekAfter(int64(1700000000), int64(42)).Limit(20)
 	// Seek after the first row shown in reverse order, then reverse the rows.
 	previous := feed.OrderBy(order[0].Reverse(), order[1].Reverse()).
-		SeekAfter(int64(1700000500), int64(61)).Limit(20)
+		SeekAfter(int64(1700000500), int64(61)).
+		Limit(20)
 	// The count omits the ORDER BY clause, the cursor and LIMIT. Column keys
 	// cannot change the rows, so none move into the counted projection.
 	total := qs.CountRows(next)

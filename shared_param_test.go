@@ -11,18 +11,53 @@ func TestSharedParamBindsOnceAcrossUses(t *testing.T) {
 	other := SharedParam("acme")
 	inner := Select(Col("id")).From("members").Where(Col("tenant").Eq(tenant))
 	runCases(t, []renderCase{
-		{"every_use_repeats_the_number", Select(tenant.As("t")).From("users").Where(Col("tenant").Eq(tenant), Col("owner").Ne(tenant)),
-			`SELECT $1 AS "t" FROM "users" WHERE ("tenant" = $1) AND ("owner" <> $1)`, []any{"acme"}},
-		{"numbered_at_first_use", Select(Col("id")).From("users").Where(Col("age").Gt(Param(18)), Col("tenant").Eq(tenant), Col("n").Lt(Param(7)), Col("owner").Eq(tenant)),
-			`SELECT "id" FROM "users" WHERE ("age" > $1) AND ("tenant" = $2) AND ("n" < $3) AND ("owner" = $2)`, []any{18, "acme", 7}},
-		{"shared_with_a_subquery", Select(Col("id")).From("users").Where(Col("tenant").Eq(tenant), Col("id").InQuery(inner)),
-			`SELECT "id" FROM "users" WHERE ("tenant" = $1) AND ("id" IN (SELECT "id" FROM "members" WHERE ("tenant" = $1)))`, []any{"acme"}},
-		{"each_call_is_its_own_parameter", Select(Col("id")).From("users").Where(Col("tenant").Eq(tenant), Col("owner").Eq(other)),
-			`SELECT "id" FROM "users" WHERE ("tenant" = $1) AND ("owner" = $2)`, []any{"acme", "acme"}},
-		{"param_still_binds_at_each_use", Select(Col("id")).From("users").Where(Col("a").Eq(Param(1)), Col("b").Eq(Param(1))),
-			`SELECT "id" FROM "users" WHERE ("a" = $1) AND ("b" = $2)`, []any{1, 1}},
-		{"cast_applies_per_use", Select(tenant.Cast(TypeText)).From("users").Where(Col("tenant").Eq(tenant)),
-			`SELECT ($1)::text FROM "users" WHERE ("tenant" = $1)`, []any{"acme"}},
+		{
+			"every_use_repeats_the_number",
+			Select(tenant.As("t")).
+				From("users").
+				Where(Col("tenant").Eq(tenant), Col("owner").Ne(tenant)),
+			`SELECT $1 AS "t" FROM "users" WHERE ("tenant" = $1) AND ("owner" <> $1)`,
+			[]any{"acme"},
+		},
+		{
+			"numbered_at_first_use",
+			Select(Col("id")).
+				From("users").
+				Where(
+					Col("age").Gt(Param(18)),
+					Col("tenant").Eq(tenant),
+					Col("n").Lt(Param(7)),
+					Col("owner").Eq(tenant),
+				),
+			`SELECT "id" FROM "users" WHERE ("age" > $1) AND ("tenant" = $2) AND ("n" < $3) AND ("owner" = $2)`,
+			[]any{18, "acme", 7},
+		},
+		{
+			"shared_with_a_subquery",
+			Select(Col("id")).
+				From("users").
+				Where(Col("tenant").Eq(tenant), Col("id").InQuery(inner)),
+			`SELECT "id" FROM "users" WHERE ("tenant" = $1) AND ("id" IN (SELECT "id" FROM "members" WHERE ("tenant" = $1)))`,
+			[]any{"acme"},
+		},
+		{
+			"each_call_is_its_own_parameter",
+			Select(Col("id")).From("users").Where(Col("tenant").Eq(tenant), Col("owner").Eq(other)),
+			`SELECT "id" FROM "users" WHERE ("tenant" = $1) AND ("owner" = $2)`,
+			[]any{"acme", "acme"},
+		},
+		{
+			"param_still_binds_at_each_use",
+			Select(Col("id")).From("users").Where(Col("a").Eq(Param(1)), Col("b").Eq(Param(1))),
+			`SELECT "id" FROM "users" WHERE ("a" = $1) AND ("b" = $2)`,
+			[]any{1, 1},
+		},
+		{
+			"cast_applies_per_use",
+			Select(tenant.Cast(TypeText)).From("users").Where(Col("tenant").Eq(tenant)),
+			`SELECT ($1)::text FROM "users" WHERE ("tenant" = $1)`,
+			[]any{"acme"},
+		},
 		{"in_list", Select(Col("id")).From("users").Where(Col("a").In(tenant, Param("x"), tenant)),
 			`SELECT "id" FROM "users" WHERE ("a" IN ($1, $2, $1))`, []any{"acme", "x"}},
 	})
@@ -84,7 +119,10 @@ func TestSharedParamRejectsWhatParamRejects(t *testing.T) {
 		"qs.Null value":         Select(SharedParam(NullOf[int]())),
 		"untyped nil compared":  Select(Col("id")).From("t").Where(Col("a").Eq(SharedParam(nil))),
 		"untyped nil in a list": Select(Col("id")).From("t").Where(Col("a").In(SharedParam(nil))),
-		"bound keyset key":      Select(Col("id")).From("t").OrderBy(SharedParam(1).Asc()).SeekAfter(1),
+		"bound keyset key": Select(Col("id")).
+			From("t").
+			OrderBy(SharedParam(1).Asc()).
+			SeekAfter(1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -105,22 +143,49 @@ func TestSeekAfterCursorForms(t *testing.T) {
 			`SELECT "id" FROM "t" ORDER BY "t"."a" ASC, "t"."id" DESC`, nil},
 		{"empty_cursor_replaces_an_earlier_one", page().SeekAfter(1, 2).SeekAfter(),
 			`SELECT "id" FROM "t" ORDER BY "t"."a" ASC, "t"."id" DESC`, nil},
-		{"spread_slice", Select(Col("id")).From("t").OrderBy(Col("t", "a").Asc(), Col("t", "id").Asc()).SeekAfter([]any{1, 2}...),
-			`SELECT "id" FROM "t" WHERE (("t"."a", "t"."id") > ($1, $2)) ORDER BY "t"."a" ASC, "t"."id" ASC`, []any{1, 2}},
-		{"expression_cursor_is_compared_as_written", Select(Col("id")).From("t").OrderBy(Col("t", "id").Asc()).SeekAfter(Param("7f").Cast(TypeUUID)),
-			`SELECT "id" FROM "t" WHERE ("t"."id" > ($1)::uuid) ORDER BY "t"."id" ASC`, []any{"7f"}},
+		{
+			"spread_slice",
+			Select(Col("id")).
+				From("t").
+				OrderBy(Col("t", "a").Asc(), Col("t", "id").Asc()).
+				SeekAfter([]any{1, 2}...),
+			`SELECT "id" FROM "t" WHERE (("t"."a", "t"."id") > ($1, $2)) ORDER BY "t"."a" ASC, "t"."id" ASC`,
+			[]any{1, 2},
+		},
+		{
+			"expression_cursor_is_compared_as_written",
+			Select(Col("id")).
+				From("t").
+				OrderBy(Col("t", "id").Asc()).
+				SeekAfter(Param("7f").Cast(TypeUUID)),
+			`SELECT "id" FROM "t" WHERE ("t"."id" > ($1)::uuid) ORDER BY "t"."id" ASC`,
+			[]any{"7f"},
+		},
 		{"expression_cursor_binds_at_each_use", page().SeekAfter(Param(1).Cast(TypeInt8), 2),
 			`SELECT "id" FROM "t" WHERE (("t"."a" >= ($1)::bigint) AND (("t"."a" > ($2)::bigint) OR (("t"."a" = ($3)::bigint) AND ("t"."id" < $4)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 1, 1, 2}},
 		{"shared_expression_cursor_binds_once", page().SeekAfter(SharedParam(1).Cast(TypeInt8), 2),
 			`SELECT "id" FROM "t" WHERE (("t"."a" >= ($1)::bigint) AND (("t"."a" > ($1)::bigint) OR (("t"."a" = ($1)::bigint) AND ("t"."id" < $2)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 2}},
-		{"trusted_cursor_is_one_operand", Select(Col("id")).From("t").OrderBy(Col("t", "id").Asc()).SeekAfter(UnsafeSQL("a OR b")),
-			`SELECT "id" FROM "t" WHERE ("t"."id" > (a OR b)) ORDER BY "t"."id" ASC`, nil},
+		{
+			"trusted_cursor_is_one_operand",
+			Select(Col("id")).From("t").OrderBy(Col("t", "id").Asc()).SeekAfter(UnsafeSQL("a OR b")),
+			`SELECT "id" FROM "t" WHERE ("t"."id" > (a OR b)) ORDER BY "t"."id" ASC`,
+			nil,
+		},
 	})
 	for name, statement := range map[string]Statement{
-		"unspread slice":         Select(Col("id")).From("t").OrderBy(Col("t", "id").Asc()).SeekAfter([]any{1}),
-		"untyped nil":            Select(Col("id")).From("t").OrderBy(Col("t", "id").Asc()).SeekAfter(nil),
-		"untyped nil expression": Select(Col("id")).From("t").OrderBy(Col("t", "id").Asc()).SeekAfter(Param(nil)),
-		"cursor without order":   Select(Col("id")).From("t").SeekAfter(1),
+		"unspread slice": Select(Col("id")).
+			From("t").
+			OrderBy(Col("t", "id").Asc()).
+			SeekAfter([]any{1}),
+		"untyped nil": Select(Col("id")).
+			From("t").
+			OrderBy(Col("t", "id").Asc()).
+			SeekAfter(nil),
+		"untyped nil expression": Select(Col("id")).
+			From("t").
+			OrderBy(Col("t", "id").Asc()).
+			SeekAfter(Param(nil)),
+		"cursor without order": Select(Col("id")).From("t").SeekAfter(1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

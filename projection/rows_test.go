@@ -244,7 +244,9 @@ func TestCollectPrefersEarlierErrorToCloseError(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got, err := flatUsers().Collect(errorClosingRows{fakeRows: tc.rows, closeFailed: closeFailed})
+			got, err := flatUsers().Collect(
+				errorClosingRows{fakeRows: tc.rows, closeFailed: closeFailed},
+			)
 			if err != tc.want || got != nil { //nolint:errorlint // unchanged.
 				t.Fatalf("got %+v, %v, want nil and %v", got, err, tc.want)
 			}

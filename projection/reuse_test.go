@@ -103,7 +103,10 @@ func TestRowsOfOneResultDoNotShareState(t *testing.T) {
 		type row struct{ Team *team }
 		p := projection.EmbedNull(projection.New(
 			projection.Column(qs.Col("t", "id"), func(t *team) *int64 { return &t.ID }),
-			projection.EmbedNull(users(qs.Table("users").As("l"), "lead_"), func(t *team, u *user) { t.Lead = u }),
+			projection.EmbedNull(
+				users(qs.Table("users").As("l"), "lead_"),
+				func(t *team, u *user) { t.Lead = u },
+			),
 		), func(r *row, t *team) { r.Team = t })
 		checkRowsRead(t, p, []row{
 			{Team: &team{ID: 1}},
@@ -158,7 +161,11 @@ func TestRowsOfOneResultDoNotShareState(t *testing.T) {
 			}
 			return h.User
 		})
-		p := projection.Map(inner, func(h holder) (*user, error) { return h.User, nil }, func(d **user, u *user) { *d = u })
+		p := projection.Map(
+			inner,
+			func(h holder) (*user, error) { return h.User, nil },
+			func(d **user, u *user) { *d = u },
+		)
 		checkRowsRead(t, p, []*user{
 			{1, "ada", new("ada@example.com")},
 			{2, "bob", nil},
@@ -187,7 +194,11 @@ func TestRowsOfOneResultDoNotShareState(t *testing.T) {
 				},
 			),
 		)
-		p := projection.Map(inner, func(p parent) (*child, error) { return p.Child, nil }, func(d **child, c *child) { *d = c })
+		p := projection.Map(
+			inner,
+			func(p parent) (*child, error) { return p.Child, nil },
+			func(d **child, c *child) { *d = c },
+		)
 		checkRowsRead(t, p, []*child{
 			{ID: 10, Parent: new(int64(1))},
 			nil,
@@ -207,7 +218,10 @@ func TestRowsOfOneResultDoNotShareState(t *testing.T) {
 			B sql.NullString
 		}
 		p := projection.EmbedNull(projection.New(
-			projection.Column(qs.Col("a"), func(g *group) *intoField { return &intoField{target: &g.A} }),
+			projection.Column(
+				qs.Col("a"),
+				func(g *group) *intoField { return &intoField{target: &g.A} },
+			),
 			projection.Column(qs.Col("b"), func(g *group) *sql.NullString { return &g.B }),
 		), func(d **group, g *group) { *d = g })
 		checkRowsRead(t, p, []*group{

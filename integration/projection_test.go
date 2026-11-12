@@ -42,9 +42,18 @@ type projectionRow struct {
 
 func projectionUsersOf(r qs.Relation, prefix string) projection.Projection[projectionUser] {
 	return projection.New(
-		projection.Column(r.Col("id").As(prefix+"id"), func(u *projectionUser) *int64 { return &u.ID }),
-		projection.Column(r.Col("name").As(prefix+"name"), func(u *projectionUser) *string { return &u.Name }),
-		projection.ColumnNull(r.Col("email").As(prefix+"email"), func(u *projectionUser, v *string) { u.Email = v }),
+		projection.Column(
+			r.Col("id").As(prefix+"id"),
+			func(u *projectionUser) *int64 { return &u.ID },
+		),
+		projection.Column(
+			r.Col("name").As(prefix+"name"),
+			func(u *projectionUser) *string { return &u.Name },
+		),
+		projection.ColumnNull(
+			r.Col("email").As(prefix+"email"),
+			func(u *projectionUser, v *string) { u.Email = v },
+		),
 	)
 }
 
@@ -114,16 +123,28 @@ func TestProjectionSelfJoin(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	manager := qs.Table("users").As("manager")
 	p := projection.New(
-		projection.Embed(projectionUsersOf(employee, ""), func(r *projectionRow) *projectionUser { return &r.Employee }),
-		projection.EmbedNull(projectionUsersOf(manager, "manager_"), func(r *projectionRow, u *projectionUser) { r.Manager = u }),
+		projection.Embed(
+			projectionUsersOf(employee, ""),
+			func(r *projectionRow) *projectionUser { return &r.Employee },
+		),
+		projection.EmbedNull(
+			projectionUsersOf(manager, "manager_"),
+			func(r *projectionRow, u *projectionUser) { r.Manager = u },
+		),
 	)
 	join := qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id")))
-	valid, _, err := qs.SelectSlice(p.Expressions()).FromExpr(join).
-		Where(employee.Col("id").Lte(qs.Param(2))).OrderBy(employee.Col("id").Asc()).ToSQL()
+	valid, _, err := qs.SelectSlice(p.Expressions()).
+		FromExpr(join).
+		Where(employee.Col("id").Lte(qs.Param(2))).
+		OrderBy(employee.Col("id").Asc()).
+		ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	partial, _, err := qs.SelectSlice(p.Expressions()).FromExpr(join).Where(employee.Col("id").Eq(qs.Param(4))).ToSQL()
+	partial, _, err := qs.SelectSlice(p.Expressions()).
+		FromExpr(join).
+		Where(employee.Col("id").Eq(qs.Param(4))).
+		ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,8 +181,11 @@ func TestProjectionSelfJoin(t *testing.T) {
 func TestProjectionAllClosesRowsWhenLoopBreaks(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	p := projectionUsersOf(employee, "")
-	text, _, err := qs.SelectSlice(p.Expressions()).FromExpr(employee).
-		Where(employee.Col("id").Ne(qs.Param(3))).OrderBy(employee.Col("id").Asc()).ToSQL()
+	text, _, err := qs.SelectSlice(p.Expressions()).
+		FromExpr(employee).
+		Where(employee.Col("id").Ne(qs.Param(3))).
+		OrderBy(employee.Col("id").Asc()).
+		ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,12 +225,22 @@ func TestProjectionScanIntoReusedDestination(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	manager := qs.Table("users").As("manager")
 	p := projection.New(
-		projection.Embed(projectionUsersOf(employee, ""), func(r *projectionRow) *projectionUser { return &r.Employee }),
-		projection.EmbedNull(projectionUsersOf(manager, "manager_"), func(r *projectionRow, u *projectionUser) { r.Manager = u }),
+		projection.Embed(
+			projectionUsersOf(employee, ""),
+			func(r *projectionRow) *projectionUser { return &r.Employee },
+		),
+		projection.EmbedNull(
+			projectionUsersOf(manager, "manager_"),
+			func(r *projectionRow, u *projectionUser) { r.Manager = u },
+		),
 	)
-	text, _, err := qs.SelectSlice(p.Expressions()).FromExpr(
-		qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
-	).Where(employee.Col("id").Lte(qs.Param(2))).OrderBy(employee.Col("id").Desc()).ToSQL()
+	text, _, err := qs.SelectSlice(p.Expressions()).
+		FromExpr(
+			qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
+		).
+		Where(employee.Col("id").Lte(qs.Param(2))).
+		OrderBy(employee.Col("id").Desc()).
+		ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,8 +291,14 @@ func TestProjectionColumnOrZero(t *testing.T) {
 		projection.Column(qs.Col("id"), func(r *row) *int64 { return &r.ID }),
 		projection.EmbedNull(projection.New(
 			projection.ColumnNull(qs.Col("user_id"), func(*human, *int64) {}),
-			projection.ColumnOrZero(qs.Col("nickname"), func(h *human) *string { return &h.Nickname }),
-			projection.ColumnOrZero(qs.Col("logins"), func(h *human) *sql.NullInt64 { return &h.Logins }),
+			projection.ColumnOrZero(
+				qs.Col("nickname"),
+				func(h *human) *string { return &h.Nickname },
+			),
+			projection.ColumnOrZero(
+				qs.Col("logins"),
+				func(h *human) *sql.NullInt64 { return &h.Logins },
+			),
 		), func(r *row, h *human) { r.Human = h }),
 	)
 	const text = `SELECT * FROM (VALUES
@@ -323,8 +363,13 @@ func (c countedRows) Scan(dest ...any) error {
 func TestProjectionReadsOutputSelectedAfterExpressions(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	p := projectionUsersOf(employee, "")
-	text, _, err := qs.SelectSlice(p.Expressions()).Columns(qs.CountAll().Over(qs.Window())).FromExpr(employee).
-		Where(employee.Col("id").Ne(qs.Param(3))).OrderBy(employee.Col("id").Asc()).Limit(2).ToSQL()
+	text, _, err := qs.SelectSlice(p.Expressions()).
+		Columns(qs.CountAll().Over(qs.Window())).
+		FromExpr(employee).
+		Where(employee.Col("id").Ne(qs.Param(3))).
+		OrderBy(employee.Col("id").Asc()).
+		Limit(2).
+		ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,7 +410,10 @@ func (s *projectionIntoField) Scan(src any) error {
 func TestProjectionWriteThroughScannerInGroup(t *testing.T) {
 	type group struct{ A, B int64 }
 	p := projection.EmbedNull(projection.New(
-		projection.Column(qs.Col("a"), func(g *group) *projectionIntoField { return &projectionIntoField{target: &g.A} }),
+		projection.Column(
+			qs.Col("a"),
+			func(g *group) *projectionIntoField { return &projectionIntoField{target: &g.A} },
+		),
 		projection.Column(qs.Col("b"), func(g *group) *int64 { return &g.B }),
 	), func(d **group, g *group) { *d = g })
 	for _, d := range projectionDrivers(t) {
@@ -606,7 +654,10 @@ func TestProjectionScannerKeepsJSONNullPresent(t *testing.T) {
 		ID      int64
 		Payload sql.NullString
 	}
-	payload := projection.Column(qs.Col("payload"), func(r *row) *sql.NullString { return &r.Payload })
+	payload := projection.Column(
+		qs.Col("payload"),
+		func(r *row) *sql.NullString { return &r.Payload },
+	)
 	sole := projection.EmbedNull(payload, func(d **row, r *row) { *d = r })
 	mixed := projection.EmbedNull(projection.New(
 		projection.Column(qs.Col("id"), func(r *row) *int64 { return &r.ID }),
@@ -647,7 +698,10 @@ type projectionMultirange = pgtype.Multirange[pgtype.Range[pgtype.Int4]]
 // Multirange reads flat; only the read through a nil pointer is unusable. It is declared
 // here and never scanned through a pointer, which would hang database/sql.
 func TestProjectionReadsMultirangeFlat(t *testing.T) {
-	p := projection.Column(qs.Col("x"), func(v *projectionMultirange) *projectionMultirange { return v })
+	p := projection.Column(
+		qs.Col("x"),
+		func(v *projectionMultirange) *projectionMultirange { return v },
+	)
 	for _, d := range projectionDrivers(t) {
 		t.Run(d.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
@@ -680,14 +734,20 @@ func TestProjectionRejectsTargetsTheDriverCannotFill(t *testing.T) {
 			projection.ColumnNull(qs.Col("a"), func(*row, *projectionMultirange) {})
 		},
 		"group multirange": func() {
-			multirange := projection.Column(qs.Col("a"), func(r *row) *projectionMultirange { return &r.M })
+			multirange := projection.Column(
+				qs.Col("a"),
+				func(r *row) *projectionMultirange { return &r.M },
+			)
 			projection.EmbedNull(multirange, func(*struct{}, *row) {})
 		},
 		"ColumnNull composite": func() {
 			projection.ColumnNull(qs.Col("a"), func(*row, *pgtype.CompositeFields) {})
 		},
 		"group borrowed": func() {
-			borrowed := projection.Column(qs.Col("a"), func(r *row) *pgtype.DriverBytes { return &r.D })
+			borrowed := projection.Column(
+				qs.Col("a"),
+				func(r *row) *pgtype.DriverBytes { return &r.D },
+			)
 			projection.EmbedNull(borrowed, func(*struct{}, *row) {})
 		},
 		"group composite": func() {
