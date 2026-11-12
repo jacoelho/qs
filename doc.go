@@ -19,7 +19,7 @@
 // WhereCurrentOf or AllRows completes it by selecting its rows; Where still
 // fails rendering when its conditions are TRUE for every row by construction.
 // Case and CaseOf likewise return a value that only accepts the first branch,
-// and Select requires its first column: SelectSlice takes a run-time list and
+// and Select() does not compile: an empty run-time list fails rendering and
 // SelectNoColumns states a zero-column SELECT. A query has one row limit,
 // which Limit, LimitAll and LimitWithTies each replace.
 //
@@ -44,7 +44,7 @@
 // wraps an ordinary expression, and Default requests SQL DEFAULT. WriteRow and
 // WriteTuple construct row writes.
 // Write descriptors cannot be general expressions or application parameters.
-// InsertInto returns a target. Select optional Columns or Targets before Values,
+// InsertInto returns a target. Select optional Columns, by name or target expression, before Values,
 // From or DefaultValues; assignment sources select Set directly on the target.
 // Each source creates an independent completed statement with source-specific
 // methods. Column selectors own an immutable list shared between completions.

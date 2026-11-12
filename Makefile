@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := test
 
-.PHONY: golangci-lint test race vet generate generate-check coverage benchmark integration postgres-corpus postgres-corpus-update
+.PHONY: golangci-lint test race vet qsvet generate generate-check coverage benchmark integration postgres-corpus postgres-corpus-update
 
 POSTGRES_ROOT ?=
 POSTGRES_COMMIT := 630e607397424196a0a3ebb14a5658c2473ddadf
@@ -16,6 +16,7 @@ GOLANGCI_LINT_INSTALLER_REF := 114493f9b3e7257d29e4130f2b4a4aadefbb6845
 golangci-lint: $(GOLANGCI_LINT)
 	GOMAXPROCS=$(TEST_PROCS) "$(GOLANGCI_LINT)" run ./...
 	cd integration && GOMAXPROCS=$(TEST_PROCS) "../$(GOLANGCI_LINT)" run --config ../.golangci.yml --build-tags postgres ./...
+	cd qsvet && GOMAXPROCS=$(TEST_PROCS) "../$(GOLANGCI_LINT)" run --config ../.golangci.yml ./...
 
 $(GOLANGCI_LINT):
 	mkdir -p "$(dir $(GOLANGCI_LINT))"
@@ -25,10 +26,17 @@ $(GOLANGCI_LINT):
 
 test:
 	GOMAXPROCS=$(TEST_PROCS) go test -p=2 -parallel=8 ./...
+	cd qsvet && GOMAXPROCS=$(TEST_PROCS) go test -p=2 -parallel=8 ./...
 race:
 	GOMAXPROCS=$(TEST_PROCS) go test -race -p=1 -parallel=8 ./...
+	cd qsvet && GOMAXPROCS=$(TEST_PROCS) go test -race -p=1 -parallel=8 ./...
 vet:
 	GOMAXPROCS=$(TEST_PROCS) go vet -p=2 ./...
+# qsvet checks this repository with its own analyzer: a discarded builder result.
+qsvet:
+	cd qsvet && go build -o ../.bin/qsvet ./cmd/qsvet
+	GOMAXPROCS=$(TEST_PROCS) go vet -p=2 -vettool=.bin/qsvet ./...
+	cd integration && GOMAXPROCS=$(TEST_PROCS) go vet -p=2 -tags postgres -vettool=../.bin/qsvet ./...
 generate:
 	go run ./internal/buildergen
 

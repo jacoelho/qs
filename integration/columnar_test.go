@@ -88,7 +88,7 @@ func TestInsertFromNamedPairsTargetsWithExpressions(t *testing.T) {
 		u.Col("kind"), qs.LiteralString("arrays").As("source"), u.Col("ordinality").As("position"), u.Col(
 			"name",
 		),
-	).FromExpr(u))
+	).From(u))
 
 	e := qs.TableFunc(qs.JSONBArrayElements(
 		qs.Param(`[{"name":"lint","kind":"ci"},{"name":"tag","kind":"cd"}]`).Cast(qs.TypeJSONB),
@@ -100,7 +100,7 @@ func TestInsertFromNamedPairsTargetsWithExpressions(t *testing.T) {
 		).As(
 			"name",
 		),
-	).FromExpr(e))
+	).From(e))
 
 	for _, insert := range []qs.Statement{arrays, elements} {
 		sql, args, err := session.render(t, insert)
@@ -136,7 +136,7 @@ func TestUnnestAsNamesColumnsAndOrdinality(t *testing.T) {
 				u.Col("qty"),
 			),
 		).
-			FromExpr(u).
+			From(u).
 			OrderBy(u.Col("kind").Asc()),
 	)
 	if want := []string{"2:a=10", "1:b=20", "3:c=30"}; !reflect.DeepEqual(got, want) {
@@ -162,7 +162,7 @@ func TestFieldEqAnyMatchesArrayMembers(t *testing.T) {
 			t,
 			session,
 			qs.Select(n.Expr().Cast(qs.TypeText)).
-				FromExpr(v).
+				From(v).
 				Where(n.EqAny(tc.values, qs.TypeInt4)).
 				OrderBy(n.Asc()),
 		)
@@ -194,7 +194,7 @@ func TestJSONSelectorsGroupAndOrder(t *testing.T) {
 			qs.Concat(kind().Expr(), qs.LiteralString("="), qs.CountAll()),
 		).
 			From("qs_json_groups").
-			GroupByExpr(kind().Expr()).
+			GroupBy(kind().Expr()).
 			OrderBy(kind().Asc()),
 	)
 	if want := []string{"a=2", "b=1"}; !reflect.DeepEqual(got, want) {
@@ -245,7 +245,7 @@ func TestJSONSelectorsGroupAndOrder(t *testing.T) {
 
 	bound := qs.Select(qs.JSONGetText(qs.Col("payload"), qs.Param("kind")), qs.CountAll()).
 		From("qs_json_groups").
-		GroupByExpr(qs.JSONGetText(qs.Col("payload"), qs.Param("kind")))
+		GroupBy(qs.JSONGetText(qs.Col("payload"), qs.Param("kind")))
 	sql, args, err := session.render(t, bound)
 	if err != nil {
 		t.Fatal(err)

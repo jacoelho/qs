@@ -6,15 +6,15 @@ import (
 	"iter"
 )
 
-// ErrNoClose reports a Rows that has neither Close() nor Close() error. All and
-// Collect return it before reading a row.
+// ErrNoClose reports a Rows that has neither Close() nor Close() error. All,
+// Collect and CollectPtr return it before reading a row.
 var ErrNoClose = errors.New("projection: rows has no Close method")
 
-// Rows is the part of a result set that All and Collect read. pgx.Rows and
+// Rows is the part of a result set that All, Collect and CollectPtr read. pgx.Rows and
 // *database/sql.Rows both implement it. A caller's own Rows may wrap one of them, with
 // a Scan that appends destinations as ScanInto describes.
 //
-// All and Collect also close the result set. The drivers disagree on the signature,
+// They also close the result set. The drivers disagree on the signature,
 // pgx.Rows having Close() and *sql.Rows Close() error, so Close is not a method here:
 // the value must have one of the two. A wrapper that embeds a driver's rows has it
 // already; one that holds them in a named field must forward it.
@@ -22,7 +22,7 @@ type Rows interface {
 	// Next advances to the next row and reports whether there is one.
 	Next() bool
 	// Scan reads the current row into dest. It must not keep dest after it returns:
-	// All and Collect reuse the list for the next row.
+	// the row loops reuse the list for the next row.
 	Scan(dest ...any) error
 	// Err returns the error that ended iteration, if any. It is called after Close.
 	Err() error
@@ -64,7 +64,7 @@ func finish(rows Rows, closeRows func() error) error {
 // as it goes, so it is single-use, and an iterator that is never ranged over closes
 // nothing. A Rows without Close yields ErrNoClose and no rows.
 //
-// All and Collect reuse their working memory from one row to the next, so they
+// All, Collect and CollectPtr reuse their working memory from one row to the next, so they
 // allocate less than a loop over Scan. The values they produce share nothing with
 // each other.
 func (p Projection[D]) All(rows Rows) iter.Seq2[D, error] {
@@ -128,6 +128,38 @@ func (p Projection[D]) Collect(rows Rows) (collected []D, err error) {
 		if err := p.read(&collected[len(collected)-1], rows.Scan, &reused); err != nil {
 			return nil, err
 		}
+	}
+	return collected, nil
+}
+
+// CollectPtr is Collect for callers that hold rows by pointer. Each row is read as
+// ScanInto reads into a new D, so no element is nil, no two share a D, and a pointer a
+// set kept into its row points into the element returned for that row. Rows are closed
+// and errors returned as Collect does: the first error comes with a nil slice, and a
+// result without rows is an empty, non-nil slice. It allocates each D, which Collect
+// does not.
+func (p Projection[D]) CollectPtr(rows Rows) (collected []*D, err error) {
+	closeRows, err := closerOf(rows)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		ended := finish(rows, closeRows)
+		if err == nil {
+			err = ended
+		}
+		if err != nil {
+			collected = nil
+		}
+	}()
+	collected = []*D{}
+	var reused scratch
+	for rows.Next() {
+		d := new(D)
+		if err := p.read(d, rows.Scan, &reused); err != nil {
+			return nil, err
+		}
+		collected = append(collected, d)
 	}
 	return collected, nil
 }

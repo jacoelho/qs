@@ -20,7 +20,7 @@ func ExampleInsertInto_arrayUpsert() {
 				TargetWhere(qs.Col("deleted_at").IsNull()).
 				DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name")))),
 		).
-		ReturningCols("id", "name").
+		Returning("id", "name").
 		ToSQL()
 	if err != nil {
 		panic(err)
@@ -32,11 +32,11 @@ func ExampleInsertInto_arrayUpsert() {
 	// [[42 43] [Ana Ben]]
 }
 
-func ExampleSelectBuilder_GroupByExpr_parameterized() {
+func ExampleSelectBuilder_GroupBy_parameterized() {
 	bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
 	query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).
 		From("events").
-		GroupByExpr(qs.Ordinal(1)).
+		GroupBy(qs.Ordinal(1)).
 		OrderBy(qs.Ordinal(1).Asc()).
 		ToSQL()
 	if err != nil {
@@ -51,7 +51,7 @@ func ExampleSelectBuilder_GroupByExpr_parameterized() {
 
 func ExampleSelectBuilder_SeekAfter() {
 	// Every key is NOT NULL and the last key is unique, so pages are disjoint.
-	feed := qs.SelectCols("id", "created_at").
+	feed := qs.Select("id", "created_at").
 		From("posts").
 		Where(qs.Col("author_id").Eq(qs.Param(7)))
 	order := []qs.Order{qs.Col("posts", "created_at").Desc(), qs.Col("posts", "id").Desc()}

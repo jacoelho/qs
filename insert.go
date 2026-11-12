@@ -2,7 +2,6 @@ package qs
 
 import (
 	"fmt"
-	"slices"
 )
 
 type overridingMode uint8
@@ -24,36 +23,9 @@ type InsertColumnsTarget struct {
 	columnsTable   Relation
 }
 
-// InsertInto starts an INSERT target for a named table.
-func InsertInto(table string) InsertTarget { return InsertTarget{table: Table(table)} }
-
-// InsertIntoTable starts an INSERT target for a relation expression.
-func InsertIntoTable(table Relation) InsertTarget { return InsertTarget{table: table} }
-
-func newInsertColumnsTarget(table Relation, first string, rest []string) InsertColumnsTarget {
-	targets := make([]Expr, 1+len(rest))
-	targets[0] = unqualifiedColumn(first)
-	for i, column := range rest {
-		targets[i+1] = unqualifiedColumn(column)
-	}
-	return InsertColumnsTarget{columnsTable: table, columnsTargets: targets}
-}
-
-// ColumnsSlice selects literal target-column names and copies the slice.
-// An empty list is invalid when the completed INSERT is rendered.
-func (t InsertTarget) ColumnsSlice(columns []string) InsertColumnsTarget {
-	targets := make([]Expr, len(columns))
-	for i, column := range columns {
-		targets[i] = unqualifiedColumn(column)
-	}
-	return InsertColumnsTarget{columnsTable: t.table, columnsTargets: targets}
-}
-
-func newInsertExprTarget(table Relation, first Expr, rest []Expr) InsertColumnsTarget {
-	targets := make([]Expr, 1+len(rest))
-	targets[0] = first
-	copy(targets[1:], rest)
-	return InsertColumnsTarget{columnsTable: table, columnsTargets: targets}
+// InsertInto starts an INSERT into table, a table name or a relation.
+func InsertInto[T string | Relation](table T) InsertTarget {
+	return InsertTarget{table: relationOf(table)}
 }
 
 type insertBase struct {
@@ -96,19 +68,9 @@ func (t InsertColumnsTarget) base() insertBase {
 	return insertBase{table: t.columnsTable, targets: t.columnsTargets, targetsSelected: true}
 }
 
-func insertReturningCols(base *insertBase, columns ...string) {
-	base.returning = extendWith(base.returning, columns, unqualifiedColumn)
-}
-
 // Values selects a direct value-row source.
 func (t InsertTarget) Values(first WriteValue, rest ...WriteValue) InsertRows {
 	return InsertRows{base: t.base()}.Values(first, rest...)
-}
-
-// ValuesSlice selects one direct value row and copies its structural slice.
-// An empty row is invalid when rendered.
-func (t InsertTarget) ValuesSlice(values []WriteValue) InsertRows {
-	return InsertRows{base: t.base()}.ValuesSlice(values)
 }
 
 // Rows selects a direct value-row source holding every row of rows. It is the
@@ -130,9 +92,9 @@ func (t InsertTarget) From(source Rowset) InsertSelect {
 // composite type expands to one column per field. Supply arrays of equal
 // length, because PostgreSQL pads shorter ones with NULL; empty arrays insert
 // no rows.
-func (t InsertTarget) FromArrays(first ArrayColumn, rest ...ArrayColumn) InsertSelect {
-	names, arrays := splitArrayColumns(first, rest)
-	return t.ColumnsSlice(names).From(Select(Star()).FromExpr(TableFunc(Unnest(arrays...))))
+func (t InsertTarget) FromArrays[T ArrayColumn | []ArrayColumn](first T, rest ...ArrayColumn) InsertSelect {
+	names, arrays := splitArrayColumns(gather(first, rest))
+	return t.Columns(names...).From(Select(Star()).From(TableFunc(Unnest(arrays...))))
 }
 
 // FromNamed selects a query source and takes the target columns from the names
@@ -141,7 +103,7 @@ func (t InsertTarget) FromArrays(first ArrayColumn, rest ...ArrayColumn) InsertS
 // expression that fills it, where Columns followed by From pairs two lists by
 // position:
 //
-//	InsertInto("events").FromNamed(Select(u.Col("name"), u.Col("ordinality").As("position")).FromExpr(u))
+//	InsertInto("events").FromNamed(Select(u.Col("name"), u.Col("ordinality").As("position")).From(u))
 //
 // renders INSERT INTO "events" ("name", "position") SELECT "u"."name",
 // "u"."ordinality" AS "position" FROM ... . Rendering fails for an output
@@ -173,9 +135,11 @@ func outputColumn(e Expr) Expr {
 	return invalidExpr("INSERT", "FromNamed requires each output column to be a column reference or to have an alias")
 }
 
-// Set selects an assignment source.
-func (t InsertTarget) Set(first Assignment, rest ...Assignment) InsertAssignments {
-	return InsertAssignments{base: t.base()}.Set(first, rest...)
+// Set selects an assignment source. first is one assignment or a list built
+// at run time, which is copied; rest follows it. An INSERT left with no
+// assignments fails rendering with ErrInvalid.
+func (t InsertTarget) Set[T Assignment | []Assignment](first T, rest ...Assignment) InsertAssignments {
+	return InsertAssignments{base: t.base(), assignments: gather(first, rest)}
 }
 
 // DefaultValues selects the target table's server-side defaults.
@@ -191,14 +155,6 @@ func (b InsertRows) Values(first WriteValue, rest ...WriteValue) InsertRows {
 	return b
 }
 
-// ValuesSlice appends one direct value row and copies its structural slice.
-// An empty row is invalid when rendered. Bound values are not copied. Like
-// Values, each call copies the row list.
-func (b InsertRows) ValuesSlice(values []WriteValue) InsertRows {
-	b.rows = extend(b.rows, cloneSlice(values))
-	return b
-}
-
 // Rows appends every row of rows in one step, copying their structural
 // slices; bound values are not copied. Its cost is linear in the rows added,
 // which makes it the way to add rows sized by data. An INSERT with no rows, or
@@ -208,9 +164,10 @@ func (b InsertRows) Rows(rows ...[]WriteValue) InsertRows {
 	return b
 }
 
-// Set appends assignments to the single-row INSERT source.
-func (b InsertAssignments) Set(first Assignment, rest ...Assignment) InsertAssignments {
-	b.assignments = slices.Concat(b.assignments, []Assignment{first}, rest)
+// Set appends assignments to the single-row INSERT source, as InsertTarget.Set
+// takes them. It appends, so an empty list adds nothing.
+func (b InsertAssignments) Set[T Assignment | []Assignment](first T, rest ...Assignment) InsertAssignments {
+	b.assignments = gatherOnto(b.assignments, first, rest)
 	return b
 }
 

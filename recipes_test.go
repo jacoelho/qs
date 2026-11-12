@@ -14,7 +14,7 @@ func TestMustBuild(t *testing.T) {
 			t.Fatal("expected panic")
 		}
 	}()
-	MustToSQL(SelectSlice(nil))
+	MustToSQL(Select([]Expr(nil)...))
 }
 
 // PostgreSQL-native recipes corresponding to dialect-specific conveniences.
@@ -24,7 +24,7 @@ func TestRecipes(t *testing.T) {
 
 	picked := CTE(
 		"picked",
-		SelectCols("id").
+		Select("id").
 			From("jobs").
 			Where(Col("status").Eq(Param("ready"))).
 			OrderBy(Col("id").Asc()).
@@ -77,7 +77,7 @@ func TestRecipes(t *testing.T) {
 		{
 			"qualify_via_subquery",
 			Select(Col("r", "author_id"), Col("r", "title")).
-				FromExpr(ranked.As("r")).
+				From(ranked.As("r")).
 				Where(Col("r", "rn").Eq(Param(1))),
 			`SELECT "r"."author_id", "r"."title" FROM (SELECT "book"."author_id", "book"."title", row_number() OVER (PARTITION BY "book"."author_id" ORDER BY "book"."title" ASC) AS "rn" FROM "book") AS "r" WHERE ("r"."rn" = $1)`,
 			[]any{1},

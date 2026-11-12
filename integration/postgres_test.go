@@ -324,7 +324,7 @@ func TestPostgreSQLMutationsAcrossVersions(t *testing.T) {
 		Columns("id", "name").
 		Values(qs.Write(qs.Param(int64(1))), qs.Write(qs.Param("updated"))).
 		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
-		ReturningCols("name")
+		Returning("name")
 	if got := queryStrings(t, session, upsert); !reflect.DeepEqual(got, []string{"updated"}) {
 		t.Fatal(got)
 	}
@@ -384,7 +384,7 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 
 	defaults := qs.InsertInto("write_defaults").
 		DefaultValues().
-		ReturningCols("name", "count", "note")
+		Returning("name", "count", "note")
 	sql, args, err := session.render(t, defaults)
 	if err != nil {
 		t.Fatal(err)
@@ -401,7 +401,7 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 	writeDefault := qs.InsertInto("write_defaults").
 		Columns("name", "count").
 		Values(qs.Default(), qs.Write(qs.Param(11))).
-		ReturningCols("name", "count")
+		Returning("name", "count")
 	sql, args, err = session.render(t, writeDefault)
 	if err != nil {
 		t.Fatal(err)
@@ -419,7 +419,7 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 			qs.WriteTuple(qs.Default(), qs.Write(qs.Param(23))),
 		)).
 		Where(qs.Col("count").Eq(qs.Param(11))).
-		ReturningCols("name", "count")
+		Returning("name", "count")
 	sql, args, err = session.render(t, rowDefault)
 	if err != nil {
 		t.Fatal(err)
@@ -460,7 +460,7 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 		if _, err := conn.Exec(ctx, sql, args...); err != nil {
 			t.Fatalf("%s: %v", sql, err)
 		}
-		check := qs.SelectCols("name", "note").
+		check := qs.Select("name", "note").
 			From("write_defaults").
 			Where(qs.Col("note").Eq(qs.Param("merge-note")))
 		sql, args, err = session.render(t, check)

@@ -38,8 +38,8 @@ func ExampleEmbedNull() {
 		projection.Embed(users(employee, ""), func(r *Row) *User { return &r.Employee }),
 		projection.EmbedNull(users(manager, "manager_"), func(r *Row, u *User) { r.Manager = u }),
 	)
-	text, args, err := qs.SelectSlice(p.Expressions()).
-		FromExpr(
+	text, args, err := qs.Select(p.Expressions()...).
+		From(
 			qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
 		).
 		ToSQL()
@@ -117,7 +117,7 @@ func ExampleProjection_returning() {
 		projection.Column(qs.Col("d", "id"), func(d *Document) *string { return &d.ID }),
 		projection.Column(qs.Col("d", "payload"), func(d *Document) *string { return &d.Payload }),
 	)
-	text, args, err := qs.UpdateTable(qs.Table("documents").As("d")).
+	text, args, err := qs.Update(qs.Table("documents").As("d")).
 		Set(qs.SetNull("archived_at")).
 		Where(qs.Col("d", "id").Eq(qs.Param("document-1"))).
 		Returning(p.Expressions()...).
@@ -173,6 +173,30 @@ func ExampleProjection_Collect() {
 	fmt.Println(documents)
 	// Output:
 	// [{document-1 PT} {document-2 ES}]
+}
+
+// CollectPtr returns each row by pointer, for callers that hold rows that way.
+func ExampleProjection_CollectPtr() {
+	type Document struct {
+		ID      string
+		Country string
+	}
+	p := projection.New(
+		projection.Column(qs.Col("id"), func(d *Document) *string { return &d.ID }),
+		projection.Column(qs.Col("country"), func(d *Document) *string { return &d.Country }),
+	)
+
+	rows := &records{unread: []string{"document-1 PT", "document-2 ES"}}
+	documents, err := p.CollectPtr(rows)
+	if err != nil {
+		panic(err)
+	}
+	for _, document := range documents {
+		fmt.Println(*document)
+	}
+	// Output:
+	// {document-1 PT}
+	// {document-2 ES}
 }
 
 func ExampleProjection_ScanInto() {
@@ -237,8 +261,8 @@ func ExampleColumnOrZero() {
 		projection.Column(users.Col("id"), func(u *User) *int64 { return &u.ID }),
 		projection.EmbedNull(human, func(u *User, h *Human) { u.Human = h }),
 	)
-	text, _, err := qs.SelectSlice(p.Expressions()).
-		FromExpr(
+	text, _, err := qs.Select(p.Expressions()...).
+		From(
 			qs.LeftJoin(users, humans).On(users.Col("id").Eq(humans.Col("user_id"))),
 		).
 		ToSQL()
@@ -270,9 +294,9 @@ func ExampleProjection_Collect_windowCount() {
 		projection.Column(documents.Col("id"), func(d *Document) *string { return &d.ID }),
 		projection.Column(documents.Col("country"), func(d *Document) *string { return &d.Country }),
 	)
-	text, args, err := qs.SelectSlice(p.Expressions()).
+	text, args, err := qs.Select(p.Expressions()...).
 		Columns(qs.CountAll().Over(qs.Window())).
-		FromExpr(documents).
+		From(documents).
 		OrderBy(documents.Col("id").Asc()).
 		Limit(2).
 		ToSQL()

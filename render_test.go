@@ -17,7 +17,7 @@ func placeholderQuery() SelectBuilder {
 		doc.Key("profile").TextKey("name").As("name"),
 	).
 		With(CTE("seed", Select(Param("seed"))).Columns("value")).
-		FromExpr(child.As("again")).
+		From(child.As("again")).
 		Where(doc.HasKey("?;"), doc.HasAnyKeys("red", "blue"),
 			doc.HasAllKeys("alpha", "beta"), doc.PathExists("$.a ? (@ > 1)"),
 			Col("name").Eq(Param(`x'); DROP TABLE t;--`))).
@@ -89,7 +89,7 @@ func TestRenderErrorsAreAtomic(t *testing.T) {
 		{"late_grouped_expression", Select(Param("first"), Param("second"), Expr{}.Parenthesized()), Options{}, ErrInvalid, 2},
 		{
 			"late_function_cast_type",
-			Select(Param("first")).FromExpr(TableFunc(Param("second").Cast(DataType{}))),
+			Select(Param("first")).From(TableFunc(Param("second").Cast(DataType{}))),
 			Options{},
 			ErrInvalid,
 			2,

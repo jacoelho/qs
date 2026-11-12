@@ -281,6 +281,6 @@ func FuzzJoinRoles(f *testing.F) {
 				valid = false
 			}
 		}
-		checkRoleFuzz(t, Select(Star()).FromExpr(relation), valid, "SELECT * FROM "+golden, args, steps)
+		checkRoleFuzz(t, Select(Star()).From(relation), valid, "SELECT * FROM "+golden, args, steps)
 	})
 }

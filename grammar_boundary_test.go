@@ -23,9 +23,9 @@ func TestParenthesizedProjection(t *testing.T) {
 	t.Parallel()
 
 	expanded := Select(Col("person").Fields().Parenthesized()).From("people")
-	checkSQL(t, Select(Star()).FromExpr(expanded.As("p", "first", "last")), `SELECT * FROM (SELECT (("person").*) FROM "people") AS "p" ("first", "last")`)
+	checkSQL(t, Select(Star()).From(expanded.As("p", "first", "last")), `SELECT * FROM (SELECT (("person").*) FROM "people") AS "p" ("first", "last")`)
 	checkSQL(t, InsertInto("names").Columns("first", "last").From(expanded), `INSERT INTO "names" ("first", "last") SELECT (("person").*) FROM "people"`)
-	checkError(t, Select(Star()).FromExpr(Select(Param(1).Parenthesized()).As("p", "first", "last")), ErrInvalid)
+	checkError(t, Select(Star()).From(Select(Param(1).Parenthesized()).As("p", "first", "last")), ErrInvalid)
 
 	child := Select(Param("before"))
 	query := Select(Scalar(child).Parenthesized())
@@ -36,7 +36,7 @@ func TestParenthesizedProjection(t *testing.T) {
 func TestFunctionRelationCastGrammar(t *testing.T) {
 	t.Parallel()
 
-	query := Select(Param("projection"), Param(4).Cast(TypeInt4)).FromExpr(
+	query := Select(Param("projection"), Param(4).Cast(TypeInt4)).From(
 		TableFunc(Param(5).Cast(TypeInt4)).As("direct", "v"),
 		RowsFrom(
 			Function(Param(6).Cast(TypeInt8)),
@@ -48,7 +48,7 @@ func TestFunctionRelationCastGrammar(t *testing.T) {
 		),
 	)
 	checkSQL(t, query, `SELECT $1, ($2)::integer FROM CAST($3 AS integer) AS "direct" ("v"), ROWS FROM (CAST($4 AS bigint), "generate_series"($5, $6)) AS "rows" ("v", "n")`, "projection", 4, 5, 6, 7, 8)
-	checkSQL(t, Select(Star()).FromExpr(TableFunc(Param(1).Cast(TypeInt4).Cast(TypeInt8))), `SELECT * FROM CAST(($1)::integer AS bigint)`, 1)
+	checkSQL(t, Select(Star()).From(TableFunc(Param(1).Cast(TypeInt4).Cast(TypeInt8))), `SELECT * FROM CAST(($1)::integer AS bigint)`, 1)
 }
 
 func TestGrammarBoundaryDepth(t *testing.T) {
@@ -60,7 +60,7 @@ func TestGrammarBoundaryDepth(t *testing.T) {
 	}
 	checkErrorWithOptions(t, Select(grouped), Options{MaxDepth: 5}, ErrDepth)
 	checkSQL(t, Select(grouped), `SELECT (((($1))))`, 1)
-	cast := Select(Star()).FromExpr(TableFunc(Param(1).Cast(TypeInt4)))
+	cast := Select(Star()).From(TableFunc(Param(1).Cast(TypeInt4)))
 	checkErrorWithOptions(t, cast, Options{MaxDepth: 3}, ErrDepth)
 	if sql, args, err := cast.ToSQLWith(Options{MaxDepth: 4}); err != nil || sql != `SELECT * FROM CAST($1 AS integer)` || !reflect.DeepEqual(args, []any{1}) {
 		t.Fatalf("FROM cast at depth boundary: %q %#v %v", sql, args, err)

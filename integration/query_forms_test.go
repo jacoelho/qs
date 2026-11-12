@@ -24,7 +24,7 @@ func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 		{"where_false", qs.SelectNoColumns().Where(qs.False()), 0},
 		{
 			"two_row_from",
-			qs.SelectNoColumns().FromExpr(
+			qs.SelectNoColumns().From(
 				qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("v", "value"),
 			),
 			2,
@@ -99,8 +99,8 @@ func TestPostgreSQLUnaliasedLateralCorrelation(t *testing.T) {
 		qs.Select(qs.LiteralInt(1)).Where(qs.Col("o", "n").Eq(qs.LiteralInt(1))),
 	))
 	query := qs.Select(qs.Col("o", "n").Cast(qs.TypeText)).
-		FromExpr(outer).
-		CrossJoinExpr(lateral).
+		From(outer).
+		CrossJoin(lateral).
 		OrderBy(qs.Col("o", "n").Asc())
 	got := queryStrings(t, session, query)
 	want := []string{"1"}
@@ -116,7 +116,7 @@ func TestLimitWithTiesKeepsRowsTiedWithTheLast(t *testing.T) {
 		INSERT INTO scores VALUES ('a', 3), ('b', 2), ('c', 2), ('d', 1)`); err != nil {
 		t.Fatal(err)
 	}
-	ranked := qs.SelectCols("name").From("scores").OrderBy(qs.Col("points").Desc())
+	ranked := qs.Select("name").From("scores").OrderBy(qs.Col("points").Desc())
 	for _, tc := range []struct {
 		name  string
 		query qs.SelectBuilder

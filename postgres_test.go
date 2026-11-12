@@ -26,7 +26,7 @@ func TestPostgreSQLJSON(t *testing.T) {
 		},
 		{
 			"native_record",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				TableFunc(JSONBToRecord(Param(`{"id":1}`).Cast(TypeJSONB))).DefineColumns(
 					Def("id", TypeInt4),
 				).As(
@@ -50,13 +50,13 @@ func TestPostgreSQLExpressions(t *testing.T) {
 		},
 		{
 			"array_any",
-			SelectCols("id").
+			Select("id").
 				From("users").
 				Where(EqAny(Col("id"), ArrayParam([]int64{1, 2, 3}, TypeInt8))),
 			`SELECT "id" FROM "users" WHERE ("id" = ANY(($1)::bigint[]))`,
 			[]any{[]int64{1, 2, 3}},
 		},
-		{"array_query", Select(ArrayFrom(SelectCols("id").From("users"))), `SELECT ARRAY(SELECT "id" FROM "users")`, nil},
+		{"array_query", Select(ArrayFrom(Select("id").From("users"))), `SELECT ARRAY(SELECT "id" FROM "users")`, nil},
 		{"array_empty", Select(Array().Cast(TypeArray(TypeInt4))), `SELECT (ARRAY[])::integer[]`, nil},
 		{
 			"array_slice",
@@ -89,7 +89,7 @@ func TestPostgreSQLExpressions(t *testing.T) {
 		},
 		{
 			"fulltext",
-			SelectCols("id").
+			Select("id").
 				From("docs").
 				Where(
 					TSMatches(
@@ -107,9 +107,9 @@ func TestPostgreSQLExpressions(t *testing.T) {
 		{"numeric_type", Select(Param("123.45").Cast(TypeDecimal(12, 2))), `SELECT ($1)::numeric(12, 2)`, []any{"123.45"}},
 		{
 			"quantified_subquery",
-			SelectCols("id").Where(
+			Select("id").Where(
 				Col("n").Gt(
-					AllQuery(SelectCols("n").From("thresholds").Where(Col("active").Eq(Param(true)))),
+					AllQuery(Select("n").From("thresholds").Where(Col("active").Eq(Param(true)))),
 				),
 			),
 			`SELECT "id" WHERE ("n" > ALL (SELECT "n" FROM "thresholds" WHERE ("active" = $1)))`,
@@ -117,7 +117,7 @@ func TestPostgreSQLExpressions(t *testing.T) {
 		},
 		{
 			"row_membership",
-			SelectCols("a", "b").Where(
+			Select("a", "b").Where(
 				Row(Col("a"), Col("b")).In(Row(Param(1), Param(2)), Row(Param(3), Param(4))),
 			),
 			`SELECT "a", "b" WHERE (ROW("a", "b") IN (ROW($1, $2), ROW($3, $4)))`,
@@ -125,8 +125,8 @@ func TestPostgreSQLExpressions(t *testing.T) {
 		},
 		{
 			"row_subquery",
-			SelectCols("a", "b").Where(
-				Row(Col("a"), Col("b")).InQuery(SelectCols("c", "d").From("t")),
+			Select("a", "b").Where(
+				Row(Col("a"), Col("b")).InQuery(Select("c", "d").From("t")),
 			),
 			`SELECT "a", "b" WHERE (ROW("a", "b") IN (SELECT "c", "d" FROM "t"))`,
 			nil,

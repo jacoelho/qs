@@ -28,7 +28,7 @@ func TestSelectSQLIsConvenienceWrapper(t *testing.T) {
 			for i, sql := range tc.projections {
 				expressions[i] = UnsafeSQL(sql)
 			}
-			explicit := SelectSlice(expressions).
+			explicit := Select(expressions...).
 				From("users").
 				Where(Col("active").Eq(Param(true))).
 				Limit(50)
@@ -50,7 +50,7 @@ func TestSelectIdentifierExpressionAndValueAreDistinct(t *testing.T) {
 		{"cast_text_is_not_an_identifier", Select(Col("id::text")), `SELECT "id::text"`, nil},
 		{"raw_sql_is_explicit", Select(UnsafeSQL("id::text")), `SELECT id::text`, nil},
 		{"value_is_bound", Select(Param("id::text")), `SELECT $1`, []any{"id::text"}},
-		{"column_names_wrapper", SelectCols("id", "u.name"), `SELECT "id", "u.name"`, nil},
+		{"column_names_wrapper", Select("id", "u.name"), `SELECT "id", "u.name"`, nil},
 		{"projection_order", Select(Col("id"), Col("created_at")).Columns(Col("name")), `SELECT "id", "created_at", "name"`, nil},
 	})
 }
@@ -60,7 +60,7 @@ func TestSelectStructuredReuseOwnsProjectionSlice(t *testing.T) {
 
 	columns := make([]Expr, 2, 8)
 	columns[0], columns[1] = Col("id"), Col("created_at")
-	q := SelectSlice(columns).Columns(Col("name"))
+	q := Select(columns...).Columns(Col("name"))
 	columns[0] = Col("different")
 	columns = columns[:3]
 	columns[2] = Col("another")
@@ -110,9 +110,9 @@ func TestRowLimitHasOneValue(t *testing.T) {
 
 // An empty run-time projection is the defect. A statement that compares its
 // width with another's must report that, not a width mismatch.
-func TestEmptySelectSliceIsReportedByStatementsThatEmbedIt(t *testing.T) {
+func TestEmptySelectListIsReportedByStatementsThatEmbedIt(t *testing.T) {
 	t.Parallel()
-	empty := SelectSlice(nil)
+	empty := Select([]Expr(nil)...)
 	for name, query := range map[string]Statement{
 		"set_operand":   Union(empty, Select(Param(1))),
 		"scalar":        Select(Scalar(empty)),

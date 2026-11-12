@@ -40,7 +40,7 @@ func FuzzValueIsolation(f *testing.F) {
 		if len(v) > 1<<16 {
 			t.Skip()
 		}
-		sql, args, err := SelectCols("id").From("t").Where(Col("name").Eq(Param(v))).ToSQL()
+		sql, args, err := Select("id").From("t").Where(Col("name").Eq(Param(v))).ToSQL()
 		if err != nil || sql != `SELECT "id" FROM "t" WHERE ("name" = $1)` || !reflect.DeepEqual(args, []any{v}) {
 			t.Fatalf("value changed SQL: %q %#v %v", sql, args, err)
 		}
@@ -55,7 +55,7 @@ func FuzzNestedNumbering(f *testing.F) {
 		if len(data) > 32 {
 			t.Skip()
 		}
-		q := SelectCols("id").From("t")
+		q := Select("id").From("t")
 		expected := make([]any, 0, len(data)*2)
 		for i, v := range data {
 			sub := Select(LiteralInt(1)).From("s").Where(Col("v").Eq(Param(v)))

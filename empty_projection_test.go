@@ -7,7 +7,7 @@ func TestSelectNoColumnsRendersWhileEmptySelectFails(t *testing.T) {
 
 	checkSQL(t, SelectNoColumns(), `SELECT `)
 	checkSQL(t, SelectNoColumns().Where(True()), `SELECT  WHERE TRUE`)
-	checkError(t, SelectSlice(nil), ErrInvalid)
+	checkError(t, Select([]Expr(nil)...), ErrInvalid)
 	checkError(t, SelectBuilder{}, ErrInvalid)
 }
 
@@ -25,5 +25,5 @@ func TestSelectNoColumnsCanRenderWithRows(t *testing.T) {
 	t.Parallel()
 
 	checkSQL(t, SelectNoColumns().Where(False()), `SELECT  WHERE FALSE`)
-	checkSQL(t, SelectNoColumns().FromExpr(Values(1).As("v", "value")), `SELECT  FROM (VALUES ($1)) AS "v" ("value")`, 1)
+	checkSQL(t, SelectNoColumns().From(Values(1).As("v", "value")), `SELECT  FROM (VALUES ($1)) AS "v" ("value")`, 1)
 }

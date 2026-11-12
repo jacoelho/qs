@@ -43,7 +43,7 @@ func TestParamPreservesDynamicValueTypes(t *testing.T) {
 func TestArrayParamBindsNilSliceAsEmptyArray(t *testing.T) {
 	t.Parallel()
 	var ids []int
-	sql, args, err := qs.SelectCols("id").
+	sql, args, err := qs.Select("id").
 		From("users").
 		Where(qs.EqAny(qs.Col("id"), qs.ArrayParam(ids, qs.TypeInt4))).
 		ToSQL()

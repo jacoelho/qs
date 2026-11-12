@@ -13,7 +13,7 @@ func TestPointerToBuilderRendersAsItsValue(t *testing.T) {
 	t.Parallel()
 
 	query := Select(Col("id")).From("users")
-	insert := InsertInto("audit").Columns("id").Values(Value(1)).ReturningCols("id")
+	insert := InsertInto("audit").Columns("id").Values(Value(1)).Returning("id")
 	union := Union(query, query)
 	for _, tc := range []struct {
 		name    string
@@ -23,8 +23,8 @@ func TestPointerToBuilderRendersAsItsValue(t *testing.T) {
 		{"top_level", &query, query},
 		{
 			"subquery",
-			Select(Star()).FromExpr(Subquery(&query, "s")),
-			Select(Star()).FromExpr(Subquery(query, "s")),
+			Select(Star()).From(Subquery(&query, "s")),
+			Select(Star()).From(Subquery(query, "s")),
 		},
 		{"exists", Select(Exists(&query).Expr()), Select(Exists(query).Expr())},
 		{"scalar", Select(Scalar(&query)), Select(Scalar(query))},
@@ -91,12 +91,12 @@ func TestPointerToJSONTableColumnRendersAsItsValue(t *testing.T) {
 	)
 	nested := JSONNested("$.x", &value)
 	checkSQL(t,
-		Select(Star()).FromExpr(JSONTable(Col("doc"), "$", &ordinality, &exists, &nested).Ref()),
+		Select(Star()).From(JSONTable(Col("doc"), "$", &ordinality, &exists, &nested).Ref()),
 		`SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS ("n" FOR ORDINALITY, "e" boolean EXISTS, NESTED PATH E'$.x' COLUMNS ("a" text)))`,
 	)
 
 	var missing *JSONTableValueColumn
-	_, _, err := Select(Star()).FromExpr(JSONTable(Col("doc"), "$", missing).Ref()).ToSQL()
+	_, _, err := Select(Star()).From(JSONTable(Col("doc"), "$", missing).Ref()).ToSQL()
 	renderError, ok := errors.AsType[*RenderError](err)
 	if !ok || renderError.Detail != "nil column" {
 		t.Fatalf("got %v", err)
@@ -110,7 +110,7 @@ func TestPointerToBuilderIsReadAtConstruction(t *testing.T) {
 
 	query := Select(Col("a")).From("t")
 	union := Union(&query, &query)
-	subquery := Select(Star()).FromExpr(Subquery(&query, "s"))
+	subquery := Select(Star()).From(Subquery(&query, "s"))
 	query = query.Where(Col("a").IsNull())
 	checkSQL(t, union, `(SELECT "a" FROM "t") UNION (SELECT "a" FROM "t")`)
 	checkSQL(t, subquery, `SELECT * FROM (SELECT "a" FROM "t") AS "s"`)

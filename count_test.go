@@ -49,7 +49,7 @@ func TestCountRowsKeepsRowShapingClauses(t *testing.T) {
 			CountRows(
 				Select(Col("id")).
 					With(CTE("c", inner)).
-					FromExpr(inner.As("s")).
+					From(inner.As("s")).
 					OrderBy(Col("id").Asc()).
 					Limit(5),
 			),
@@ -167,7 +167,7 @@ func TestCountRowsKeepsOrderExpressionsThatChangeRows(t *testing.T) {
 		{
 			"group_by_ordinal_keeps_position",
 			CountRows(
-				Select(Col("a")).From("t").GroupByExpr(Ordinal(1)).OrderBy(Sum(Col("b")).Desc()),
+				Select(Col("a")).From("t").GroupBy(Ordinal(1)).OrderBy(Sum(Col("b")).Desc()),
 			),
 			`SELECT count(*) FROM (SELECT "a", sum("b") AS "qs_order_1" FROM "t" GROUP BY 1) AS "matching"`,
 			nil,
@@ -214,7 +214,7 @@ func TestCountRowsKeepsOrderExpressionsThatChangeRows(t *testing.T) {
 		},
 		{
 			"nested_order_stays",
-			CountRows(Select(Col("id")).FromExpr(inner.As("s")).OrderBy(Lower(Col("x")).Asc())),
+			CountRows(Select(Col("id")).From(inner.As("s")).OrderBy(Lower(Col("x")).Asc())),
 			`SELECT count(*) FROM (SELECT "id", lower("x") AS "qs_order_1" FROM (SELECT "id" FROM "u" ORDER BY lower("y") ASC LIMIT $1) AS "s") AS "matching"`,
 			[]any{3},
 		},

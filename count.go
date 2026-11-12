@@ -22,7 +22,7 @@ import "strconv"
 // The count is a separate statement. It agrees with the pages only when both
 // run in one REPEATABLE READ or SERIALIZABLE transaction.
 func CountRows(query SelectBuilder) SelectBuilder {
-	return Select(CountAll()).FromExpr(Relation{kind: relationSource, source: matchingRows(query), alias: "matching"})
+	return Select(CountAll()).From(Relation{kind: relationSource, source: matchingRows(query), alias: "matching"})
 }
 
 // appendMatching renders the rows CountRows counts. The statement suffix still

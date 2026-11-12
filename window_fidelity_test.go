@@ -7,7 +7,7 @@ import (
 
 func TestUnusedWindowAllowsRowLocking(t *testing.T) {
 	t.Parallel()
-	query := SelectCols("id").
+	query := Select("id").
 		From("jobs").
 		Window("unused", Window().OrderBy(Col("id").Asc())).
 		Lock(ForUpdate())
@@ -31,7 +31,7 @@ func TestWindowUseRejectsRowLocking(t *testing.T) {
 		},
 		{
 			"select_order",
-			SelectCols("id").
+			Select("id").
 				From("jobs").
 				OrderBy(RowNumber().Over(Window()).Asc()).
 				Lock(ForUpdate()),
@@ -69,10 +69,10 @@ func TestNestedWindowUseDoesNotRejectOuterRowLock(t *testing.T) {
 	ranked := CTE("ranked", Select(RowNumber().Over(Window()).As("position")))
 	checkSQL(
 		t,
-		SelectCols("id").
+		Select("id").
 			With(ranked).
 			From("jobs").
-			Where(Exists(SelectCols("position").FromExpr(ranked.Ref()))).
+			Where(Exists(Select("position").From(ranked.Ref()))).
 			Lock(ForUpdate()),
 		`WITH "ranked" AS (SELECT row_number() OVER () AS "position") SELECT "id" FROM "jobs" WHERE EXISTS (SELECT "position" FROM "ranked") FOR UPDATE`,
 	)

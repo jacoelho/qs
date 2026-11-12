@@ -88,7 +88,7 @@ func TestFunctionRelationCastsAgainstPostgres(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := session.render(t, qs.Select(qs.Col("v")).FromExpr(tc.relation))
+			sql, args, err := session.render(t, qs.Select(qs.Col("v")).From(tc.relation))
 			if err != nil {
 				t.Fatal(err)
 			}

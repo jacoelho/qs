@@ -46,12 +46,12 @@ func TestRenderErrorStructuralPaths(t *testing.T) {
 		{"order", Select(LiteralInt(1)).OrderBy(LiteralInt(1).Asc(), Expr{}.Asc()), []string{"SELECT", "ORDER BY", "order[2]"}},
 		{
 			"join_right",
-			Select(LiteralInt(1)).FromExpr(InnerJoin(Table("a"), Relation{}).On(Condition{})),
+			Select(LiteralInt(1)).From(InnerJoin(Table("a"), Relation{}).On(Condition{})),
 			[]string{"SELECT", "FROM", "relation[1]", "right"},
 		},
 		{
 			"join_on",
-			Select(LiteralInt(1)).FromExpr(InnerJoin(Table("a"), Table("b")).On(True(), Condition{})),
+			Select(LiteralInt(1)).From(InnerJoin(Table("a"), Table("b")).On(True(), Condition{})),
 			[]string{"SELECT", "FROM", "relation[1]", "ON", "condition[2]"},
 		},
 		{

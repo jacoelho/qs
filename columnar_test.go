@@ -15,21 +15,21 @@ func TestNamedArrays(t *testing.T) {
 	)
 	u := UnnestAs("u", id, name)
 	runCases(t, []renderCase{
-		{"relation", Select(u.Col("name"), u.Col("id")).FromExpr(u),
+		{"relation", Select(u.Col("name"), u.Col("id")).From(u),
 			`SELECT "u"."name", "u"."id" FROM unnest(($1)::integer[], ($2)::text[]) AS "u" ("id", "name")`, []any{ids, names}},
-		{"one_array", Select(Star()).FromExpr(UnnestAs("u", name)),
+		{"one_array", Select(Star()).From(UnnestAs("u", name)),
 			`SELECT * FROM unnest(($1)::text[]) AS "u" ("name")`, []any{names}},
-		{"ordinality", Select(u.Col("id"), u.Col("ordinality")).FromExpr(u.WithOrdinality()),
+		{"ordinality", Select(u.Col("id"), u.Col("ordinality")).From(u.WithOrdinality()),
 			`SELECT "u"."id", "u"."ordinality" FROM unnest(($1)::integer[], ($2)::text[]) WITH ORDINALITY AS "u" ("id", "name")`, []any{ids, names}},
 		{
 			"renamed_with_ordinality",
-			Select(Star()).FromExpr(u.WithOrdinality().As("v", "a", "b", "n")),
+			Select(Star()).From(u.WithOrdinality().As("v", "a", "b", "n")),
 			`SELECT * FROM unnest(($1)::integer[], ($2)::text[]) WITH ORDINALITY AS "v" ("a", "b", "n")`,
 			[]any{ids, names},
 		},
 		{
 			"lateral_column_array",
-			Select(Col("e", "tag")).FromExpr(
+			Select(Col("e", "tag")).From(
 				Table("posts"),
 				Lateral(UnnestAs("e", NamedArray("tag", Col("posts", "tags")))),
 			),
@@ -45,7 +45,7 @@ func TestNamedArrays(t *testing.T) {
 			InsertInto("users").
 				FromArrays(id, name).
 				OnConflict(ConflictColumns("id").DoUpdate(SetAllExcluded("name")[0])).
-				ReturningCols("id"),
+				Returning("id"),
 			`INSERT INTO "users" ("id", "name") SELECT * FROM unnest(($1)::integer[], ($2)::text[]) ON CONFLICT ("id") DO UPDATE SET "name" = "excluded"."name" RETURNING "id"`,
 			[]any{ids, names},
 		},
@@ -59,11 +59,11 @@ func TestNamedArrays(t *testing.T) {
 
 	for label, statement := range map[string]Statement{
 		"zero column in insert":   InsertInto("users").FromArrays(ArrayColumn{}),
-		"zero column in relation": Select(Star()).FromExpr(UnnestAs("u", id, ArrayColumn{})),
+		"zero column in relation": Select(Star()).From(UnnestAs("u", id, ArrayColumn{})),
 		"empty name in insert": InsertInto("users").FromArrays(
 			NamedArray("", ArrayParam(ids, TypeInt4)),
 		),
-		"empty name in relation": Select(Star()).FromExpr(
+		"empty name in relation": Select(Star()).From(
 			UnnestAs("u", NamedArray("", ArrayParam(ids, TypeInt4))),
 		),
 	} {
@@ -80,7 +80,7 @@ func TestNamedArraysOwnTheirLists(t *testing.T) {
 	relation := UnnestAs("u", columns[0], columns[1:]...)
 	insert := InsertInto("t").FromArrays(columns[0], columns[1:]...)
 	columns[1] = NamedArray("changed", Col("z"))
-	checkSQL(t, Select(Star()).FromExpr(relation), `SELECT * FROM unnest("x", "y") AS "u" ("a", "b")`)
+	checkSQL(t, Select(Star()).From(relation), `SELECT * FROM unnest("x", "y") AS "u" ("a", "b")`)
 	checkSQL(t, insert, `INSERT INTO "t" ("a", "b") SELECT * FROM unnest("x", "y")`)
 }
 
@@ -98,7 +98,7 @@ func TestInsertFromNamed(t *testing.T) {
 		{
 			"column_and_alias",
 			InsertInto("events").FromNamed(
-				Select(u.Col("name"), u.Col("ordinality").As("position"), Param("x").As("kind")).FromExpr(
+				Select(u.Col("name"), u.Col("ordinality").As("position"), Param("x").As("kind")).From(
 					u,
 				),
 			),
@@ -108,7 +108,7 @@ func TestInsertFromNamed(t *testing.T) {
 		{
 			"json_elements",
 			InsertInto("events").FromNamed(
-				Select(item.TextKey("name").As("name"), e.Col("n")).FromExpr(e),
+				Select(item.TextKey("name").As("name"), e.Col("n")).From(e),
 			),
 			`INSERT INTO "events" ("name", "n") SELECT ("e"."item" ->> E'name') AS "name", "e"."n" FROM jsonb_array_elements(($1)::jsonb) WITH ORDINALITY AS "e" ("item", "n")`,
 			[]any{`[]`},
@@ -133,7 +133,7 @@ func TestInsertFromNamed(t *testing.T) {
 			InsertInto("t").
 				FromNamed(Select(Col("a")).From("s")).
 				OnConflict(AnyConflict().DoNothing()).
-				ReturningCols("a"),
+				Returning("a"),
 			`INSERT INTO "t" ("a") SELECT "a" FROM "s" ON CONFLICT DO NOTHING RETURNING "a"`,
 			nil,
 		},
@@ -143,7 +143,7 @@ func TestInsertFromNamed(t *testing.T) {
 		"unaliased expression": Select(Col("a"), Lower(Col("b"))).From("s"),
 		"unaliased parameter":  Select(Param(1)),
 		"star":                 Select(Star()).From("s"),
-		"relation star":        Select(u.Star()).FromExpr(u),
+		"relation star":        Select(u.Star()).From(u),
 		"trusted SQL":          SelectSQL("a").From("s"),
 		"duplicate name":       Select(Col("s", "a"), Col("b").As("a")).From("s"),
 		"no columns":           SelectNoColumns().From("s"),
@@ -163,11 +163,11 @@ func TestFieldEqAny(t *testing.T) {
 	id := TypedCol[int64]("users", "id")
 	ids := []int64{1, 2, 3}
 	runCases(t, []renderCase{
-		{"values", SelectCols("id").From("users").Where(id.EqAny(ids, TypeInt8)),
+		{"values", Select("id").From("users").Where(id.EqAny(ids, TypeInt8)),
 			`SELECT "id" FROM "users" WHERE ("users"."id" = ANY(($1)::bigint[]))`, []any{ids}},
-		{"nil_binds_empty_array", SelectCols("id").From("users").Where(id.EqAny(nil, TypeInt8)),
+		{"nil_binds_empty_array", Select("id").From("users").Where(id.EqAny(nil, TypeInt8)),
 			`SELECT "id" FROM "users" WHERE ("users"."id" = ANY(($1)::bigint[]))`, []any{[]int64{}}},
-		{"negated", SelectCols("id").From("users").Where(id.EqAny(ids, TypeInt8).Not()),
+		{"negated", Select("id").From("users").Where(id.EqAny(ids, TypeInt8).Not()),
 			`SELECT "id" FROM "users" WHERE (NOT ("users"."id" = ANY(($1)::bigint[])))`, []any{ids}},
 	})
 }

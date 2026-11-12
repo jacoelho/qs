@@ -56,7 +56,7 @@ func TestSQLJSONForms(t *testing.T) {
 		{
 			"array_query",
 			Select(
-				JSONArrayQuery(SelectCols("v").From("t").Where(Col("id").Eq(Param(3)))).FormatJSON().Returning(
+				JSONArrayQuery(Select("v").From("t").Where(Col("id").Eq(Param(3)))).FormatJSON().Returning(
 					TypeJSONB,
 				).Expr(),
 			),
@@ -94,21 +94,21 @@ func TestSQLJSONForms(t *testing.T) {
 		},
 		{
 			"array_query_bytea",
-			Select(JSONArrayQuery(SelectCols("raw").From("t")).FormatJSONUTF8().Expr()),
+			Select(JSONArrayQuery(Select("raw").From("t")).FormatJSONUTF8().Expr()),
 			`SELECT JSON_ARRAY(SELECT "raw" FROM "t" FORMAT JSON ENCODING UTF8)`, nil,
 		},
 		{"parse", Select(JSONParse(FormatJSON(Param(`{"a":1}`))).WithUniqueKeys().Expr()), `SELECT JSON($1 FORMAT JSON WITH UNIQUE KEYS)`, []any{`{"a":1}`}},
 		{"parse_without_unique", Select(JSONParse(Col("s")).WithoutUniqueKeys().Expr()), `SELECT JSON("s" WITHOUT UNIQUE KEYS)`, nil},
 		{"scalar", Select(JSONScalar(Param(1.5))), `SELECT JSON_SCALAR($1)`, []any{1.5}},
 		{"serialize", Select(JSONSerialize(Col("j")).Returning(TypeText).Expr()), `SELECT JSON_SERIALIZE("j" RETURNING text)`, nil},
-		{"is_json", SelectCols("id").From("t").Where(IsJSON(Col("s")).Condition()), `SELECT "id" FROM "t" WHERE ("s" IS JSON)`, nil},
+		{"is_json", Select("id").From("t").Where(IsJSON(Col("s")).Condition()), `SELECT "id" FROM "t" WHERE ("s" IS JSON)`, nil},
 		{"is_json_item", Select(IsJSON(Col("s")).Object().WithUniqueKeys().Expr()), `SELECT ("s" IS JSON OBJECT WITH UNIQUE KEYS)`, nil},
 		{"is_json_array", Select(IsJSON(Col("s")).Array().WithoutUniqueKeys().Expr()), `SELECT ("s" IS JSON ARRAY WITHOUT UNIQUE KEYS)`, nil},
 		{"is_json_scalar", Select(IsJSON(Col("s")).Scalar().Expr()), `SELECT ("s" IS JSON SCALAR)`, nil},
-		{"is_not_json", SelectCols("id").From("t").Where(IsJSON(Col("s")).Condition().Not()), `SELECT "id" FROM "t" WHERE (NOT ("s" IS JSON))`, nil},
+		{"is_not_json", Select("id").From("t").Where(IsJSON(Col("s")).Condition().Not()), `SELECT "id" FROM "t" WHERE (NOT ("s" IS JSON))`, nil},
 		{
 			"exists",
-			SelectCols("id").
+			Select("id").
 				From("t").
 				Where(
 					JSONExists(doc, path("$.a ? (@ > $min)")).Passing("min", Param(2)).FalseOnError().Condition(),
@@ -218,11 +218,11 @@ func TestSQLJSONTable(t *testing.T) {
 		`NESTED PATH E'$.parts[*]' AS "parts" COLUMNS ("part" text PATH E'$.name' WITHOUT WRAPPER, NESTED PATH E'$.bins[*]' COLUMNS ("bin" FOR ORDINALITY))) ERROR ON ERROR)`
 
 	runCases(t, []renderCase{
-		{"unaliased", Select(Star()).FromExpr(table.Ref()), `SELECT * FROM ` + call, []any{1}},
+		{"unaliased", Select(Star()).From(table.Ref()), `SELECT * FROM ` + call, []any{1}},
 		{
 			// NESTED PATH groups contribute their columns, not themselves.
 			"aliases_for_every_column",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(
 					Col("doc"),
 					"$",
@@ -241,7 +241,7 @@ func TestSQLJSONTable(t *testing.T) {
 		{
 			// PostgreSQL takes json_table_path_0 only for a row path without a name.
 			"generated_name_with_a_named_row_path",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(
 					Col("doc"),
 					"$",
@@ -257,7 +257,7 @@ func TestSQLJSONTable(t *testing.T) {
 		{
 			// The names PostgreSQL generates for NESTED PATH groups collide with nothing.
 			"generated_name_of_a_nested_path",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(
 					Col("doc"),
 					"$",
@@ -268,14 +268,14 @@ func TestSQLJSONTable(t *testing.T) {
 			`SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS (NESTED PATH E'$' COLUMNS ("a" text), NESTED PATH E'$' AS "json_table_path_1" COLUMNS ("b" text)))`,
 			nil,
 		},
-		{"aliased", Select(Star()).FromExpr(table.As("jt", "a", "b")), `SELECT * FROM ` + call + ` AS "jt" ("a", "b")`, []any{1}},
+		{"aliased", Select(Star()).From(table.As("jt", "a", "b")), `SELECT * FROM ` + call + ` AS "jt" ("a", "b")`, []any{1}},
 		{
 			// PostgreSQL lets JSON_TABLE read an earlier FROM item either way;
 			// Lateral writes the keyword.
 			"lateral",
 			Select(Col("o", "id"), Col("jt", "sku")).
-				FromExpr(Table("orders").As("o")).
-				CrossJoinExpr(
+				From(Table("orders").As("o")).
+				CrossJoin(
 					Lateral(
 						JSONTable(Col("o", "doc"), "$[*]", JSONColumn("sku", TypeText)).EmptyArrayOnError().As(
 							"jt",
@@ -287,7 +287,7 @@ func TestSQLJSONTable(t *testing.T) {
 		},
 		{
 			"exists_column_behaviors",
-			Select(Star()).FromExpr(JSONTable(Col("doc"), "$",
+			Select(Star()).From(JSONTable(Col("doc"), "$",
 				JSONExistsColumn("a", TypeBool).ErrorOnError(),
 				JSONExistsColumn("b", TypeBool).TrueOnError(),
 				JSONExistsColumn("c", TypeInt4).UnknownOnError(),
@@ -297,7 +297,7 @@ func TestSQLJSONTable(t *testing.T) {
 		},
 		{
 			"value_column_behaviors",
-			Select(Star()).FromExpr(JSONTable(Col("doc"), "$",
+			Select(Star()).From(JSONTable(Col("doc"), "$",
 				JSONColumn("a", TypeJSONB).WithWrapper().ErrorOnEmpty().EmptyArrayOnError(),
 				JSONColumn("b", TypeJSONB).EmptyObjectOnEmpty().DefaultOnError(LiteralString("{}")),
 			).Ref()),
@@ -360,7 +360,7 @@ func TestSQLJSONLaterChoiceReplacesEarlier(t *testing.T) {
 		{"window", Select(JSONArrayAggregate(doc).Over(Window()).OverNamed("w").Expr()), `SELECT JSON_ARRAYAGG("doc") OVER "w"`, nil},
 		{
 			"column_format",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(
 					doc,
 					"$",
@@ -371,7 +371,7 @@ func TestSQLJSONLaterChoiceReplacesEarlier(t *testing.T) {
 		},
 		{
 			"column_path",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(doc, "$", JSONColumn("a", TypeText).Path("$.x").Path("$.y")).Ref(),
 			),
 			`SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS ("a" text PATH E'$.y'))`,
@@ -398,7 +398,7 @@ func TestSQLJSONRenderErrors(t *testing.T) {
 	var noFormatted *JSONFormatted
 	var noDocument *JSONBDocument
 	table := func(first JSONTableColumn, rest ...JSONTableColumn) Statement {
-		return Select(Star()).FromExpr(JSONTable(doc, "$", first, rest...).Ref())
+		return Select(Star()).From(JSONTable(doc, "$", first, rest...).Ref())
 	}
 	for _, tc := range []struct {
 		name      string
@@ -410,7 +410,7 @@ func TestSQLJSONRenderErrors(t *testing.T) {
 		{"empty_object_uniqueness", Select(JSONObject().WithUniqueKeys().Expr()), "JSON_OBJECT", "an empty constructor accepts RETURNING only"},
 		{"empty_array_null_clause", Select(JSONArray().NullOnNull().Expr()), "JSON_ARRAY", "an empty constructor accepts RETURNING only"},
 		{"array_query_missing", Select(JSONArrayQuery(noQuery).Expr()), "JSON_ARRAY", "requires a query"},
-		{"array_query_two_columns", Select(JSONArrayQuery(SelectCols("a", "b").From("t")).Expr()), "JSON_ARRAY", "query must return exactly one column"},
+		{"array_query_two_columns", Select(JSONArrayQuery(Select("a", "b").From("t")).Expr()), "JSON_ARRAY", "query must return exactly one column"},
 		{"array_query_no_columns", Select(JSONArrayQuery(SelectNoColumns().From("t")).Expr()), "JSON_ARRAY", "query must return exactly one column"},
 		{"nil_operand", Select(JSONArray(doc, noOperand).Expr()), "SQL/JSON", "requires a value"},
 		{"nil_document", Select(JSONValue(noOperand, LiteralString("$")).Expr()), "SQL/JSON", "requires a value"},
@@ -431,7 +431,7 @@ func TestSQLJSONRenderErrors(t *testing.T) {
 		},
 		{
 			"table_path_names_repeat",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(doc, "$", JSONNested("$", JSONColumn("b", TypeText)).PathName("p")).PathName(
 					"p",
 				).Ref(),
@@ -499,7 +499,7 @@ func TestSQLJSONRenderErrors(t *testing.T) {
 		{"nil_document_pointer", Select(JSONValue(noDocument, LiteralString("$")).Expr()), "SQL/JSON", "requires a value"},
 		{
 			"table_path_empty",
-			Select(Star()).FromExpr(JSONTable(doc, "", JSONColumn("a", TypeText)).Ref()),
+			Select(Star()).From(JSONTable(doc, "", JSONColumn("a", TypeText)).Ref()),
 			"PATH",
 			"requires a path",
 		},
@@ -508,7 +508,7 @@ func TestSQLJSONRenderErrors(t *testing.T) {
 		{"nested_path_empty", table(JSONNested("", JSONColumn("a", TypeText))), "PATH", "requires a path"},
 		{
 			"table_too_many_aliases",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(doc, "$", JSONColumn("a", TypeText), JSONNested("$", JSONOrdinality("n"))).As(
 					"jt",
 					"x",
@@ -542,7 +542,7 @@ func TestSQLJSONRenderErrors(t *testing.T) {
 			"DEFAULT",
 			"cannot reference a column",
 		},
-		{"table_zero_value", Select(Star()).FromExpr(JSONTableBuilder{}.Ref()), "", ""},
+		{"table_zero_value", Select(Star()).From(JSONTableBuilder{}.Ref()), "", ""},
 		{"table_nil_column", table(JSONColumn("a", TypeText), nil), "COLUMNS", "nil column"},
 		{"nested_zero_value", table(JSONTableNestedColumns{}), "PATH", "requires a path"},
 		{"zero_value_function", Select(JSONValueBuilder{}.Expr()), "", ""},
@@ -574,7 +574,7 @@ func TestSQLJSONTableNestingIsBounded(t *testing.T) {
 	for range 64 {
 		column = JSONNested("$", column)
 	}
-	statement := Select(Star()).FromExpr(JSONTable(Col("doc"), "$", column).Ref())
+	statement := Select(Star()).From(JSONTable(Col("doc"), "$", column).Ref())
 	checkErrorWithOptions(t, statement, Options{MaxDepth: 16}, ErrDepth)
 	if _, _, err := statement.ToSQLWith(Options{MaxDepth: 128}); err != nil {
 		t.Fatalf("within the limit: %v", err)
@@ -638,8 +638,8 @@ func TestSQLJSONBuildersShareNoState(t *testing.T) {
 			"x",
 		)
 		checkSQL(t, Select(object.Expr(), array.Expr()), `SELECT JSON_OBJECT("k" : "v"), JSON_ARRAY("a")`)
-		checkSQL(t, Select(Star()).FromExpr(table.Ref()), `SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS ("a" text, "b" text))`)
-		checkSQL(t, Select(Star()).FromExpr(JSONTable(doc, "$", nested).Ref()), `SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS (NESTED PATH E'$' COLUMNS ("a" text, "b" text)))`)
+		checkSQL(t, Select(Star()).From(table.Ref()), `SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS ("a" text, "b" text))`)
+		checkSQL(t, Select(Star()).From(JSONTable(doc, "$", nested).Ref()), `SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS (NESTED PATH E'$' COLUMNS ("a" text, "b" text)))`)
 	})
 	t.Run("expression_snapshots_builder", func(t *testing.T) {
 		t.Parallel()
@@ -651,7 +651,7 @@ func TestSQLJSONBuildersShareNoState(t *testing.T) {
 		_ = builder.WithWrapper().ErrorOnError()
 		_ = relation.ErrorOnError().PathName("p")
 		checkSQL(t, Select(expression), `SELECT JSON_QUERY("doc", E'$')`)
-		checkSQL(t, Select(Star()).FromExpr(source), `SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS ("a" text))`)
+		checkSQL(t, Select(Star()).From(source), `SELECT * FROM JSON_TABLE("doc", E'$' COLUMNS ("a" text))`)
 	})
 }
 
@@ -673,7 +673,7 @@ func TestSQLJSONTableFailuresAreLocatedInJSONTable(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, _, err := Select(Star()).FromExpr(table.Ref()).ToSQL()
+			_, _, err := Select(Star()).From(table.Ref()).ToSQL()
 			renderError, ok := errors.AsType[*RenderError](err)
 			if !ok {
 				t.Fatalf("expected a render error, got %v", err)

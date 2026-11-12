@@ -106,7 +106,14 @@ func (r Relation) As(alias string, columns ...string) Relation {
 // Only restricts a physical table relation to the named table itself.
 func (r Relation) Only() Relation { r.only = true; return r }
 
-// Lateral marks a subquery or table-function relation as LATERAL.
+// Lateral marks a subquery or table-function relation as LATERAL, so that it
+// may read columns of the FROM items before it. Join it like any relation;
+// a left join that keeps rows without a match takes True as its condition:
+//
+//	LeftJoin(Lateral(Subquery(newest, "i")), True())
+//
+// renders LEFT JOIN LATERAL (...) AS "i" ON TRUE. Rendering fails for any
+// other relation.
 func Lateral(r Relation) Relation { r.lateral = true; return r }
 
 // WithOrdinality requests WITH ORDINALITY for a table-function relation.

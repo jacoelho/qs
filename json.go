@@ -52,6 +52,24 @@ func (d JSONDocument) As(alias string) Expr { return d.expr.As(alias) }
 // As returns the document expression with an SQL alias.
 func (d JSONBDocument) As(alias string) Expr { return d.expr.As(alias) }
 
+// Cast adds an explicit PostgreSQL type cast to the document. The result is
+// no longer a json document: wrap it with Typed to compare it with Go values.
+func (d JSONDocument) Cast(typ DataType) Expr { return d.expr.Cast(typ) }
+
+// Cast adds an explicit PostgreSQL type cast to the document, as in
+// d.Key("count").Cast(TypeInt4). The result is no longer a jsonb document:
+// wrap it with Typed to compare it with Go values.
+func (d JSONBDocument) Cast(typ DataType) Expr { return d.expr.Cast(typ) }
+
+// TypeOf returns the type of the document's top-level value as text, one of
+// object, array, string, number, boolean and null. A SQL NULL document gives
+// SQL NULL, not the text null.
+func (d JSONDocument) TypeOf() Field[string] { return Typed[string](JSONTypeOf(d.expr)) }
+
+// TypeOf returns the type of the document's top-level value, as
+// JSONDocument.TypeOf does.
+func (d JSONBDocument) TypeOf() Field[string] { return Typed[string](JSONBTypeOf(d.expr)) }
+
 // IsNull returns a condition that tests whether the document is SQL NULL.
 func (d JSONDocument) IsNull() Condition { return d.expr.IsNull() }
 

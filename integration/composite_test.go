@@ -86,7 +86,7 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 	}
 
 	insert := qs.InsertInto("qs_composite_people").
-		Targets(
+		Columns(
 			qs.Col("id"),
 			person.Field("first_name"),
 			person.Field("age"),

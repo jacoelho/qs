@@ -40,7 +40,7 @@ func TestInvalidConstruction(t *testing.T) {
 		name string
 		q    Statement
 	}{
-		{"select_zero", SelectSlice(nil)}, {"nil", nil},
+		{"select_zero", Select([]Expr(nil)...)}, {"nil", nil},
 		{"where_zero", Select(LiteralInt(1)).Where(Condition{})},
 		{"identifier_empty", Select(Col(""))}, {"identifier_component", Select(Col("a", "", "b"))},
 		{"identifier_nul", Select(Col("a\x00b"))}, {"identifier_utf8", Select(Col("\xff"))},
@@ -79,16 +79,16 @@ func TestInvalidConstruction(t *testing.T) {
 		{"lock_having", Select(Col("id")).From("t").Having(True()).Lock(ForUpdate())},
 		{"lock_zero", Select(Star()).From("t").Lock(LockClause{})},
 		{"join_no_from", Select(Star()).Join("t", True())},
-		{"subquery_nil", Select(Star()).FromExpr(Subquery(nil, "s"))},
-		{"subquery_no_alias", Select(Star()).FromExpr(Subquery(Select(Param(1)), ""))},
-		{"subquery_alias_width", Select(Star()).FromExpr(Select(Param(1)).As("s", "a", "b"))},
+		{"subquery_nil", Select(Star()).From(Subquery(nil, "s"))},
+		{"subquery_no_alias", Select(Star()).From(Subquery(Select(Param(1)), ""))},
+		{"subquery_alias_width", Select(Star()).From(Select(Param(1)).As("s", "a", "b"))},
 		{"scalar_width", Select(Scalar(Select(Param(1), Param(2))))},
-		{"in_width", Select(Col("a").InQuery(SelectCols("a", "b")).Expr())},
+		{"in_width", Select(Col("a").InQuery(Select("a", "b")).Expr())},
 		{"in_nil", Select(Col("a").InQuery(nil).Expr())},
 		{"row_width", Select(Row(Col("a"), Col("b")).Eq(Row(Param(1))).Expr())},
 		{"row_empty", Select(Row().Expr())},
 		{"row_membership_width", Select(Row(Col("a"), Col("b")).In(Row(Param(1))).Expr())},
-		{"set_width", Union(SelectCols("a"), SelectCols("b", "c"))},
+		{"set_width", Union(Select("a"), Select("b", "c"))},
 		{"set_nil", Union(nil, Select(Param(1)))},
 		{"values_empty", Values()}, {"values_row_width", Values(1).Row(2, 3)},
 		{"bound_write_descriptor", Select(Param(Default()))},
@@ -118,19 +118,19 @@ func TestInvalidConstruction(t *testing.T) {
 			"cte_nested_dml",
 			Select(
 				Scalar(
-					Select(Param(1)).With(CTE("d", DeleteFrom("t").AllRows().ReturningCols("id"))),
+					Select(Param(1)).With(CTE("d", DeleteFrom("t").AllRows().Returning("id"))),
 				),
 			),
 		},
 		{"insert_target", InsertInto("").Values(Write(Param(1)))},
 		{"insert_nil_select", InsertInto("t").From(nil)},
 		{"insert_columns_width", InsertInto("t").Columns("a", "b").Values(Write(Param(1)))},
-		{"insert_select_width", InsertInto("t").Columns("a").From(SelectCols("a", "b"))},
+		{"insert_select_width", InsertInto("t").Columns("a").From(Select("a", "b"))},
 		{
 			"insert_columns_duplicate",
 			InsertInto("t").Columns("a", "a").Values(Write(Param(1)), Write(Param(2))),
 		},
-		{"insert_only", InsertIntoTable(Table("t").Only()).Values(Write(Param(1)))},
+		{"insert_only", InsertInto(Table("t").Only()).Values(Write(Param(1)))},
 		{"update_no_assignments", Update("t").AllRows()}, {
 			"update_target",
 			Update("").Set(Set("a", Write(Param(1)))).AllRows(),
@@ -157,7 +157,7 @@ func TestInvalidConstruction(t *testing.T) {
 		{
 			"insert_qualified_targets_duplicate",
 			InsertInto("t").
-				Targets(Col("t", "a"), Col("t", "a")).
+				Columns(Col("t", "a"), Col("t", "a")).
 				Values(Write(Param(1)), Write(Param(2))),
 		},
 		{"update_tuple_empty", Update("t").Set(SetRow(nil, Write(Param(1)))).AllRows()},
@@ -171,7 +171,7 @@ func TestInvalidConstruction(t *testing.T) {
 		},
 		{
 			"update_tuple_query_width",
-			Update("t").Set(SetRowFrom([]string{"a"}, SelectCols("b", "c"))).AllRows(),
+			Update("t").Set(SetRowFrom([]string{"a"}, Select("b", "c"))).AllRows(),
 		},
 		{"update_bad_target", Update("t").Set(Assign(Param("a"), Write(Param(1)))).AllRows()},
 		{
@@ -194,7 +194,7 @@ func TestInvalidConstruction(t *testing.T) {
 			"returning_same_alias",
 			DeleteFrom("t").
 				AllRows().
-				ReturningCols("id").
+				Returning("id").
 				ReturningRows(ReturningAliases{Old: "r", New: "r"}),
 		},
 		{
@@ -254,18 +254,18 @@ func TestInvalidConstruction(t *testing.T) {
 		{"operator_keyword", Select(Operator(Col("a"), "UNION SELECT", Param(1)))},
 		{"escape_too_long", Select(Col("a").Like("b").Escape("xy").Expr())},
 		{"escape_wrong_operator", Select(Col("a").Eq(Param(1)).Escape("\\").Expr())},
-		{"table_lateral", Select(Star()).FromExpr(Lateral(Table("t")))},
-		{"subquery_only", Select(Star()).FromExpr(Select(Param(1)).As("s").Only())},
+		{"table_lateral", Select(Star()).From(Lateral(Table("t")))},
+		{"subquery_only", Select(Star()).From(Select(Param(1)).As("s").Only())},
 		{
 			"sample_subquery",
-			Select(Star()).FromExpr(Select(Param(1)).As("s").TableSample("system", Param(10))),
+			Select(Star()).From(Select(Param(1)).As("s").TableSample("system", Param(10))),
 		},
-		{"sample_no_method", Select(Star()).FromExpr(Table("t").Repeatable(Param(1)))},
-		{"ordinality_table", Select(Star()).FromExpr(Table("t").WithOrdinality())},
-		{"rows_from_empty", Select(Star()).FromExpr(RowsFrom())},
+		{"sample_no_method", Select(Star()).From(Table("t").Repeatable(Param(1)))},
+		{"ordinality_table", Select(Star()).From(Table("t").WithOrdinality())},
+		{"rows_from_empty", Select(Star()).From(RowsFrom())},
 		{
 			"record_ordinality",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				TableFunc(Call("f")).DefineColumns(Def("x", TypeInt4)).WithOrdinality(),
 			),
 		},
@@ -282,7 +282,7 @@ func TestInvalidConstruction(t *testing.T) {
 		},
 		{
 			"merge_empty_insert",
-			MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsert()),
+			MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsert([]Assignment(nil))),
 		},
 		{
 			"merge_insert_width",

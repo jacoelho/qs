@@ -2,19 +2,9 @@
 
 package qs
 
-// Columns selects an ordinary INSERT target-column list before choosing a source.
-func (t InsertTarget) Columns(first string, rest ...string) InsertColumnsTarget {
-	return newInsertColumnsTarget(t.table, first, rest)
-}
-
-// Targets selects an INSERT target-expression list before choosing a source.
-func (t InsertTarget) Targets(first Expr, rest ...Expr) InsertColumnsTarget {
-	return newInsertExprTarget(t.table, first, rest)
-}
-
-// ValuesSlice selects one direct value row and copies its structural slice; empty rows fail at render time.
-func (t InsertColumnsTarget) ValuesSlice(values []WriteValue) InsertRows {
-	return InsertRows{base: t.base()}.ValuesSlice(values)
+// Columns selects the INSERT target list before choosing a source: column names, each one unqualified column, or target expressions such as a subscripted column. A list held in a slice is spread; an empty list fails rendering.
+func (t InsertTarget) Columns[T string | Expr](columns ...T) InsertColumnsTarget {
+	return InsertColumnsTarget{columnsTable: t.table, columnsTargets: appendColumns(nil, columns)}
 }
 
 // Rows selects a direct value-row source holding every row of rows; it is the entry for rows sized by data.
@@ -138,8 +128,11 @@ func (b InsertRows) Suffix(parts ...Expr) InsertRows {
 	return b
 }
 
-// Into returns b with the INSERT target table replaced.
-func (b InsertRows) Into(table string) InsertRows { b.base.table = Table(table); return b }
+// Into returns b with the INSERT target replaced by table, a table name or a relation.
+func (b InsertRows) Into[T string | Relation](table T) InsertRows {
+	b.base.table = relationOf(table)
+	return b
+}
 
 // OverridingSystemValue returns b allowing explicit values for GENERATED ALWAYS identities.
 func (b InsertRows) OverridingSystemValue() InsertRows {
@@ -159,15 +152,9 @@ func (b InsertRows) OnConflict[C conflictAction](conflict C) InsertRows {
 	return b
 }
 
-// Returning returns b with expressions appended to the RETURNING projection.
-func (b InsertRows) Returning(expressions ...Expr) InsertRows {
-	b.base.returning = extend(b.base.returning, expressions...)
-	return b
-}
-
-// ReturningCols returns b with named columns appended to the RETURNING projection.
-func (b InsertRows) ReturningCols(columns ...string) InsertRows {
-	insertReturningCols(&b.base, columns...)
+// Returning returns b with column names, each one unqualified column, or expressions appended to the RETURNING projection.
+func (b InsertRows) Returning[T string | Expr](columns ...T) InsertRows {
+	b.base.returning = appendColumns(b.base.returning, columns)
 	return b
 }
 
@@ -202,8 +189,11 @@ func (b InsertSelect) Suffix(parts ...Expr) InsertSelect {
 	return b
 }
 
-// Into returns b with the INSERT target table replaced.
-func (b InsertSelect) Into(table string) InsertSelect { b.base.table = Table(table); return b }
+// Into returns b with the INSERT target replaced by table, a table name or a relation.
+func (b InsertSelect) Into[T string | Relation](table T) InsertSelect {
+	b.base.table = relationOf(table)
+	return b
+}
 
 // OverridingSystemValue returns b allowing explicit values for GENERATED ALWAYS identities.
 func (b InsertSelect) OverridingSystemValue() InsertSelect {
@@ -223,15 +213,9 @@ func (b InsertSelect) OnConflict[C conflictAction](conflict C) InsertSelect {
 	return b
 }
 
-// Returning returns b with expressions appended to the RETURNING projection.
-func (b InsertSelect) Returning(expressions ...Expr) InsertSelect {
-	b.base.returning = extend(b.base.returning, expressions...)
-	return b
-}
-
-// ReturningCols returns b with named columns appended to the RETURNING projection.
-func (b InsertSelect) ReturningCols(columns ...string) InsertSelect {
-	insertReturningCols(&b.base, columns...)
+// Returning returns b with column names, each one unqualified column, or expressions appended to the RETURNING projection.
+func (b InsertSelect) Returning[T string | Expr](columns ...T) InsertSelect {
+	b.base.returning = appendColumns(b.base.returning, columns)
 	return b
 }
 
@@ -266,9 +250,9 @@ func (b InsertAssignments) Suffix(parts ...Expr) InsertAssignments {
 	return b
 }
 
-// Into returns b with the INSERT target table replaced.
-func (b InsertAssignments) Into(table string) InsertAssignments {
-	b.base.table = Table(table)
+// Into returns b with the INSERT target replaced by table, a table name or a relation.
+func (b InsertAssignments) Into[T string | Relation](table T) InsertAssignments {
+	b.base.table = relationOf(table)
 	return b
 }
 
@@ -290,15 +274,9 @@ func (b InsertAssignments) OnConflict[C conflictAction](conflict C) InsertAssign
 	return b
 }
 
-// Returning returns b with expressions appended to the RETURNING projection.
-func (b InsertAssignments) Returning(expressions ...Expr) InsertAssignments {
-	b.base.returning = extend(b.base.returning, expressions...)
-	return b
-}
-
-// ReturningCols returns b with named columns appended to the RETURNING projection.
-func (b InsertAssignments) ReturningCols(columns ...string) InsertAssignments {
-	insertReturningCols(&b.base, columns...)
+// Returning returns b with column names, each one unqualified column, or expressions appended to the RETURNING projection.
+func (b InsertAssignments) Returning[T string | Expr](columns ...T) InsertAssignments {
+	b.base.returning = appendColumns(b.base.returning, columns)
 	return b
 }
 
@@ -333,8 +311,11 @@ func (b InsertDefaults) Suffix(parts ...Expr) InsertDefaults {
 	return b
 }
 
-// Into returns b with the INSERT target table replaced.
-func (b InsertDefaults) Into(table string) InsertDefaults { b.base.table = Table(table); return b }
+// Into returns b with the INSERT target replaced by table, a table name or a relation.
+func (b InsertDefaults) Into[T string | Relation](table T) InsertDefaults {
+	b.base.table = relationOf(table)
+	return b
+}
 
 // OnConflict returns b with the completed ON CONFLICT action set.
 func (b InsertDefaults) OnConflict[C conflictAction](conflict C) InsertDefaults {
@@ -342,15 +323,9 @@ func (b InsertDefaults) OnConflict[C conflictAction](conflict C) InsertDefaults 
 	return b
 }
 
-// Returning returns b with expressions appended to the RETURNING projection.
-func (b InsertDefaults) Returning(expressions ...Expr) InsertDefaults {
-	b.base.returning = extend(b.base.returning, expressions...)
-	return b
-}
-
-// ReturningCols returns b with named columns appended to the RETURNING projection.
-func (b InsertDefaults) ReturningCols(columns ...string) InsertDefaults {
-	insertReturningCols(&b.base, columns...)
+// Returning returns b with column names, each one unqualified column, or expressions appended to the RETURNING projection.
+func (b InsertDefaults) Returning[T string | Expr](columns ...T) InsertDefaults {
+	b.base.returning = appendColumns(b.base.returning, columns)
 	return b
 }
 

@@ -29,20 +29,24 @@ func TestConflictUpdateSlice(t *testing.T) {
 		args     []any
 	}{
 		{
-			name:     "columns",
-			complete: ConflictColumns("id").TargetWhere(Col("active").Eq(Param(true))).DoUpdateSlice,
-			sql:      `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ("id") WHERE ("active" = $2) DO UPDATE SET "name" = (SELECT $3), "note" = $4 WHERE ("version" = $5)`,
-			args:     []any{42, true, "original", "retained", 7},
+			name: "columns",
+			complete: func(a []Assignment) ConflictUpdate {
+				return ConflictColumns("id").TargetWhere(Col("active").Eq(Param(true))).DoUpdate(a)
+			},
+			sql:  `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ("id") WHERE ("active" = $2) DO UPDATE SET "name" = (SELECT $3), "note" = $4 WHERE ("version" = $5)`,
+			args: []any{42, true, "original", "retained", 7},
 		},
 		{
-			name:     "index",
-			complete: ConflictIndex(IndexColumn("id")).TargetWhere(Col("enabled").Eq(Param(false))).DoUpdateSlice,
-			sql:      `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ("id") WHERE ("enabled" = $2) DO UPDATE SET "name" = (SELECT $3), "note" = $4 WHERE ("version" = $5)`,
-			args:     []any{42, false, "original", "retained", 7},
+			name: "index",
+			complete: func(a []Assignment) ConflictUpdate {
+				return ConflictIndex(IndexColumn("id")).TargetWhere(Col("enabled").Eq(Param(false))).DoUpdate(a)
+			},
+			sql:  `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ("id") WHERE ("enabled" = $2) DO UPDATE SET "name" = (SELECT $3), "note" = $4 WHERE ("version" = $5)`,
+			args: []any{42, false, "original", "retained", 7},
 		},
 		{
 			name:     "constraint",
-			complete: ConflictConstraint("users_pkey").DoUpdateSlice,
+			complete: func(a []Assignment) ConflictUpdate { return ConflictConstraint("users_pkey").DoUpdate(a) },
 			sql:      `INSERT INTO "users" ("id") VALUES ($1) ON CONFLICT ON CONSTRAINT "users_pkey" DO UPDATE SET "name" = (SELECT $2), "note" = $3 WHERE ("version" = $4)`,
 			args:     []any{42, "original", "retained", 7},
 		},
@@ -90,7 +94,7 @@ func TestConflictUpdateSliceFailurePreservesAppendPrefixes(t *testing.T) {
 	statement := InsertInto("users").
 		Columns("id").
 		Values(Value(42)).
-		OnConflict(ConflictColumns("id").DoUpdateSlice(nil))
+		OnConflict(ConflictColumns("id").DoUpdate([]Assignment(nil)))
 	sql, args, err := statement.AppendSQL([]byte("prefix "), []any{"existing"})
 	if !errors.Is(err, ErrInvalid) || string(sql) != "prefix " || len(args) != 1 || args[0] != "existing" {
 		t.Fatalf("empty conflict update rollback: sql=%q args=%#v err=%v", sql, args, err)

@@ -96,10 +96,8 @@ var docs = map[string]string{
 	"LimitWithTiesExpr": "returns b with its row limit replaced by count, also keeping the rows tied with the last one. It renders FETCH FIRST count ROWS WITH TIES and requires ORDER BY and no SKIP LOCKED row lock.",
 	"Lock":              "returns b with row-lock clauses appended. Invalid combinations fail when rendered.",
 
-	"Into":                  "returns b with the INSERT target table replaced.",
-	"Columns":               "selects an ordinary INSERT target-column list before choosing a source.",
-	"Targets":               "selects an INSERT target-expression list before choosing a source.",
-	"ValuesSlice":           "selects one direct value row and copies its structural slice; empty rows fail at render time.",
+	"Into":                  "returns b with the INSERT target replaced by table, a table name or a relation.",
+	"Columns":               "selects the INSERT target list before choosing a source: column names, each one unqualified column, or target expressions such as a subscripted column. A list held in a slice is spread; an empty list fails rendering.",
 	"Rows":                  "selects a direct value-row source holding every row of rows; it is the entry for rows sized by data.",
 	"Values":                "selects a direct INSERT value-row source and returns its completed role.",
 	"From":                  "selects an INSERT rowset source and returns its completed role.",
@@ -107,8 +105,7 @@ var docs = map[string]string{
 	"OverridingSystemValue": "returns b allowing explicit values for GENERATED ALWAYS identities.",
 	"OverridingUserValue":   "returns b requesting generated identity values in place of supplied values.",
 	"OnConflict":            "returns b with the completed ON CONFLICT action set.",
-	"Returning":             "returns b with expressions appended to the RETURNING projection.",
-	"ReturningCols":         "returns b with named columns appended to the RETURNING projection.",
+	"Returning":             "returns b with column names, each one unqualified column, or expressions appended to the RETURNING projection.",
 	"ReturningRows":         "returns b with the OLD and NEW RETURNING row aliases replaced.",
 }
 
@@ -202,11 +199,8 @@ func fluentMethods() *file {
 	// INSERT target columns are selected before a source. The intermediate
 	// value deliberately has no statement or clause methods of its own.
 	f.doc("Columns", docs["Columns"])
-	f.write("func (t InsertTarget) Columns(first string, rest ...string) InsertColumnsTarget { return newInsertColumnsTarget(t.table, first, rest) }\n")
-	f.doc("Targets", docs["Targets"])
-	f.write("func (t InsertTarget) Targets(first Expr, rest ...Expr) InsertColumnsTarget { return newInsertExprTarget(t.table, first, rest) }\n\n")
+	f.write("func (t InsertTarget) Columns[T string | Expr](columns ...T) InsertColumnsTarget { return InsertColumnsTarget{columnsTable: t.table, columnsTargets: appendColumns(nil, columns)} }\n\n")
 	for _, m := range [][4]string{
-		{"ValuesSlice", "values []WriteValue", insertRows, "return InsertRows{base: t.base()}.ValuesSlice(values)"},
 		{"Rows", "rows ...[]WriteValue", insertRows, "return InsertRows{base: t.base()}.Rows(rows...)"},
 		{"Values", "first WriteValue, rest ...WriteValue", insertRows, "return InsertRows{base: t.base()}.Values(first, rest...)"},
 		{"From", "source Rowset", insertSelect, "return InsertSelect{base: t.base(), source: ownedRowset(source)}"},
@@ -225,14 +219,13 @@ func fluentMethods() *file {
 		f.method(t, "Prefix", "parts ...Expr", "", "b.base.prefix = extend(b.base.prefix, parts...); return b")
 		f.method(t, "Suffix", "parts ...Expr", "", "b.base.suffix = extend(b.base.suffix, parts...); return b")
 		if slices.Contains(insertRoles, t) {
-			f.method(t, "Into", "table string", "", "b.base.table = Table(table); return b")
+			f.genericMethod(t, "Into", "[T string | Relation]", "table T", "", "b.base.table = relationOf(table); return b")
 			if slices.Contains(insertOverrideRoles, t) {
 				f.method(t, "OverridingSystemValue", "", "", "b.base.overriding = overridingSystemValue; return b")
 				f.method(t, "OverridingUserValue", "", "", "b.base.overriding = overridingUserValue; return b")
 			}
 			f.genericMethod(t, "OnConflict", "[C conflictAction]", "conflict C", "", "setInsertConflict(&b.base, conflict); return b")
-			f.method(t, "Returning", "expressions ...Expr", "", "b.base.returning = extend(b.base.returning, expressions...); return b")
-			f.method(t, "ReturningCols", "columns ...string", "", "insertReturningCols(&b.base, columns...); return b")
+			f.genericMethod(t, "Returning", "[T string | Expr]", "columns ...T", "", "b.base.returning = appendColumns(b.base.returning, columns); return b")
 			f.method(t, "ReturningRows", "aliases ReturningAliases", "", "b.base.aliases = aliases; return b")
 		}
 		if slices.Contains(rowsets, t) {

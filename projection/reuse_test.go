@@ -21,9 +21,9 @@ func show(v any) string {
 	return fmt.Sprintf("%+v", v)
 }
 
-// checkRowsRead reads rows through Scan, Collect and All and compares each read with
+// checkRowsRead reads rows through Scan, Collect, CollectPtr and All and compares each read with
 // want, after the whole read finished, so a value shared between two results shows as a
-// wrong row. Scan, Collect and All share one read path, so none is the reference for
+// wrong row. Scan, Collect, CollectPtr and All share one read path, so none is the reference for
 // the others; want is written by hand.
 func checkRowsRead[D any](t *testing.T, p projection.Projection[D], want []D, rows ...[]any) {
 	t.Helper()
@@ -64,6 +64,19 @@ func checkRowsRead[D any](t *testing.T, p projection.Projection[D], want []D, ro
 		t.Fatalf("Collect: %v", err)
 	}
 	compare("Collect", collected)
+
+	pointers, err := p.CollectPtr(result())
+	if err != nil {
+		t.Fatalf("CollectPtr: %v", err)
+	}
+	pointed := make([]D, len(pointers))
+	for i, d := range pointers {
+		if d == nil {
+			t.Fatalf("CollectPtr: row %d is nil", i)
+		}
+		pointed[i] = *d
+	}
+	compare("CollectPtr", pointed)
 
 	var ranged []D
 	for d, err := range p.All(result()) {

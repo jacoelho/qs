@@ -3,7 +3,7 @@ package qs
 import "testing"
 
 func cycleValuesQuery(mark, otherwise Expr) SelectBuilder {
-	return SelectCols("id").
+	return Select("id").
 		From("c").
 		WithRecursive(
 			CTE("c", Select(Param(1))).Columns("id").Cycle(

@@ -55,7 +55,7 @@ func TestSQLJSONConstructors(t *testing.T) {
 			one(
 				qs.JSONArrayQuery(
 					qs.Select(qs.Col("v")).
-						FromExpr(
+						From(
 							qs.ValuesExpr(qs.LiteralInt(2)).RowExpr(qs.LiteralInt(1)).As("t", "v"),
 						).
 						OrderBy(qs.Col("v").Asc()),
@@ -332,8 +332,8 @@ func TestSQLJSONTable(t *testing.T) {
 		qs.Col("jt", "part"),
 	)
 	query := qs.Select(row.Expr().Cast(qs.TypeText)).
-		FromExpr(qs.Table("qs_sqljson_orders").As("o")).
-		CrossJoinExpr(qs.Lateral(items.As("jt"))).
+		From(qs.Table("qs_sqljson_orders").As("o")).
+		CrossJoin(qs.Lateral(items.As("jt"))).
 		OrderBy(qs.Col("o", "id").Asc(), qs.Col("jt", "n").Asc(), qs.Col("jt", "part").Asc())
 	want := []string{
 		`(1,1,a,2,f,"[""p1"", ""p2""]",p1)`,
@@ -346,7 +346,7 @@ func TestSQLJSONTable(t *testing.T) {
 
 	// Column aliases rename the table's columns positionally.
 	renamed := qs.Select(qs.Col("x", "first").Cast(qs.TypeText)).
-		FromExpr(
+		From(
 			qs.JSONTable(
 				qs.Param(`[1, 2]`).Cast(qs.TypeJSONB),
 				"$[*]",
@@ -379,7 +379,7 @@ func TestSQLJSONTable(t *testing.T) {
 			qs.JSONNested("$", qs.JSONColumn("a", qs.TypeInt4)).PathName("json_table_path_1"),
 		),
 	} {
-		query := qs.Select(qs.Row(qs.Star("jt")).Expr().Cast(qs.TypeText)).FromExpr(table.As("jt"))
+		query := qs.Select(qs.Row(qs.Star("jt")).Expr().Cast(qs.TypeText)).From(table.As("jt"))
 		if got := queryStrings(t, session, query); !reflect.DeepEqual(got, []string{"(1,1)"}) {
 			t.Fatalf("%s: %q", name, got)
 		}
