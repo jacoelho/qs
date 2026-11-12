@@ -199,7 +199,7 @@ func (b *insertBase) appendHeader(w *renderer, assignments []Assignment, allowOv
 	if len(assignments) > 0 {
 		w.text(" (")
 		for i, assignment := range assignments {
-			if !w.require(!assignment.row, "INSERT SET", "tuple assignments are not supported in single-row insert assignments") {
+			if !w.require(assignment.form == assignColumn, "INSERT SET", "tuple assignments are not supported in single-row insert assignments") {
 				return false
 			}
 			if i != 0 {

@@ -215,6 +215,13 @@ func TestInvalidConstruction(t *testing.T) {
 			Select(PercentileCont(Param(0.5)).WithinGroup(Col("x").Asc()).Over(Window())),
 		},
 		{
+			"ordered_set_named_window",
+			Select(PercentileCont(Param(0.5)).WithinGroup(Col("x").Asc()).OverNamed("w")).Window("w", Window()),
+		},
+		{"set_row_nil_subquery", Update("t").Set(SetRowFrom([]string{"a"}, nil)).AllRows()},
+		{"assign_row_nil_subquery", Update("t").Set(AssignRowFrom([]Expr{Col("a")}, nil)).AllRows()},
+		{"merge_insert_zero_assignment", MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsert(Assignment{}))},
+		{
 			"window_duplicate",
 			Select(RowNumber().OverNamed("w")).Window("w", Window()).Window("w", Window()),
 		},

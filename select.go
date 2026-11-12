@@ -46,6 +46,11 @@ func Select[T string | Expr](columns ...T) SelectBuilder {
 // SelectNoColumns intentionally returns rows with no columns.
 func SelectNoColumns() SelectBuilder { return SelectBuilder{noColumns: true} }
 
+// statesProjection reports whether b says what it selects: columns, or none
+// through SelectNoColumns. An empty run-time list says neither and fails
+// rendering.
+func (b SelectBuilder) statesProjection() bool { return len(b.columns) > 0 || b.noColumns }
+
 // SelectSQL is a convenience wrapper for Select with each argument wrapped in
 // UnsafeSQL. It accepts trusted projection lists, not identifiers or user data.
 // Column counts for these fragments are unknown; qs does not pretend that
@@ -198,7 +203,7 @@ func (w *renderer) selectStatement(b *SelectBuilder) {
 // projection is followed by the order expressions that may change those rows;
 // CountRows passes ORDER BY there because it omits the clause itself.
 func (w *renderer) selectRows(b *SelectBuilder, cursor []Expr, order []Order) {
-	if !w.require(len(b.columns) > 0 || b.noColumns, "SELECT", "requires a projection or SelectNoColumns") {
+	if !w.require(b.statesProjection(), "SELECT", "requires a projection or SelectNoColumns") {
 		return
 	}
 	if !w.require(len(b.columns) > 0 || b.distinct == selectAll, "SELECT DISTINCT", "requires at least one projection") {

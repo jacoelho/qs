@@ -19,6 +19,20 @@ const (
 	mergeNothing
 )
 
+// mergeInsertSource is where a MERGE INSERT takes its row from. The constructor
+// that completes the branch sets it, so rendering reads it instead of inferring
+// it from which lists are non-empty.
+type mergeInsertSource uint8
+
+const (
+	// insertAssignments reads targets and values from set.
+	insertAssignments mergeInsertSource = iota + 1
+	// insertValues reads optional targets from columns and values from values.
+	insertValues
+	// insertDefaults renders DEFAULT VALUES.
+	insertDefaults
+)
+
 // MergeWhen is a completed, immutable MERGE branch. Its zero value is invalid.
 type MergeWhen struct {
 	conditions []Condition
@@ -28,7 +42,7 @@ type MergeWhen struct {
 	kind       matchKind
 	byTarget   bool
 	action     mergeAction
-	defaults   bool
+	source     mergeInsertSource // set only when action is mergeInsert
 	overriding overridingMode
 }
 
@@ -105,14 +119,14 @@ func (m MergeNotMatched) And(conditions ...Condition) MergeNotMatched {
 
 // ThenInsert owns its assignment list; rendering rejects an empty list.
 func (m MergeNotMatched) ThenInsert[T Assignment | []Assignment](first T, rest ...Assignment) MergeWhen {
-	branch := m.notMatched.complete(mergeInsert)
+	branch := m.notMatched.insert(insertAssignments)
 	branch.set = gather(first, rest)
 	return branch
 }
 
 // ThenInsertValues owns both lists; their widths must match at rendering.
 func (m MergeNotMatched) ThenInsertValues(columns []string, first WriteValue, rest ...WriteValue) MergeWhen {
-	branch := m.notMatched.complete(mergeInsert)
+	branch := m.notMatched.insert(insertValues)
 	branch.columns = cloneSlice(columns)
 	branch.values = ownedList(first, rest)
 	return branch
@@ -120,9 +134,7 @@ func (m MergeNotMatched) ThenInsertValues(columns []string, first WriteValue, re
 
 // ThenInsertDefault leaves value selection to the table's server-side defaults.
 func (m MergeNotMatched) ThenInsertDefault() MergeWhen {
-	branch := m.notMatched.complete(mergeInsert)
-	branch.defaults = true
-	return branch
+	return m.notMatched.insert(insertDefaults)
 }
 
 // ThenDoNothing still closes the category when its selector is unconditional.
@@ -144,7 +156,7 @@ func (m MergeNotMatched) OverridingUserValue() MergeInsertOverride {
 
 // ThenInsert owns its assignment list and preserves the selected identity policy.
 func (m MergeInsertOverride) ThenInsert[T Assignment | []Assignment](first T, rest ...Assignment) MergeWhen {
-	branch := m.insertOverride.complete(mergeInsert)
+	branch := m.insertOverride.insert(insertAssignments)
 	branch.set = gather(first, rest)
 	branch.overriding = m.overriding
 	return branch
@@ -152,7 +164,7 @@ func (m MergeInsertOverride) ThenInsert[T Assignment | []Assignment](first T, re
 
 // ThenInsertValues owns both lists and preserves the selected identity policy.
 func (m MergeInsertOverride) ThenInsertValues(columns []string, first WriteValue, rest ...WriteValue) MergeWhen {
-	branch := m.insertOverride.complete(mergeInsert)
+	branch := m.insertOverride.insert(insertValues)
 	branch.columns = cloneSlice(columns)
 	branch.values = ownedList(first, rest)
 	branch.overriding = m.overriding
@@ -161,6 +173,12 @@ func (m MergeInsertOverride) ThenInsertValues(columns []string, first WriteValue
 
 func (m mergeMatch) complete(action mergeAction) MergeWhen {
 	return MergeWhen{kind: m.kind, byTarget: m.byTarget, conditions: m.conditions, action: action}
+}
+
+func (m mergeMatch) insert(source mergeInsertSource) MergeWhen {
+	branch := m.complete(mergeInsert)
+	branch.source = source
+	return branch
 }
 
 // MergeBuilder constructs a PostgreSQL MERGE statement. Branch selectors are
@@ -334,80 +352,91 @@ func (w *renderer) mergeInsert(m MergeWhen) {
 			}
 		}
 	}
-	modes := 0
-	if len(m.set) > 0 {
-		modes++
-	}
-	if len(m.values) > 0 {
-		modes++
-	}
-	if m.defaults {
-		modes++
-	}
-	if !w.require(modes == 1, "MERGE INSERT", "requires one insert source") {
-		return
-	}
-	w.text("INSERT")
-	if len(m.set) > 0 {
-		if !w.validateAssignments(m.set) {
-			return
-		}
-		w.text(" (")
-		for i, a := range m.set {
-			if !w.require(!a.row, "MERGE INSERT", "tuple assignments cannot define insert columns") {
-				return
-			}
-			if i != 0 {
-				w.text(", ")
-			}
-			w.assignmentTarget(a.target)
-			if w.stopped("target", i+1) {
-				return
-			}
-		}
-		w.byte(')')
-	} else if len(m.columns) > 0 {
-		w.text(" (")
-		w.names(m.columns)
-		w.byte(')')
-	}
-	if w.stopped("targets", 0) {
-		return
-	}
-	if m.defaults {
+	switch m.source {
+	case insertAssignments:
+		w.mergeInsertAssignments(m)
+	case insertValues:
+		w.mergeInsertValues(m)
+	case insertDefaults:
 		if !w.require(m.overriding == overridingNone, "MERGE INSERT", "DEFAULT VALUES cannot specify OVERRIDING") {
 			return
 		}
-		w.text(" DEFAULT VALUES")
+		w.text("INSERT DEFAULT VALUES")
+	default:
+		w.fail(ErrInvalid, "MERGE INSERT", "zero or unknown insert source")
+	}
+}
+
+// mergeInsertAssignments renders INSERT (targets) VALUES (values) from one
+// assignment list, so each target is paired with its value by construction.
+func (w *renderer) mergeInsertAssignments(m MergeWhen) {
+	if !w.require(len(m.set) > 0, "MERGE INSERT", "requires at least one assignment") {
 		return
+	}
+	if !w.validateAssignments(m.set) {
+		return
+	}
+	w.text("INSERT (")
+	for i, a := range m.set {
+		if !w.require(a.form == assignColumn, "MERGE INSERT", "tuple assignments cannot define insert columns") {
+			return
+		}
+		if i != 0 {
+			w.text(", ")
+		}
+		w.assignmentTarget(a.target)
+		if w.stopped("target", i+1) {
+			return
+		}
+	}
+	w.byte(')')
+	w.overriding(m.overriding)
+	if w.stopped("OVERRIDING", 0) {
+		return
+	}
+	w.text(" VALUES (")
+	for i, a := range m.set {
+		if i != 0 {
+			w.text(", ")
+		}
+		w.writeExpr(a.value)
+		if w.stopped("value", i+1) {
+			return
+		}
+	}
+	w.byte(')')
+}
+
+// mergeInsertValues renders INSERT [(columns)] VALUES (values); without
+// columns the values fill the table's columns in order.
+func (w *renderer) mergeInsertValues(m MergeWhen) {
+	if !w.require(len(m.values) > 0, "MERGE INSERT", "requires at least one value") {
+		return
+	}
+	if len(m.columns) > 0 && !w.require(len(m.columns) == len(m.values), "MERGE INSERT", "column and value counts differ") {
+		return
+	}
+	w.text("INSERT")
+	if len(m.columns) > 0 {
+		w.text(" (")
+		w.names(m.columns)
+		w.byte(')')
+		if w.stopped("targets", 0) {
+			return
+		}
 	}
 	w.overriding(m.overriding)
 	if w.stopped("OVERRIDING", 0) {
 		return
 	}
 	w.text(" VALUES (")
-	if len(m.set) > 0 {
-		for i, a := range m.set {
-			if i != 0 {
-				w.text(", ")
-			}
-			w.writeExpr(a.value)
-			if w.stopped("value", i+1) {
-				return
-			}
+	for i, value := range m.values {
+		if i != 0 {
+			w.text(", ")
 		}
-	} else {
-		if len(m.columns) > 0 && !w.require(len(m.columns) == len(m.values), "MERGE INSERT", "column and value counts differ") {
+		w.writeExpr(value.expr())
+		if w.stopped("value", i+1) {
 			return
-		}
-		for i, value := range m.values {
-			if i != 0 {
-				w.text(", ")
-			}
-			w.writeExpr(value.expr())
-			if w.stopped("value", i+1) {
-				return
-			}
 		}
 	}
 	w.byte(')')

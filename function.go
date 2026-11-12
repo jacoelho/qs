@@ -87,7 +87,7 @@ func (e Expr) WithinGroup(terms ...Order) Expr {
 
 // Over applies an inline window definition to a function or aggregate call.
 func (e Expr) Over(window WindowSpec) Expr {
-	return e.withModifiers(func(m *callModifiers) { m.aggregateTail = m.over(window) })
+	return e.withModifiers(func(m *callModifiers) { m.aggregateTail = m.inlineWindow(window) })
 }
 
 // OverNamed applies a named window reference to a function or aggregate call.
@@ -96,7 +96,7 @@ func (e Expr) OverNamed(name string) Expr {
 	if name == "" {
 		return invalidExpr("OVER", "empty window name")
 	}
-	return e.withModifiers(func(m *callModifiers) { m.aggregateTail = m.overNamed(name) })
+	return e.withModifiers(func(m *callModifiers) { m.aggregateTail = m.namedWindow(name) })
 }
 
 func (w *renderer) call(n *callExpression) {
@@ -136,7 +136,7 @@ func (w *renderer) call(n *callExpression) {
 		if !w.require(!m.distinct && len(m.order) == 0, "WITHIN GROUP", "cannot combine with DISTINCT or in-call ORDER BY") {
 			return
 		}
-		if !w.require(m.window == nil && !m.named, "WITHIN GROUP", "ordered-set aggregates cannot be window functions") {
+		if !w.require(!m.windowed(), "WITHIN GROUP", "ordered-set aggregates cannot be window functions") {
 			return
 		}
 		w.text(" WITHIN GROUP (ORDER BY ")

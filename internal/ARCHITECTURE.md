@@ -271,6 +271,26 @@ Typed fields, tuples and JSON documents wrap `Expr` and use the same renderer.
 Go types on a `Field` do not prove SQL types or schema validity. Finite grammar
 states use named enums; unknown states fail validation.
 
+A choice among alternatives is one enum, set by the constructor that makes the
+choice, never inferred from which fields are non-empty. A boolean beside an
+optional `Expr` (`hasElse`, `hasOffset`, `CycleSpec.custom`, `hasSeed`,
+`hasLower`, `hasUpper`) is not such a choice: it separates "not given" from
+"given a zero value", so a zero `Expr` passed by the caller still fails
+rendering instead of being dropped. `hasPrec` and `hasForm` do the same for an
+int and an enum whose zero is a valid argument (`CURRENT_TIME(0)`). Do not fold
+those flags into the value.
+`SelectBuilder.statesProjection` is the one test for a stated projection,
+used by rendering and by width inspection.
+
+`Assignment` has three forms, a column (`target = value`), a row of values and
+a row from a subquery, chosen by its constructor as `assignmentForm`.
+`validateAssignments` runs before every consumer reads a SET list (UPDATE, ON
+CONFLICT DO UPDATE, INSERT and MERGE assignments, MERGE UPDATE) and rejects the
+zero form, so INSERT and MERGE INSERT test only for the column form. The
+previous shape was a `row` flag plus whichever of `value` or `query` was set; a
+row built from a nil subquery then fell through to the values path and reported
+a missing row value.
+
 ### Identifiers and comparisons
 
 Every string that names something is exactly one identifier and is quoted as
@@ -303,7 +323,11 @@ comparison with SQL NULL is never true; the DISTINCT forms accept it.
 CASE uses distinct searched and simple builders; `End` copies the branches into
 a node. `Case` and `CaseOf` return pending values whose only method adds the
 first branch, so the builders that own `Else` and `End` always hold one. MERGE category selectors produce terminal `MergeWhen` values; identity
-overriding precedes non-default insertion. Qualified joins remain `PendingJoin`
+overriding precedes non-default insertion. The `ThenInsert*` constructor that
+completes an INSERT branch records its source (assignments, values or DEFAULT
+VALUES) as one enum, and rendering switches on it. The previous shape counted
+which of three fields were set and failed unless exactly one was, so an empty
+assignment list reported a missing source rather than a missing assignment. Qualified joins remain `PendingJoin`
 until completion owns a nonempty predicate or column list. Distinct private
 field names prevent explicit cross-role conversions. Zero values and unchecked
 names still require rendering validation. A universal modifier bag was rejected
@@ -459,8 +483,9 @@ JSON, a wrapper or quotes clause, or a JSON, array or composite type, and as
 carries the union of both behavior sets.
 
 `aggregateTail` owns FILTER and OVER for function calls and for the two SQL/JSON
-aggregates. It holds one window, inline or named, so `Over` and `OverNamed`
-replace each other. It fails rendering when a call has both an in-call ORDER BY
+aggregates. It holds one window, none, inline or named, as an enum beside its
+payload, so `Over` and `OverNamed` replace each other, and `windowed` is the one
+test for a window function that OVER and WITHIN GROUP both use. It fails rendering when a call has both an in-call ORDER BY
 and a window, which PostgreSQL does not implement.
 
 ## Rendering and lifetime
