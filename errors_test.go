@@ -45,7 +45,10 @@ func TestInvalidConstruction(t *testing.T) {
 		{"identifier_empty", Select(Col(""))}, {"identifier_component", Select(Col("a", "", "b"))},
 		{"identifier_nul", Select(Col("a\x00b"))}, {"identifier_utf8", Select(Col("\xff"))},
 		{"raw_empty", SelectSQL("")}, {"raw_nul", SelectSQL("a\x00")},
-		{"cast_zero", Select(Param(1).Cast(DataType{}))}, {"cast_varchar", Select(Param(1).Cast(TypeVarchar(0)))},
+		{"cast_zero", Select(Param(1).Cast(DataType{}))}, {
+			"cast_varchar",
+			Select(Param(1).Cast(TypeVarchar(0))),
+		},
 		{"cast_numeric", Select(Param(1).Cast(TypeDecimal(1001, 0)))},
 		{"nan", Select(LiteralFloat(math.NaN()))}, {"infinity", Select(LiteralFloat(math.Inf(1)))},
 		{"literal_nul", Select(LiteralString("a\x00"))},
@@ -53,11 +56,24 @@ func TestInvalidConstruction(t *testing.T) {
 		{"bind_statement", Select(Param(Select(Param(1))))},
 		{"bind_optional", Select(Param(Some(1)))}, {"bind_null", Select(Param(NullOf[int]()))},
 		{"bind_null_pointer", Select(Param((*Null[int])(nil)))},
-		{"limit_negative", Select(LiteralInt(1)).Limit(-1)}, {"offset_negative", Select(LiteralInt(1)).Offset(-1)},
+		{"limit_negative", Select(LiteralInt(1)).Limit(-1)}, {
+			"offset_negative",
+			Select(LiteralInt(1)).Offset(-1),
+		},
 		{"ties_negative", Select(LiteralInt(1)).OrderBy(Ordinal(1).Asc()).LimitWithTies(-1)},
 		{"ties_unordered", Select(LiteralInt(1)).LimitWithTies(1)},
-		{"ties_skip_locked", Select(Col("a")).From("t").OrderBy(Col("a").Asc()).LimitWithTies(1).Lock(ForUpdate().SkipLocked())},
-		{"order_zero", Select(LiteralInt(1)).OrderBy(Order{})}, {"ordinal_zero", Select(LiteralInt(1)).OrderBy(Ordinal(0).Asc())},
+		{
+			"ties_skip_locked",
+			Select(Col("a")).
+				From("t").
+				OrderBy(Col("a").Asc()).
+				LimitWithTies(1).
+				Lock(ForUpdate().SkipLocked()),
+		},
+		{"order_zero", Select(LiteralInt(1)).OrderBy(Order{})}, {
+			"ordinal_zero",
+			Select(LiteralInt(1)).OrderBy(Ordinal(0).Asc()),
+		},
 		{"lock_distinct", Select(Star()).From("t").Distinct().Lock(ForUpdate())},
 		{"lock_group", Select(Col("id")).From("t").GroupBy("id").Lock(ForUpdate())},
 		{"lock_having", Select(Col("id")).From("t").Having(True()).Lock(ForUpdate())},
@@ -76,51 +92,162 @@ func TestInvalidConstruction(t *testing.T) {
 		{"set_nil", Union(nil, Select(Param(1)))},
 		{"values_empty", Values()}, {"values_row_width", Values(1).Row(2, 3)},
 		{"bound_write_descriptor", Select(Param(Default()))},
-		{"cte_duplicate", Select(Param(1)).With(CTE("c", Select(Param(1))), CTE("c", Select(Param(2))))},
+		{
+			"cte_duplicate",
+			Select(Param(1)).With(CTE("c", Select(Param(1))), CTE("c", Select(Param(2)))),
+		},
 		{"cte_nil", Select(Param(1)).With(CTE("c", nil))},
 		{"cte_width", Select(Param(1)).With(CTE("c", Select(Param(1))).Columns("a", "b"))},
-		{"cte_search_nonrecursive", Select(Param(1)).With(CTE("c", Select(Param(1))).Search(SearchDepthFirst("id").Set("ord")))},
-		{"cte_search_empty", Select(Param(1)).WithRecursive(CTE("c", Select(Param(1))).Search(SearchBreadthFirst().Set("ord")))},
-		{"cte_cycle_empty", Select(Param(1)).WithRecursive(CTE("c", Select(Param(1))).Cycle(Cycle("id")))},
-		{"cte_nested_dml", Select(Scalar(Select(Param(1)).With(CTE("d", DeleteFrom("t").AllRows().ReturningCols("id")))))},
+		{
+			"cte_search_nonrecursive",
+			Select(Param(1)).With(
+				CTE("c", Select(Param(1))).Search(SearchDepthFirst("id").Set("ord")),
+			),
+		},
+		{
+			"cte_search_empty",
+			Select(Param(1)).WithRecursive(
+				CTE("c", Select(Param(1))).Search(SearchBreadthFirst().Set("ord")),
+			),
+		},
+		{
+			"cte_cycle_empty",
+			Select(Param(1)).WithRecursive(CTE("c", Select(Param(1))).Cycle(Cycle("id"))),
+		},
+		{
+			"cte_nested_dml",
+			Select(
+				Scalar(
+					Select(Param(1)).With(CTE("d", DeleteFrom("t").AllRows().ReturningCols("id"))),
+				),
+			),
+		},
 		{"insert_target", InsertInto("").Values(Write(Param(1)))},
 		{"insert_nil_select", InsertInto("t").From(nil)},
 		{"insert_columns_width", InsertInto("t").Columns("a", "b").Values(Write(Param(1)))},
 		{"insert_select_width", InsertInto("t").Columns("a").From(SelectCols("a", "b"))},
-		{"insert_columns_duplicate", InsertInto("t").Columns("a", "a").Values(Write(Param(1)), Write(Param(2)))},
+		{
+			"insert_columns_duplicate",
+			InsertInto("t").Columns("a", "a").Values(Write(Param(1)), Write(Param(2))),
+		},
 		{"insert_only", InsertIntoTable(Table("t").Only()).Values(Write(Param(1)))},
-		{"update_no_assignments", Update("t").AllRows()}, {"update_target", Update("").Set(Set("a", Write(Param(1)))).AllRows()},
-		{"update_duplicate", Update("t").Set(Set("a", Write(Param(1))), Set("a", Write(Param(2)))).AllRows()},
-		{"update_qualified_duplicate", Update("t").Set(Assign(Col("t", "a"), Write(Param(1))), Assign(Col("t", "a"), Write(Param(2)))).AllRows()},
-		{"update_schema_qualified_duplicate", Update("t").Set(Assign(Col("s", "t", "a"), Write(Param(1))), Assign(Col("s", "t", "a"), Write(Param(2)))).AllRows()},
-		{"insert_qualified_targets_duplicate", InsertInto("t").Targets(Col("t", "a"), Col("t", "a")).Values(Write(Param(1)), Write(Param(2)))},
+		{"update_no_assignments", Update("t").AllRows()}, {
+			"update_target",
+			Update("").Set(Set("a", Write(Param(1)))).AllRows(),
+		},
+		{
+			"update_duplicate",
+			Update("t").Set(Set("a", Write(Param(1))), Set("a", Write(Param(2)))).AllRows(),
+		},
+		{
+			"update_qualified_duplicate",
+			Update("t").
+				Set(Assign(Col("t", "a"), Write(Param(1))), Assign(Col("t", "a"), Write(Param(2)))).
+				AllRows(),
+		},
+		{
+			"update_schema_qualified_duplicate",
+			Update("t").
+				Set(
+					Assign(Col("s", "t", "a"), Write(Param(1))),
+					Assign(Col("s", "t", "a"), Write(Param(2))),
+				).
+				AllRows(),
+		},
+		{
+			"insert_qualified_targets_duplicate",
+			InsertInto("t").
+				Targets(Col("t", "a"), Col("t", "a")).
+				Values(Write(Param(1)), Write(Param(2))),
+		},
 		{"update_tuple_empty", Update("t").Set(SetRow(nil, Write(Param(1)))).AllRows()},
-		{"update_tuple_width", Update("t").Set(SetRow([]string{"a", "b"}, Write(Param(1)))).AllRows()},
-		{"update_tuple_duplicate", Update("t").Set(SetRow([]string{"a", "a"}, Write(Param(1)), Write(Param(2)))).AllRows()},
-		{"update_tuple_query_width", Update("t").Set(SetRowFrom([]string{"a"}, SelectCols("b", "c"))).AllRows()},
+		{
+			"update_tuple_width",
+			Update("t").Set(SetRow([]string{"a", "b"}, Write(Param(1)))).AllRows(),
+		},
+		{
+			"update_tuple_duplicate",
+			Update("t").Set(SetRow([]string{"a", "a"}, Write(Param(1)), Write(Param(2)))).AllRows(),
+		},
+		{
+			"update_tuple_query_width",
+			Update("t").Set(SetRowFrom([]string{"a"}, SelectCols("b", "c"))).AllRows(),
+		},
 		{"update_bad_target", Update("t").Set(Assign(Param("a"), Write(Param(1)))).AllRows()},
-		{"update_unselected", UpdateBuilder{table: table("t"), set: []Assignment{Set("a", Write(Param(1)))}}},
+		{
+			"update_unselected",
+			UpdateBuilder{table: table("t"), set: []Assignment{Set("a", Write(Param(1)))}},
+		},
 		{"update_where_true", Update("t").Set(Set("a", Write(Param(1)))).Where(True())},
 		{"update_where_empty_and", Update("t").Set(Set("a", Write(Param(1)))).Where(And())},
-		{"delete_target", DeleteFrom("").AllRows()}, {"delete_unselected", DeleteBuilder{table: table("t")}},
+		{"delete_target", DeleteFrom("").AllRows()}, {
+			"delete_unselected",
+			DeleteBuilder{table: table("t")},
+		},
 		{"delete_where_true", DeleteFrom("t").Where(True(), True())},
 		{"delete_where_empty_and", DeleteFrom("t").Where(And())},
-		{"returning_no_projection", DeleteFrom("t").AllRows().ReturningRows(ReturningAliases{Old: "o"})},
-		{"returning_same_alias", DeleteFrom("t").AllRows().ReturningCols("id").ReturningRows(ReturningAliases{Old: "r", New: "r"})},
-		{"conflict_empty_target", InsertInto("t").Values(Write(Param(1))).OnConflict(ConflictColumnsTarget{}.DoNothing())},
-		{"conflict_empty_index", InsertInto("t").Values(Write(Param(1))).OnConflict(ConflictIndexTarget{}.DoNothing())},
+		{
+			"returning_no_projection",
+			DeleteFrom("t").AllRows().ReturningRows(ReturningAliases{Old: "o"}),
+		},
+		{
+			"returning_same_alias",
+			DeleteFrom("t").
+				AllRows().
+				ReturningCols("id").
+				ReturningRows(ReturningAliases{Old: "r", New: "r"}),
+		},
+		{
+			"conflict_empty_target",
+			InsertInto("t").Values(Write(Param(1))).OnConflict(ConflictColumnsTarget{}.DoNothing()),
+		},
+		{
+			"conflict_empty_index",
+			InsertInto("t").Values(Write(Param(1))).OnConflict(ConflictIndexTarget{}.DoNothing()),
+		},
 		{"function_modifier_wrong", Select(Col("x").Distinct())},
-		{"ordered_set_distinct", Select(PercentileCont(Param(0.5)).Distinct().WithinGroup(Col("x").Asc()))},
-		{"ordered_set_window", Select(PercentileCont(Param(0.5)).WithinGroup(Col("x").Asc()).Over(Window()))},
-		{"window_duplicate", Select(RowNumber().OverNamed("w")).Window("w", Window()).Window("w", Window())},
+		{
+			"ordered_set_distinct",
+			Select(PercentileCont(Param(0.5)).Distinct().WithinGroup(Col("x").Asc())),
+		},
+		{
+			"ordered_set_window",
+			Select(PercentileCont(Param(0.5)).WithinGroup(Col("x").Asc()).Over(Window())),
+		},
+		{
+			"window_duplicate",
+			Select(RowNumber().OverNamed("w")).Window("w", Window()).Window("w", Window()),
+		},
 		{"window_empty_name", Select(RowNumber().OverNamed(""))},
-		{"frame_bad_start", Select(CountAll().Over(Window().RowsBetween(UnboundedFollowing(), CurrentRow())))},
-		{"frame_bad_end", Select(CountAll().Over(Window().RowsBetween(CurrentRow(), UnboundedPreceding())))},
+		{
+			"frame_bad_start",
+			Select(CountAll().Over(Window().RowsBetween(UnboundedFollowing(), CurrentRow()))),
+		},
+		{
+			"frame_bad_end",
+			Select(CountAll().Over(Window().RowsBetween(CurrentRow(), UnboundedPreceding()))),
+		},
 		{"frame_backwards", Select(CountAll().Over(Window().RowsBetween(Following(1), Preceding(1))))},
 		{"frame_negative", Select(CountAll().Over(Window().RowsBetween(Preceding(-1), CurrentRow())))},
-		{"range_unordered", Select(CountAll().Over(Window().RangeBetween(Preceding(1), CurrentRow())))},
-		{"range_many_orders", Select(CountAll().Over(Window().OrderBy(Col("a").Asc(), Col("b").Asc()).RangeBetween(Preceding(1), CurrentRow())))},
-		{"groups_unordered", Select(CountAll().Over(Window().GroupsBetween(UnboundedPreceding(), CurrentRow())))},
+		{
+			"range_unordered",
+			Select(CountAll().Over(Window().RangeBetween(Preceding(1), CurrentRow()))),
+		},
+		{
+			"range_many_orders",
+			Select(
+				CountAll().Over(
+					Window().OrderBy(Col("a").Asc(), Col("b").Asc()).RangeBetween(
+						Preceding(1),
+						CurrentRow(),
+					),
+				),
+			),
+		},
+		{
+			"groups_unordered",
+			Select(CountAll().Over(Window().GroupsBetween(UnboundedPreceding(), CurrentRow()))),
+		},
 		{"exclude_no_frame", Select(CountAll().Over(Window().Exclude(ExcludeTies)))},
 		{"inherit_partition", Select(CountAll().Over(Window().Base("w").PartitionBy(Col("a"))))},
 		{"operator_comment", Select(Operator(Col("a"), "--", Param(1)))},
@@ -129,19 +256,54 @@ func TestInvalidConstruction(t *testing.T) {
 		{"escape_wrong_operator", Select(Col("a").Eq(Param(1)).Escape("\\").Expr())},
 		{"table_lateral", Select(Star()).FromExpr(Lateral(Table("t")))},
 		{"subquery_only", Select(Star()).FromExpr(Select(Param(1)).As("s").Only())},
-		{"sample_subquery", Select(Star()).FromExpr(Select(Param(1)).As("s").TableSample("system", Param(10)))},
+		{
+			"sample_subquery",
+			Select(Star()).FromExpr(Select(Param(1)).As("s").TableSample("system", Param(10))),
+		},
 		{"sample_no_method", Select(Star()).FromExpr(Table("t").Repeatable(Param(1)))},
 		{"ordinality_table", Select(Star()).FromExpr(Table("t").WithOrdinality())},
 		{"rows_from_empty", Select(Star()).FromExpr(RowsFrom())},
-		{"record_ordinality", Select(Star()).FromExpr(TableFunc(Call("f")).DefineColumns(Def("x", TypeInt4)).WithOrdinality())},
+		{
+			"record_ordinality",
+			Select(Star()).FromExpr(
+				TableFunc(Call("f")).DefineColumns(Def("x", TypeInt4)).WithOrdinality(),
+			),
+		},
 		{"json_object_odd", Select(JSONBBuildObject(Param("x")))},
 		{"merge_no_on", MergeInto("t").Using(Table("s")).When(Matched().ThenDelete())},
 		{"merge_no_when", MergeInto("t").Using(Table("s")).On(True())},
 		{"merge_zero_branch", MergeInto("t").Using(Table("s")).On(True()).When(MergeWhen{})},
-		{"merge_unreachable", MergeInto("t").Using(Table("s")).On(True()).When(Matched().ThenDelete(), Matched().And(True()).ThenDoNothing())},
-		{"merge_empty_insert", MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsert())},
-		{"merge_insert_width", MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsertValues([]string{"a", "b"}, Write(Param(1))))},
-		{"merge_duplicate_columns", MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsertValues([]string{"a", "a"}, Write(Param(1)), Write(Param(2))))},
+		{
+			"merge_unreachable",
+			MergeInto("t").
+				Using(Table("s")).
+				On(True()).
+				When(Matched().ThenDelete(), Matched().And(True()).ThenDoNothing()),
+		},
+		{
+			"merge_empty_insert",
+			MergeInto("t").Using(Table("s")).On(True()).When(NotMatched().ThenInsert()),
+		},
+		{
+			"merge_insert_width",
+			MergeInto("t").
+				Using(Table("s")).
+				On(True()).
+				When(NotMatched().ThenInsertValues([]string{"a", "b"}, Write(Param(1)))),
+		},
+		{
+			"merge_duplicate_columns",
+			MergeInto("t").
+				Using(Table("s")).
+				On(True()).
+				When(
+					NotMatched().ThenInsertValues(
+						[]string{"a", "a"},
+						Write(Param(1)),
+						Write(Param(2)),
+					),
+				),
+		},
 	}
 	for _, tt := range bad {
 		t.Run(tt.name, func(t *testing.T) {

@@ -35,7 +35,9 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		person.Field("last_name"),
 		person.Field("age"),
 		qs.Col("note"),
-	).From("qs_composite_people").Where(qs.Col("id").Eq(qs.Param(1)))
+	).
+		From("qs_composite_people").
+		Where(qs.Col("id").Eq(qs.Param(1)))
 	sql, args, err := session.render(t, read)
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +51,9 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		t.Fatalf("read first=%q last=%q age=%d note=%q", first, last, age, note)
 	}
 
-	expanded := qs.Select(person.Fields()).From("qs_composite_people").Where(qs.Col("id").Eq(qs.Param(1)))
+	expanded := qs.Select(person.Fields()).
+		From("qs_composite_people").
+		Where(qs.Col("id").Eq(qs.Param(1)))
 	sql, args, err = session.render(t, expanded)
 	if err != nil {
 		t.Fatal(err)
@@ -61,10 +65,12 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		t.Fatalf("expanded first=%q last=%q age=%d", first, last, age)
 	}
 
-	update := qs.Update("qs_composite_people").Set(
-		qs.Assign(person.Field("first_name"), qs.Write(qs.Param("Grace"))),
-		qs.Assign(person.Field("age"), qs.Write(qs.Param(37))),
-	).Where(qs.Col("id").Eq(qs.Param(1)))
+	update := qs.Update("qs_composite_people").
+		Set(
+			qs.Assign(person.Field("first_name"), qs.Write(qs.Param("Grace"))),
+			qs.Assign(person.Field("age"), qs.Write(qs.Param(37))),
+		).
+		Where(qs.Col("id").Eq(qs.Param(1)))
 	sql, args, err = session.render(t, update)
 	if err != nil {
 		t.Fatal(err)
@@ -79,13 +85,15 @@ func TestCompositeFieldsAndUpdates(t *testing.T) {
 		t.Fatalf("updated first=%q last=%q age=%d note=%q", first, last, age, note)
 	}
 
-	insert := qs.InsertInto("qs_composite_people").Targets(
-		qs.Col("id"),
-		person.Field("first_name"),
-		person.Field("age"),
-	).Values(
-		qs.Write(qs.Param(2)), qs.Write(qs.Param("Alan")), qs.Write(qs.Param(41)),
-	)
+	insert := qs.InsertInto("qs_composite_people").
+		Targets(
+			qs.Col("id"),
+			person.Field("first_name"),
+			person.Field("age"),
+		).
+		Values(
+			qs.Write(qs.Param(2)), qs.Write(qs.Param("Alan")), qs.Write(qs.Param(41)),
+		)
 	sql, args, err = session.render(t, insert)
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +115,9 @@ func TestNamedTypeCastChangesResult(t *testing.T) {
 	session := connect(t)
 	ctx, conn := session.Context, session.Conn
 	numeric := func(scale int) qs.Expr {
-		return qs.Param("12.345").Cast(qs.TypeNamed("pg_catalog", "numeric").Modifiers(5, scale)).Cast(qs.TypeText)
+		return qs.Param("12.345").Cast(qs.TypeNamed("pg_catalog", "numeric").Modifiers(5, scale)).Cast(
+			qs.TypeText,
+		)
 	}
 	query := qs.Select(numeric(2), numeric(1))
 	sql, args, err := session.render(t, query)

@@ -21,7 +21,10 @@ func profiles() projection.Projection[profile] {
 	return projection.New(
 		projection.Column(qs.Col("id"), func(p *profile) *int64 { return &p.ID }),
 		projection.ColumnOrZero(qs.Col("nickname"), func(p *profile) *string { return &p.Nickname }),
-		projection.ColumnOrZero(qs.Col("logins"), func(p *profile) *sql.NullInt64 { return &p.Logins }),
+		projection.ColumnOrZero(
+			qs.Col("logins"),
+			func(p *profile) *sql.NullInt64 { return &p.Logins },
+		),
 	)
 }
 
@@ -156,11 +159,31 @@ func TestColumnOrZeroDeclarationPanics(t *testing.T) {
 		Pointer *string
 	}
 	tests := map[string]func(){
-		"nil dest":         func() { projection.ColumnOrZero[row, int64](qs.Col("a"), nil) },
-		"dest returns nil": func() { projection.ColumnOrZero(qs.Col("a"), func(*row) *int64 { return nil }) },
-		"pointer T":        func() { projection.ColumnOrZero(qs.Col("a"), func(r *row) **string { return &r.Pointer }) },
-		"borrowed T":       func() { projection.ColumnOrZero(qs.Col("a"), func(r *row) *sql.RawBytes { return &r.Raw }) },
-		"unstable address": func() { projection.ColumnOrZero(qs.Col("a"), func(*row) *int64 { return new(int64) }) },
+		"nil dest": func() { projection.ColumnOrZero[row, int64](qs.Col("a"), nil) },
+		"dest returns nil": func() {
+			projection.ColumnOrZero(
+				qs.Col("a"),
+				func(*row) *int64 { return nil },
+			)
+		},
+		"pointer T": func() {
+			projection.ColumnOrZero(
+				qs.Col("a"),
+				func(r *row) **string { return &r.Pointer },
+			)
+		},
+		"borrowed T": func() {
+			projection.ColumnOrZero(
+				qs.Col("a"),
+				func(r *row) *sql.RawBytes { return &r.Raw },
+			)
+		},
+		"unstable address": func() {
+			projection.ColumnOrZero(
+				qs.Col("a"),
+				func(*row) *int64 { return new(int64) },
+			)
+		},
 		"initialised target": func() {
 			projection.ColumnOrZero(qs.Col("a"), func(r *row) *wrapper {
 				r.Wrapper = wrapper{target: &r.Value}
@@ -174,14 +197,20 @@ func TestColumnOrZeroDeclarationPanics(t *testing.T) {
 			})
 		},
 		"initialised by Embed": func() {
-			inner := projection.ColumnOrZero(qs.Col("a"), func(r *row) *wrapper { return &r.Wrapper })
+			inner := projection.ColumnOrZero(
+				qs.Col("a"),
+				func(r *row) *wrapper { return &r.Wrapper },
+			)
 			projection.Embed(inner, func(o *struct{ Row row }) *row {
 				o.Row.Wrapper = wrapper{target: &o.Row.Value}
 				return &o.Row
 			})
 		},
 		"initialised by an outer Embed": func() {
-			inner := projection.ColumnOrZero(qs.Col("a"), func(r *row) *wrapper { return &r.Wrapper })
+			inner := projection.ColumnOrZero(
+				qs.Col("a"),
+				func(r *row) *wrapper { return &r.Wrapper },
+			)
 			type middle struct{ Row row }
 			embedded := projection.Embed(inner, func(m *middle) *row { return &m.Row })
 			projection.Embed(embedded, func(o *struct{ Middle middle }) *middle {
@@ -211,7 +240,10 @@ func TestGroupPresenceFromKeyWithoutField(t *testing.T) {
 	type human struct{ Nickname string }
 	p := projection.EmbedNull(projection.New(
 		projection.ColumnNull(qs.Col("h", "user_id"), func(*human, *int64) {}),
-		projection.ColumnOrZero(qs.Col("h", "nickname"), func(h *human) *string { return &h.Nickname }),
+		projection.ColumnOrZero(
+			qs.Col("h", "nickname"),
+			func(h *human) *string { return &h.Nickname },
+		),
 	), func(d **human, h *human) { *d = h })
 
 	got, err := p.Scan(fakeRow(int64(9), nil))
@@ -232,7 +264,9 @@ func TestScanFunctionAppendsDestinations(t *testing.T) {
 	withTotal := func(scan func(dest ...any) error) func(dest ...any) error {
 		return func(dest ...any) error { return scan(append(dest, &total)...) }
 	}
-	got, err := employees().Scan(withTotal(fakeRow(int64(1), "ada", nil, int64(2), "bob", nil, int64(42))))
+	got, err := employees().Scan(
+		withTotal(fakeRow(int64(1), "ada", nil, int64(2), "bob", nil, int64(42))),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

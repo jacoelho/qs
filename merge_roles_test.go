@@ -9,7 +9,10 @@ func TestMergeRoleActions(t *testing.T) {
 	t.Parallel()
 
 	base := func(branch MergeWhen) Statement {
-		return MergeInto("target").Using(Table("source")).On(Col("target", "id").Eq(Col("source", "id"))).When(branch)
+		return MergeInto("target").
+			Using(Table("source")).
+			On(Col("target", "id").Eq(Col("source", "id"))).
+			When(branch)
 	}
 	for _, tc := range []struct {
 		name string
@@ -35,7 +38,9 @@ func TestMergeRoleActions(t *testing.T) {
 		},
 		{
 			name: "not_matched_assignments",
-			stmt: base(NotMatched().ThenInsert(Set("id", Write(Param(1))), Set("value", Write(Param(2))))),
+			stmt: base(
+				NotMatched().ThenInsert(Set("id", Write(Param(1))), Set("value", Write(Param(2)))),
+			),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN NOT MATCHED THEN INSERT ("id", "value") VALUES ($1, $2)`,
 			args: []any{1, 2},
 		},
@@ -79,7 +84,9 @@ func TestMergeRoleActions(t *testing.T) {
 		},
 		{
 			name: "override_user_values",
-			stmt: base(NotMatched().OverridingUserValue().ThenInsertValues([]string{"id"}, Write(Param(1)))),
+			stmt: base(
+				NotMatched().OverridingUserValue().ThenInsertValues([]string{"id"}, Write(Param(1))),
+			),
 			sql:  `MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN NOT MATCHED THEN INSERT ("id") OVERRIDING USER VALUE VALUES ($1)`,
 			args: []any{1},
 		},
@@ -97,13 +104,16 @@ func TestMergeRoleConditionsAndSiblingImmutability(t *testing.T) {
 	matched := Matched().And(Col("source", "state").Eq(Param("open")))
 	notMatched := NotMatched().And(Col("source", "state").Eq(Param("new")))
 	override := notMatched.OverridingSystemValue()
-	query := MergeInto("target").Using(Table("source")).On(Col("target", "id").Eq(Col("source", "id"))).When(
-		matched.ThenUpdate(Set("value", Write(Param(1)))),
-		matched.ThenDelete(),
-		notMatched.ThenInsert(Set("id", Write(Param(2)))),
-		notMatched.ThenDoNothing(),
-		override.ThenInsertValues([]string{"id"}, Write(Param(3))),
-	)
+	query := MergeInto("target").
+		Using(Table("source")).
+		On(Col("target", "id").Eq(Col("source", "id"))).
+		When(
+			matched.ThenUpdate(Set("value", Write(Param(1)))),
+			matched.ThenDelete(),
+			notMatched.ThenInsert(Set("id", Write(Param(2)))),
+			notMatched.ThenDoNothing(),
+			override.ThenInsertValues([]string{"id"}, Write(Param(3))),
+		)
 	checkSQL(t, query,
 		`MERGE INTO "target" USING "source" ON ("target"."id" = "source"."id") WHEN MATCHED AND ("source"."state" = $1) THEN UPDATE SET "value" = $2 WHEN MATCHED AND ("source"."state" = $3) THEN DELETE WHEN NOT MATCHED AND ("source"."state" = $4) THEN INSERT ("id") VALUES ($5) WHEN NOT MATCHED AND ("source"."state" = $6) THEN DO NOTHING WHEN NOT MATCHED AND ("source"."state" = $7) THEN INSERT ("id") OVERRIDING SYSTEM VALUE VALUES ($8)`,
 		"open", 1, "open", "new", 2, "new", "new", 3,

@@ -7,16 +7,24 @@ func TestCaseRolesRenderDistinctForms(t *testing.T) {
 
 	runCases(t, []renderCase{
 		{
-			name:      "searched",
-			statement: Select(Case().When(Col("kind").Eq(Param(1)), Param("searched-then")).Else(Param("searched-else")).End()),
-			sql:       `SELECT CASE WHEN ("kind" = $1) THEN $2 ELSE $3 END`,
-			args:      []any{1, "searched-then", "searched-else"},
+			name: "searched",
+			statement: Select(
+				Case().When(Col("kind").Eq(Param(1)), Param("searched-then")).Else(
+					Param("searched-else"),
+				).End(),
+			),
+			sql:  `SELECT CASE WHEN ("kind" = $1) THEN $2 ELSE $3 END`,
+			args: []any{1, "searched-then", "searched-else"},
 		},
 		{
-			name:      "simple",
-			statement: Select(CaseOf(Col("kind")).WhenValue(LiteralInt(1), Param("simple-then")).Else(Param("simple-else")).End()),
-			sql:       `SELECT CASE "kind" WHEN 1 THEN $1 ELSE $2 END`,
-			args:      []any{"simple-then", "simple-else"},
+			name: "simple",
+			statement: Select(
+				CaseOf(Col("kind")).WhenValue(LiteralInt(1), Param("simple-then")).Else(
+					Param("simple-else"),
+				).End(),
+			),
+			sql:  `SELECT CASE "kind" WHEN 1 THEN $1 ELSE $2 END`,
+			args: []any{"simple-then", "simple-else"},
 		},
 	})
 }

@@ -51,7 +51,11 @@ func BenchmarkScan(b *testing.B) {
 		projection.Column(qs.Col("name"), func(r *titled) *string { return &r.Name }),
 		projection.ColumnOrZero(qs.Col("title"), func(r *titled) *string { return &r.Title }),
 	)
-	mapped := projection.Map(required, func(f flat) (string, error) { return f.Name, nil }, func(d *string, v string) { *d = v })
+	mapped := projection.Map(
+		required,
+		func(f flat) (string, error) { return f.Name, nil },
+		func(d *string, v string) { *d = v },
+	)
 	group := employees()
 
 	b.Run("Column", func(b *testing.B) {

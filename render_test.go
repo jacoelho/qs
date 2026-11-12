@@ -15,11 +15,13 @@ func placeholderQuery() SelectBuilder {
 		UnsafeSQL(`'?; $1' /* ?; $1 */`),
 		Scalar(child).As("nested"),
 		doc.Key("profile").TextKey("name").As("name"),
-	).With(CTE("seed", Select(Param("seed"))).Columns("value")).
+	).
+		With(CTE("seed", Select(Param("seed"))).Columns("value")).
 		FromExpr(child.As("again")).
 		Where(doc.HasKey("?;"), doc.HasAnyKeys("red", "blue"),
 			doc.HasAllKeys("alpha", "beta"), doc.PathExists("$.a ? (@ > 1)"),
-			Col("name").Eq(Param(`x'); DROP TABLE t;--`))).Limit(3)
+			Col("name").Eq(Param(`x'); DROP TABLE t;--`))).
+		Limit(3)
 }
 
 // Text that looks like a placeholder inside identifiers, literals, trusted SQL
@@ -85,11 +87,32 @@ func TestRenderErrorsAreAtomic(t *testing.T) {
 		{"invalid_options", valid, Options{MaxDepth: -1}, ErrInvalid, 0},
 		{"late_expression", Select(Param("first"), Param("second"), Expr{}), Options{}, ErrInvalid, 2},
 		{"late_grouped_expression", Select(Param("first"), Param("second"), Expr{}.Parenthesized()), Options{}, ErrInvalid, 2},
-		{"late_function_cast_type", Select(Param("first")).FromExpr(TableFunc(Param("second").Cast(DataType{}))), Options{}, ErrInvalid, 2},
+		{
+			"late_function_cast_type",
+			Select(Param("first")).FromExpr(TableFunc(Param("second").Cast(DataType{}))),
+			Options{},
+			ErrInvalid,
+			2,
+		},
 		{"unknown_select_quantifier", unknownQuantifier, Options{}, ErrInvalid, 1},
-		{"unknown_cte_materialization", Select(Param("third")).Prefix(Param("first")).With(unknownCTE), Options{}, ErrInvalid, 1},
+		{
+			"unknown_cte_materialization",
+			Select(Param("third")).Prefix(Param("first")).With(unknownCTE),
+			Options{},
+			ErrInvalid,
+			1,
+		},
 		{"unknown_insert_overriding", unknownOverride, Options{}, ErrInvalid, 1},
-		{"unknown_merge_overriding", MergeInto("t").Using(Table("s")).On(Col("t", "id").Eq(Param("first"))).When(unknownMergeOverride), Options{}, ErrInvalid, 1},
+		{
+			"unknown_merge_overriding",
+			MergeInto("t").
+				Using(Table("s")).
+				On(Col("t", "id").Eq(Param("first"))).
+				When(unknownMergeOverride),
+			Options{},
+			ErrInvalid,
+			1,
+		},
 		{"cycle_keyword", cycleValuesQuery(CurrentDate(), LiteralInt(0)), Options{}, ErrInvalid, 1},
 		{"parameter_limit", valid, Options{MaxParameters: 10}, ErrParameterLimit, 1},
 	} {

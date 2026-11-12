@@ -75,10 +75,16 @@ func TestFunctionOptionalArgumentsOwnInput(t *testing.T) {
 			args:  []any{1.5, 2},
 		},
 		{
-			name:  "DateTrunc",
-			build: func(values []Expr) Expr { return DateTrunc(Param("hour"), Param("value"), values...) },
-			want:  `SELECT date_trunc($1, $2, $3)`,
-			args:  []any{"hour", "value", "UTC"},
+			name: "DateTrunc",
+			build: func(values []Expr) Expr {
+				return DateTrunc(
+					Param("hour"),
+					Param("value"),
+					values...,
+				)
+			},
+			want: `SELECT date_trunc($1, $2, $3)`,
+			args: []any{"hour", "value", "UTC"},
 		},
 		{
 			name:  "Age",

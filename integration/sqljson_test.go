@@ -52,7 +52,17 @@ func TestSQLJSONConstructors(t *testing.T) {
 		},
 		{
 			"array_query",
-			one(qs.JSONArrayQuery(qs.Select(qs.Col("v")).FromExpr(qs.ValuesExpr(qs.LiteralInt(2)).RowExpr(qs.LiteralInt(1)).As("t", "v")).OrderBy(qs.Col("v").Asc())).Returning(qs.TypeJSONB).Expr()),
+			one(
+				qs.JSONArrayQuery(
+					qs.Select(qs.Col("v")).
+						FromExpr(
+							qs.ValuesExpr(qs.LiteralInt(2)).RowExpr(qs.LiteralInt(1)).As("t", "v"),
+						).
+						OrderBy(qs.Col("v").Asc()),
+				).Returning(
+					qs.TypeJSONB,
+				).Expr(),
+			),
 			`[1, 2]`,
 		},
 	} {
@@ -113,7 +123,12 @@ func TestSQLJSONUniqueKeys(t *testing.T) {
 	}
 
 	if session.major >= sqlJSONQueries {
-		requireDuplicateKey(t, qs.Select(qs.JSONParse(qs.FormatJSON(repeated)).WithUniqueKeys().Expr().Cast(qs.TypeText)))
+		requireDuplicateKey(
+			t,
+			qs.Select(
+				qs.JSONParse(qs.FormatJSON(repeated)).WithUniqueKeys().Expr().Cast(qs.TypeText),
+			),
+		)
 	}
 }
 
@@ -126,12 +141,22 @@ func TestSQLJSONAggregates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	array := qs.JSONArrayAggregate(qs.Col("v")).OrderBy(qs.Col("v").Desc()).Filter(qs.Col("keep").Eq(qs.Param(true))).Expr().Cast(qs.TypeText)
+	array := qs.JSONArrayAggregate(qs.Col("v")).OrderBy(qs.Col("v").Desc()).Filter(
+		qs.Col("keep").Eq(qs.Param(true)),
+	).Expr().Cast(
+		qs.TypeText,
+	)
 	if got := queryStrings(t, session, qs.Select(array).From("qs_sqljson_values")); !reflect.DeepEqual(got, []string{`[5, 3]`}) {
 		t.Fatalf("ordered filtered array aggregate: %q", got)
 	}
 
-	object := qs.JSONObjectAggregate(qs.Col("v"), qs.Col("g")).Filter(qs.Col("keep").Eq(qs.Param(true))).Returning(qs.TypeJSONB).Expr().Cast(qs.TypeText)
+	object := qs.JSONObjectAggregate(qs.Col("v"), qs.Col("g")).Filter(
+		qs.Col("keep").Eq(qs.Param(true)),
+	).Returning(
+		qs.TypeJSONB,
+	).Expr().Cast(
+		qs.TypeText,
+	)
 	got := queryStrings(t, session, qs.Select(object).From("qs_sqljson_values"))
 	if len(got) != 1 {
 		t.Fatalf("object aggregate rows: %q", got)
@@ -145,9 +170,19 @@ func TestSQLJSONAggregates(t *testing.T) {
 	}
 
 	// As a window function the aggregate sees its whole partition on every row.
-	windowed := qs.Select(qs.JSONArrayAggregate(qs.Col("v")).Returning(qs.TypeJSONB).
-		Over(qs.Window().PartitionBy(qs.Col("g")).OrderBy(qs.Col("v").Asc()).RowsBetween(qs.UnboundedPreceding(), qs.UnboundedFollowing())).Expr().Cast(qs.TypeText)).
-		From("qs_sqljson_values").OrderBy(qs.Col("g").Asc(), qs.Col("v").Asc())
+	windowed := qs.Select(
+		qs.JSONArrayAggregate(qs.Col("v")).Returning(qs.TypeJSONB).
+			Over(
+				qs.Window().PartitionBy(qs.Col("g")).OrderBy(qs.Col("v").Asc()).RowsBetween(
+					qs.UnboundedPreceding(),
+					qs.UnboundedFollowing(),
+				),
+			).Expr().Cast(
+			qs.TypeText,
+		),
+	).
+		From("qs_sqljson_values").
+		OrderBy(qs.Col("g").Asc(), qs.Col("v").Asc())
 	if got := queryStrings(t, session, windowed); !reflect.DeepEqual(got, []string{`[1, 3]`, `[1, 3]`, `[2, 5]`, `[2, 5]`}) {
 		t.Fatalf("window aggregate: %q", got)
 	}
@@ -185,12 +220,34 @@ func TestSQLJSONQueryFunctions(t *testing.T) {
 		want       string
 	}{
 		{"exists", qs.JSONExists(doc, path("$.tags[*] ? (@ == $tag)")).Passing("tag", text("y")).Expr(), "true"},
-		{"exists_no_match", qs.JSONExists(doc, path("$.tags[*] ? (@ == $tag)")).Passing("tag", text("z")).Expr(), "false"},
+		{
+			"exists_no_match",
+			qs.JSONExists(doc, path("$.tags[*] ? (@ == $tag)")).Passing("tag", text("z")).Expr(),
+			"false",
+		},
 		{"exists_error_as_true", qs.JSONExists(doc, path("strict $.missing")).TrueOnError().Expr(), "true"},
 		{"value", qs.JSONValue(doc, path("$.n")).Returning(qs.TypeInt4).Expr(), "7"},
-		{"value_default_on_empty", qs.JSONValue(doc, path("$.missing")).Returning(qs.TypeInt4).DefaultOnEmpty(qs.LiteralInt(-1)).Expr(), "-1"},
-		{"value_default_on_error", qs.JSONValue(doc, path("$.name")).Returning(qs.TypeInt4).DefaultOnError(qs.LiteralInt(-2)).Expr(), "-2"},
-		{"value_passing", qs.JSONValue(doc, path("$.n + $more")).Passing("more", qs.Param(3).Cast(qs.TypeInt4)).Returning(qs.TypeInt4).Expr(), "10"},
+		{
+			"value_default_on_empty",
+			qs.JSONValue(doc, path("$.missing")).Returning(qs.TypeInt4).DefaultOnEmpty(
+				qs.LiteralInt(-1),
+			).Expr(),
+			"-1",
+		},
+		{
+			"value_default_on_error",
+			qs.JSONValue(doc, path("$.name")).Returning(qs.TypeInt4).DefaultOnError(
+				qs.LiteralInt(-2),
+			).Expr(),
+			"-2",
+		},
+		{
+			"value_passing",
+			qs.JSONValue(doc, path("$.n + $more")).Passing("more", qs.Param(3).Cast(qs.TypeInt4)).Returning(
+				qs.TypeInt4,
+			).Expr(),
+			"10",
+		},
 		{"query", qs.JSONQuery(doc, path("$.tags")).Expr(), `["x", "y"]`},
 		{"query_wrapper", qs.JSONQuery(doc, path("$.tags[*]")).WithWrapper().Expr(), `["x", "y"]`},
 		{"query_conditional_wrapper", qs.JSONQuery(doc, path("$.tags")).WithConditionalWrapper().Expr(), `["x", "y"]`},
@@ -198,10 +255,26 @@ func TestSQLJSONQueryFunctions(t *testing.T) {
 		{"query_omit_quotes", qs.JSONQuery(doc, path("$.name")).Returning(qs.TypeText).OmitQuotes().Expr(), `Ada`},
 		{"query_empty_array", qs.JSONQuery(doc, path("$.missing")).EmptyArrayOnEmpty().Expr(), `[]`},
 		{"query_empty_object_on_error", qs.JSONQuery(doc, path("strict $.missing")).EmptyObjectOnError().Expr(), `{}`},
-		{"query_default", qs.JSONQuery(doc, path("$.missing")).DefaultOnEmpty(qs.LiteralString(`{"d": 1}`).Cast(qs.TypeJSONB)).Expr(), `{"d": 1}`},
+		{
+			"query_default",
+			qs.JSONQuery(doc, path("$.missing")).DefaultOnEmpty(
+				qs.LiteralString(`{"d": 1}`).Cast(qs.TypeJSONB),
+			).Expr(),
+			`{"d": 1}`,
+		},
 		// A bound value reaches DEFAULT through an operator expression.
-		{"value_default_from_parameter", qs.JSONValue(doc, path("$.missing")).Returning(qs.TypeInt4).DefaultOnEmpty(qs.Param(40).Cast(qs.TypeInt4).Add(qs.LiteralInt(2))).Expr(), "42"},
-		{"format_json_document", qs.JSONValue(qs.FormatJSON(text(`{"a": 5}`)), path("$.a")).Returning(qs.TypeInt4).Expr(), "5"},
+		{
+			"value_default_from_parameter",
+			qs.JSONValue(doc, path("$.missing")).Returning(qs.TypeInt4).DefaultOnEmpty(
+				qs.Param(40).Cast(qs.TypeInt4).Add(qs.LiteralInt(2)),
+			).Expr(),
+			"42",
+		},
+		{
+			"format_json_document",
+			qs.JSONValue(qs.FormatJSON(text(`{"a": 5}`)), path("$.a")).Returning(qs.TypeInt4).Expr(),
+			"5",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			statement := qs.Select(tc.expression.Cast(qs.TypeText))
@@ -212,7 +285,10 @@ func TestSQLJSONQueryFunctions(t *testing.T) {
 	}
 
 	t.Run("error_on_error", func(t *testing.T) {
-		sql, args, err := session.render(t, qs.Select(qs.JSONValue(doc, path("strict $.missing")).ErrorOnError().Expr()))
+		sql, args, err := session.render(
+			t,
+			qs.Select(qs.JSONValue(doc, path("strict $.missing")).ErrorOnError().Expr()),
+		)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -246,7 +322,15 @@ func TestSQLJSONTable(t *testing.T) {
 		qs.JSONNested("$.parts[*]", qs.JSONColumn("part", qs.TypeText).Path("$.name")),
 	).Passing("skip", text("c")).ErrorOnError()
 
-	row := qs.Row(qs.Col("o", "id"), qs.Col("jt", "n"), qs.Col("jt", "sku"), qs.Col("jt", "qty"), qs.Col("jt", "gift"), qs.Col("jt", "parts"), qs.Col("jt", "part"))
+	row := qs.Row(
+		qs.Col("o", "id"),
+		qs.Col("jt", "n"),
+		qs.Col("jt", "sku"),
+		qs.Col("jt", "qty"),
+		qs.Col("jt", "gift"),
+		qs.Col("jt", "parts"),
+		qs.Col("jt", "part"),
+	)
 	query := qs.Select(row.Expr().Cast(qs.TypeText)).
 		FromExpr(qs.Table("qs_sqljson_orders").As("o")).
 		CrossJoinExpr(qs.Lateral(items.As("jt"))).
@@ -262,7 +346,16 @@ func TestSQLJSONTable(t *testing.T) {
 
 	// Column aliases rename the table's columns positionally.
 	renamed := qs.Select(qs.Col("x", "first").Cast(qs.TypeText)).
-		FromExpr(qs.JSONTable(qs.Param(`[1, 2]`).Cast(qs.TypeJSONB), "$[*]", qs.JSONColumn("v", qs.TypeInt4).Path("$")).As("x", "first")).
+		FromExpr(
+			qs.JSONTable(
+				qs.Param(`[1, 2]`).Cast(qs.TypeJSONB),
+				"$[*]",
+				qs.JSONColumn("v", qs.TypeInt4).Path("$"),
+			).As(
+				"x",
+				"first",
+			),
+		).
 		OrderBy(qs.Col("x", "first").Desc())
 	if got := queryStrings(t, session, renamed); !reflect.DeepEqual(got, []string{"2", "1"}) {
 		t.Fatalf("column aliases: %q", got)

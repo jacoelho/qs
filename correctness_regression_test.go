@@ -105,7 +105,12 @@ func TestCorrectnessMembershipAllowsUnknownWidths(t *testing.T) {
 		want string
 		args []any
 	}{
-		{"in_query", qs.Row(qs.Col("a"), qs.Col("b")).InQuery(qs.ValuesExpr(qs.Param(1), qs.Param(2))), `SELECT (ROW("a", "b") IN (VALUES ($1, $2)))`, []any{1, 2}},
+		{
+			"in_query",
+			qs.Row(qs.Col("a"), qs.Col("b")).InQuery(qs.ValuesExpr(qs.Param(1), qs.Param(2))),
+			`SELECT (ROW("a", "b") IN (VALUES ($1, $2)))`,
+			[]any{1, 2},
+		},
 		{"not_in_list", qs.Row(qs.Col("a"), qs.Col("b")).NotIn(qs.Row(qs.Param(1), qs.Param(2))), `SELECT (ROW("a", "b") NOT IN (ROW($1, $2)))`, []any{1, 2}},
 	} {
 		t.Run("sql/"+tc.name, func(t *testing.T) {
@@ -140,7 +145,10 @@ func TestCorrectnessAppendFailureClearsOriginalStorage(t *testing.T) {
 	storage := make([]any, 2)
 	storage[0] = "prefix"
 	prefix := storage[:1]
-	outSQL, outArgs, err := qs.Select(qs.Param(new(int)), qs.Param("second"), qs.Expr{}).AppendSQL([]byte("/* prefix */ "), prefix)
+	outSQL, outArgs, err := qs.Select(qs.Param(new(int)), qs.Param("second"), qs.Expr{}).AppendSQL(
+		[]byte("/* prefix */ "),
+		prefix,
+	)
 	if !errors.Is(err, qs.ErrInvalid) {
 		t.Fatalf("expected invalid render error, got %v", err)
 	}
@@ -156,14 +164,21 @@ func TestCorrectnessAppendFailureClearsOriginalStorage(t *testing.T) {
 	several := make([]any, 5)
 	several[0] = "prefix"
 	severalPrefix := several[:1]
-	_, severalArgs, err := qs.Select(qs.Param("one"), qs.Param("two"), qs.Param("three"), qs.Expr{}).AppendSQL(nil, severalPrefix)
+	_, severalArgs, err := qs.Select(qs.Param("one"), qs.Param("two"), qs.Param("three"), qs.Expr{}).AppendSQL(
+		nil,
+		severalPrefix,
+	)
 	if !errors.Is(err, qs.ErrInvalid) || len(severalArgs) != 1 || several[1] != nil || several[2] != nil || several[3] != nil || several[4] != nil {
 		t.Fatalf("several-bind cleanup failed: args=%#v storage=%#v err=%v", severalArgs, several, err)
 	}
 	limited := make([]any, 4)
 	limited[0] = "prefix"
 	limitedPrefix := limited[:1]
-	_, limitedArgs, err := qs.Select(qs.Param("one"), qs.Param("two"), qs.Param("three")).AppendWith(nil, limitedPrefix, qs.Options{MaxParameters: 2})
+	_, limitedArgs, err := qs.Select(qs.Param("one"), qs.Param("two"), qs.Param("three")).AppendWith(
+		nil,
+		limitedPrefix,
+		qs.Options{MaxParameters: 2},
+	)
 	if !errors.Is(err, qs.ErrParameterLimit) || len(limitedArgs) != 1 || limited[1] != nil {
 		t.Fatalf("parameter-limit cleanup failed: args=%#v storage=%#v err=%v", limitedArgs, limited, err)
 	}
@@ -218,7 +233,9 @@ func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 	t.Parallel()
 	var nilSlice []any
 	field := qs.TypedCol[any]("value")
-	a, b, c, d := qs.TypedCol[any]("a"), qs.TypedCol[any]("b"), qs.TypedCol[any]("c"), qs.TypedCol[any]("d")
+	a, b, c, d := qs.TypedCol[any]("a"), qs.TypedCol[any]("b"), qs.TypedCol[any]("c"), qs.TypedCol[any](
+		"d",
+	)
 	for _, tc := range []struct {
 		name      string
 		condition qs.Condition
@@ -250,7 +267,10 @@ func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 		{"in_left", qs.Param(nil).In(qs.Param(1))},
 		{"in_query_left", qs.Param(nil).InQuery(qs.SelectCols("id").From("t"))},
 		{"row_in_left", qs.Row(qs.Param(nil), qs.Col("a")).In(qs.Row(qs.Param(1), qs.Param(2)))},
-		{"row_in_query_left", qs.Row(qs.Param(nil), qs.Col("a")).InQuery(qs.SelectCols("a", "b").From("t"))},
+		{
+			"row_in_query_left",
+			qs.Row(qs.Param(nil), qs.Col("a")).InQuery(qs.SelectCols("a", "b").From("t")),
+		},
 		{"nested_row", qs.Col("value").Eq(qs.Row(qs.Row(qs.Param(nil)).Expr(), qs.Param(1)).Expr())},
 		{"any_array", qs.Col("value").Eq(qs.AnyArray(qs.Param(nil)))},
 		{"like_pattern", qs.Col("value").LikeExpr(qs.Param(nil))},
@@ -268,8 +288,14 @@ func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 		})
 	}
 	for _, query := range []qs.SelectBuilder{
-		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Col("t", "a").Asc(), qs.Col("t", "id").Asc()).SeekAfter(nil, 1),
-		qs.Select(qs.Col("id")).From("t").OrderBy(qs.Col("t", "a").Asc(), qs.Col("t", "id").Asc()).SeekAfter(1, nil),
+		qs.Select(qs.Col("id")).
+			From("t").
+			OrderBy(qs.Col("t", "a").Asc(), qs.Col("t", "id").Asc()).
+			SeekAfter(nil, 1),
+		qs.Select(qs.Col("id")).
+			From("t").
+			OrderBy(qs.Col("t", "a").Asc(), qs.Col("t", "id").Asc()).
+			SeekAfter(1, nil),
 	} {
 		if sql, args, err := query.ToSQL(); !errors.Is(err, qs.ErrInvalid) || sql != "" || args != nil {
 			t.Fatalf("SeekAfter nil: SQL=%q args=%#v err=%v; want atomic ErrInvalid", sql, args, err)

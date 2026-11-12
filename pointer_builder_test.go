@@ -21,14 +21,30 @@ func TestPointerToBuilderRendersAsItsValue(t *testing.T) {
 		value   Statement
 	}{
 		{"top_level", &query, query},
-		{"subquery", Select(Star()).FromExpr(Subquery(&query, "s")), Select(Star()).FromExpr(Subquery(query, "s"))},
+		{
+			"subquery",
+			Select(Star()).FromExpr(Subquery(&query, "s")),
+			Select(Star()).FromExpr(Subquery(query, "s")),
+		},
 		{"exists", Select(Exists(&query).Expr()), Select(Exists(query).Expr())},
 		{"scalar", Select(Scalar(&query)), Select(Scalar(query))},
-		{"cte", Select(Col("id")).From("c").With(CTE("c", &query)), Select(Col("id")).From("c").With(CTE("c", query))},
-		{"cte_dml", Select(Col("id")).From("c").With(CTE("c", &insert)), Select(Col("id")).From("c").With(CTE("c", insert))},
+		{
+			"cte",
+			Select(Col("id")).From("c").With(CTE("c", &query)),
+			Select(Col("id")).From("c").With(CTE("c", query)),
+		},
+		{
+			"cte_dml",
+			Select(Col("id")).From("c").With(CTE("c", &insert)),
+			Select(Col("id")).From("c").With(CTE("c", insert)),
+		},
 		{"set_branches", Union(&query, &query), Union(query, query)},
 		{"set_left_spine", Union(&union, &query), Union(union, query)},
-		{"insert_source", InsertInto("copy").Columns("id").From(&query), InsertInto("copy").Columns("id").From(query)},
+		{
+			"insert_source",
+			InsertInto("copy").Columns("id").From(&query),
+			InsertInto("copy").Columns("id").From(query),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -70,7 +86,9 @@ func TestNilPointerToBuilderIsANilStatement(t *testing.T) {
 func TestPointerToJSONTableColumnRendersAsItsValue(t *testing.T) {
 	t.Parallel()
 
-	value, exists, ordinality := JSONColumn("a", TypeText), JSONExistsColumn("e", TypeBool), JSONOrdinality("n")
+	value, exists, ordinality := JSONColumn("a", TypeText), JSONExistsColumn("e", TypeBool), JSONOrdinality(
+		"n",
+	)
 	nested := JSONNested("$.x", &value)
 	checkSQL(t,
 		Select(Star()).FromExpr(JSONTable(Col("doc"), "$", &ordinality, &exists, &nested).Ref()),

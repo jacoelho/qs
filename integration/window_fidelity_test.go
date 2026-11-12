@@ -26,7 +26,9 @@ func TestWindowShorthandLiveSemantics(t *testing.T) {
 		qs.Sum(qs.Col("v")).Over(rowsFrame),
 		qs.Sum(qs.Col("v")).Over(rangeFrame),
 		qs.Sum(qs.Col("v")).Over(groupsFrame),
-	).From("qs_window_fidelity").OrderBy(qs.Col("id").Asc())
+	).
+		From("qs_window_fidelity").
+		OrderBy(qs.Col("id").Asc())
 	sql, args, err := session.render(t, query)
 	if err != nil {
 		t.Fatal(err)

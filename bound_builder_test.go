@@ -27,7 +27,10 @@ func TestUnconvertedBuilderIsNotBoundAsAValue(t *testing.T) {
 		"pending_case_of":   Values(CaseOf(Col("a"))),
 		"tuple":             Select(Param(Tuple2(TypedCol[int]("a"), TypedCol[int]("b")))),
 		"pointer_to_object": Select(Param(new(JSONObject()))),
-		"seek_after":        Select(Col("t", "a")).From("t").OrderBy(Col("t", "a").Asc()).SeekAfter(JSONObject()),
+		"seek_after": Select(Col("t", "a")).
+			From("t").
+			OrderBy(Col("t", "a").Asc()).
+			SeekAfter(JSONObject()),
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

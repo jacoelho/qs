@@ -49,13 +49,24 @@ func TestTypedFacade(t *testing.T) {
 	checkSQL(t, Update("t").Set(a.SetNullable(NullOf[int]())).AllRows(), `UPDATE "t" SET "a" = $1`, nil)
 	checkSQL(t, Update("t").Set(a.SetNull()).AllRows(), `UPDATE "t" SET "a" = NULL`)
 	checkSQL(t, Update("t").Set(a.SetDefault()).AllRows(), `UPDATE "t" SET "a" = DEFAULT`)
-	checkSQL(t, InsertInto("users").Set(TypedCol[int]("u", "id").Set(42), TypedCol[string]("u", "name").Set("Ana")), `INSERT INTO "users" ("id", "name") VALUES ($1, $2)`, 42, "Ana")
+	checkSQL(
+		t,
+		InsertInto("users").Set(
+			TypedCol[int]("u", "id").Set(42),
+			TypedCol[string]("u", "name").Set("Ana"),
+		),
+		`INSERT INTO "users" ("id", "name") VALUES ($1, $2)`,
+		42,
+		"Ana",
+	)
 }
 
 func TestTypedTupleOperators(t *testing.T) {
 	t.Parallel()
 
-	a, b, c, d := TypedCol[int]("a"), TypedCol[string]("b"), TypedCol[bool]("c"), TypedCol[int64]("d")
+	a, b, c, d := TypedCol[int]("a"), TypedCol[string]("b"), TypedCol[bool]("c"), TypedCol[int64](
+		"d",
+	)
 	r2, r3, r4 := Tuple2(a, b), Tuple3(a, b, c), Tuple4(a, b, c, d)
 	operators := []struct {
 		op               string

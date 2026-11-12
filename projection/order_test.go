@@ -88,7 +88,10 @@ func TestGroupSetSeesParentColumns(t *testing.T) {
 		ID      int64
 	}
 	declared := projection.New(
-		projection.EmbedNull(contacts(), func(p *parent, c *contact) { p.Child, p.OwnerID = c, p.ID }),
+		projection.EmbedNull(
+			contacts(),
+			func(p *parent, c *contact) { p.Child, p.OwnerID = c, p.ID },
+		),
 		projection.Column(qs.Col("parent_id"), func(p *parent) *int64 { return &p.ID }),
 	)
 	row := fakeRow("ada", int64(7), int64(42))
@@ -178,7 +181,10 @@ func TestMapKeepsWhatOtherDeclarationsRead(t *testing.T) {
 	})
 	t.Run("Column then Embedded Map of the same row", func(t *testing.T) {
 		t.Parallel()
-		p := projection.New(accountID, projection.Embed(named, func(a *account) *account { return a }))
+		p := projection.New(
+			accountID,
+			projection.Embed(named, func(a *account) *account { return a }),
+		)
 		readFlatAndGrouped(t, p, wantAccount, int64(7), "ada")
 	})
 }
@@ -227,7 +233,10 @@ func TestMapSetRunsInDeclarationOrder(t *testing.T) {
 	})
 	t.Run("Map sees a ColumnOrZero declared after it", func(t *testing.T) {
 		t.Parallel()
-		p := projection.New(tagged, projection.ColumnOrZero(qs.Col("id"), func(a *account) *int64 { return &a.ID }))
+		p := projection.New(
+			tagged,
+			projection.ColumnOrZero(qs.Col("id"), func(a *account) *int64 { return &a.ID }),
+		)
 		readFlatAndGrouped(t, p, account{ID: 7, Name: "ADA#7"}, "ada", int64(7))
 	})
 	t.Run("Map inside a group runs before the group's set", func(t *testing.T) {

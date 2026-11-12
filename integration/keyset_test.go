@@ -60,7 +60,11 @@ func TestKeysetPaginationMatchesFullOrdering(t *testing.T) {
 				order[i] = qs.Col("r", key).Desc()
 			}
 		}
-		page := func() qs.SelectBuilder { return qs.SelectCols(keys[0], keys[1:]...).From("r").OrderBy(order...) }
+		page := func() qs.SelectBuilder {
+			return qs.SelectCols(keys[0], keys[1:]...).
+				From("r").
+				OrderBy(order...)
+		}
 		full := keysetRows(t, session, page())
 		if len(full) != 13 {
 			t.Fatalf("mask %03b: full ordering has %d rows", mask, len(full))
@@ -91,8 +95,15 @@ func TestKeysetPaginationMatchesFullOrdering(t *testing.T) {
 			reversed[i] = term.Reverse()
 		}
 		anchor := full[6]
-		previous := keysetRows(t, session, qs.SelectCols(keys[0], keys[1:]...).From("r").OrderBy(reversed...).
-			SeekAfter(anchor[0], anchor[1], anchor[2]).Limit(3))
+		previous := keysetRows(
+			t,
+			session,
+			qs.SelectCols(keys[0], keys[1:]...).
+				From("r").
+				OrderBy(reversed...).
+				SeekAfter(anchor[0], anchor[1], anchor[2]).
+				Limit(3),
+		)
 		slices.Reverse(previous)
 		if !reflect.DeepEqual(previous, full[3:6]) {
 			t.Fatalf("mask %03b: previous page %v; want %v", mask, previous, full[3:6])
@@ -108,7 +119,9 @@ func TestKeysetPaginationBesideSameNamedOutput(t *testing.T) {
 	session := connect(t)
 	createKeysetRows(t, session)
 	query := func(order ...qs.Order) qs.SelectBuilder {
-		return qs.Select(qs.Col("r", "a"), qs.Col("r", "b"), qs.Col("r", "id").Cast(qs.TypeText)).From("r").OrderBy(order...)
+		return qs.Select(qs.Col("r", "a"), qs.Col("r", "b"), qs.Col("r", "id").Cast(qs.TypeText)).
+			From("r").
+			OrderBy(order...)
 	}
 	rows := func(query qs.SelectBuilder) [][3]int64 {
 		t.Helper()
@@ -189,8 +202,11 @@ func TestCountRowsMatchesIndependentCounts(t *testing.T) {
 		}
 	}
 
-	page := qs.SelectCols("a", "b", "id").From("r").Where(qs.Col("id").Gt(qs.Param(int64(2)))).
-		OrderBy(qs.Col("r", "a").Asc(), qs.Col("r", "id").Desc()).Limit(4)
+	page := qs.SelectCols("a", "b", "id").
+		From("r").
+		Where(qs.Col("id").Gt(qs.Param(int64(2)))).
+		OrderBy(qs.Col("r", "a").Asc(), qs.Col("r", "id").Desc()).
+		Limit(4)
 	total := qs.CountRows(page)
 	var seen int64
 	for pages := 0; ; pages++ {
@@ -216,8 +232,12 @@ func TestCountRowsMatchesIndependentCounts(t *testing.T) {
 	if got := count(qs.CountRows(distinct)); got != 3 {
 		t.Fatalf("distinct count %d; want 3", got)
 	}
-	grouped := qs.Select(qs.Col("a"), qs.Col("b")).From("r").GroupBy("a", "b").
-		Having(qs.CountAll().Gt(qs.Param(int64(1)))).OrderBy(qs.Col("a").Asc(), qs.Col("b").Asc()).Limit(1)
+	grouped := qs.Select(qs.Col("a"), qs.Col("b")).
+		From("r").
+		GroupBy("a", "b").
+		Having(qs.CountAll().Gt(qs.Param(int64(1)))).
+		OrderBy(qs.Col("a").Asc(), qs.Col("b").Asc()).
+		Limit(1)
 	if got := count(qs.CountRows(grouped)); got != repeated {
 		t.Fatalf("grouped count %d; want %d", got, repeated)
 	}
@@ -278,39 +298,59 @@ func TestCountRowsMatchesRowsOfOrderedQuery(t *testing.T) {
 		want  int64
 	}{
 		{"set_returning_function", func() qs.SelectBuilder {
-			return qs.SelectCols("id").From("r").OrderBy(qs.Call("unnest", qs.UnsafeSQL("ARRAY[1, 2]")).Asc(), qs.Col("id").Asc())
+			return qs.SelectCols("id").
+				From("r").
+				OrderBy(qs.Call("unnest", qs.UnsafeSQL("ARRAY[1, 2]")).Asc(), qs.Col("id").Asc())
 		}, nil, 26},
 		{"aggregate", func() qs.SelectBuilder {
 			return qs.Select(qs.LiteralInt(1)).From("r").OrderBy(qs.CountAll().Asc())
 		}, nil, 1},
 		{"window_over_aggregate", func() qs.SelectBuilder {
-			return qs.Select(qs.LiteralInt(1)).From("r").OrderBy(qs.Sum(qs.CountAll()).Over(qs.Window()).Asc())
+			return qs.Select(qs.LiteralInt(1)).
+				From("r").
+				OrderBy(qs.Sum(qs.CountAll()).Over(qs.Window()).Asc())
 		}, nil, 1},
 		{"outer_level_aggregate", func() qs.SelectBuilder {
-			return qs.Select(qs.LiteralInt(1)).From("r").OrderBy(qs.Scalar(qs.Select(qs.Max(qs.Col("r", "id")))).Asc())
+			return qs.Select(qs.LiteralInt(1)).
+				From("r").
+				OrderBy(qs.Scalar(qs.Select(qs.Max(qs.Col("r", "id")))).Asc())
 		}, nil, 1},
 		{"grouped_aggregate", func() qs.SelectBuilder {
-			return qs.SelectCols("a").From("r").GroupBy("a").OrderBy(qs.CountAll().Desc(), qs.Col("a").Asc())
+			return qs.SelectCols("a").
+				From("r").
+				GroupBy("a").
+				OrderBy(qs.CountAll().Desc(), qs.Col("a").Asc())
 		}, nil, 3},
 		// DISTINCT ON keeps one row per group of the rows the empty
 		// set-returning function leaves, which are none.
 		{"distinct_on_set_returning_function", func() qs.SelectBuilder {
-			return qs.SelectCols("id").DistinctOn(qs.Col("a")).From("r").
+			return qs.SelectCols("id").
+				DistinctOn(qs.Col("a")).
+				From("r").
 				OrderBy(qs.Col("a").Asc(), qs.Call("unnest", qs.UnsafeSQL("'{}'::bigint[]")).Asc())
 		}, nil, 0},
 		// A cast output takes the name of its column. Unnamed, the moved term
 		// would be the "a" DISTINCT ON resolves to: ambiguous beside the
 		// projected column, and two boolean groups instead of three without it.
 		{"distinct_on_beside_moved_column_name", func() qs.SelectBuilder {
-			return qs.SelectCols("a", "id").DistinctOn(qs.Col("a")).From("r").
+			return qs.SelectCols("a", "id").
+				DistinctOn(qs.Col("a")).
+				From("r").
 				OrderBy(qs.Col("a").Asc(), qs.Col("a").Cast(qs.TypeText).Asc())
 		}, nil, 3},
 		{"distinct_on_moved_column_name", func() qs.SelectBuilder {
-			return qs.SelectCols("id").DistinctOn(qs.Col("a")).From("r").
+			return qs.SelectCols("id").
+				DistinctOn(qs.Col("a")).
+				From("r").
 				OrderBy(qs.Col("a").Asc(), qs.Col("a").Cast(qs.TypeInt4).Cast(qs.TypeBool).Asc())
 		}, nil, 3},
 		{"bound_expression_key", func() qs.SelectBuilder {
-			return qs.SelectCols("id").From("r").OrderBy(qs.Call("abs", qs.Col("id").Sub(qs.Param(int64(4)))).Asc(), qs.Col("r", "id").Asc())
+			return qs.SelectCols("id").
+				From("r").
+				OrderBy(
+					qs.Call("abs", qs.Col("id").Sub(qs.Param(int64(4)))).Asc(),
+					qs.Col("r", "id").Asc(),
+				)
 		}, []any{int64(0), int64(4)}, 13},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -373,7 +413,10 @@ func TestKeysetPaginationWithTrustedDisjunction(t *testing.T) {
 		}
 		slices.SortFunc(want, tc.compare)
 		page := func() qs.SelectBuilder {
-			return qs.SelectCols("a", "b", "id").From("r").Where(trustedDisjunction()).OrderBy(tc.order...)
+			return qs.SelectCols("a", "b", "id").
+				From("r").
+				Where(trustedDisjunction()).
+				OrderBy(tc.order...)
 		}
 		for _, size := range []int{1, 4} {
 			var got [][3]int64
@@ -428,7 +471,11 @@ func TestTrustedConditionsComposeAsUnits(t *testing.T) {
 				want = append(want, row)
 			}
 		}
-		got := keysetRows(t, session, qs.SelectCols("a", "b", "id").From("r").Where(tc.where...).OrderBy(qs.Col("id").Asc()))
+		got := keysetRows(
+			t,
+			session,
+			qs.SelectCols("a", "b", "id").From("r").Where(tc.where...).OrderBy(qs.Col("id").Asc()),
+		)
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("%s: rows %v; want %v", tc.name, got, want)
 		}
@@ -481,7 +528,11 @@ func TestKeysetPaginationWithTrustedKey(t *testing.T) {
 	for _, tc := range cases {
 		want := keysetFixture()
 		slices.SortFunc(want, tc.compare)
-		page := func() qs.SelectBuilder { return qs.SelectCols("a", "b", "id").From("r").OrderBy(tc.order...) }
+		page := func() qs.SelectBuilder {
+			return qs.SelectCols("a", "b", "id").
+				From("r").
+				OrderBy(tc.order...)
+		}
 		for _, size := range []int{1, 4} {
 			var got [][3]int64
 			query := page().Limit(size)
@@ -522,7 +573,11 @@ func TestKeysetPaginationWithTrustedKey(t *testing.T) {
 				want = append(want, row)
 			}
 		}
-		got := keysetRows(t, session, qs.SelectCols("a", "b", "id").From("r").OrderBy(tc.order).SeekAfter(tc.cursor))
+		got := keysetRows(
+			t,
+			session,
+			qs.SelectCols("a", "b", "id").From("r").OrderBy(tc.order).SeekAfter(tc.cursor),
+		)
 		slices.SortFunc(got, byID)
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("%s: rows %v; want %v", tc.name, got, want)

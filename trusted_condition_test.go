@@ -23,8 +23,12 @@ func TestTrustedConditionsAreUnitsWhenCombined(t *testing.T) {
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("x" = $1)`, []any{1}},
 		{"cursor_uniform", sel().Where(raw()).OrderBy(Col("t", "id").Asc()).SeekAfter(5),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("t"."id" > $1) ORDER BY "t"."id" ASC`, []any{5}},
-		{"cursor_mixed", sel().Where(raw()).OrderBy(Col("t", "a").Asc(), Col("t", "id").Desc()).SeekAfter(1, 5),
-			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ("t"."id" < $2)))) ORDER BY "t"."a" ASC, "t"."id" DESC`, []any{1, 5}},
+		{
+			"cursor_mixed",
+			sel().Where(raw()).OrderBy(Col("t", "a").Asc(), Col("t", "id").Desc()).SeekAfter(1, 5),
+			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ("t"."id" < $2)))) ORDER BY "t"."a" ASC, "t"."id" DESC`,
+			[]any{1, 5},
+		},
 		{"cursor_before_where", sel().OrderBy(Col("t", "id").Asc()).SeekAfter(5).Where(raw()),
 			`SELECT "id" FROM "t" WHERE (a = 1 OR b = 2) AND ("t"."id" > $1) ORDER BY "t"."id" ASC`, []any{5}},
 		{"and_first", sel().Where(And(raw(), x)),
@@ -58,14 +62,26 @@ func TestTrustedConditionsAreUnitsAtEveryConditionList(t *testing.T) {
 			`UPDATE "t" SET "y" = $1 WHERE (a = 1 OR b = 2) AND ("x" = $2)`, []any{2, 1}},
 		{"delete_where", DeleteFrom("t").Where(raw(), x),
 			`DELETE FROM "t" WHERE (a = 1 OR b = 2) AND ("x" = $1)`, []any{1}},
-		{"conflict_target_where", insert().OnConflict(ConflictColumns("id").TargetWhere(raw(), x).DoNothing()),
-			`INSERT INTO "t" ("id") VALUES ($1) ON CONFLICT ("id") WHERE (a = 1 OR b = 2) AND ("x" = $2) DO NOTHING`, []any{1, 1}},
-		{"conflict_update_where", insert().OnConflict(ConflictColumns("id").DoUpdate(Set("y", Value(2))).Where(raw(), x)),
-			`INSERT INTO "t" ("id") VALUES ($1) ON CONFLICT ("id") DO UPDATE SET "y" = $2 WHERE (a = 1 OR b = 2) AND ("x" = $3)`, []any{1, 2, 1}},
+		{
+			"conflict_target_where",
+			insert().OnConflict(ConflictColumns("id").TargetWhere(raw(), x).DoNothing()),
+			`INSERT INTO "t" ("id") VALUES ($1) ON CONFLICT ("id") WHERE (a = 1 OR b = 2) AND ("x" = $2) DO NOTHING`,
+			[]any{1, 1},
+		},
+		{
+			"conflict_update_where",
+			insert().OnConflict(ConflictColumns("id").DoUpdate(Set("y", Value(2))).Where(raw(), x)),
+			`INSERT INTO "t" ("id") VALUES ($1) ON CONFLICT ("id") DO UPDATE SET "y" = $2 WHERE (a = 1 OR b = 2) AND ("x" = $3)`,
+			[]any{1, 2, 1},
+		},
 		{"merge_on", MergeInto("t").Using(Table("s")).On(raw(), x).When(Matched().ThenDelete()),
 			`MERGE INTO "t" USING "s" ON (a = 1 OR b = 2) AND ("x" = $1) WHEN MATCHED THEN DELETE`, []any{1}},
-		{"merge_when", MergeInto("t").Using(Table("s")).On(True()).When(Matched().And(raw(), x).ThenDelete()),
-			`MERGE INTO "t" USING "s" ON TRUE WHEN MATCHED AND (a = 1 OR b = 2) AND ("x" = $1) THEN DELETE`, []any{1}},
+		{
+			"merge_when",
+			MergeInto("t").Using(Table("s")).On(True()).When(Matched().And(raw(), x).ThenDelete()),
+			`MERGE INTO "t" USING "s" ON TRUE WHEN MATCHED AND (a = 1 OR b = 2) AND ("x" = $1) THEN DELETE`,
+			[]any{1},
+		},
 	})
 }
 
@@ -86,8 +102,12 @@ func TestSingleTrustedConditionStaysVerbatim(t *testing.T) {
 			`SELECT count(*) FROM (SELECT "id" FROM "t" WHERE a = 1 OR b = 2) AS "matching"`, nil},
 		{"case_when", Select(Case().When(raw(), Param(1)).End()).From("t"),
 			`SELECT CASE WHEN a = 1 OR b = 2 THEN $1 END FROM "t"`, []any{1}},
-		{"current_of", Update("t").Set(Set("y", Value(2))).Where(UnsafeSQL("CURRENT OF c").Condition()),
-			`UPDATE "t" SET "y" = $1 WHERE CURRENT OF c`, []any{2}},
+		{
+			"current_of",
+			Update("t").Set(Set("y", Value(2))).Where(UnsafeSQL("CURRENT OF c").Condition()),
+			`UPDATE "t" SET "y" = $1 WHERE CURRENT OF c`,
+			[]any{2},
+		},
 	})
 }
 
@@ -110,8 +130,14 @@ func TestTrustedOperandsOfOtherOperatorsStayVerbatim(t *testing.T) {
 	runCases(t, []renderCase{
 		{"raw", Select(Col("id")).From("t").Where(Col("x").Eq(UnsafeSQL("ANY(ARRAY[1,2])"))),
 			`SELECT "id" FROM "t" WHERE ("x" = ANY(ARRAY[1,2]))`, nil},
-		{"fragment", Select(Col("id")).From("t").Where(Col("x").Eq(Fragment(UnsafeSQL("ANY("), Param([]int{1}), UnsafeSQL(")")))),
-			`SELECT "id" FROM "t" WHERE ("x" = ANY($1))`, []any{[]int{1}}},
+		{
+			"fragment",
+			Select(Col("id")).
+				From("t").
+				Where(Col("x").Eq(Fragment(UnsafeSQL("ANY("), Param([]int{1}), UnsafeSQL(")")))),
+			`SELECT "id" FROM "t" WHERE ("x" = ANY($1))`,
+			[]any{[]int{1}},
+		},
 	})
 }
 
@@ -132,19 +158,31 @@ func TestTrustedOrderKeysAreUnitsInCursor(t *testing.T) {
 		{"mixed_trailing", sel().OrderBy(Col("t", "a").Asc(), raw.Desc()).SeekAfter(1, true),
 			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ((NOT archived) < $2)))) ORDER BY "t"."a" ASC, NOT archived DESC`,
 			[]any{1, true}},
-		{"mixed_middle", sel().OrderBy(Col("t", "a").Asc(), raw.Desc(), Col("t", "id").Asc()).SeekAfter(1, true, 3),
+		{
+			"mixed_middle",
+			sel().
+				OrderBy(Col("t", "a").Asc(), raw.Desc(), Col("t", "id").Asc()).
+				SeekAfter(1, true, 3),
 			`SELECT "id" FROM "t" WHERE (("t"."a" >= $1) AND (("t"."a" > $1) OR (("t"."a" = $1) AND ((NOT archived) < $2)) OR (("t"."a" = $1) AND ((NOT archived) = $2) AND ("t"."id" > $3)))) ORDER BY "t"."a" ASC, NOT archived DESC, "t"."id" ASC`,
-			[]any{1, true, 3}},
-		{"fragment", sel().OrderBy(Fragment(UnsafeSQL("NOT "), Col("archived")).Asc()).SeekAfter(true),
-			`SELECT "id" FROM "t" WHERE ((NOT "archived") > $1) ORDER BY NOT "archived" ASC`, []any{true}},
+			[]any{1, true, 3},
+		},
+		{
+			"fragment",
+			sel().OrderBy(Fragment(UnsafeSQL("NOT "), Col("archived")).Asc()).SeekAfter(true),
+			`SELECT "id" FROM "t" WHERE ((NOT "archived") > $1) ORDER BY NOT "archived" ASC`,
+			[]any{true},
+		},
 		{"disjunction", sel().OrderBy(UnsafeSQL("a OR b").Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((a OR b) > $1) ORDER BY a OR b ASC`, []any{true}},
 		{"uniform_row_unchanged", sel().OrderBy(raw.Asc(), Col("t", "id").Asc()).SeekAfter(true, 2),
 			`SELECT "id" FROM "t" WHERE ((NOT archived, "t"."id") > ($1, $2)) ORDER BY NOT archived ASC, "t"."id" ASC`, []any{true, 2}},
 		{"parenthesized_not_rewrapped", sel().OrderBy(raw.Parenthesized().Asc()).SeekAfter(true),
 			`SELECT "id" FROM "t" WHERE ((NOT archived) > $1) ORDER BY (NOT archived) ASC`, []any{true}},
-		{"structural_unchanged", sel().OrderBy(Lower(Col("name")).Asc(), Col("t", "id").Desc()).SeekAfter("ann", 4),
+		{
+			"structural_unchanged",
+			sel().OrderBy(Lower(Col("name")).Asc(), Col("t", "id").Desc()).SeekAfter("ann", 4),
 			`SELECT "id" FROM "t" WHERE ((lower("name") >= $1) AND ((lower("name") > $1) OR ((lower("name") = $1) AND ("t"."id" < $2)))) ORDER BY lower("name") ASC, "t"."id" DESC`,
-			[]any{"ann", 4}},
+			[]any{"ann", 4},
+		},
 	})
 }

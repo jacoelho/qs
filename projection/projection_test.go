@@ -30,14 +30,23 @@ func users(r qs.Relation, prefix string) projection.Projection[user] {
 	return projection.New(
 		projection.Column(r.Col("id").As(prefix+"id"), func(u *user) *int64 { return &u.ID }),
 		projection.Column(r.Col("name").As(prefix+"name"), func(u *user) *string { return &u.Name }),
-		projection.ColumnNull(r.Col("email").As(prefix+"email"), func(u *user, v *string) { u.Email = v }),
+		projection.ColumnNull(
+			r.Col("email").As(prefix+"email"),
+			func(u *user, v *string) { u.Email = v },
+		),
 	)
 }
 
 func employees() projection.Projection[employee] {
 	return projection.New(
-		projection.Embed(users(qs.Table("users").As("e"), ""), func(r *employee) *user { return &r.Employee }),
-		projection.EmbedNull(users(qs.Table("users").As("m"), "manager_"), func(r *employee, u *user) { r.Manager = u }),
+		projection.Embed(
+			users(qs.Table("users").As("e"), ""),
+			func(r *employee) *user { return &r.Employee },
+		),
+		projection.EmbedNull(
+			users(qs.Table("users").As("m"), "manager_"),
+			func(r *employee, u *user) { r.Manager = u },
+		),
 	)
 }
 
@@ -125,8 +134,14 @@ func TestErrNullIdentifiesColumn(t *testing.T) {
 	}
 	p := projection.New(
 		projection.Column(qs.Col("id"), func(w *wide) *int64 { return &w.ID }),
-		projection.EmbedNull(users(qs.Table("users").As("a"), "a_"), func(w *wide, u *user) { w.First = u }),
-		projection.EmbedNull(users(qs.Table("users").As("b"), "b_"), func(w *wide, u *user) { w.Second = u }),
+		projection.EmbedNull(
+			users(qs.Table("users").As("a"), "a_"),
+			func(w *wide, u *user) { w.First = u },
+		),
+		projection.EmbedNull(
+			users(qs.Table("users").As("b"), "b_"),
+			func(w *wide, u *user) { w.Second = u },
+		),
 	)
 	got, err := p.Scan(fakeRow(int64(1), int64(9), "a", nil, int64(2), nil, "x"))
 	if !errors.Is(err, projection.ErrNull) {
@@ -192,7 +207,11 @@ func TestErrNullPositionThroughMap(t *testing.T) {
 		ID   int64
 		Name *string
 	}
-	names := projection.Map(users(qs.Table("users").As("m"), "m_"), func(u user) (string, error) { return u.Name, nil }, func(d *string, v string) { *d = v })
+	names := projection.Map(
+		users(qs.Table("users").As("m"), "m_"),
+		func(u user) (string, error) { return u.Name, nil },
+		func(d *string, v string) { *d = v },
+	)
 	p := projection.New(
 		projection.Column(qs.Col("id"), func(r *row) *int64 { return &r.ID }),
 		projection.EmbedNull(names, func(r *row, v *string) { r.Name = v }),
@@ -222,7 +241,10 @@ func TestNestedGroups(t *testing.T) {
 	type row struct{ Team *team }
 	p := projection.EmbedNull(projection.New(
 		projection.Column(qs.Col("t", "id"), func(t *team) *int64 { return &t.ID }),
-		projection.EmbedNull(users(qs.Table("users").As("l"), "lead_"), func(t *team, u *user) { t.Lead = u }),
+		projection.EmbedNull(
+			users(qs.Table("users").As("l"), "lead_"),
+			func(t *team, u *user) { t.Lead = u },
+		),
 	), func(r *row, t *team) { r.Team = t })
 
 	got, err := p.Scan(fakeRow(int64(1), nil, nil, nil))
@@ -294,7 +316,11 @@ func TestMap(t *testing.T) {
 	t.Parallel()
 
 	inner := projection.Column(qs.Col("name"), func(s *string) *string { return s })
-	upper := projection.Map(inner, func(s string) (string, error) { return strings.ToUpper(s), nil }, func(d *string, v string) { *d = v })
+	upper := projection.Map(
+		inner,
+		func(s string) (string, error) { return strings.ToUpper(s), nil },
+		func(d *string, v string) { *d = v },
+	)
 	got, err := upper.Scan(fakeRow("ada"))
 	if err != nil || got != "ADA" {
 		t.Fatalf("got %q, %v", got, err)
@@ -320,7 +346,11 @@ func TestMapDoesNotRunForAbsentGroup(t *testing.T) {
 
 	inner := projection.Column(qs.Col("name"), func(s *string) *string { return s })
 	setRan := false
-	mapped := projection.Map(inner, func(string) (string, error) { return "", errors.New("convert ran") }, func(*string, string) { setRan = true })
+	mapped := projection.Map(
+		inner,
+		func(string) (string, error) { return "", errors.New("convert ran") },
+		func(*string, string) { setRan = true },
+	)
 	p := projection.EmbedNull(mapped, func(d **string, v *string) { *d = v })
 	got, err := p.Scan(fakeRow(nil))
 	if err != nil || got != nil || setRan {
@@ -368,7 +398,10 @@ func TestDestRunsOncePerScan(t *testing.T) {
 		},
 		"group scanner": func(calls *int) func() error {
 			p := projection.EmbedNull(
-				projection.Column(qs.Col("a"), func(f *field) *sql.NullString { *calls++; return &f.Scanner }),
+				projection.Column(
+					qs.Col("a"),
+					func(f *field) *sql.NullString { *calls++; return &f.Scanner },
+				),
 				func(*struct{}, *field) {},
 			)
 			return func() error { _, err := p.Scan(fakeRow("x")); return err }
@@ -461,7 +494,10 @@ func TestDriverReceivesDocumentedDestination(t *testing.T) {
 		"group Scanner gets a Scanner withholding NULL": {
 			scan: func(scan func(...any) error) error {
 				_, err := projection.EmbedNull(
-					projection.Column(qs.Col("a"), func(r *row) *sql.NullString { return &r.Scanner }),
+					projection.Column(
+						qs.Col("a"),
+						func(r *row) *sql.NullString { return &r.Scanner },
+					),
 					func(*struct{}, *row) {},
 				).Scan(scan)
 				return err
@@ -607,16 +643,26 @@ func TestDeclarationPanics(t *testing.T) {
 			projection.ColumnNull(qs.Col("a"), func(*field, **string) {})
 		},
 		"group Column pointer": func() {
-			projection.EmbedNull(projection.Column(qs.Col("a"), func(f *field) **int64 { return &f.Value }), func(*struct{}, *field) {})
+			projection.EmbedNull(
+				projection.Column(qs.Col("a"), func(f *field) **int64 { return &f.Value }),
+				func(*struct{}, *field) {},
+			)
 		},
 		"group Column pointer through Embed": func() {
 			pointer := projection.Column(qs.Col("a"), func(f *field) **int64 { return &f.Value })
-			projection.EmbedNull(projection.Embed(pointer, func(f *nested) *field { return &f.Field }), func(*struct{}, *nested) {})
+			projection.EmbedNull(
+				projection.Embed(pointer, func(f *nested) *field { return &f.Field }),
+				func(*struct{}, *nested) {},
+			)
 		},
 		"group Column pointer through Map": func() {
 			pointer := projection.Column(qs.Col("a"), func(f *field) **int64 { return &f.Value })
 			projection.EmbedNull(
-				projection.Map(pointer, func(f field) (field, error) { return f, nil }, func(d *field, f field) { *d = f }),
+				projection.Map(
+					pointer,
+					func(f field) (field, error) { return f, nil },
+					func(d *field, f field) { *d = f },
+				),
 				func(*struct{}, *field) {},
 			)
 		},
@@ -630,7 +676,10 @@ func TestDeclarationPanics(t *testing.T) {
 			projection.Column(qs.Col("a"), func(p *pointerToField) *int64 { return &p.Field.Other })
 		},
 		"group Column borrowed": func() {
-			borrowed := projection.Column(qs.Col("a"), func(f *rawField) *sql.RawBytes { return &f.Raw })
+			borrowed := projection.Column(
+				qs.Col("a"),
+				func(f *rawField) *sql.RawBytes { return &f.Raw },
+			)
 			projection.EmbedNull(borrowed, func(*struct{}, *rawField) {})
 		},
 		"group initialised target": func() {
@@ -641,7 +690,10 @@ func TestDeclarationPanics(t *testing.T) {
 			projection.EmbedNull(initialised, func(*struct{}, *initialisedField) {})
 		},
 		"group unstable dest": func() {
-			projection.EmbedNull(projection.Column(qs.Col("a"), func(*field) *int64 { return new(int64) }), func(*struct{}, *field) {})
+			projection.EmbedNull(
+				projection.Column(qs.Col("a"), func(*field) *int64 { return new(int64) }),
+				func(*struct{}, *field) {},
+			)
 		},
 	}
 	for name, declare := range tests {
@@ -712,7 +764,10 @@ func TestDeclarationIdentifiesDriverTypesByImportPath(t *testing.T) {
 				r.Bytes = *v
 			}
 		}),
-		projection.ColumnOrZero(qs.Col("b"), func(r *row) *samename.CompositeFields { return &r.Fields }),
+		projection.ColumnOrZero(
+			qs.Col("b"),
+			func(r *row) *samename.CompositeFields { return &r.Fields },
+		),
 	)
 	got, err := p.Scan(fakeRow(samename.DriverBytes("x"), samename.CompositeFields{"y"}))
 	if err != nil {
@@ -777,10 +832,16 @@ func TestOutputInSelectAndReturning(t *testing.T) {
 	)
 	checkSQL(t, qs.SelectSlice(p.Expressions()).FromExpr(qs.Table("documents").As("d")),
 		`SELECT "d"."id" AS "id", $1 AS "status" FROM "documents" AS "d"`, "draft")
-	checkSQL(t, qs.UpdateTable(qs.Table("documents").As("d")).
-		Set(qs.SetNull("archived_at")).Where(qs.Col("d", "id").Eq(qs.Param("doc-1"))).Returning(p.Expressions()...),
+	checkSQL(
+		t,
+		qs.UpdateTable(qs.Table("documents").As("d")).
+			Set(qs.SetNull("archived_at")).
+			Where(qs.Col("d", "id").Eq(qs.Param("doc-1"))).
+			Returning(p.Expressions()...),
 		`UPDATE "documents" AS "d" SET "archived_at" = NULL WHERE ("d"."id" = $1) RETURNING "d"."id" AS "id", $2 AS "status"`,
-		"doc-1", "draft")
+		"doc-1",
+		"draft",
+	)
 }
 
 func TestExpressionsAreOwned(t *testing.T) {
@@ -796,7 +857,10 @@ func TestNestedQueryIsTheOneDeclared(t *testing.T) {
 
 	child := qs.SelectCols("id").From("documents")
 	p := projection.Column(qs.Scalar(child), func(u *user) *int64 { return &u.ID })
-	drafts := projection.Column(qs.Scalar(child.Where(qs.Col("status").Eq(qs.Param("draft")))), func(u *user) *int64 { return &u.ID })
+	drafts := projection.Column(
+		qs.Scalar(child.Where(qs.Col("status").Eq(qs.Param("draft")))),
+		func(u *user) *int64 { return &u.ID },
+	)
 	checkSQL(t, qs.SelectSlice(p.Expressions()), `SELECT (SELECT "id" FROM "documents")`)
 	checkSQL(t, qs.SelectSlice(drafts.Expressions()), `SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
 }
@@ -812,8 +876,14 @@ func TestEmptyProjection(t *testing.T) {
 		if _, _, err := qs.SelectSlice(p.Expressions()).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 			t.Fatalf("empty SELECT error = %v, want ErrInvalid", err)
 		}
-		checkSQL(t, qs.Update("documents").Set(qs.SetNull("archived_at")).AllRows().Returning(p.Expressions()...),
-			`UPDATE "documents" SET "archived_at" = NULL`)
+		checkSQL(
+			t,
+			qs.Update("documents").
+				Set(qs.SetNull("archived_at")).
+				AllRows().
+				Returning(p.Expressions()...),
+			`UPDATE "documents" SET "archived_at" = NULL`,
+		)
 		if got, err := p.Scan(fakeRow()); err != nil || !reflect.DeepEqual(got, user{}) {
 			t.Fatalf("got %+v, %v", got, err)
 		}

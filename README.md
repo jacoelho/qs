@@ -102,11 +102,18 @@ q := qs.Select(
     qs.Col("id"),
     qs.Col("name"),
     qs.Col("created_at").Cast(qs.TypeText).As("created"),
-).From("users")
+).
+    From("users")
 ```
 
 Every builder method returns a new builder and leaves its receiver unchanged.
 Keep the result: `q = q.Where(...)`.
+
+The examples write a statement the way formatted SQL reads: the constructor
+first, then one clause per line in SQL order, with `ToSQL` on its own line. A
+statement that fits on one line stays there, and a long subquery, join, or
+expression gets a name before the statement that uses it. gofmt keeps this
+layout but does not produce it.
 
 ## Bind values and name identifiers
 
@@ -140,14 +147,16 @@ users := qs.Table("users").As("u")
 id := qs.TypedCol[int64]("u", "id")
 role := qs.Typed[string](users.Col("role"))
 
-query, args, err := qs.Select(id.Expr()).FromExpr(users).
+query, args, err := qs.Select(id.Expr()).
+    FromExpr(users).
     Where(
         id.Gt(1000),
         role.In("admin", "editor"),
         users.Col("score").Gte(qs.Param(4.5)),
         users.Col("created_at").Lt(qs.Now()),
         users.Col("deleted_at").IsNull(),
-    ).ToSQL()
+    ).
+    ToSQL()
 ```
 
 ```sql
@@ -173,7 +182,8 @@ the returned expression appears in one statement, including nested queries:
 
 ```go
 tenant := qs.SharedParam("acme")
-query, args, err := qs.SelectCols("id").From("documents").
+query, args, err := qs.SelectCols("id").
+    From("documents").
     Where(qs.Col("tenant").Eq(tenant), qs.Col("owner_tenant").Eq(tenant)).
     ToSQL()
 ```
@@ -321,7 +331,8 @@ flow to add filters only when the corresponding input is present:
 
 ```go
 func filteredUsers(tenantID int, prefix string, roles []string) qs.SelectBuilder {
-    q := qs.SelectCols("id", "email").From("users").
+    q := qs.SelectCols("id", "email").
+        From("users").
         Where(qs.Col("tenant_id").Eq(qs.Param(tenantID)), qs.Col("deleted_at").IsNull())
 
     if prefix != "" {
@@ -410,7 +421,8 @@ q := qs.Select(
     id.As("id"),
     users.Col("username"),
     qs.CountAll().Over(qs.Window()).As("total"),
-).FromExpr(users)
+).
+    FromExpr(users)
 if len(ids) > 0 {
     q = q.Where(id.In(ids...))
 }
@@ -596,7 +608,8 @@ typed nil cursor value behaves.
 another worker holds:
 
 ```go
-query, args, err := qs.SelectCols("id").From("jobs").
+query, args, err := qs.SelectCols("id").
+    From("jobs").
     Where(qs.Col("state").Eq(qs.Param("queued"))).
     OrderBy(qs.Col("id").Asc()).
     Limit(1).
@@ -679,7 +692,9 @@ source. Default-value INSERT builders also omit identity overriding.
 columns := []string{"id", "name"}
 row := []qs.WriteValue{qs.Value(42), qs.Value("Ana")}
 query, args, err := qs.InsertInto("users").
-    ColumnsSlice(columns).ValuesSlice(row).ToSQL()
+    ColumnsSlice(columns).
+    ValuesSlice(row).
+    ToSQL()
 ```
 
 ```sql
@@ -710,10 +725,12 @@ it, and the parameter count stays proportional to columns:
 ```go
 ids := []int32{42, 43}
 names := []string{"Ana", "Ben"}
-query, args, err := qs.InsertInto("users").FromArrays(
-    qs.NamedArray("id", qs.ArrayParam(ids, qs.TypeInt4)),
-    qs.NamedArray("name", qs.ArrayParam(names, qs.TypeText)),
-).ToSQL()
+query, args, err := qs.InsertInto("users").
+    FromArrays(
+        qs.NamedArray("id", qs.ArrayParam(ids, qs.TypeInt4)),
+        qs.NamedArray("name", qs.ArrayParam(names, qs.TypeText)),
+    ).
+    ToSQL()
 ```
 
 ```sql
@@ -731,11 +748,15 @@ batch := qs.UnnestAs("b",
     qs.NamedArray("name", qs.ArrayParam(names, qs.TypeText)),
     qs.NamedArray("kind", qs.ArrayParam(kinds, qs.TypeText)),
 ).WithOrdinality()
-query, args, err := qs.InsertInto("events").FromNamed(qs.Select(
+rows := qs.Select(
     batch.Col("name"),
     batch.Col("kind"),
     batch.Col("ordinality").As("position"),
-).FromExpr(batch)).ToSQL()
+).
+    FromExpr(batch)
+query, args, err := qs.InsertInto("events").
+    FromNamed(rows).
+    ToSQL()
 ```
 
 ```sql
@@ -753,13 +774,16 @@ works for any SELECT, for example one over `jsonb_array_elements`:
 
 ```go
 e := qs.TableFunc(qs.JSONBArrayElements(qs.JSONBParam(payload).Expr())).
-    WithOrdinality().As("e", "item", "position")
+    WithOrdinality().
+    As("e", "item", "position")
 item := qs.JSONBExpr(e.Col("item"))
-qs.InsertInto("events").FromNamed(qs.Select(
+rows := qs.Select(
     item.TextKey("name").As("name"),
     item.TextKey("kind").As("kind"),
     e.Col("position"),
-).FromExpr(e))
+).
+    FromExpr(e)
+qs.InsertInto("events").FromNamed(rows)
 ```
 
 ```sql
@@ -866,8 +890,10 @@ verify authorization, or limit the affected rows.
 query, args, err := qs.InsertInto("users").
     Columns("id", "name").
     Values(qs.Value(42), qs.Value("Ana")).
-    OnConflict(qs.ConflictColumns("id").
-        DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
+    OnConflict(
+        qs.ConflictColumns("id").
+            DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name")))),
+    ).
     ReturningCols("id").
     ToSQL()
 ```
@@ -902,8 +928,10 @@ columns := []string{"name", "email"}
 query, args, err := qs.InsertInto("users").
     Columns("id", "name", "email").
     Values(qs.Value(42), qs.Value("Ana"), qs.Value("ana@example.com")).
-    OnConflict(qs.ConflictColumns("id").
-        DoUpdateSlice(qs.SetAllExcluded(columns...))).
+    OnConflict(
+        qs.ConflictColumns("id").
+            DoUpdateSlice(qs.SetAllExcluded(columns...)),
+    ).
     ToSQL()
 ```
 
@@ -950,11 +978,14 @@ tier := qs.Case().
 
 q := qs.Select(qs.Col("u", "id"), qs.Col("u", "email"), qs.Col("p", "total_spend"), tier).
     With(paidOrders).
-    FromExpr(qs.InnerJoin(qs.Table("users").As("u"), paidOrders.Ref().As("p")).
-        On(qs.Col("u", "id").Eq(qs.Col("p", "user_id")))).
+    FromExpr(
+        qs.InnerJoin(qs.Table("users").As("u"), paidOrders.Ref().As("p")).
+            On(qs.Col("u", "id").Eq(qs.Col("p", "user_id"))),
+    ).
     Where(qs.Col("u", "active").Eq(qs.Param(true))).
     OrderBy(qs.Col("p", "total_spend").Desc(), qs.Col("u", "id").Asc()).
-    Limit(20).Offset(40)
+    Limit(20).
+    Offset(40)
 
 query, args, err := q.ToSQL()
 ```
@@ -1003,8 +1034,11 @@ expression to PostgreSQL. Reference the SELECT position instead:
 
 ```go
 bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
-query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).From("events").
-    GroupByExpr(qs.Ordinal(1)).OrderBy(qs.Ordinal(1).Asc()).ToSQL()
+query, args, err := qs.Select(bucket.As("bucket"), qs.CountAll()).
+    From("events").
+    GroupByExpr(qs.Ordinal(1)).
+    OrderBy(qs.Ordinal(1).Asc()).
+    ToSQL()
 ```
 
 This binds `"day"` once. Keep the ordinal aligned with the projection order.
@@ -1134,13 +1168,17 @@ path := qs.LiteralString
 query, args, err := qs.Select(
     qs.JSONValue(doc, path("$.customer.name")).As("customer"),
     qs.JSONValue(doc, path("$.total")).
-        Returning(qs.TypeNumeric).DefaultOnEmpty(qs.LiteralInt(0)).As("total"),
+        Returning(qs.TypeNumeric).
+        DefaultOnEmpty(qs.LiteralInt(0)).
+        As("total"),
     qs.JSONQuery(doc, path("$.items[*].sku")).WithWrapper().As("skus"),
 ).
     From("orders").
-    Where(qs.JSONExists(doc, path("$.items[*] ? (@.qty >= $min)")).
-        Passing("min", qs.Param(10).Cast(qs.TypeInt4)).
-        Condition()).
+    Where(
+        qs.JSONExists(doc, path("$.items[*] ? (@.qty >= $min)")).
+            Passing("min", qs.Param(10).Cast(qs.TypeInt4)).
+            Condition(),
+    ).
     ToSQL()
 ```
 
@@ -1230,9 +1268,18 @@ type Row struct {
 
 func users(r qs.Relation, prefix string) projection.Projection[User] {
     return projection.New(
-        projection.Column(r.Col("id").As(prefix+"id"), func(u *User) *int64 { return &u.ID }),
-        projection.Column(r.Col("name").As(prefix+"name"), func(u *User) *string { return &u.Name }),
-        projection.ColumnNull(r.Col("email").As(prefix+"email"), func(u *User, v *string) { u.Email = v }),
+        projection.Column(
+            r.Col("id").As(prefix+"id"),
+            func(u *User) *int64 { return &u.ID },
+        ),
+        projection.Column(
+            r.Col("name").As(prefix+"name"),
+            func(u *User) *string { return &u.Name },
+        ),
+        projection.ColumnNull(
+            r.Col("email").As(prefix+"email"),
+            func(u *User, v *string) { u.Email = v },
+        ),
     )
 }
 

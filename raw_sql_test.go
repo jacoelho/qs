@@ -84,7 +84,10 @@ func TestFragmentRejectsPartsThatJoinIntoOneToken(t *testing.T) {
 		"names merge":                 Fragment(UnsafeSQL("interval"), UnsafeSQL("day")),
 		"name becomes string prefix":  Fragment(UnsafeSQL("e"), UnsafeSQL(`'a\'`)),
 		"unicode string prefix":       Fragment(UnsafeSQL("U&"), UnsafeSQL(`'a'`)),
-		"across nested fragments":     Fragment(Fragment(UnsafeSQL("x = "), Param(1)), UnsafeSQL("0")),
+		"across nested fragments": Fragment(
+			Fragment(UnsafeSQL("x = "), Param(1)),
+			UnsafeSQL("0"),
+		),
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -97,14 +100,22 @@ func TestFragmentRejectsPartsThatJoinIntoOneToken(t *testing.T) {
 func TestFragmentRendersSeparatedParts(t *testing.T) {
 	t.Parallel()
 	runCases(t, []renderCase{
-		{"value_between_text", Select(Fragment(UnsafeSQL("similarity(name, "), Param("ana"), UnsafeSQL(") > 0.3"))),
-			`SELECT similarity(name, $1) > 0.3`, []any{"ana"}},
+		{
+			"value_between_text",
+			Select(Fragment(UnsafeSQL("similarity(name, "), Param("ana"), UnsafeSQL(") > 0.3"))),
+			`SELECT similarity(name, $1) > 0.3`,
+			[]any{"ana"},
+		},
 		{"negative_after_spaced_minus", Select(Fragment(UnsafeSQL("a - "), LiteralInt(-1))),
 			`SELECT a - -1`, nil},
 		{"keyword_before_string", Select(Fragment(UnsafeSQL("interval "), LiteralString("1 day"))),
 			`SELECT interval E'1 day'`, nil},
-		{"call_syntax", Select(Fragment(UnsafeSQL("ARRAY"), UnsafeSQL("[1, 2]"), UnsafeSQL("::int[]"))),
-			`SELECT ARRAY[1, 2]::int[]`, nil},
+		{
+			"call_syntax",
+			Select(Fragment(UnsafeSQL("ARRAY"), UnsafeSQL("[1, 2]"), UnsafeSQL("::int[]"))),
+			`SELECT ARRAY[1, 2]::int[]`,
+			nil,
+		},
 		{"parameter_then_cast", Select(Fragment(Param(1), UnsafeSQL("::int"))),
 			`SELECT $1::int`, []any{1}},
 	})

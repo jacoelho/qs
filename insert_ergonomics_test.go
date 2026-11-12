@@ -66,13 +66,26 @@ func TestRowWidthDiagnostics(t *testing.T) {
 		{"target width", InsertInto("items").Columns("a", "b").Values(Value(secret)), "INSERT", "row 1: expected 2 values, got 1 value"},
 		{"insert rows", InsertInto("items").Values(Value(secret)).Values(Value(2), Value(3)), "INSERT", "row 2: expected 1 value, got 2 values"},
 		{"values rows", Values(secret).Row(2, 3), "VALUES", "row 2: expected 1 value, got 2 values"},
-		{"select width", InsertInto("items").Columns("a", "b").From(Select(Param(secret), Param(2), Param(3))), "INSERT SELECT", "expected 2 target columns, got 3 projected columns"},
+		{
+			"select width",
+			InsertInto("items").Columns("a", "b").From(Select(Param(secret), Param(2), Param(3))),
+			"INSERT SELECT",
+			"expected 2 target columns, got 3 projected columns",
+		},
 		{"no rows", Values(), "VALUES", "requires at least one row"},
 		{"empty first", Values().Row(), "VALUES", "row 1: expected at least 1 value, got 0"},
 		{"empty later", Values(secret).Row(), "VALUES", "row 2: expected at least 1 value, got 0"},
 		{"empty insert", InsertInto("items").Values(Value(secret)).ValuesSlice(nil), "INSERT", "row 2: expected at least 1 value, got 0"},
 		{"unknown values", Values(secret).RowExpr(UnsafeSQL("1")).Row(2, 3), "VALUES", "row 3: expected 1 value, got 2 values"},
-		{"unknown insert", InsertInto("items").Values(Value(secret)).Values(Write(UnsafeSQL("1"))).Values(Value(2), Value(3)), "INSERT", "row 3: expected 1 value, got 2 values"},
+		{
+			"unknown insert",
+			InsertInto("items").
+				Values(Value(secret)).
+				Values(Write(UnsafeSQL("1"))).
+				Values(Value(2), Value(3)),
+			"INSERT",
+			"row 3: expected 1 value, got 2 values",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

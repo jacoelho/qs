@@ -22,7 +22,13 @@ func TestPostgreSQLZeroColumnSelect(t *testing.T) {
 	}{
 		{"bare", qs.SelectNoColumns(), 1},
 		{"where_false", qs.SelectNoColumns().Where(qs.False()), 0},
-		{"two_row_from", qs.SelectNoColumns().FromExpr(qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("v", "value")), 2},
+		{
+			"two_row_from",
+			qs.SelectNoColumns().FromExpr(
+				qs.ValuesExpr(qs.LiteralInt(1)).RowExpr(qs.LiteralInt(2)).As("v", "value"),
+			),
+			2,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

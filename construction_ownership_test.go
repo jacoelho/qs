@@ -38,8 +38,12 @@ func TestRowConstructionOwnsStructuralInputs(t *testing.T) {
 func TestSelectListMethodsAppendAndFromReplaces(t *testing.T) {
 	t.Parallel()
 
-	query := SelectCols("a", "b").ColumnNames("c", "d").ColumnsSQL("count(*)").
-		GroupBy("a", "b").GroupBy("c", "d").From("first", "second")
+	query := SelectCols("a", "b").
+		ColumnNames("c", "d").
+		ColumnsSQL("count(*)").
+		GroupBy("a", "b").
+		GroupBy("c", "d").
+		From("first", "second")
 	const original = `SELECT "a", "b", "c", "d", count(*) FROM "first", "second" GROUP BY "a", "b", "c", "d"`
 	replaced := query.ColumnNames().ColumnsSQL().GroupBy().From("last")
 	checkSQL(t, replaced, `SELECT "a", "b", "c", "d", count(*) FROM "last" GROUP BY "a", "b", "c", "d"`)

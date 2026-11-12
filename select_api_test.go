@@ -28,10 +28,14 @@ func TestSelectSQLIsConvenienceWrapper(t *testing.T) {
 			for i, sql := range tc.projections {
 				expressions[i] = UnsafeSQL(sql)
 			}
-			explicit := SelectSlice(expressions).From("users").
-				Where(Col("active").Eq(Param(true))).Limit(50)
-			shorthand := SelectSQL(tc.projections[0], tc.projections[1:]...).From("users").
-				Where(Col("active").Eq(Param(true))).Limit(50)
+			explicit := SelectSlice(expressions).
+				From("users").
+				Where(Col("active").Eq(Param(true))).
+				Limit(50)
+			shorthand := SelectSQL(tc.projections[0], tc.projections[1:]...).
+				From("users").
+				Where(Col("active").Eq(Param(true))).
+				Limit(50)
 			checkSQL(t, explicit, tc.sql, true, 50)
 			checkSQL(t, shorthand, tc.sql, true, 50)
 		})
@@ -67,11 +71,14 @@ func TestSelectWrappersHaveSameParameterNumbering(t *testing.T) {
 	t.Parallel()
 
 	projection := `"id", "name", "created_at"`
-	raw := SelectSQL(projection).Columns(Param("visible").As("label")).
-		Where(Col("active").Eq(Param(true))).Limit(50)
+	raw := SelectSQL(projection).
+		Columns(Param("visible").As("label")).
+		Where(Col("active").Eq(Param(true))).
+		Limit(50)
 	structured := Select(Col("id"), Col("name"), Col("created_at")).
 		Columns(Param("visible").As("label")).
-		Where(Col("active").Eq(Param(true))).Limit(50)
+		Where(Col("active").Eq(Param(true))).
+		Limit(50)
 	const sql = `SELECT "id", "name", "created_at", $1 AS "label" WHERE ("active" = $2) LIMIT $3`
 	checkSQL(t, raw, sql, "visible", true, 50)
 	checkSQL(t, structured, sql, "visible", true, 50)

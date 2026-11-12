@@ -41,7 +41,12 @@ func TestRowsEqualsOneCallPerRow(t *testing.T) {
 	target := InsertInto("t").Columns("a", "b")
 	wantSQL := `INSERT INTO "t" ("a", "b") VALUES ($1, $2), ($3, $4), ($5, $6)`
 	wantArgs := []any{0, 0, 1, -1, 2, -2}
-	checkSQL(t, target.Values(Value(0), Value(0)).Values(Value(1), Value(-1)).Values(Value(2), Value(-2)), wantSQL, wantArgs...)
+	checkSQL(
+		t,
+		target.Values(Value(0), Value(0)).Values(Value(1), Value(-1)).Values(Value(2), Value(-2)),
+		wantSQL,
+		wantArgs...,
+	)
 	checkSQL(t, target.Rows(writeRows(3)...), wantSQL, wantArgs...)
 	checkSQL(t, target.Rows(writeRows(1)...).Rows(writeRows(3)[1:]...), wantSQL, wantArgs...)
 	checkSQL(t, InsertInto("t").Rows(writeRows(2)...), `INSERT INTO "t" VALUES ($1, $2), ($3, $4)`, 0, 0, 1, -1)
@@ -75,12 +80,17 @@ func TestRowsRejectsNoRowsAndEmptyRows(t *testing.T) {
 	t.Parallel()
 
 	for name, statement := range map[string]Statement{
-		"insert_no_rows":    InsertInto("t").Columns("a").Rows(),
-		"insert_empty_row":  InsertInto("t").Columns("a").Rows([]WriteValue{Value(1)}, nil),
-		"insert_row_width":  InsertInto("t").Columns("a").Rows([]WriteValue{Value(1)}, []WriteValue{Value(1), Value(2)}),
-		"values_no_rows":    Values().Rows(),
-		"values_empty_row":  Values().Rows([]any{1}, []any{}),
-		"values_row_width":  Values().RowsExpr([]Expr{LiteralInt(1)}, []Expr{LiteralInt(1), LiteralInt(2)}),
+		"insert_no_rows":   InsertInto("t").Columns("a").Rows(),
+		"insert_empty_row": InsertInto("t").Columns("a").Rows([]WriteValue{Value(1)}, nil),
+		"insert_row_width": InsertInto("t").
+			Columns("a").
+			Rows([]WriteValue{Value(1)}, []WriteValue{Value(1), Value(2)}),
+		"values_no_rows":   Values().Rows(),
+		"values_empty_row": Values().Rows([]any{1}, []any{}),
+		"values_row_width": Values().RowsExpr(
+			[]Expr{LiteralInt(1)},
+			[]Expr{LiteralInt(1), LiteralInt(2)},
+		),
 		"values_expression": Values().Rows([]any{LiteralInt(1)}),
 	} {
 		t.Run(name, func(t *testing.T) {

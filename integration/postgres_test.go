@@ -320,15 +320,23 @@ func TestPostgreSQLMutationsAcrossVersions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	upsert := qs.InsertInto("target").Columns("id", "name").Values(qs.Write(qs.Param(int64(1))), qs.Write(qs.Param("updated"))).
-		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).ReturningCols("name")
+	upsert := qs.InsertInto("target").
+		Columns("id", "name").
+		Values(qs.Write(qs.Param(int64(1))), qs.Write(qs.Param("updated"))).
+		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
+		ReturningCols("name")
 	if got := queryStrings(t, session, upsert); !reflect.DeepEqual(got, []string{"updated"}) {
 		t.Fatal(got)
 	}
 	if session.major >= 17 {
-		q := qs.MergeInto("target").Using(qs.Table("source")).On(qs.Col("target", "id").Eq(qs.Col("source", "id"))).
+		q := qs.MergeInto("target").
+			Using(qs.Table("source")).
+			On(qs.Col("target", "id").Eq(qs.Col("source", "id"))).
 			When(qs.Matched().ThenUpdate(qs.Set("name", qs.Write(qs.Col("source", "name")))),
-				qs.NotMatchedByTarget().ThenInsert(qs.Set("id", qs.Write(qs.Col("source", "id"))), qs.Set("name", qs.Write(qs.Col("source", "name"))))).
+				qs.NotMatchedByTarget().ThenInsert(
+					qs.Set("id", qs.Write(qs.Col("source", "id"))),
+					qs.Set("name", qs.Write(qs.Col("source", "name"))),
+				)).
 			Returning(qs.MergeAction())
 		got := queryStrings(t, session, q)
 		actions := map[string]int{}
@@ -339,7 +347,10 @@ func TestPostgreSQLMutationsAcrossVersions(t *testing.T) {
 			t.Fatal(got)
 		}
 	}
-	oldNew := qs.Update("target").Set(qs.Set("name", qs.Write(qs.Param("latest")))).Where(qs.Col("id").Eq(qs.Param(int64(1)))).Returning(qs.Old("name"), qs.New("name"))
+	oldNew := qs.Update("target").
+		Set(qs.Set("name", qs.Write(qs.Param("latest")))).
+		Where(qs.Col("id").Eq(qs.Param(int64(1)))).
+		Returning(qs.Old("name"), qs.New("name"))
 	if session.major >= 18 {
 		sql, args, err := session.render(t, oldNew)
 		if err != nil {
@@ -371,7 +382,9 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defaults := qs.InsertInto("write_defaults").DefaultValues().ReturningCols("name", "count", "note")
+	defaults := qs.InsertInto("write_defaults").
+		DefaultValues().
+		ReturningCols("name", "count", "note")
 	sql, args, err := session.render(t, defaults)
 	if err != nil {
 		t.Fatal(err)
@@ -385,7 +398,10 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 		t.Fatalf("default values name=%q count=%d note=%q", name, count, note)
 	}
 
-	writeDefault := qs.InsertInto("write_defaults").Columns("name", "count").Values(qs.Default(), qs.Write(qs.Param(11))).ReturningCols("name", "count")
+	writeDefault := qs.InsertInto("write_defaults").
+		Columns("name", "count").
+		Values(qs.Default(), qs.Write(qs.Param(11))).
+		ReturningCols("name", "count")
 	sql, args, err = session.render(t, writeDefault)
 	if err != nil {
 		t.Fatal(err)
@@ -397,10 +413,13 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 		t.Fatalf("direct default name=%q count=%d", name, count)
 	}
 
-	rowDefault := qs.Update("write_defaults").Set(qs.AssignRow(
-		[]qs.Expr{qs.Col("name"), qs.Col("count")},
-		qs.WriteTuple(qs.Default(), qs.Write(qs.Param(23))),
-	)).Where(qs.Col("count").Eq(qs.Param(11))).ReturningCols("name", "count")
+	rowDefault := qs.Update("write_defaults").
+		Set(qs.AssignRow(
+			[]qs.Expr{qs.Col("name"), qs.Col("count")},
+			qs.WriteTuple(qs.Default(), qs.Write(qs.Param(23))),
+		)).
+		Where(qs.Col("count").Eq(qs.Param(11))).
+		ReturningCols("name", "count")
 	sql, args, err = session.render(t, rowDefault)
 	if err != nil {
 		t.Fatal(err)
@@ -412,10 +431,21 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 		t.Fatalf("row default name=%q count=%d", name, count)
 	}
 
-	merge := qs.MergeInto("write_defaults").Using(qs.Table("merge_defaults_source")).On(qs.Col("write_defaults", "id").Eq(qs.Col("merge_defaults_source", "id"))).
-		When(qs.NotMatched().ThenInsertValues([]string{"name", "note"}, qs.Default(), qs.Write(qs.Col("merge_defaults_source", "note"))))
+	merge := qs.MergeInto("write_defaults").
+		Using(qs.Table("merge_defaults_source")).
+		On(qs.Col("write_defaults", "id").Eq(qs.Col("merge_defaults_source", "id"))).
+		When(
+			qs.NotMatched().ThenInsertValues(
+				[]string{"name", "note"},
+				qs.Default(),
+				qs.Write(qs.Col("merge_defaults_source", "note")),
+			),
+		)
 	if session.major >= 17 {
-		sql, args, err = session.render(t, merge.Returning(qs.Col("write_defaults", "name"), qs.Col("write_defaults", "note")))
+		sql, args, err = session.render(
+			t,
+			merge.Returning(qs.Col("write_defaults", "name"), qs.Col("write_defaults", "note")),
+		)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -430,7 +460,9 @@ func TestWriteDefaultsExecuteAgainstPostgres(t *testing.T) {
 		if _, err := conn.Exec(ctx, sql, args...); err != nil {
 			t.Fatalf("%s: %v", sql, err)
 		}
-		check := qs.SelectCols("name", "note").From("write_defaults").Where(qs.Col("note").Eq(qs.Param("merge-note")))
+		check := qs.SelectCols("name", "note").
+			From("write_defaults").
+			Where(qs.Col("note").Eq(qs.Param("merge-note")))
 		sql, args, err = session.render(t, check)
 		if err != nil {
 			t.Fatal(err)
@@ -448,9 +480,14 @@ func TestRecursiveCTEAndSQLJSON(t *testing.T) {
 	t.Parallel()
 	session := connect(t)
 	seed := qs.Select(qs.LiteralInt(1))
-	step := qs.Select(qs.Col("n").Add(qs.LiteralInt(1))).From("numbers").Where(qs.Col("n").Lt(qs.Param(3)))
+	step := qs.Select(qs.Col("n").Add(qs.LiteralInt(1))).
+		From("numbers").
+		Where(qs.Col("n").Lt(qs.Param(3)))
 	numbers := qs.CTE("numbers", qs.UnionAll(seed, step)).Columns("n")
-	q := qs.Select(qs.Col("n").Cast(qs.TypeText)).WithRecursive(numbers).From("numbers").OrderBy(qs.Col("n").Asc())
+	q := qs.Select(qs.Col("n").Cast(qs.TypeText)).
+		WithRecursive(numbers).
+		From("numbers").
+		OrderBy(qs.Col("n").Asc())
 	if got := queryStrings(t, session, q); !reflect.DeepEqual(got, []string{"1", "2", "3"}) {
 		t.Fatal(got)
 	}

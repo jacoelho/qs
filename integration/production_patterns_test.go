@@ -17,7 +17,8 @@ func TestUnusedWindowAllowsRowLock(t *testing.T) {
 		INSERT INTO jobs VALUES (42)`); err != nil {
 		t.Fatal(err)
 	}
-	statement := qs.SelectCols("id").From("jobs").
+	statement := qs.SelectCols("id").
+		From("jobs").
 		Window("unused", qs.Window().OrderBy(qs.Col("id").Asc())).
 		Lock(qs.ForUpdate())
 	sql, args, err := session.render(t, statement)
@@ -43,16 +44,28 @@ func TestNestedWindowAllowsOuterRowLock(t *testing.T) {
 		{
 			"scalar",
 			func() qs.Statement {
-				return qs.Select(qs.Col("id"), qs.Scalar(qs.Select(qs.RowNumber().Over(qs.Window())))).
-					From("jobs").Lock(qs.ForUpdate())
+				return qs.Select(
+					qs.Col("id"),
+					qs.Scalar(qs.Select(qs.RowNumber().Over(qs.Window()))),
+				).
+					From("jobs").
+					Lock(qs.ForUpdate())
 			},
 		},
 		{
 			"cte",
 			func() qs.Statement {
-				ranked := qs.CTE("ranked", qs.Select(qs.RowNumber().Over(qs.Window()).As("position")))
-				return qs.Select(qs.Col("id"), qs.Scalar(qs.SelectCols("position").FromExpr(ranked.Ref()))).
-					With(ranked).From("jobs").Lock(qs.ForUpdate())
+				ranked := qs.CTE(
+					"ranked",
+					qs.Select(qs.RowNumber().Over(qs.Window()).As("position")),
+				)
+				return qs.Select(
+					qs.Col("id"),
+					qs.Scalar(qs.SelectCols("position").FromExpr(ranked.Ref())),
+				).
+					With(ranked).
+					From("jobs").
+					Lock(qs.ForUpdate())
 			},
 		},
 	} {
@@ -91,11 +104,14 @@ func TestColumnarPartialIndexUpsert(t *testing.T) {
 		t.Fatal(err)
 	}
 	upsert := func(ids []int32, names []string) qs.InsertSelect {
-		return qs.InsertInto("jobs").Columns("id", "name").From(qs.Select(
-			qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
-			qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
-		)).OnConflict(qs.ConflictColumns("id").TargetWhere(qs.Col("deleted_at").IsNull()).
-			DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
+		return qs.InsertInto("jobs").
+			Columns("id", "name").
+			From(qs.Select(
+				qs.Unnest(qs.ArrayParam(ids, qs.TypeInt4)),
+				qs.Unnest(qs.ArrayParam(names, qs.TypeText)),
+			)).
+			OnConflict(qs.ConflictColumns("id").TargetWhere(qs.Col("deleted_at").IsNull()).
+				DoUpdate(qs.Set("name", qs.Write(qs.Excluded("name"))))).
 			ReturningCols("id", "name")
 	}
 	sql, args, err := session.render(t, upsert([]int32{1, 2, 3}, []string{"updated", "new two", "new three"}))
@@ -125,8 +141,14 @@ func TestColumnarPartialIndexUpsert(t *testing.T) {
 	if count != 3 || !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %d rows %#v; want %#v", count, got, want)
 	}
-	archived := queryStrings(t, session, qs.SelectCols("name").From("jobs").
-		Where(qs.Col("deleted_at").IsNotNull()).OrderBy(qs.Col("id").Asc()))
+	archived := queryStrings(
+		t,
+		session,
+		qs.SelectCols("name").
+			From("jobs").
+			Where(qs.Col("deleted_at").IsNotNull()).
+			OrderBy(qs.Col("id").Asc()),
+	)
 	if !reflect.DeepEqual(archived, []string{"archived one", "archived two"}) {
 		t.Fatalf("archived rows changed: %#v", archived)
 	}
@@ -158,20 +180,32 @@ func TestPaginateBeforeLateralAggregation(t *testing.T) {
 			(2, 'first'), (2, 'second'), (4, 'after page')`); err != nil {
 		t.Fatal(err)
 	}
-	page := qs.CTE("page", qs.SelectCols("id").From("parents").
-		Where(qs.Col("id").Gt(qs.Param(1))).OrderBy(qs.Col("id").Asc()).Limit(2))
+	page := qs.CTE(
+		"page",
+		qs.SelectCols("id").
+			From("parents").
+			Where(qs.Col("id").Gt(qs.Param(1))).
+			OrderBy(qs.Col("id").Asc()).
+			Limit(2),
+	)
 	summary := qs.Select(
 		qs.Sum(qs.Col("amount")).Filter(qs.Col("amount").Gt(qs.Param(10))).As("total"),
 		qs.CountAll().As("entries"),
-	).From("events").Where(qs.Col("events", "parent_id").Eq(qs.Col("page", "id"))).
+	).
+		From("events").
+		Where(qs.Col("events", "parent_id").Eq(qs.Col("page", "id"))).
 		GroupByExpr(qs.Col("events", "parent_id"))
-	comments := qs.Select(qs.CountAll().As("entries")).From("comments").
-		Where(qs.Col("comments", "parent_id").Eq(qs.Col("page", "id"))).GroupByExpr(qs.Col("comments", "parent_id"))
+	comments := qs.Select(qs.CountAll().As("entries")).
+		From("comments").
+		Where(qs.Col("comments", "parent_id").Eq(qs.Col("page", "id"))).
+		GroupByExpr(qs.Col("comments", "parent_id"))
 	statement := qs.Select(qs.Col("page", "id"),
 		qs.Coalesce(qs.Col("summary", "total"), qs.LiteralInt(0)),
 		qs.Coalesce(qs.Col("summary", "entries"), qs.LiteralInt(0)),
 		qs.Coalesce(qs.Col("comment_summary", "entries"), qs.LiteralInt(0)),
-	).With(page).FromExpr(page.Ref()).
+	).
+		With(page).
+		FromExpr(page.Ref()).
 		LeftJoinExpr(qs.Lateral(summary.As("summary")), qs.True()).
 		LeftJoinExpr(qs.Lateral(comments.As("comment_summary")), qs.True()).
 		OrderBy(qs.Col("page", "id").Asc())
@@ -210,8 +244,10 @@ func TestGroupParameterizedExpressionByOrdinal(t *testing.T) {
 		t.Fatal(err)
 	}
 	bucket := qs.DateTrunc(qs.Param("day"), qs.Col("created_at"))
-	statement := qs.Select(bucket.As("bucket"), qs.CountAll()).From("events").
-		GroupByExpr(qs.Ordinal(1)).OrderBy(qs.Ordinal(1).Asc())
+	statement := qs.Select(bucket.As("bucket"), qs.CountAll()).
+		From("events").
+		GroupByExpr(qs.Ordinal(1)).
+		OrderBy(qs.Ordinal(1).Asc())
 	sql, args, err := session.render(t, statement)
 	if err != nil {
 		t.Fatal(err)

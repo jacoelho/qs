@@ -38,11 +38,40 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 		expr qs.Expr
 		want string
 	}{
-		{"substring", qs.SubstringFrom(qs.LiteralString("abcdef"), qs.LiteralInt(2), qs.LiteralInt(2)), "bc"},
+		{
+			"substring",
+			qs.SubstringFrom(qs.LiteralString("abcdef"), qs.LiteralInt(2), qs.LiteralInt(2)),
+			"bc",
+		},
 		{"position", qs.Position(qs.LiteralString("bc"), qs.LiteralString("abc")), "2"},
-		{"overlay", qs.Overlay(qs.LiteralString("abcdef"), qs.LiteralString("XY"), qs.LiteralInt(2), qs.LiteralInt(2)), "aXYdef"},
-		{"trim_leading", qs.TrimSyntax(qs.LiteralString("xxvalue"), qs.TrimLeadingDirection, qs.LiteralString("x")), "value"},
-		{"trim_trailing", qs.TrimSyntax(qs.LiteralString("valuexx"), qs.TrimTrailingDirection, qs.LiteralString("x")), "value"},
+		{
+			"overlay",
+			qs.Overlay(
+				qs.LiteralString("abcdef"),
+				qs.LiteralString("XY"),
+				qs.LiteralInt(2),
+				qs.LiteralInt(2),
+			),
+			"aXYdef",
+		},
+		{
+			"trim_leading",
+			qs.TrimSyntax(
+				qs.LiteralString("xxvalue"),
+				qs.TrimLeadingDirection,
+				qs.LiteralString("x"),
+			),
+			"value",
+		},
+		{
+			"trim_trailing",
+			qs.TrimSyntax(
+				qs.LiteralString("valuexx"),
+				qs.TrimTrailingDirection,
+				qs.LiteralString("x"),
+			),
+			"value",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,7 +86,11 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 		}
 	})
 	t.Run("substring_similar", func(t *testing.T) {
-		expr := qs.SubstringSimilar(qs.LiteralString("abcdef"), qs.LiteralString(`%#"b#"%`), qs.LiteralString("#"))
+		expr := qs.SubstringSimilar(
+			qs.LiteralString("abcdef"),
+			qs.LiteralString(`%#"b#"%`),
+			qs.LiteralString("#"),
+		)
 		if got := syntaxText(t, session, expr); got != "b" {
 			t.Fatalf("got %q; want b", got)
 		}
@@ -86,7 +119,9 @@ func TestSQLSyntaxLiveSemantics(t *testing.T) {
 			}
 		}
 	}
-	zone := qs.LiteralString("2026-01-02 03:04:05").Cast(qs.TypeTimestamp).AtTimeZone(qs.LiteralString("UTC"))
+	zone := qs.LiteralString("2026-01-02 03:04:05").Cast(qs.TypeTimestamp).AtTimeZone(
+		qs.LiteralString("UTC"),
+	)
 	if got := syntaxText(t, session, zone); !strings.HasPrefix(got, "2026-01-02 03:04:05") {
 		t.Fatalf("AT TIME ZONE got %q", got)
 	}
@@ -114,7 +149,10 @@ func TestSQLValueFunctionPrecision(t *testing.T) {
 		{"localtimestamp", qs.LocalTimestamp(3)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sql, args, err := session.render(t, qs.Select(qs.Extract(qs.PartMicroseconds, tc.expr).Cast(qs.TypeInt8)))
+			sql, args, err := session.render(
+				t,
+				qs.Select(qs.Extract(qs.PartMicroseconds, tc.expr).Cast(qs.TypeInt8)),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}
