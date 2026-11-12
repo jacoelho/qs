@@ -34,7 +34,7 @@ func TestCompositeExpressions(t *testing.T) {
 		{
 			"complex_insert_targets",
 			InsertInto("people").
-				Targets(Col("profile").Field("name"), Col("items").Index(Param(2))).
+				Columns(Col("profile").Field("name"), Col("items").Index(Param(2))).
 				Values(Write(Param("Ada")), Write(Param("tag"))),
 			`INSERT INTO "people" ("profile"."name", "items"[$1]) VALUES ($2, $3)`,
 			[]any{2, "Ada", "tag"},
@@ -134,7 +134,7 @@ func TestCompositeKnownWidthErrors(t *testing.T) {
 	checkError(
 		t,
 		InsertInto("people").
-			Targets(Col("first_name"), Col("first_name")).
+			Columns(Col("first_name"), Col("first_name")).
 			Values(Write(Param("Ada")), Write(Param("Grace"))),
 		ErrInvalid,
 	)
@@ -151,7 +151,7 @@ func TestCompositeConstructorsOwnTheirSlices(t *testing.T) {
 
 	insertTargets := []Expr{Col("first_name"), Col("age")}
 	insert := InsertInto("people").
-		Targets(insertTargets[0], insertTargets[1]).
+		Columns(insertTargets[0], insertTargets[1]).
 		Values(Write(Param("Ada")), Write(Param(36)))
 	insertTargets[0] = Col("changed")
 	checkSQL(t, insert, `INSERT INTO "people" ("first_name", "age") VALUES ($1, $2)`, "Ada", 36)

@@ -98,7 +98,7 @@ func TestSharedParamManyDistinct(t *testing.T) {
 	}
 	columns = append(columns, shared...)
 	columns = append(columns, shared...)
-	checkSQL(t, SelectSlice(columns), `SELECT $1, $2, $3, $4, $5, $6, $1, $2, $3, $4, $5, $6`, want...)
+	checkSQL(t, Select(columns...), `SELECT $1, $2, $3, $4, $5, $6, $1, $2, $3, $4, $5, $6`, want...)
 }
 
 func TestSharedParamCountsOnceTowardsParameterLimit(t *testing.T) {

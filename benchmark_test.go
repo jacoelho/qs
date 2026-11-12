@@ -38,7 +38,7 @@ func scenario[S Statement](name string, build func() S, sql string, args ...any)
 }
 
 func benchQuery() SelectBuilder {
-	return SelectCols("id", "name", "created_at").
+	return Select("id", "name", "created_at").
 		From("users").
 		Where(Col("active").Eq(Param(true)), Col("id").In(Param(1), Param(2), Param(3))).
 		OrderBy(Col("created_at").Desc(), Col("id").Desc()).
@@ -50,7 +50,7 @@ var benchmarkScenarios = []benchmarkScenario{
 		`SELECT "id", "name", "created_at" FROM "users" WHERE ("active" = $1) AND ("id" IN ($2, $3, $4)) ORDER BY "created_at" DESC, "id" DESC LIMIT $5`,
 		true, 1, 2, 3, 50),
 	scenario("keyset_page", func() SelectBuilder {
-		return SelectCols("id", "name").
+		return Select("id", "name").
 			From("users").
 			Where(Col("active").Eq(Param(true))).
 			OrderBy(Col("users", "created_at").Desc(), Col("users", "id").Desc()).
@@ -62,18 +62,18 @@ var benchmarkScenarios = []benchmarkScenario{
 	scenario("cte_window", func() SelectBuilder {
 		recent := CTE(
 			"recent",
-			SelectCols("id").From("users").Where(Col("created_at").Gt(Param(100))),
+			Select("id").From("users").Where(Col("created_at").Gt(Param(100))),
 		)
 		return Select(Col("r", "id"), CountAll().Over(Window().OrderBy(Col("r", "id").Asc()))).
 			With(recent).
-			FromExpr(recent.Ref().As("r")).
+			From(recent.Ref().As("r")).
 			Where(Col("r", "id").In(Param(1), Param(2), Param(3))).
 			Limit(20)
 	},
 		`WITH "recent" AS (SELECT "id" FROM "users" WHERE ("created_at" > $1)) SELECT "r"."id", count(*) OVER (ORDER BY "r"."id" ASC) FROM "recent" AS "r" WHERE ("r"."id" IN ($2, $3, $4)) LIMIT $5`,
 		100, 1, 2, 3, 20),
 	scenario("join", func() SelectBuilder {
-		return Select(Col("a", "id")).FromExpr(LeftJoin(Table("a"), Table("b")).
+		return Select(Col("a", "id")).From(LeftJoin(Table("a"), Table("b")).
 			On(Col("a", "id").Eq(Col("b", "id")), Col("b", "active").Eq(Param(true))))
 	},
 		`SELECT "a"."id" FROM ("a" LEFT JOIN "b" ON ("a"."id" = "b"."id") AND ("b"."active" = $1))`,
@@ -118,7 +118,7 @@ var benchmarkScenarios = []benchmarkScenario{
 		1, "Ada", 2, "Grace"),
 	scenario("insert_expression_and_default", func() InsertRows {
 		return InsertInto("events").
-			Targets(Col("id"), Col("payload"), Col("active")).
+			Columns(Col("id"), Col("payload"), Col("active")).
 			Values(Value(1), Write(JSONBParam(`{"a":1}`).Expr()), Default())
 	},
 		`INSERT INTO "events" ("id", "payload", "active") VALUES ($1, ($2)::jsonb, DEFAULT)`,

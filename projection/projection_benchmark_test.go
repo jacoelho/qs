@@ -102,7 +102,7 @@ func BenchmarkCompose(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		p := projection.New(left, right)
-		benchSelect = qs.SelectSlice(p.Expressions())
+		benchSelect = qs.Select(p.Expressions()...)
 	}
 }
 

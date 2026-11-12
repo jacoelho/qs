@@ -133,16 +133,16 @@ func TestProjectionSelfJoin(t *testing.T) {
 		),
 	)
 	join := qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id")))
-	valid, _, err := qs.SelectSlice(p.Expressions()).
-		FromExpr(join).
+	valid, _, err := qs.Select(p.Expressions()...).
+		From(join).
 		Where(employee.Col("id").Lte(qs.Param(2))).
 		OrderBy(employee.Col("id").Asc()).
 		ToSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	partial, _, err := qs.SelectSlice(p.Expressions()).
-		FromExpr(join).
+	partial, _, err := qs.Select(p.Expressions()...).
+		From(join).
 		Where(employee.Col("id").Eq(qs.Param(4))).
 		ToSQL()
 	if err != nil {
@@ -181,8 +181,8 @@ func TestProjectionSelfJoin(t *testing.T) {
 func TestProjectionAllClosesRowsWhenLoopBreaks(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	p := projectionUsersOf(employee, "")
-	text, _, err := qs.SelectSlice(p.Expressions()).
-		FromExpr(employee).
+	text, _, err := qs.Select(p.Expressions()...).
+		From(employee).
 		Where(employee.Col("id").Ne(qs.Param(3))).
 		OrderBy(employee.Col("id").Asc()).
 		ToSQL()
@@ -234,8 +234,8 @@ func TestProjectionScanIntoReusedDestination(t *testing.T) {
 			func(r *projectionRow, u *projectionUser) { r.Manager = u },
 		),
 	)
-	text, _, err := qs.SelectSlice(p.Expressions()).
-		FromExpr(
+	text, _, err := qs.Select(p.Expressions()...).
+		From(
 			qs.LeftJoin(employee, manager).On(employee.Col("manager_id").Eq(manager.Col("id"))),
 		).
 		Where(employee.Col("id").Lte(qs.Param(2))).
@@ -363,9 +363,9 @@ func (c countedRows) Scan(dest ...any) error {
 func TestProjectionReadsOutputSelectedAfterExpressions(t *testing.T) {
 	employee := qs.Table("users").As("employee")
 	p := projectionUsersOf(employee, "")
-	text, _, err := qs.SelectSlice(p.Expressions()).
+	text, _, err := qs.Select(p.Expressions()...).
 		Columns(qs.CountAll().Over(qs.Window())).
-		FromExpr(employee).
+		From(employee).
 		Where(employee.Col("id").Ne(qs.Param(3))).
 		OrderBy(employee.Col("id").Asc()).
 		Limit(2).

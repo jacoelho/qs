@@ -20,7 +20,7 @@ func TestJSONDocuments(t *testing.T) {
 			"text_key_grouped",
 			Select(doc.TextKey("kind").Expr(), CountAll()).
 				From("events").
-				GroupByExpr(doc.TextKey("kind").Expr()),
+				GroupBy(doc.TextKey("kind").Expr()),
 			`SELECT ("payload" ->> E'kind'), count(*) FROM "events" GROUP BY ("payload" ->> E'kind')`,
 			nil,
 		},
@@ -48,6 +48,18 @@ func TestJSONDocuments(t *testing.T) {
 			Select(JSONExpr(Col("doc")).Path("a").Expr(), JSONExpr(Col("doc")).PathText().Expr()),
 			`SELECT ("doc" #> (ARRAY[E'a'])::text[]), ("doc" #>> (ARRAY[])::text[])`,
 			nil,
+		},
+		{"cast", Select(doc.Key("n").Cast(TypeInt4), JSONExpr(Col("doc")).Key("n").Cast(TypeText)),
+			`SELECT (("payload" -> E'n'))::integer, (("doc" -> E'n'))::text`, nil},
+		{"json_type_of", Select(JSONExpr(Col("doc")).Key("a").TypeOf().Expr(), JSONTypeOf(Param("[]").Cast(TypeJSON))),
+			`SELECT json_typeof(("doc" -> E'a')), json_typeof(($1)::json)`, []any{"[]"}},
+		{"type_of", Select(doc.Key("a").TypeOf().As("kind")).Where(doc.TypeOf().Eq("object")),
+			`SELECT jsonb_typeof(("payload" -> E'a')) AS "kind" WHERE (jsonb_typeof("payload") = $1)`, []any{"object"}},
+		{
+			"document_as_case_result",
+			Select(Case().When(doc.Key("a").TypeOf().Eq("array"), doc.Key("a").Expr()).Else(doc.Expr()).End()),
+			`SELECT CASE WHEN (jsonb_typeof(("payload" -> E'a')) = $1) THEN ("payload" -> E'a') ELSE "payload" END`,
+			[]any{"array"},
 		},
 		{"encoded_json", Select(JSONParam(`{"a":1}`).As("doc")), `SELECT ($1)::json AS "doc"`, []any{`{"a":1}`}},
 		{"quote_in_key", Select(doc.Key(`x'); DROP TABLE users; --`).Expr()), `SELECT ("payload" -> E'x''); DROP TABLE users; --')`, nil},

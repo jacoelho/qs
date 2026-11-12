@@ -830,11 +830,11 @@ func TestOutputInSelectAndReturning(t *testing.T) {
 		projection.Column(qs.Col("d", "id").As("id"), func(u *user) *int64 { return &u.ID }),
 		projection.Column(qs.Param("draft").As("status"), func(u *user) *string { return &u.Name }),
 	)
-	checkSQL(t, qs.SelectSlice(p.Expressions()).FromExpr(qs.Table("documents").As("d")),
+	checkSQL(t, qs.Select(p.Expressions()...).From(qs.Table("documents").As("d")),
 		`SELECT "d"."id" AS "id", $1 AS "status" FROM "documents" AS "d"`, "draft")
 	checkSQL(
 		t,
-		qs.UpdateTable(qs.Table("documents").As("d")).
+		qs.Update(qs.Table("documents").As("d")).
 			Set(qs.SetNull("archived_at")).
 			Where(qs.Col("d", "id").Eq(qs.Param("doc-1"))).
 			Returning(p.Expressions()...),
@@ -849,20 +849,20 @@ func TestExpressionsAreOwned(t *testing.T) {
 
 	p := projection.Column(qs.Col("id"), func(u *user) *int64 { return &u.ID })
 	p.Expressions()[0] = qs.Col("changed")
-	checkSQL(t, qs.SelectSlice(p.Expressions()), `SELECT "id"`)
+	checkSQL(t, qs.Select(p.Expressions()...), `SELECT "id"`)
 }
 
 func TestNestedQueryIsTheOneDeclared(t *testing.T) {
 	t.Parallel()
 
-	child := qs.SelectCols("id").From("documents")
+	child := qs.Select("id").From("documents")
 	p := projection.Column(qs.Scalar(child), func(u *user) *int64 { return &u.ID })
 	drafts := projection.Column(
 		qs.Scalar(child.Where(qs.Col("status").Eq(qs.Param("draft")))),
 		func(u *user) *int64 { return &u.ID },
 	)
-	checkSQL(t, qs.SelectSlice(p.Expressions()), `SELECT (SELECT "id" FROM "documents")`)
-	checkSQL(t, qs.SelectSlice(drafts.Expressions()), `SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
+	checkSQL(t, qs.Select(p.Expressions()...), `SELECT (SELECT "id" FROM "documents")`)
+	checkSQL(t, qs.Select(drafts.Expressions()...), `SELECT (SELECT "id" FROM "documents" WHERE ("status" = $1))`, "draft")
 }
 
 func TestEmptyProjection(t *testing.T) {
@@ -873,7 +873,7 @@ func TestEmptyProjection(t *testing.T) {
 		if len(p.Expressions()) != 0 {
 			t.Fatal("empty projection has content")
 		}
-		if _, _, err := qs.SelectSlice(p.Expressions()).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
+		if _, _, err := qs.Select(p.Expressions()...).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 			t.Fatalf("empty SELECT error = %v, want ErrInvalid", err)
 		}
 		checkSQL(
@@ -900,7 +900,7 @@ func TestInvalidExpressionFailsRendering(t *testing.T) {
 
 	for _, expression := range []qs.Expr{{}, qs.Col("id").As(""), qs.Col("id").As("bad\x00alias")} {
 		p := projection.Column(expression, func(u *user) *int64 { return &u.ID })
-		if _, _, err := qs.SelectSlice(p.Expressions()).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
+		if _, _, err := qs.Select(p.Expressions()...).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 			t.Fatalf("render error = %v, want ErrInvalid", err)
 		}
 	}

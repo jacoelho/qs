@@ -53,26 +53,26 @@ func TestDerivedRelations(t *testing.T) {
 	t.Parallel()
 
 	inner := Select(Param("inner")).Where(Col("inner_key").Eq(Param(1)))
-	outer := Select(Param("outer")).FromExpr(Derived(inner)).Where(Col("outer_key").Eq(Param(2)))
+	outer := Select(Param("outer")).From(Derived(inner)).Where(Col("outer_key").Eq(Param(2)))
 	checkSQL(t, outer, `SELECT $1 FROM (SELECT $2 WHERE ("inner_key" = $3)) WHERE ("outer_key" = $4)`, "outer", "inner", 1, 2)
 
 	aliased := Derived(Select(Param(1))).As("d", "value")
-	checkSQL(t, Select(Col("d", "value")).FromExpr(aliased), `SELECT "d"."value" FROM (SELECT $1) AS "d" ("value")`, 1)
-	checkError(t, Select(Star()).FromExpr(Derived(Select(Param(1))).As("d", "a", "b")), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr(Subquery(Select(Param(1)), "")), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr(Derived(nil)), ErrInvalid)
+	checkSQL(t, Select(Col("d", "value")).From(aliased), `SELECT "d"."value" FROM (SELECT $1) AS "d" ("value")`, 1)
+	checkError(t, Select(Star()).From(Derived(Select(Param(1))).As("d", "a", "b")), ErrInvalid)
+	checkError(t, Select(Star()).From(Subquery(Select(Param(1)), "")), ErrInvalid)
+	checkError(t, Select(Star()).From(Derived(nil)), ErrInvalid)
 	checkError(t, Select(Derived(Select(Param(1))).Col("value")), ErrInvalid)
 
-	checkSQL(t, Select(Star()).FromExpr(Derived(Select(Param(1)))), `SELECT * FROM (SELECT $1)`, 1)
-	checkSQL(t, Select(Star()).FromExpr(aliased), `SELECT * FROM (SELECT $1) AS "d" ("value")`, 1)
+	checkSQL(t, Select(Star()).From(Derived(Select(Param(1)))), `SELECT * FROM (SELECT $1)`, 1)
+	checkSQL(t, Select(Star()).From(aliased), `SELECT * FROM (SELECT $1) AS "d" ("value")`, 1)
 }
 
 func TestDerivedRelationKeepsTheQueryItWasBuiltFrom(t *testing.T) {
 	t.Parallel()
 
 	child := Select(Param(1))
-	query := Select(Star()).FromExpr(Derived(child))
-	widened := Select(Star()).FromExpr(Derived(child.Columns(Param(2))))
+	query := Select(Star()).From(Derived(child))
+	widened := Select(Star()).From(Derived(child.Columns(Param(2))))
 
 	checkSQL(t, query, `SELECT * FROM (SELECT $1)`, 1)
 	checkSQL(t, widened, `SELECT * FROM (SELECT $1, $2)`, 1, 2)

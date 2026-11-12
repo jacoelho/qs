@@ -111,6 +111,11 @@ func (r RowExpr) in(operator string, rows []RowExpr) Condition {
 
 // Field carries an application's non-NULL Go payload type. It does not prove
 // SQL nullability, existence, driver codec support or SQL operator availability.
+//
+// Its comparisons take Go values of T, and the Field variants such as EqField
+// take another Field[T]. For any other operand leave the field with Expr, as
+// in f.Expr().Eq(expr), or state the operand's type with Typed, as in
+// f.EqField(Typed[T](expr)).
 type Field[T any] struct{ expr Expr }
 
 // Typed states that comparisons and assignments of expr bind Go values of T:
@@ -132,13 +137,18 @@ func (f Field[T]) Expr() Expr { return f.expr }
 // As aliases f with a SQL identifier.
 func (f Field[T]) As(alias string) Expr { return f.expr.As(alias) }
 
+// Cast adds an explicit PostgreSQL type cast to f. The result is an Expr,
+// because a DataType names no Go type; wrap it with Typed to state one.
+func (f Field[T]) Cast(typ DataType) Expr { return f.expr.Cast(typ) }
+
 // Asc orders by f in ascending order.
 func (f Field[T]) Asc() Order { return f.expr.Asc() }
 
 // Desc orders by f in descending order.
 func (f Field[T]) Desc() Order { return f.expr.Desc() }
 
-// Eq compares f with a bound value of T.
+// Eq compares f with a bound value of T. Compare with an expression through
+// EqField or Expr; see Field.
 func (f Field[T]) Eq(value T) Condition { return comparison(f.expr, "=", parameter(value)) }
 
 // Ne compares f with a bound value of T using inequality.

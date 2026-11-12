@@ -71,19 +71,23 @@ func NamedArray(name string, array Expr) ArrayColumn { return ArrayColumn{name: 
 //
 // WithOrdinality adds a last column that PostgreSQL names ordinality. As
 // replaces the alias and the column names together, so to rename the relation
-// or the ordinality column pass every column name again.
-func UnnestAs(alias string, first ArrayColumn, rest ...ArrayColumn) Relation {
-	names, arrays := splitArrayColumns(first, rest)
+// or the ordinality column pass every column name again. An empty list fails
+// rendering.
+func UnnestAs[T ArrayColumn | []ArrayColumn](alias string, first T, rest ...ArrayColumn) Relation {
+	columns := gather(first, rest)
+	if len(columns) == 0 {
+		return RelationSQL(invalidExpr("unnest", "requires at least one array"))
+	}
+	names, arrays := splitArrayColumns(columns)
 	r := TableFunc(Unnest(arrays...))
 	r.alias, r.columns = alias, names
 	return r
 }
 
-func splitArrayColumns(first ArrayColumn, rest []ArrayColumn) (names []string, arrays []Expr) {
-	names, arrays = make([]string, 1+len(rest)), make([]Expr, 1+len(rest))
-	names[0], arrays[0] = first.name, first.array
-	for i, column := range rest {
-		names[i+1], arrays[i+1] = column.name, column.array
+func splitArrayColumns(columns []ArrayColumn) (names []string, arrays []Expr) {
+	names, arrays = make([]string, len(columns)), make([]Expr, len(columns))
+	for i, column := range columns {
+		names[i], arrays[i] = column.name, column.array
 	}
 	return names, arrays
 }
@@ -195,6 +199,9 @@ func JSONBEachText(document Expr) Expr { return builtin("jsonb_each_text", docum
 
 // JSONBObjectKeys expands a JSONB object into its keys.
 func JSONBObjectKeys(document Expr) Expr { return builtin("jsonb_object_keys", document) }
+
+// JSONTypeOf returns the JSON value's top-level type name.
+func JSONTypeOf(document Expr) Expr { return builtin("json_typeof", document) }
 
 // JSONBTypeOf returns the JSONB value's top-level type name.
 func JSONBTypeOf(document Expr) Expr { return builtin("jsonb_typeof", document) }

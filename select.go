@@ -10,8 +10,8 @@ const (
 
 // SelectBuilder is an immutable SELECT. Every method returns a new value and
 // leaves its receiver unchanged, so a query can be branched by assignment:
-// keep the result, as in q = q.Where(...). List methods append; From and
-// FromExpr replace the FROM list. Limit/Offset replace their previous values.
+// keep the result, as in q = q.Where(...). List methods append; From replaces
+// the FROM list. Limit/Offset replace their previous values.
 // The zero value has no projection and fails rendering until Columns is called.
 type SelectBuilder struct {
 	columns       []Expr
@@ -29,30 +29,22 @@ type SelectBuilder struct {
 	distinct      selectQuantifier
 }
 
-// Select starts a query with at least one expression, in projection order.
-// Use Col for identifiers, Param for bound values, and UnsafeSQL for an
-// existing trusted SQL projection list. SelectCols and SelectSQL are
-// convenience wrappers; SelectSlice takes a projection held in a slice and
-// SelectNoColumns states that none is wanted.
-func Select(first Expr, rest ...Expr) SelectBuilder {
-	return SelectBuilder{columns: ownedList(first, rest)}
-}
-
-// SelectSlice is Select for a projection held in a slice, which is copied. The
-// length of a slice is not known until the program runs, so an empty one is
-// an incomplete projection and fails rendering.
-func SelectSlice(columns []Expr) SelectBuilder {
-	return SelectBuilder{columns: cloneSlice(columns)}
+// Select starts a SELECT with its projection: column names, each one
+// unqualified column quoted as written, or expressions for qualified names,
+// casts, aliases and everything else. One call takes names or expressions,
+// not both; Columns adds the other kind. A projection held in a slice is
+// spread, as in Select(columns...), and is copied. A call with no arguments
+// does not compile, and an empty list fails rendering: SelectNoColumns states a
+// zero-column SELECT.
+//
+// A name is an identifier, never SQL: Select("count(*)") and Select("u.id")
+// name columns called that, which PostgreSQL does not find.
+func Select[T string | Expr](columns ...T) SelectBuilder {
+	return SelectBuilder{columns: appendColumns(nil, columns)}
 }
 
 // SelectNoColumns intentionally returns rows with no columns.
 func SelectNoColumns() SelectBuilder { return SelectBuilder{noColumns: true} }
-
-// SelectCols is Select with each string naming one column, quoted as written.
-// For qualified names, casts and aliases, use Select with expressions.
-func SelectCols(first string, rest ...string) SelectBuilder {
-	return SelectBuilder{columns: convertedList(first, rest, unqualifiedColumn)}
-}
 
 // SelectSQL is a convenience wrapper for Select with each argument wrapped in
 // UnsafeSQL. It accepts trusted projection lists, not identifiers or user data.
@@ -62,15 +54,10 @@ func SelectSQL(first string, rest ...string) SelectBuilder {
 	return SelectBuilder{columns: convertedList(first, rest, UnsafeSQL)}
 }
 
-// Columns appends expressions in projection order.
-func (b SelectBuilder) Columns(columns ...Expr) SelectBuilder {
-	b.columns = extend(b.columns, columns...)
-	return b
-}
-
-// ColumnNames appends columns, each named by one identifier, in projection order.
-func (b SelectBuilder) ColumnNames(columns ...string) SelectBuilder {
-	b.columns = extendWith(b.columns, columns, unqualifiedColumn)
+// Columns appends column names or expressions in projection order, as Select
+// takes them.
+func (b SelectBuilder) Columns[T string | Expr](columns ...T) SelectBuilder {
+	b.columns = appendColumns(b.columns, columns)
 	return b
 }
 
@@ -80,15 +67,11 @@ func (b SelectBuilder) ColumnsSQL(projections ...string) SelectBuilder {
 	return b
 }
 
-// From replaces the table list. An empty call removes FROM.
-func (b SelectBuilder) From(tables ...string) SelectBuilder {
-	b.from = extendWith(nil, tables, table)
-	return b
-}
-
-// FromExpr replaces the relation list. An empty call removes FROM.
-func (b SelectBuilder) FromExpr(relations ...Relation) SelectBuilder {
-	b.from = cloneSlice(relations)
+// From replaces the FROM list with table names, each one unqualified table
+// quoted as written, or with relations. One call takes names or relations, not
+// both. A spread empty list removes FROM; From() does not compile.
+func (b SelectBuilder) From[T string | Relation](tables ...T) SelectBuilder {
+	b.from = appendRelations(nil, tables)
 	return b
 }
 
@@ -127,15 +110,10 @@ func (b SelectBuilder) DistinctOn(expressions ...Expr) SelectBuilder {
 	return b
 }
 
-// GroupBy appends columns, each named by one identifier, to the grouping list.
-func (b SelectBuilder) GroupBy(columns ...string) SelectBuilder {
-	b.group = extendWith(b.group, columns, unqualifiedColumn)
-	return b
-}
-
-// GroupByExpr appends expressions to the grouping list.
-func (b SelectBuilder) GroupByExpr(expressions ...Expr) SelectBuilder {
-	b.group = extend(b.group, expressions...)
+// GroupBy appends column names, each one unqualified column, or expressions to
+// the grouping list.
+func (b SelectBuilder) GroupBy[T string | Expr](columns ...T) SelectBuilder {
+	b.group = appendColumns(b.group, columns)
 	return b
 }
 
@@ -157,7 +135,7 @@ func (b SelectBuilder) Window(name string, spec WindowSpec) SelectBuilder {
 // joinLast replaces the last FROM item with a join onto it, matching
 // PostgreSQL's binding of explicit JOIN more tightly than comma-separated FROM
 // items. For nested joins, build a Relation with InnerJoin/LeftJoin/etc. and
-// pass it to FromExpr. The FROM list is copied: the receiver's is shared.
+// pass it to From. The FROM list is copied: the receiver's is shared.
 func (b SelectBuilder) joinLast(join func(left Relation) Relation) SelectBuilder {
 	if len(b.from) == 0 {
 		b.from = []Relation{RelationSQL(invalidExpr("JOIN", "requires a FROM item"))}
@@ -177,44 +155,31 @@ func (b SelectBuilder) appendCrossJoin(right Relation) SelectBuilder {
 	return b.joinLast(func(left Relation) Relation { return CrossJoin(left, right) })
 }
 
-// Join attaches to the last FROM item; missing FROM remains a rendering error.
-func (b SelectBuilder) Join(table string, first Condition, rest ...Condition) SelectBuilder {
-	return b.appendJoin(Table(table), joinInner, first, rest...)
+// Join attaches table, a table name or a relation, to the last FROM item
+// with an inner join; a missing FROM remains a rendering error.
+func (b SelectBuilder) Join[T string | Relation](table T, first Condition, rest ...Condition) SelectBuilder {
+	return b.appendJoin(relationOf(table), joinInner, first, rest...)
 }
 
-// LeftJoin attaches to the last FROM item, preserving comma binding.
-func (b SelectBuilder) LeftJoin(table string, first Condition, rest ...Condition) SelectBuilder {
-	return b.appendJoin(Table(table), joinLeft, first, rest...)
+// LeftJoin is Join for a left join.
+func (b SelectBuilder) LeftJoin[T string | Relation](table T, first Condition, rest ...Condition) SelectBuilder {
+	return b.appendJoin(relationOf(table), joinLeft, first, rest...)
 }
 
-// RightJoin attaches to the last FROM item, preserving comma binding.
-func (b SelectBuilder) RightJoin(table string, first Condition, rest ...Condition) SelectBuilder {
-	return b.appendJoin(Table(table), joinRight, first, rest...)
+// RightJoin is Join for a right join.
+func (b SelectBuilder) RightJoin[T string | Relation](table T, first Condition, rest ...Condition) SelectBuilder {
+	return b.appendJoin(relationOf(table), joinRight, first, rest...)
 }
 
-// FullJoin attaches to the last FROM item, preserving comma binding.
-func (b SelectBuilder) FullJoin(table string, first Condition, rest ...Condition) SelectBuilder {
-	return b.appendJoin(Table(table), joinFull, first, rest...)
+// FullJoin is Join for a full join.
+func (b SelectBuilder) FullJoin[T string | Relation](table T, first Condition, rest ...Condition) SelectBuilder {
+	return b.appendJoin(relationOf(table), joinFull, first, rest...)
 }
 
-// CrossJoin attaches a named table with a CROSS JOIN to the last FROM item.
-func (b SelectBuilder) CrossJoin(table string) SelectBuilder {
-	return b.appendCrossJoin(Table(table))
-}
-
-// JoinExpr accepts a completed relation and attaches to the last FROM item.
-func (b SelectBuilder) JoinExpr(relation Relation, first Condition, rest ...Condition) SelectBuilder {
-	return b.appendJoin(relation, joinInner, first, rest...)
-}
-
-// LeftJoinExpr accepts a completed relation and attaches to the last FROM item.
-func (b SelectBuilder) LeftJoinExpr(relation Relation, first Condition, rest ...Condition) SelectBuilder {
-	return b.appendJoin(relation, joinLeft, first, rest...)
-}
-
-// CrossJoinExpr attaches a completed relation with a CROSS JOIN.
-func (b SelectBuilder) CrossJoinExpr(relation Relation) SelectBuilder {
-	return b.appendCrossJoin(relation)
+// CrossJoin attaches table, a table name or a relation, to the last FROM item
+// with a CROSS JOIN.
+func (b SelectBuilder) CrossJoin[T string | Relation](table T) SelectBuilder {
+	return b.appendCrossJoin(relationOf(table))
 }
 
 func (w *renderer) selectStatement(b *SelectBuilder) {

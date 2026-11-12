@@ -81,9 +81,9 @@ func (m MergeMatched) And(conditions ...Condition) MergeMatched {
 }
 
 // ThenUpdate owns its assignment list; rendering rejects an empty list.
-func (m MergeMatched) ThenUpdate(assignments ...Assignment) MergeWhen {
+func (m MergeMatched) ThenUpdate[T Assignment | []Assignment](first T, rest ...Assignment) MergeWhen {
 	branch := m.matched.complete(mergeUpdate)
-	branch.set = cloneSlice(assignments)
+	branch.set = gather(first, rest)
 	return branch
 }
 
@@ -104,9 +104,9 @@ func (m MergeNotMatched) And(conditions ...Condition) MergeNotMatched {
 }
 
 // ThenInsert owns its assignment list; rendering rejects an empty list.
-func (m MergeNotMatched) ThenInsert(assignments ...Assignment) MergeWhen {
+func (m MergeNotMatched) ThenInsert[T Assignment | []Assignment](first T, rest ...Assignment) MergeWhen {
 	branch := m.notMatched.complete(mergeInsert)
-	branch.set = cloneSlice(assignments)
+	branch.set = gather(first, rest)
 	return branch
 }
 
@@ -143,9 +143,9 @@ func (m MergeNotMatched) OverridingUserValue() MergeInsertOverride {
 }
 
 // ThenInsert owns its assignment list and preserves the selected identity policy.
-func (m MergeInsertOverride) ThenInsert(assignments ...Assignment) MergeWhen {
+func (m MergeInsertOverride) ThenInsert[T Assignment | []Assignment](first T, rest ...Assignment) MergeWhen {
 	branch := m.insertOverride.complete(mergeInsert)
-	branch.set = cloneSlice(assignments)
+	branch.set = gather(first, rest)
 	branch.overriding = m.overriding
 	return branch
 }
@@ -175,11 +175,10 @@ type MergeBuilder struct {
 	base      statementBase
 }
 
-// MergeInto starts a MERGE for a named target table.
-func MergeInto(table string) MergeBuilder { return MergeBuilder{target: Table(table)} }
-
-// MergeIntoTable starts a MERGE for a relation target.
-func MergeIntoTable(table Relation) MergeBuilder { return MergeBuilder{target: table} }
+// MergeInto starts a MERGE into table, a table name or a relation.
+func MergeInto[T string | Relation](table T) MergeBuilder {
+	return MergeBuilder{target: relationOf(table)}
+}
 
 // Using replaces the MERGE source relation.
 func (b MergeBuilder) Using(source Relation) MergeBuilder { b.source = source; return b }
@@ -196,15 +195,10 @@ func (b MergeBuilder) When(branches ...MergeWhen) MergeBuilder {
 	return b
 }
 
-// Returning appends expressions to the MERGE RETURNING projection.
-func (b MergeBuilder) Returning(expressions ...Expr) MergeBuilder {
-	b.returning = extend(b.returning, expressions...)
-	return b
-}
-
-// ReturningCols appends named columns to the MERGE RETURNING projection.
-func (b MergeBuilder) ReturningCols(columns ...string) MergeBuilder {
-	b.returning = extendWith(b.returning, columns, unqualifiedColumn)
+// Returning appends column names, each one unqualified column, or expressions
+// to the MERGE RETURNING projection.
+func (b MergeBuilder) Returning[T string | Expr](columns ...T) MergeBuilder {
+	b.returning = appendColumns(b.returning, columns)
 	return b
 }
 

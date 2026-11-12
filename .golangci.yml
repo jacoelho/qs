@@ -109,6 +109,7 @@ linters:
           files:
             - $all
             - "!**/integration/**"
+            - "!**/qsvet/**"
           allow:
             - $gostd
             - github.com/jacoelho/qs$
@@ -117,6 +118,17 @@ linters:
             - github.com/jacoelho/qs/projection$
             # Test fixture: types that share printed names with driver types.
             - github.com/jacoelho/qs/projection/internal/pgtype$
+
+        # The analyzer module matches qs by import path and never imports it.
+        qsvet:
+          list-mode: strict
+          files:
+            - "**/qsvet/**"
+          allow:
+            - $gostd
+            - github.com/jacoelho/qs/qsvet/discarded$
+            - golang.org/x/tools/go/analysis$
+            - golang.org/x/tools/go/analysis/
 
         integration:
           list-mode: strict

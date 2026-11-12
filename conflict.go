@@ -99,10 +99,8 @@ func AnyConflict() AnyConflictTarget {
 }
 
 // ConflictColumns starts inference from named columns.
-func ConflictColumns(first string, rest ...string) ConflictColumnsTarget {
-	columns := make([]string, 1+len(rest))
-	columns[0] = first
-	copy(columns[1:], rest)
+func ConflictColumns[T string | []string](first T, rest ...string) ConflictColumnsTarget {
+	columns := gather(first, rest)
 	return ConflictColumnsTarget{columnsTarget: conflictClause{
 		target:  conflictColumns,
 		columns: columns,
@@ -110,10 +108,8 @@ func ConflictColumns(first string, rest ...string) ConflictColumnsTarget {
 }
 
 // ConflictIndex starts inference from index elements.
-func ConflictIndex(first IndexElement, rest ...IndexElement) ConflictIndexTarget {
-	elements := make([]IndexElement, 1+len(rest))
-	elements[0] = first
-	copy(elements[1:], rest)
+func ConflictIndex[T IndexElement | []IndexElement](first T, rest ...IndexElement) ConflictIndexTarget {
+	elements := gather(first, rest)
 	return ConflictIndexTarget{indexTarget: conflictClause{
 		target: conflictIndex,
 		index:  elements,
@@ -152,18 +148,11 @@ func (c ConflictColumnsTarget) DoNothing() ConflictNothing {
 	return ConflictNothing{nothing: c.columnsTarget}
 }
 
-// DoUpdate completes a column-inference target with a non-empty assignment list.
-func (c ConflictColumnsTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
+// DoUpdate completes a column-inference target. first is one assignment or a list built at
+// run time, which is copied; an empty list fails rendering with ErrInvalid.
+func (c ConflictColumnsTarget) DoUpdate[T Assignment | []Assignment](first T, rest ...Assignment) ConflictUpdate {
 	c.columnsTarget.doNothing = false
-	c.columnsTarget.updates = ownedList(first, rest)
-	return ConflictUpdate{update: c.columnsTarget}
-}
-
-// DoUpdateSlice completes a column-inference target with a copy of assignments.
-// Nil or empty slices fail rendering with ErrInvalid. Bound values are not copied.
-func (c ConflictColumnsTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
-	c.columnsTarget.doNothing = false
-	c.columnsTarget.updates = cloneSlice(assignments)
+	c.columnsTarget.updates = gather(first, rest)
 	return ConflictUpdate{update: c.columnsTarget}
 }
 
@@ -173,18 +162,11 @@ func (c ConflictIndexTarget) DoNothing() ConflictNothing {
 	return ConflictNothing{nothing: c.indexTarget}
 }
 
-// DoUpdate completes an index-inference target with a non-empty assignment list.
-func (c ConflictIndexTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
+// DoUpdate completes an index-inference target. first is one assignment or a list built at
+// run time, which is copied; an empty list fails rendering with ErrInvalid.
+func (c ConflictIndexTarget) DoUpdate[T Assignment | []Assignment](first T, rest ...Assignment) ConflictUpdate {
 	c.indexTarget.doNothing = false
-	c.indexTarget.updates = ownedList(first, rest)
-	return ConflictUpdate{update: c.indexTarget}
-}
-
-// DoUpdateSlice completes an index-inference target with a copy of assignments.
-// Nil or empty slices fail rendering with ErrInvalid. Bound values are not copied.
-func (c ConflictIndexTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
-	c.indexTarget.doNothing = false
-	c.indexTarget.updates = cloneSlice(assignments)
+	c.indexTarget.updates = gather(first, rest)
 	return ConflictUpdate{update: c.indexTarget}
 }
 
@@ -194,18 +176,11 @@ func (c ConflictConstraintTarget) DoNothing() ConflictNothing {
 	return ConflictNothing{nothing: c.constraintTarget}
 }
 
-// DoUpdate completes a constraint target with a non-empty assignment list.
-func (c ConflictConstraintTarget) DoUpdate(first Assignment, rest ...Assignment) ConflictUpdate {
+// DoUpdate completes a constraint target. first is one assignment or a list built at
+// run time, which is copied; an empty list fails rendering with ErrInvalid.
+func (c ConflictConstraintTarget) DoUpdate[T Assignment | []Assignment](first T, rest ...Assignment) ConflictUpdate {
 	c.constraintTarget.doNothing = false
-	c.constraintTarget.updates = ownedList(first, rest)
-	return ConflictUpdate{update: c.constraintTarget}
-}
-
-// DoUpdateSlice completes a constraint target with a copy of assignments.
-// Nil or empty slices fail rendering with ErrInvalid. Bound values are not copied.
-func (c ConflictConstraintTarget) DoUpdateSlice(assignments []Assignment) ConflictUpdate {
-	c.constraintTarget.doNothing = false
-	c.constraintTarget.updates = cloneSlice(assignments)
+	c.constraintTarget.updates = gather(first, rest)
 	return ConflictUpdate{update: c.constraintTarget}
 }
 

@@ -19,12 +19,9 @@ type DeleteBuilder struct {
 	base      statementBase
 }
 
-// DeleteFrom starts a DELETE for a named table.
-func DeleteFrom(table string) PendingDelete { return DeleteFromTable(Table(table)) }
-
-// DeleteFromTable starts a DELETE for a relation expression.
-func DeleteFromTable(table Relation) PendingDelete {
-	return PendingDelete{DeleteBuilder{table: table}}
+// DeleteFrom starts a DELETE from table, a table name or a relation.
+func DeleteFrom[T string | Relation](table T) PendingDelete {
+	return PendingDelete{DeleteBuilder{table: relationOf(table)}}
 }
 
 // With adds CTEs before DELETE, in order. Duplicate CTE names are reported
@@ -40,15 +37,9 @@ func (p PendingDelete) WithRecursive(ctes ...WithQuery) PendingDelete {
 	return p
 }
 
-// Using appends named tables to the DELETE USING list.
-func (p PendingDelete) Using(tables ...string) PendingDelete {
-	p.statement.using = extendWith(p.statement.using, tables, table)
-	return p
-}
-
-// UsingExpr appends relation expressions to the DELETE USING list.
-func (p PendingDelete) UsingExpr(relations ...Relation) PendingDelete {
-	p.statement.using = extend(p.statement.using, relations...)
+// Using appends table names or relations to the DELETE USING list.
+func (p PendingDelete) Using[T string | Relation](tables ...T) PendingDelete {
+	p.statement.using = appendRelations(p.statement.using, tables)
 	return p
 }
 
@@ -60,14 +51,6 @@ func (p PendingDelete) UsingExpr(relations ...Relation) PendingDelete {
 // bound values and trusted SQL are not inspected.
 func (p PendingDelete) Where(first Condition, rest ...Condition) DeleteBuilder {
 	p.statement.rows = rowsWhere(first, rest)
-	return p.statement
-}
-
-// WhereSlice is Where for a run-time list, which is copied. An empty list
-// selects no rows to delete and fails rendering, as conditions that are TRUE
-// for every row do.
-func (p PendingDelete) WhereSlice(conditions []Condition) DeleteBuilder {
-	p.statement.rows = rowSelection{kind: rowsMatching, conditions: cloneSlice(conditions)}
 	return p.statement
 }
 
@@ -83,15 +66,10 @@ func (p PendingDelete) AllRows() DeleteBuilder {
 	return p.statement
 }
 
-// Returning appends expressions to the DELETE RETURNING projection.
-func (b DeleteBuilder) Returning(expressions ...Expr) DeleteBuilder {
-	b.returning = extend(b.returning, expressions...)
-	return b
-}
-
-// ReturningCols appends named columns to the DELETE RETURNING projection.
-func (b DeleteBuilder) ReturningCols(columns ...string) DeleteBuilder {
-	b.returning = extendWith(b.returning, columns, unqualifiedColumn)
+// Returning appends column names, each one unqualified column, or expressions
+// to the DELETE RETURNING projection.
+func (b DeleteBuilder) Returning[T string | Expr](columns ...T) DeleteBuilder {
+	b.returning = appendColumns(b.returning, columns)
 	return b
 }
 

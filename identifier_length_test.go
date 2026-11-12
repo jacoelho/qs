@@ -25,7 +25,7 @@ func TestNamesEqualAfterTruncationAreDuplicates(t *testing.T) {
 		{"insert_columns", InsertInto("t").Columns(x, y).Values(Value(1), Value(2)), "INSERT", "duplicate target column"},
 		{
 			"insert_qualified_targets",
-			InsertInto("t").Targets(Col("t", x), Col("t", y)).Values(Value(1), Value(2)),
+			InsertInto("t").Columns(Col("t", x), Col("t", y)).Values(Value(1), Value(2)),
 			"INSERT",
 			"duplicate target column",
 		},
@@ -52,7 +52,7 @@ func TestNamesEqualAfterTruncationAreDuplicates(t *testing.T) {
 			"returning_aliases",
 			DeleteFrom("t").
 				AllRows().
-				ReturningCols("id").
+				Returning("id").
 				ReturningRows(ReturningAliases{Old: x, New: y}),
 			"RETURNING",
 			"OLD and NEW aliases must differ",
@@ -66,7 +66,7 @@ func TestNamesEqualAfterTruncationAreDuplicates(t *testing.T) {
 		},
 		{
 			"json_table_columns",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(Col("doc"), "$", JSONColumn(x, TypeText), JSONColumn(y, TypeText)).Ref(),
 			),
 			"JSON_TABLE",
@@ -74,7 +74,7 @@ func TestNamesEqualAfterTruncationAreDuplicates(t *testing.T) {
 		},
 		{
 			"json_table_column_and_path",
-			Select(Star()).FromExpr(
+			Select(Star()).From(
 				JSONTable(
 					Col("doc"),
 					"$",
@@ -110,7 +110,7 @@ func TestNamesDistinctWithinTheLimitAreDistinct(t *testing.T) {
 			t.Parallel()
 			for _, statement := range []Statement{
 				InsertInto("t").Columns(columns[0], columns[1]).Values(Value(1), Value(2)),
-				Select(Star()).FromExpr(
+				Select(Star()).From(
 					JSONTable(
 						Col("doc"),
 						"$",

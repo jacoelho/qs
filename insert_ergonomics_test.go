@@ -12,17 +12,17 @@ func TestInsertSlicesCaptureStructure(t *testing.T) {
 	columns := []string{"a.b", `a"b`}
 	child := Select(Param("original"))
 	row := []WriteValue{Write(Scalar(child)), Value("retained")}
-	target := InsertInto("items").ColumnsSlice(columns)
+	target := InsertInto("items").Columns(columns...)
 	columns[0] = "wrong"
-	first := target.ValuesSlice(row)
-	second := target.ValuesSlice(row)
-	extended := first.ValuesSlice([]WriteValue{Value("later"), Value(nil)})
+	first := target.Rows(row)
+	second := target.Rows(row)
+	extended := first.Rows([]WriteValue{Value("later"), Value(nil)})
 	row[0], row[1] = Value("replaced"), Value("replaced")
 	checkSQL(t, extended, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2), ($3, $4)`, "original", "retained", "later", nil)
 	checkSQL(t, first, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2)`, "original", "retained")
 	checkSQL(t, second, `INSERT INTO "items" ("a.b", "a""b") VALUES ((SELECT $1), $2)`, "original", "retained")
 	positional := []WriteValue{Value(nil)}
-	statement := InsertInto("items").ValuesSlice(positional)
+	statement := InsertInto("items").Rows(positional)
 	positional[0] = Value("changed")
 	checkSQL(t, statement, `INSERT INTO "items" VALUES ($1)`, nil)
 }
@@ -30,7 +30,7 @@ func TestInsertSlicesCaptureStructure(t *testing.T) {
 func TestInsertSlicesRejectEmptySelectionsAndRows(t *testing.T) {
 	t.Parallel()
 	for _, columns := range [][]string{nil, {}} {
-		target := InsertInto("items").ColumnsSlice(columns)
+		target := InsertInto("items").Columns(columns...)
 		for _, statement := range []Statement{
 			target.Values(Value(1)), target.From(Select(Star())), target.DefaultValues(),
 		} {
@@ -44,9 +44,9 @@ func TestInsertSlicesRejectEmptySelectionsAndRows(t *testing.T) {
 	}
 	for _, row := range [][]WriteValue{nil, {}} {
 		for _, statement := range []InsertRows{
-			InsertInto("items").ValuesSlice(row).Values(Value(1)),
-			InsertInto("items").Columns("a").ValuesSlice(row).Values(Value(1)),
-			InsertInto("items").Values(Value(1)).ValuesSlice(row).Values(Value(2)),
+			InsertInto("items").Rows(row).Values(Value(1)),
+			InsertInto("items").Columns("a").Rows(row).Values(Value(1)),
+			InsertInto("items").Values(Value(1)).Rows(row).Values(Value(2)),
 		} {
 			checkError(t, statement, ErrInvalid)
 		}
@@ -75,7 +75,7 @@ func TestRowWidthDiagnostics(t *testing.T) {
 		{"no rows", Values(), "VALUES", "requires at least one row"},
 		{"empty first", Values().Row(), "VALUES", "row 1: expected at least 1 value, got 0"},
 		{"empty later", Values(secret).Row(), "VALUES", "row 2: expected at least 1 value, got 0"},
-		{"empty insert", InsertInto("items").Values(Value(secret)).ValuesSlice(nil), "INSERT", "row 2: expected at least 1 value, got 0"},
+		{"empty insert", InsertInto("items").Values(Value(secret)).Rows(nil), "INSERT", "row 2: expected at least 1 value, got 0"},
 		{"unknown values", Values(secret).RowExpr(UnsafeSQL("1")).Row(2, 3), "VALUES", "row 3: expected 1 value, got 2 values"},
 		{
 			"unknown insert",

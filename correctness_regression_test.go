@@ -28,7 +28,7 @@ func TestCorrectnessRelationColUsesLiteralColumnComponent(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, args, err := qs.Select(tc.relation.Col(tc.column)).FromExpr(tc.relation).ToSQL()
+			got, args, err := qs.Select(tc.relation.Col(tc.column)).From(tc.relation).ToSQL()
 			if err != nil || got != tc.want || len(args) != 0 {
 				t.Fatalf("SQL=%q args=%#v err=%v; want SQL=%q and no arguments", got, args, err, tc.want)
 			}
@@ -46,14 +46,14 @@ func TestCorrectnessRelationColUsesLiteralColumnComponent(t *testing.T) {
 	} {
 		t.Run("star/"+tc.name, func(t *testing.T) {
 			t.Parallel()
-			if got, args, err := qs.Select(tc.relation.Star()).FromExpr(tc.relation).ToSQL(); err != nil || got != tc.want || len(args) != 0 {
+			if got, args, err := qs.Select(tc.relation.Star()).From(tc.relation).ToSQL(); err != nil || got != tc.want || len(args) != 0 {
 				t.Fatalf("SQL=%q args=%#v err=%v; want SQL=%q", got, args, err, tc.want)
 			}
 		})
 	}
 
 	for _, relation := range []qs.Relation{qs.Table(""), qs.Table("a", "", "b"), qs.Table("a", "\x00"), qs.Table("a", "\xff")} {
-		if _, _, err := qs.Select(relation.Col("id")).FromExpr(relation).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
+		if _, _, err := qs.Select(relation.Col("id")).From(relation).ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 			t.Fatalf("malformed table path accepted: %v", err)
 		}
 	}
@@ -87,12 +87,12 @@ func TestCorrectnessMembershipAllowsUnknownWidths(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if sql, args, err := qs.Select(tc.condition.Expr()).FromExpr(relation).ToSQL(); err != nil || sql != tc.want || len(args) != 0 {
+			if sql, args, err := qs.Select(tc.condition.Expr()).From(relation).ToSQL(); err != nil || sql != tc.want || len(args) != 0 {
 				t.Fatalf("SQL=%q args=%#v err=%v; want %q without arguments", sql, args, err, tc.want)
 			}
 		})
 	}
-	bad := qs.Select(known.InQuery(qs.ValuesExpr(qs.LiteralInt(1))).Expr()).FromExpr(relation)
+	bad := qs.Select(known.InQuery(qs.ValuesExpr(qs.LiteralInt(1))).Expr()).From(relation)
 	if _, _, err := bad.ToSQL(); !errors.Is(err, qs.ErrInvalid) {
 		t.Fatalf("known width mismatch was accepted: %v", err)
 	}
@@ -265,11 +265,11 @@ func TestCorrectnessScalarComparisonsRejectUntypedNil(t *testing.T) {
 		{"left_operand", qs.Param(nil).Eq(qs.Col("value"))},
 		{"between_value", qs.Param(nil).Between(qs.Col("a"), qs.Col("b"))},
 		{"in_left", qs.Param(nil).In(qs.Param(1))},
-		{"in_query_left", qs.Param(nil).InQuery(qs.SelectCols("id").From("t"))},
+		{"in_query_left", qs.Param(nil).InQuery(qs.Select("id").From("t"))},
 		{"row_in_left", qs.Row(qs.Param(nil), qs.Col("a")).In(qs.Row(qs.Param(1), qs.Param(2)))},
 		{
 			"row_in_query_left",
-			qs.Row(qs.Param(nil), qs.Col("a")).InQuery(qs.SelectCols("a", "b").From("t")),
+			qs.Row(qs.Param(nil), qs.Col("a")).InQuery(qs.Select("a", "b").From("t")),
 		},
 		{"nested_row", qs.Col("value").Eq(qs.Row(qs.Row(qs.Param(nil)).Expr(), qs.Param(1)).Expr())},
 		{"any_array", qs.Col("value").Eq(qs.AnyArray(qs.Param(nil)))},

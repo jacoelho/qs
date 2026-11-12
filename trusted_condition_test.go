@@ -54,7 +54,7 @@ func TestTrustedConditionsAreUnitsAtEveryConditionList(t *testing.T) {
 	runCases(t, []renderCase{
 		{"having", Select(Col("a")).From("t").GroupBy("a").Having(raw(), x),
 			`SELECT "a" FROM "t" GROUP BY "a" HAVING (a = 1 OR b = 2) AND ("x" = $1)`, []any{1}},
-		{"join_on", Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).On(raw(), x)),
+		{"join_on", Select(Star()).From(InnerJoin(Table("a"), Table("b")).On(raw(), x)),
 			`SELECT * FROM ("a" JOIN "b" ON (a = 1 OR b = 2) AND ("x" = $1))`, []any{1}},
 		{"aggregate_filter", Select(CountAll().Filter(raw(), x)).From("t"),
 			`SELECT count(*) FILTER (WHERE (a = 1 OR b = 2) AND ("x" = $1)) FROM "t"`, []any{1}},

@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestRowsReuseWorkingMemory guards the claim that All and Collect reuse their working
+// TestRowsReuseWorkingMemory guards the claim that All, Collect and CollectPtr reuse their working
 // memory from one row to the next. It measures the allocations a read gains between few
 // and many rows, so fixed costs cancel. Bounds are upper bounds.
 //
@@ -60,6 +60,17 @@ func TestRowsReuseWorkingMemory(t *testing.T) {
 				return len(out), 0, err
 			},
 			wantPresent: none,
+		},
+		{
+			// One per row: the D each pointer holds. Working memory is still reused.
+			name: "nullable columns through CollectPtr",
+			scan: steady,
+			read: func(rows *benchRows) (int, int, error) {
+				out, err := flat.CollectPtr(rows)
+				return len(out), 0, err
+			},
+			wantPresent: none,
+			extra:       2000,
 		},
 		{name: "absent group", scan: steady, read: collectGroup, wantPresent: none},
 		{name: "present group", scan: present, read: collectGroup, wantPresent: all, extra: 2000},

@@ -75,7 +75,7 @@ func TestSeekAfterRendersKeysetPredicate(t *testing.T) {
 			"group_by",
 			Select(Col("t", "a"), CountAll()).
 				From("t").
-				GroupByExpr(Col("t", "a")).
+				GroupBy(Col("t", "a")).
 				OrderBy(Col("t", "a").Asc()).
 				SeekAfter(1),
 			`SELECT "t"."a", count(*) FROM "t" WHERE ("t"."a" > $1) GROUP BY "t"."a" ORDER BY "t"."a" ASC`,
@@ -311,7 +311,7 @@ func TestKeysetPagesRenderWithoutAllocating(t *testing.T) {
 	}{
 		{
 			"uniform",
-			SelectCols("id", "name").
+			Select("id", "name").
 				From("users").
 				Where(Col("active").Eq(Param(true))).
 				OrderBy(Col("users", "created_at").Desc(), Col("users", "id").Desc()).
@@ -320,7 +320,7 @@ func TestKeysetPagesRenderWithoutAllocating(t *testing.T) {
 		},
 		{
 			"mixed",
-			SelectCols("id", "name").
+			Select("id", "name").
 				From("users").
 				Where(Col("active").Eq(Param(true))).
 				OrderBy(Col("users", "name").Asc(), Col("users", "id").Desc()).

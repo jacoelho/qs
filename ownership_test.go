@@ -68,7 +68,7 @@ func TestDerivedStatementsLeaveTheirSourceUnchanged(t *testing.T) {
 	t.Parallel()
 
 	child := Select(Param("child"))
-	parent := Select(Scalar(child)).With(CTE("c", child)).FromExpr(child.As("s"))
+	parent := Select(Scalar(child)).With(CTE("c", child)).From(child.As("s"))
 	const parentSQL = `WITH "c" AS (SELECT $1) SELECT (SELECT $2) FROM (SELECT $3) AS "s"`
 
 	widened := child.Columns(Param("later"))
@@ -355,7 +355,7 @@ func TestDepthLimit(t *testing.T) {
 	// the one way to reach the limit through queries.
 	nested := Select(LiteralInt(1))
 	for range 100 {
-		nested = Select(Star()).FromExpr(nested.As("q"))
+		nested = Select(Star()).From(nested.As("q"))
 	}
 	checkErrorWithOptions(t, nested, Options{MaxDepth: 50}, ErrDepth)
 	if _, _, err := ToSQLWith(nested, Options{MaxDepth: 1000}); err != nil {
@@ -427,7 +427,7 @@ func TestExpressionsSnapshotSlices(t *testing.T) {
 func TestConcurrentBranchesFromSharedBase(t *testing.T) {
 	t.Parallel()
 
-	base := SelectCols("id").From("users").Where(Col("active").Eq(Param(true)))
+	base := Select("id").From("users").Where(Col("active").Eq(Param(true)))
 	for range 3 {
 		base = base.Where(Col("deleted_at").IsNull()).OrderBy(Col("id").Asc())
 	}
@@ -480,7 +480,7 @@ func TestIdentifierAndValueBoundaries(t *testing.T) {
 	)
 }
 func TestReusableAppendAllocations(t *testing.T) {
-	q := SelectCols("id", "name").
+	q := Select("id", "name").
 		From("users").
 		Where(Col("active").Eq(Param(true)), Col("id").In(Param(1), Param(2), Param(3))).
 		OrderBy(Col("id").Asc()).

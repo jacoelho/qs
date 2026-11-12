@@ -24,7 +24,7 @@ func TestJoinCompletionForms(t *testing.T) {
 			t.Parallel()
 			checkSQL(
 				t,
-				Select(Star()).FromExpr(tc.join),
+				Select(Star()).From(tc.join),
 				tc.sql,
 			)
 		})
@@ -35,7 +35,7 @@ func TestJoinUsingAliasAndRelationAlias(t *testing.T) {
 	t.Parallel()
 
 	checkSQL(t,
-		Select(Star()).FromExpr(
+		Select(Star()).From(
 			InnerJoin(Table("a"), Table("b")).UsingAs("joined", "id").As("whole"),
 		),
 		`SELECT * FROM ("a" JOIN "b" USING ("id") AS "joined") AS "whole"`,
@@ -51,22 +51,22 @@ func TestJoinCompletionOwnsQualifiersAndSharesOperands(t *testing.T) {
 	completed := pending.On(conditions[0], conditions[1:]...)
 	conditions[0] = Col("a", "id").Eq(Param(99))
 	conditions[1] = Condition{}
-	checkSQL(t, Select(Star()).FromExpr(completed), `SELECT * FROM ("a" JOIN "b" ON ("a"."id" = $1) AND ("b"."active" = $2))`, 1, true)
+	checkSQL(t, Select(Star()).From(completed), `SELECT * FROM ("a" JOIN "b" ON ("a"."id" = $1) AND ("b"."active" = $2))`, 1, true)
 
 	columns := []string{"id", "tenant_id"}
 	using := pending.Using(columns[0], columns[1:]...)
 	columns[0], columns[1] = "changed", "also_changed"
-	checkSQL(t, Select(Star()).FromExpr(using), `SELECT * FROM ("a" JOIN "b" USING ("id", "tenant_id"))`)
+	checkSQL(t, Select(Star()).From(using), `SELECT * FROM ("a" JOIN "b" USING ("id", "tenant_id"))`)
 
-	checkSQL(t, Select(Star()).FromExpr(pending.On(Col("a", "id").Eq(Col("b", "id")))), `SELECT * FROM ("a" JOIN "b" ON ("a"."id" = "b"."id"))`)
-	checkSQL(t, Select(Star()).FromExpr(pending.Using("id")), `SELECT * FROM ("a" JOIN "b" USING ("id"))`)
+	checkSQL(t, Select(Star()).From(pending.On(Col("a", "id").Eq(Col("b", "id")))), `SELECT * FROM ("a" JOIN "b" ON ("a"."id" = "b"."id"))`)
+	checkSQL(t, Select(Star()).From(pending.Using("id")), `SELECT * FROM ("a" JOIN "b" USING ("id"))`)
 }
 
 func TestNestedJoinOverSubquery(t *testing.T) {
 	t.Parallel()
 
 	child := Select(Param("before"))
-	query := Select(Star()).FromExpr(
+	query := Select(Star()).From(
 		InnerJoin(InnerJoin(Subquery(child, "a"), Table("b")).On(True()), Table("c")).On(True()),
 	)
 	checkSQL(t, query, `SELECT * FROM (((SELECT $1) AS "a" JOIN "b" ON TRUE) JOIN "c" ON TRUE)`, "before")
@@ -75,15 +75,15 @@ func TestNestedJoinOverSubquery(t *testing.T) {
 func TestJoinCompletionInvalidInputsRemainAtomic(t *testing.T) {
 	t.Parallel()
 
-	checkError(t, Select(Star()).FromExpr((PendingJoin{}).On(True())), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr((PendingJoin{}).Using("id")), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).On(Condition{})), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr(InnerJoin(Relation{}, Table("b")).On(True())), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).Using("")), ErrInvalid)
-	checkError(t, Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).UsingAs("bad\x00", "id")), ErrInvalid)
+	checkError(t, Select(Star()).From((PendingJoin{}).On(True())), ErrInvalid)
+	checkError(t, Select(Star()).From((PendingJoin{}).Using("id")), ErrInvalid)
+	checkError(t, Select(Star()).From(InnerJoin(Table("a"), Table("b")).On(Condition{})), ErrInvalid)
+	checkError(t, Select(Star()).From(InnerJoin(Relation{}, Table("b")).On(True())), ErrInvalid)
+	checkError(t, Select(Star()).From(InnerJoin(Table("a"), Table("b")).Using("")), ErrInvalid)
+	checkError(t, Select(Star()).From(InnerJoin(Table("a"), Table("b")).UsingAs("bad\x00", "id")), ErrInvalid)
 	checkError(
 		t,
-		Select(Star()).FromExpr(InnerJoin(Table("a"), Table("b")).Using("id").As("bad\x00")),
+		Select(Star()).From(InnerJoin(Table("a"), Table("b")).Using("id").As("bad\x00")),
 		ErrInvalid,
 	)
 }

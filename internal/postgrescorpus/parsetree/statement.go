@@ -50,7 +50,7 @@ func (b *builder) selectStmt(n node) qs.Rowset {
 }
 
 func (b *builder) setOperation(n node, op string) qs.Rowset {
-	var combine func(left, right qs.Rowset, rest ...qs.Rowset) qs.SetBuilder
+	var combine func(sets ...qs.Rowset) qs.SetBuilder
 	all := n.flag("all")
 	switch {
 	case op == "SETOP_UNION" && all:
@@ -100,7 +100,7 @@ func (b *builder) rejectLocks(n node) {
 func (b *builder) plainSelect(n node) qs.Rowset {
 	query := qs.SelectNoColumns()
 	if targets := n.nodes("targetList"); len(targets) != 0 {
-		query = qs.SelectSlice(b.projection(targets, "projection"))
+		query = qs.Select(b.projection(targets, "projection")...)
 	}
 	if distinct := n.nodes("distinctClause"); len(distinct) != 0 {
 		// Plain DISTINCT is a list holding one absent member.
@@ -111,7 +111,7 @@ func (b *builder) plainSelect(n node) qs.Rowset {
 		}
 	}
 	if from := n.nodes("fromClause"); len(from) != 0 {
-		query = query.FromExpr(b.relations(from)...)
+		query = query.From(b.relations(from)...)
 	}
 	if where := n.node("whereClause"); where.present() {
 		query = query.Where(b.condition(where))
@@ -121,7 +121,7 @@ func (b *builder) plainSelect(n node) qs.Rowset {
 		for index, item := range group {
 			expressions[index] = b.groupExpr(item)
 		}
-		query = query.GroupByExpr(expressions...)
+		query = query.GroupBy(expressions...)
 	}
 	if n.flag("groupDistinct") {
 		query = query.GroupByDistinct()

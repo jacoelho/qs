@@ -1,7 +1,7 @@
 # Architecture
 
-This is the architecture entry point. [README.md](../README.md) owns public usage
-and caller contracts; the [corpus README](postgrescorpus/README.md) owns
+This is the architecture entry point. [README.md](../README.md) and the
+[guides](../docs/) it links own public usage and caller contracts; the [corpus README](postgrescorpus/README.md) owns
 construction-support measurement and fixture maintenance.
 
 The [projection package documentation](../projection/doc.go) owns the result
@@ -25,7 +25,7 @@ those when a row is scanned.
 
 `ScanInto` is the one row read; `Scan` is `ScanInto` on a new value, zeroed on error.
 The caller owns the value passed to `ScanInto`, including what reusing it across rows
-shares. `All` and `Collect` own the row loop and its completion check, `rows.Err`, and
+shares. `All`, `Collect` and `CollectPtr` own the row loop and its completion check, `rows.Err`, and
 read through `Rows`, the three methods `pgx.Rows` and `*sql.Rows` have in common. They
 also own closing the result set, on every way out of the loop including a panic, so a
 caller cannot leave a connection busy by forgetting it. `pgx.Rows.Close()` and
@@ -47,7 +47,9 @@ the loop stopping at the first error. A `Map` input is a new allocation for ever
 because a set inside it may keep a pointer to it. The `*T` a `ColumnNull` set receives
 is the driver's allocation: only the cell holding that pointer is pooled, so pooling
 the value would break what a set may keep. `Collect` reads each row into its slot
-of the result slice and `All` into a new value. A scan function must therefore not
+of the result slice, and `All` and `CollectPtr` each into a new value; `CollectPtr`
+returns that value's address, so it alone promises that a pointer kept into a row
+points into what the caller receives. A scan function must therefore not
 keep its destination list past its return, which neither driver's `Scan` does. A
 single `Scan` or `ScanInto` has no scratch and allocates what it needs.
 
@@ -319,11 +321,11 @@ path; typed Field and JSON helpers remove the relation qualifier while
 retaining field and subscript steps. Row writes preserve tuple versus ROW
 syntax.
 
-`InsertTarget` owns only the table descriptor. Optional `Columns` or `Targets`
-selection creates `InsertColumnsTarget`, which captures one target list and
-exposes only rows, SELECT and default sources. Required-first methods prevent
-empty target lists; `ColumnsSlice` instead records explicit selection in
-`insertBase.targetsSelected` and rejects empty lists when rendered. Assignment
+`InsertTarget` owns only the table descriptor. Optional `Columns` selection,
+by names or by target expressions, creates `InsertColumnsTarget`, which
+captures one target list and exposes only rows, SELECT and default sources.
+`Columns()` does not compile; a spread run-time list records explicit selection
+in `insertBase.targetsSelected` and an empty one is rejected when rendered. Assignment
 INSERTs start directly from `InsertTarget`, as do `FromArrays` and `FromNamed`,
 which select the columns and the SELECT source in one call (rows 44 and 46).
 Neither target selector is a
@@ -332,16 +334,16 @@ statement or rowset. Each source selection creates an `InsertRows`,
 never rowsets, and a completed one cannot change its column list or switch
 source roles. An `InsertSelect` has no method that replaces its source: the
 columns `FromArrays` and `FromNamed` select are paired with that source, and a
-replacement would keep one without the other. `ValuesSlice` copies each row slice and retains empty rows as
+replacement would keep one without the other. `Rows` copies each row slice and retains empty rows as
 invalid input; later rows cannot erase that failure. Defaults omit identity
 overriding.
 
 Conflict selectors distinguish unrestricted, inference and constraint targets.
 Completion produces `ConflictNothing` or `ConflictUpdate`; only updates have an
 action predicate. Generic OnConflict methods accept the exact completed value
-types and normalize into one private optional value. Targeted selectors keep
-`DoUpdate(first, rest...)` for statically nonempty calls; `DoUpdateSlice`
-accepts dynamic lists and copies them. Nil and empty lists fail rendering with
+types and normalize into one private optional value. Targeted selectors take
+`DoUpdate(first, rest...)`, whose first argument is an assignment or a
+run-time list (row 41); lists are copied. Nil and empty lists fail rendering with
 `ErrInvalid`, never become `DO NOTHING`. `SetAllExcluded` treats column names
 literally on both assignment sides; explicit `Assign` owns field and subscript
 targets.
@@ -363,9 +365,9 @@ filter through `And`. Bound values and trusted SQL are not read.
 The zero `UpdateBuilder` and `DeleteBuilder` select nothing and fail. Trusted
 SQL is not inspected. `AllRows` is a structural guard, not authorization.
 
-SELECT's projection is chosen by its constructor: `Select(first, rest...)`,
-`SelectCols` and `SelectSQL` are nonempty by signature, `SelectSlice` takes a
-run-time list and fails rendering when it is empty, and `SelectNoColumns` is
+SELECT's projection is chosen by its constructor: `Select` takes names or
+expressions and `SelectSQL` trusted text; a literal call of either cannot be
+empty, a spread run-time list fails rendering when it is empty, and `SelectNoColumns` is
 the only zero-column form. Queries hold one row limit, a private variant of
 none, a count, ALL or a count WITH TIES. The `Limit` family replaces it, as
 `Offset` replaces the offset, so LIMIT and FETCH FIRST cannot both be present.
@@ -602,7 +604,7 @@ alternatives are not supported APIs or implementation commitments.
 | 1 | NULL/absence | Keep public containers; false validity binds NULL. Opaque accessors have lower payoff. |
 | 2 | CASE | Separate concrete branch roles, entered through a pending value that only adds the first branch. Reject sticky misuse state and a render check for zero branches. |
 | 3 | INSERT source | Column selection before source completion; independent concrete roles; reject shared stages and competing source flags. |
-| 4 | Join qualification | Pending qualifiers, completed CROSS/NATURAL; reject general qualifier methods and interface boxing. |
+| 4 | Join qualification | Pending qualifiers, completed CROSS/NATURAL; reject general qualifier methods and interface boxing. `SelectBuilder` join methods take the joined table as a name or a `Relation` (row 47), so each join kind has one method. |
 | 5 | Conflict target/action | Concrete selectors and completed actions; exact generic union, normalized optional value. |
 | 6 | MERGE | Category selectors and terminal branches; pre-action override avoids an extra completion wrapper. |
 | 7 | Window frames | Keep dynamic pair/inheritance checks; elaborate bound typestate cannot establish effective ordering. |
@@ -634,14 +636,16 @@ alternatives are not supported APIs or implementation commitments.
 | 33 | Count derivation | `CountRows` relation that appends ORDER BY expressions other than names, ordinals and bound values to the counted projection as `qs_order_N`. Reject removing clauses from a copy at the call (cannot remove locks and relies on callers removing every clause), projection replacement (miscounts DISTINCT and GROUP BY), keeping ORDER BY (PostgreSQL keeps subquery sorts), rejecting terms qs cannot classify (breaks ordinary keys such as `lower(name)`) and detecting aggregates or set-returning functions by name (qs cannot classify `Call` or trusted SQL, so misses would miscount silently). Unaliased appended expressions are rejected because their default output names can capture DISTINCT ON and GROUP BY references. Trusted SQL naming an output column fails in PostgreSQL instead of counting wrongly. |
 | 34 | Keyset key resolution | Reject bare-name keys while a cursor is active; callers qualify keys or page a `Subquery`. Reject deriving output labels as PostgreSQL does (version-specific, such as `?column?` for `true` in 18, and blind to trusted SQL and `(c).*`), accepting bare keys under a provably safe projection (a select-list change elsewhere would invalidate the cursor), qualifying bare keys automatically (rewrites identifiers and is ambiguous across joins), filtering in a wrapping query (keys must be output columns, and an unflattened subquery loses the index seek) and rewrapping bare keys in a no-op expression (`COALESCE(a)` sorts without the index). |
 | 35 | Corpus oracle | Frozen PostgreSQL 18 parse trees built by a Go adapter (`internal/postgrescorpus/parsetree`) through exported constructors only; `go test` replays every record with the standard library. The pinned PostgreSQL parser grades the output offline, when fixtures are regenerated. Reject generated Go test shards written by a Python emitter (the previous shape): 108k lines no compiler checked at their source, regenerated on every API change. Reject parsing inside `go test`: a PostgreSQL parser means cgo and a dependency in a standard-library module. Reject the adapter grading itself: it would agree with its own mistakes, so a record is `verified` only when the reparsed SQL equals the source tree. Out-of-scope and gap classification is the adapter's own; pinned counts keep it from growing unnoticed. |
-| 36 | SELECT projection | Required-first `Select`, `SelectCols` and `SelectSQL`; `SelectSlice` for run-time lists; `SelectNoColumns` for zero columns. Reject a variadic `Select` that fails rendering when empty: a literal call can be checked by its signature. Reject a nonempty-list type for `SelectSlice`: projections and callers assemble lists at run time, so the check would only move. |
+| 36 | SELECT projection | `Select[T string \| Expr](columns ...T)` and required-first `SelectSQL`; `SelectNoColumns` for zero columns. `Select()` does not compile because `T` cannot be inferred, so a literal call is still checked by its signature; a spread empty list fails rendering. Reject a nonempty-list type for the run-time list: projections and callers assemble lists at run time, so the check would only move. |
 | 37 | SQL/JSON | One builder type per form, itself the expression node; method sets generated from one table of the clauses PostgreSQL accepts per form. Reject one builder with option enums (the previous shape: `JSONBehavior`, `JSONWrapper`, `JSONQuotes`, `JSONNullPolicy` values legal on some forms only, each checked at render or by the server). Reject an input-role type per operand position: one sealed `JSONOperand` covers every position that takes FORMAT JSON. Reject `Not` on `IsJSON`: PostgreSQL parses IS NOT JSON as NOT over the predicate, which `Condition().Not()` already states. Reject `JSONCol` and `JSONBCol` shorthands: `JSONExpr(Col(...))` says the same. Reject typed column kinds for `JSON_VALUE` and `JSON_QUERY` evaluation of a `JSON_TABLE` column: PostgreSQL chooses by SQL type, which qs does not model. |
 | 38 | Row lists | A bulk `Rows` entry that copies once; single-row methods keep the clipped append and document its cost. Reject amortised growth through an array shared by copies with an atomic high-water mark: sound, but it puts shared mutable state inside values documented as immutable, adds a second list representation, lets a short value retain its siblings' rows, and costs an allocation on the two-row statement. Reject backward-linked immutable chunks: no shared mutation, but more bytes than the shared array and the renderer and width checks would iterate chunks. Reject applying either to every list: the others are sized by the query a person writes, not by data. |
 | 39 | Placeholders in trusted SQL | Reject at `UnsafeSQL`, with no opt-out. Reject documenting the rule only (the previous shape): `x = $1` beside a bound value rendered two uses of one slot. Reject renumbering trusted placeholders: it needs their arguments, which trusted text does not carry. Reject an opt-out for `PREPARE` and SQL function bodies: utility statements are out of scope, and a dollar-quoted or string body is not inspected. |
 | 40 | Shared parameters | Opt-in `SharedParam` with pointer identity. Reject deduplicating equal `Param` values: equality of `any` is not defined for every driver value, and PostgreSQL infers one type per `$n`, so merging would change which queries type-check. Reject making every `Param` an identity: an allocation per value and the same silent change of inference. Reject named parameters: a string identity can collide, and two values under one name need a render error. Reject render-once, rebind-arguments: statement shape depends on values (`In` lists, nil checks, limits) and no measurement shows render cost matters. |
-| 41 | Run-time lists | `first, rest...` where a literal call can be checked by its signature, plus a `Slice` form for lists built at run time (`SelectSlice`, `ValuesSlice`, `DoUpdateSlice`, `WhereSlice`, `UnionSlice` and its siblings). `SeekAfter` is variadic only, because its width is checked against ORDER BY at render either way and an empty cursor means the first page. A set-operation `Slice` of one rowset is that rowset: the alternative pushed a length branch onto every caller. An empty mutation `WhereSlice` fails rendering, keeping the all-rows guard. |
+| 41 | Run-time lists | One method per clause, never a `Slice` twin. Where the clause needs at least one element and the element is a plain type, the signature is `[T X \| []X](first T, rest ...X)`: a literal call cannot be empty, a run-time list is passed bare, and extras may follow either (`Set`, `DoUpdate`, `ThenUpdate`, `ThenInsert`, `ConflictColumns`, `ConflictIndex`, `FromArrays`, `UnnestAs`). The list is copied; an empty one fails rendering, except that the appending `Set` adds nothing and fails only when the statement ends with no assignments. `gather` owns the element-or-list decision. Set operations are plain variadic instead, because `Rowset \| []Rowset` is not a legal constraint for an interface with methods: none fails rendering and one rowset is that rowset, which spares every caller a length branch. `SeekAfter` is variadic only, because its width is checked against ORDER BY at render either way and an empty cursor means the first page. Mutation `Where` stays required-first with no list form: `Where(And(conditions...))` is the one spelling, for two or more conditions it renders one more pair of parentheses than the removed `WhereSlice`, and an empty list still fails rendering through the all-rows guard. Reject keeping both spellings: two names per clause for one decision. Generic methods cannot be method values without instantiation and cannot satisfy interfaces; the corpus adapter instantiates them explicitly. |
 | 42 | Condition and expression | Two types, converted by `Expr.Condition` and `Condition.Expr`, with `Condition.As`, `Asc` and `Desc` for the positions callers reached most. Reject one type: `Where` could not refuse a non-boolean expression's role, and the trusted-condition boundary has no owner. Reject an interface accepted by `Select` and `OrderBy`: it boxes every expression. `AsCondition` was removed so the conversion has one spelling. |
 | 43 | JSON document selectors | `JSONDocument` and `JSONBDocument` methods render keys, path steps, indexes and JSONPath text as SQL literals; `JSONGet` and its relatives over `Param` bind a selector chosen at run time, where a bound index needs its own `integer` cast to avoid the text-key overload. Reject binding them (the previous shape): each call made a fresh parameter, so one selector in the select list and in GROUP BY, or in DISTINCT and ORDER BY, was two expressions that PostgreSQL refuses, and a generic plan could not match an expression index. Reject both spellings on the document types: two methods per operator whose difference shows only at the server. The cost accepted is that a selector taken from request data yields one statement text per value. |
 | 44 | Columnar arrays | `NamedArray` pairs a column name with its array; `UnnestAs` and `InsertTarget.FromArrays` render both lists from those pairs. Reject separate name and array lists (the previous shape, `Columns` beside a projection of `Unnest` calls, or `TableFunc(Unnest(...)).As(alias, names...)`): the pairing was positional across two lists. Reject deriving insert columns from a relation's aliases: the ordinality column and renamed columns make the coupling implicit. Reject inferring the element type from the Go slice type: a Go type does not determine the PostgreSQL type and foreign types would need reflection. `FromArrays` exists only on `InsertTarget`, because it selects the columns itself. |
-| 45 | Value-taking shortcuts | `Field[T].EqAny` binds one array for a typed field. Reject `Field` wrappers over scalar functions such as COALESCE (a facade that would grow per function, and a bound fallback where callers wrote a constant), lateral-join methods on `SelectBuilder` (a second spelling of `LeftJoinExpr(Lateral(r), True())` that widens the join method set of row 4), and alternating key and value lists for JSON objects (`JSONKey` with `JSONObject` is the pair-typed form). |
+| 45 | Value-taking shortcuts | `Field[T].EqAny` binds one array for a typed field. Reject `Field` wrappers over scalar functions such as COALESCE (a facade that would grow per function, and a bound fallback where callers wrote a constant), lateral-join methods on `SelectBuilder` (a second spelling of `LeftJoin(Lateral(r), True())` that widens the join method set of row 4), and alternating key and value lists for JSON objects (`JSONKey` with `JSONObject` is the pair-typed form). |
 | 46 | INSERT targets by name | `InsertTarget.FromNamed` takes the target columns from a SELECT's output columns, read when it is called: the last part of a column reference, or an alias. Reject an ordinality option on `FromArrays`: it covers arrays plus a position and nothing else, not a constant, a join or `jsonb_array_elements`. Reject deriving insert columns from a relation's aliases (row 44). Reject the label PostgreSQL would give an unaliased expression, as row 34 does: it is version-specific and blind to trusted SQL, so such a column fails rendering. Reject a pair list of target and expression with its own FROM: it would grow WHERE and joins and become a second SELECT builder. Reject `InsertSelect.From` (the previous shape), which replaced the source of a completed INSERT and kept its columns: after `FromArrays` or `FromNamed` that pairs the old names with new expressions by position. A caller builds the other INSERT from its target. |
+| 47 | Names or objects | A clause that names columns or tables takes `[T string \| Expr]` or `[T string \| Relation]`: `Select`, `Columns`, `GroupBy`, `Returning`, `InsertTarget.Columns`, `From`, `Using`, the join methods and the statement constructors. A string is one unqualified identifier. Reject the `Expr`/`Cols`/`Table` twins they replace: two names per clause, chosen by argument type the compiler already knows. Reject `any` parameters: a wrong type would fail at render. Names and objects cannot mix in one call; reject a common interface that would allow it, because it boxes every expression (row 42). `appendColumns` and `appendRelations` own the conversion. |
+| 48 | Discarded builder results | Builders are values, so a call whose result is dropped has no effect and nothing at render can see it. `qsvet/discarded` is a `go vet` analyzer that reports such calls to exported qs functions and methods. It is a separate module so the core keeps no dependencies, and it matches qs by import path so it never imports it. `MustToSQL` is exempt (tests call it for its panic) and `projection` is not checked (its readers have effects). Reject a render-time check: a dropped value never reaches a renderer. Reject relying on staticcheck: it does not report these calls. |

@@ -19,7 +19,7 @@ func TestUpsertLiteralDottedColumn(t *testing.T) {
 	statement := qs.InsertInto("settings").
 		Columns("id", "a.b").
 		Values(qs.Value(42), qs.Value("new")).
-		OnConflict(qs.ConflictColumns("id").DoUpdateSlice(qs.SetAllExcluded("a.b"))).
+		OnConflict(qs.ConflictColumns("id").DoUpdate(qs.SetAllExcluded("a.b"))).
 		Returning(qs.Col("a.b"))
 	sql, args, err := session.render(t, statement)
 	if err != nil {
@@ -76,7 +76,7 @@ func TestLiteralRelationColumnIdentity(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query := qs.Select(tc.column.Cast(qs.TypeText)).FromExpr(tc.relation)
+			query := qs.Select(tc.column.Cast(qs.TypeText)).From(tc.relation)
 			sql, args, err := session.render(t, query)
 			if err != nil {
 				t.Fatal(err)

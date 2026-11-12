@@ -135,9 +135,9 @@ func TestInsertColumnSelectorOwnsTargetsAcrossRoles(t *testing.T) {
 		Values(Write(Param("row-2"))).
 		Into("archive").
 		OnConflict(AnyConflict().DoNothing()).
-		ReturningCols("name")
-	selectSource := selector.From(Select(Param("select"))).Into("archive").ReturningCols("name")
-	defaults := selector.DefaultValues().Into("archive").ReturningCols("name")
+		Returning("name")
+	selectSource := selector.From(Select(Param("select"))).Into("archive").Returning("name")
+	defaults := selector.DefaultValues().Into("archive").Returning("name")
 
 	checkSQL(t, rows, `INSERT INTO "archive" ("name") VALUES ($1), ($2) ON CONFLICT DO NOTHING RETURNING "name"`, "row", "row-2")
 	checkSQL(t, selectSource, `INSERT INTO "archive" ("name") SELECT $1 RETURNING "name"`, "select")
@@ -147,7 +147,7 @@ func TestInsertColumnSelectorOwnsTargetsAcrossRoles(t *testing.T) {
 func TestInsertTargetBranchesShareTheirTargets(t *testing.T) {
 	t.Parallel()
 	child := Select(Param(1))
-	selector := InsertInto("events").Targets(Col("items").Index(Scalar(child)))
+	selector := InsertInto("events").Columns(Col("items").Index(Scalar(child)))
 	left := selector.Values(Write(Param("left")))
 	right := selector.Values(Write(Param("right")))
 
@@ -159,14 +159,14 @@ func TestWriteConstructorsCaptureStructuralSlices(t *testing.T) {
 	t.Parallel()
 	values := []WriteValue{Write(Param("first")), Write(Param("last"))}
 	columnNames := []string{"first", "last"}
-	columns := InsertInto("people").Columns(columnNames[0], columnNames[1:]...)
+	columns := InsertInto("people").Columns(columnNames...)
 	columnNames[0], columnNames[1] = "changed_first", "changed_last"
 	insert := columns.Values(values[0], values[1:]...)
 	values[0], values[1] = Default(), Write(Param("changed"))
 	checkSQL(t, insert, `INSERT INTO "people" ("first", "last") VALUES ($1, $2)`, "first", "last")
 
 	targets := []Expr{Col("first"), Col("last")}
-	targetSelector := InsertInto("people").Targets(targets[0], targets[1:]...)
+	targetSelector := InsertInto("people").Columns(targets...)
 	targets[0], targets[1] = Col("changed_first"), Col("changed_last")
 	insertTargets := targetSelector.Values(Write(Param("Ada")), Write(Param("Lovelace")))
 	checkSQL(t, insertTargets, `INSERT INTO "people" ("first", "last") VALUES ($1, $2)`, "Ada", "Lovelace")

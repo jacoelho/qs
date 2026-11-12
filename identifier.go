@@ -66,6 +66,63 @@ func ownedList[T any](first T, rest []T) []T {
 	return list
 }
 
+// gather returns the list given to a clause that needs at least one element:
+// first is one element or a list of them, and rest follows it. The result is
+// storage no caller holds. T is X or []X by the caller's constraint.
+func gather[X, T any](first T, rest []X) []X {
+	return gatherOnto[X](nil, first, rest)
+}
+
+// gatherOnto is gather after list, in one allocation: an appending clause
+// would otherwise copy the gathered list a second time.
+func gatherOnto[X, T any](list []X, first T, rest []X) []X {
+	switch v := any(first).(type) {
+	case []X:
+		gathered := make([]X, 0, len(list)+len(v)+len(rest))
+		return append(append(append(gathered, list...), v...), rest...)
+	case X:
+		gathered := make([]X, 0, len(list)+1+len(rest))
+		return append(append(append(gathered, list...), v), rest...)
+	}
+	return list
+}
+
+// appendColumns returns list followed by one expression per item of a clause
+// that takes column names or expressions. A name is one unqualified column,
+// quoted as written. The result is storage no caller holds.
+func appendColumns[T string | Expr](list []Expr, items []T) []Expr {
+	switch v := any(items).(type) {
+	case []string:
+		return extendWith(list, v, unqualifiedColumn)
+	case []Expr:
+		return extend(list, v...)
+	}
+	return list
+}
+
+// appendRelations is appendColumns for a clause that takes table names or
+// relations. A name is one unqualified table, quoted as written.
+func appendRelations[T string | Relation](list []Relation, items []T) []Relation {
+	switch v := any(items).(type) {
+	case []string:
+		return extendWith(list, v, table)
+	case []Relation:
+		return extend(list, v...)
+	}
+	return list
+}
+
+// relationOf returns the relation a table name or a relation stands for.
+func relationOf[T string | Relation](item T) Relation {
+	switch v := any(item).(type) {
+	case string:
+		return table(v)
+	case Relation:
+		return v
+	}
+	return Relation{}
+}
+
 // Star constructs a SELECT wildcard, optionally qualified by a relation name
 // given as identifiers: Star("u") is "u".* and Star("public", "users") is
 // "public"."users".*.

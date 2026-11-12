@@ -20,8 +20,8 @@
 // Add a column outside D with a wrapper row: Embed the declaration beside a Column.
 //
 // Scan reads one row through the caller's scan function, normally rows.Scan or
-// row.Scan, and ScanInto reads it into a value the caller already holds. All and
-// Collect read a result set through the methods pgx.Rows and *sql.Rows share, reuse
+// row.Scan, and ScanInto reads it into a value the caller already holds. All,
+// Collect and CollectPtr read a result set through the methods pgx.Rows and *sql.Rows share, reuse
 // their working memory from row to row, and close the result set when they are done
 // with it, so a caller cannot leave its connection busy: see Rows for what they need
 // to do so. Reading is positional and goes through the caller's
@@ -35,7 +35,7 @@
 //
 // Each expression must produce one result column; the package cannot prove this
 // for wildcards, trusted SQL or composite expansion. Empty declarations are
-// permitted: qs.SelectSlice with no expressions fails rendering, while empty input to
+// permitted: qs.Select with an empty expression list fails rendering, while empty input to
 // Returning adds no clause. Applications expecting returned rows must establish
 // nonempty output before DML. qs.SelectNoColumns separately expresses an intentional
 // zero-column SELECT.
@@ -62,8 +62,10 @@
 // EmbedNull belong to the caller and are not written again; inside an EmbedNull group
 // the row is that *N, so a pointer an inner set kept points into it. A kept pointer to
 // any other row stays valid and no later row is written through it. It points into the
-// caller's value when that value was passed to ScanInto; whether it points into a value
-// Scan, All or Collect returned is unspecified.
+// caller's value when that value was passed to ScanInto, and into the element returned
+// for its row by CollectPtr; whether it points into a value Scan, All or Collect
+// returned is unspecified. The input of a Map is a row of its own, which reaches the
+// caller's value only as its set copies it, so a pointer kept into it points there.
 // A Scanner that panics hangs database/sql, with or without this package.
 //
 // Projections are immutable and safe for concurrent reads and Scan. Declare one once

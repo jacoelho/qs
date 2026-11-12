@@ -5,9 +5,9 @@ import (
 	"slices"
 )
 
-// SetBuilder combines two Rowsets and always preserves branch parentheses.
+// SetBuilder combines Rowsets and always preserves branch parentheses.
 // Limit and OrderBy on a branch apply to that branch; those on this builder
-// apply to the combined result. A Slice constructor given one rowset builds
+// apply to the combined result. A set operation given one rowset builds
 // that rowset alone, in parentheses, under this builder's clauses.
 type SetBuilder struct {
 	left     Rowset
@@ -39,9 +39,9 @@ func setOperation(operator setOperator, left, right Rowset, rest []Rowset) SetBu
 	return b
 }
 
-// setOperationSlice is setOperation for a run-time list. One rowset is a set
-// operation with nothing to combine; none is invalid and fails rendering.
-func setOperationSlice(operator setOperator, sets []Rowset) SetBuilder {
+// setOperationOf combines sets in order. One rowset is a set operation with
+// nothing to combine; none is invalid and fails rendering.
+func setOperationOf(operator setOperator, sets []Rowset) SetBuilder {
 	switch len(sets) {
 	case 0:
 		return SetBuilder{operator: operator, lone: true}
@@ -52,57 +52,27 @@ func setOperationSlice(operator setOperator, sets []Rowset) SetBuilder {
 	}
 }
 
-// UnionSlice combines a run-time list of rowsets with UNION, in order. One
-// rowset renders as that rowset alone, in parentheses, since a set operation
-// over one set is the set itself; an empty list fails rendering. The list is
-// not kept.
-func UnionSlice(sets []Rowset) SetBuilder { return setOperationSlice(setUnion, sets) }
+// Union combines rowsets with UNION, in order, keeping each branch in
+// parentheses. One rowset renders as that rowset alone, in parentheses, since
+// a set operation over one set is the set itself; none fails rendering. Pass a
+// list built at run time as Union(sets...); it is not kept.
+func Union(sets ...Rowset) SetBuilder { return setOperationOf(setUnion, sets) }
 
-// UnionAllSlice is UnionSlice for UNION ALL.
-func UnionAllSlice(sets []Rowset) SetBuilder { return setOperationSlice(setUnionAll, sets) }
+// UnionAll is Union for UNION ALL.
+func UnionAll(sets ...Rowset) SetBuilder { return setOperationOf(setUnionAll, sets) }
 
-// IntersectSlice is UnionSlice for INTERSECT.
-func IntersectSlice(sets []Rowset) SetBuilder { return setOperationSlice(setIntersect, sets) }
+// Intersect is Union for INTERSECT.
+func Intersect(sets ...Rowset) SetBuilder { return setOperationOf(setIntersect, sets) }
 
-// IntersectAllSlice is UnionSlice for INTERSECT ALL.
-func IntersectAllSlice(sets []Rowset) SetBuilder { return setOperationSlice(setIntersectAll, sets) }
+// IntersectAll is Union for INTERSECT ALL.
+func IntersectAll(sets ...Rowset) SetBuilder { return setOperationOf(setIntersectAll, sets) }
 
-// ExceptSlice is UnionSlice for EXCEPT: the first rowset less every later one.
-func ExceptSlice(sets []Rowset) SetBuilder { return setOperationSlice(setExcept, sets) }
+// Except is Union for EXCEPT: the first rowset less every later one.
+func Except(sets ...Rowset) SetBuilder { return setOperationOf(setExcept, sets) }
 
-// ExceptAllSlice is UnionSlice for EXCEPT ALL.
-func ExceptAllSlice(sets []Rowset) SetBuilder { return setOperationSlice(setExceptAll, sets) }
+// ExceptAll is Union for EXCEPT ALL.
+func ExceptAll(sets ...Rowset) SetBuilder { return setOperationOf(setExceptAll, sets) }
 
-// Union combines two or more rowsets with UNION, preserving each branch's
-// parentheses and appending any additional rowsets in order.
-func Union(left, right Rowset, rest ...Rowset) SetBuilder {
-	return setOperation(setUnion, left, right, rest)
-}
-
-// UnionAll combines two or more rowsets with UNION ALL.
-func UnionAll(left, right Rowset, rest ...Rowset) SetBuilder {
-	return setOperation(setUnionAll, left, right, rest)
-}
-
-// Intersect combines two or more rowsets with INTERSECT.
-func Intersect(left, right Rowset, rest ...Rowset) SetBuilder {
-	return setOperation(setIntersect, left, right, rest)
-}
-
-// IntersectAll combines two or more rowsets with INTERSECT ALL.
-func IntersectAll(left, right Rowset, rest ...Rowset) SetBuilder {
-	return setOperation(setIntersectAll, left, right, rest)
-}
-
-// Except combines two or more rowsets with EXCEPT.
-func Except(left, right Rowset, rest ...Rowset) SetBuilder {
-	return setOperation(setExcept, left, right, rest)
-}
-
-// ExceptAll combines two or more rowsets with EXCEPT ALL.
-func ExceptAll(left, right Rowset, rest ...Rowset) SetBuilder {
-	return setOperation(setExceptAll, left, right, rest)
-}
 func (w *renderer) setOperation(b *SetBuilder) {
 	w.setOperationOfWidth(b, statementWidth(b.left, w.options.MaxDepth))
 }
@@ -166,7 +136,7 @@ func (w *renderer) setOperationOfWidth(b *SetBuilder, left int) {
 	w.foot(b.base)
 }
 
-// loneSetOperation renders the one rowset of a Slice constructor. It keeps the
+// loneSetOperation renders a set operation given one rowset. It keeps the
 // branch parentheses, so the builder's ORDER BY and LIMIT apply to the whole
 // branch as they would to a combined result.
 func (w *renderer) loneSetOperation(b *SetBuilder) {
@@ -429,7 +399,7 @@ func statementWidth(s Statement, maxDepth int) int {
 		switch b := s.(type) {
 		case SelectBuilder:
 			if len(b.columns) == 0 && !b.noColumns {
-				// An empty SelectSlice is invalid; its own render says so.
+				// An empty projection is invalid; its own render says so.
 				return -1
 			}
 			return projectionWidth(b.columns)

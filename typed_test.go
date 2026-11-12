@@ -19,6 +19,8 @@ func TestTypedFacade(t *testing.T) {
 		{"gt", a.Gt(1), `("t"."a" > $1)`, []any{1}},
 		{"gte", a.Gte(1), `("t"."a" >= $1)`, []any{1}},
 		{"eq_field", a.EqField(b), `("t"."a" = "s"."b")`, nil},
+		{"cast_then_expression_operand", a.Cast(TypeInt8).Eq(Col("s", "wide")), `(("t"."a")::bigint = "s"."wide")`, nil},
+		{"lifted_expression_operand", a.EqField(Typed[int](Col("s", "b").Add(Param(1)))), `("t"."a" = ("s"."b" + $1))`, []any{1}},
 		{"ne_field", a.NeField(b), `("t"."a" <> "s"."b")`, nil},
 		{"lt_field", a.LtField(b), `("t"."a" < "s"."b")`, nil},
 		{"lte_field", a.LteField(b), `("t"."a" <= "s"."b")`, nil},

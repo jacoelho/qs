@@ -39,6 +39,24 @@ func (e Expr) Using(operator string) Order {
 	return Order{expr: e, direction: usingOperator, operator: operator}
 }
 
+// AscCols returns one ascending order term per column name, for a list of
+// names: OrderBy(AscCols("last_name", "first_name")...). Each name is one
+// unqualified column and a dot is part of the name; order by a qualified
+// column with Col("u", "id").Asc(). OrderBy appends, so a further call adds
+// terms of another direction or kind after these.
+func AscCols(columns ...string) []Order { return orderColumns(columns, ascending) }
+
+// DescCols is AscCols with every term descending.
+func DescCols(columns ...string) []Order { return orderColumns(columns, descending) }
+
+func orderColumns(columns []string, d direction) []Order {
+	terms := make([]Order, len(columns))
+	for i, column := range columns {
+		terms[i] = Order{expr: unqualifiedColumn(column), direction: d}
+	}
+	return terms
+}
+
 // NullsFirst places NULL values before non-NULL values.
 func (o Order) NullsFirst() Order { o.nulls = nullsFirst; return o }
 

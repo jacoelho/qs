@@ -34,7 +34,7 @@ func TestJoinFamiliesAgainstPostgres(t *testing.T) {
 			sql, args, err := session.render(
 				t,
 				qs.Select(qs.Col("a", "id"), qs.Col("b", "id")).
-					FromExpr(tc.join).
+					From(tc.join).
 					OrderBy(qs.Col("a", "id").Asc(), qs.Col("b", "id").Asc()),
 			)
 			if err != nil {
@@ -155,7 +155,7 @@ func TestUnknownWidthMembershipAgainstPostgres(t *testing.T) {
 		{"known_left_not_in_unknown_list", known.NotIn(unknown), []bool{false, true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			query := qs.Select(tc.condition.Expr()).FromExpr(relation)
+			query := qs.Select(tc.condition.Expr()).From(relation)
 			sql, args, err := session.render(t, query)
 			if err != nil {
 				t.Fatal(err)

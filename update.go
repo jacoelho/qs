@@ -20,12 +20,9 @@ type UpdateBuilder struct {
 	base      statementBase
 }
 
-// Update starts an UPDATE for a named table.
-func Update(table string) PendingUpdate { return UpdateTable(Table(table)) }
-
-// UpdateTable starts an UPDATE for a relation expression.
-func UpdateTable(table Relation) PendingUpdate {
-	return PendingUpdate{UpdateBuilder{table: table}}
+// Update starts an UPDATE of table, a table name or a relation.
+func Update[T string | Relation](table T) PendingUpdate {
+	return PendingUpdate{UpdateBuilder{table: relationOf(table)}}
 }
 
 // With adds CTEs before UPDATE, in order. Duplicate CTE names are reported
@@ -43,20 +40,14 @@ func (p PendingUpdate) WithRecursive(ctes ...WithQuery) PendingUpdate {
 
 // Set appends assignments to the UPDATE SET clause. A statement with none
 // fails rendering.
-func (p PendingUpdate) Set(assignments ...Assignment) PendingUpdate {
-	p.statement.set = extend(p.statement.set, assignments...)
+func (p PendingUpdate) Set[T Assignment | []Assignment](first T, rest ...Assignment) PendingUpdate {
+	p.statement.set = gatherOnto(p.statement.set, first, rest)
 	return p
 }
 
-// From appends named tables to the UPDATE FROM clause.
-func (p PendingUpdate) From(tables ...string) PendingUpdate {
-	p.statement.from = extendWith(p.statement.from, tables, table)
-	return p
-}
-
-// FromExpr appends relation expressions to the UPDATE FROM clause.
-func (p PendingUpdate) FromExpr(relations ...Relation) PendingUpdate {
-	p.statement.from = extend(p.statement.from, relations...)
+// From appends table names or relations to the UPDATE FROM clause.
+func (p PendingUpdate) From[T string | Relation](tables ...T) PendingUpdate {
+	p.statement.from = appendRelations(p.statement.from, tables)
 	return p
 }
 
@@ -68,14 +59,6 @@ func (p PendingUpdate) FromExpr(relations ...Relation) PendingUpdate {
 // bound values and trusted SQL are not inspected.
 func (p PendingUpdate) Where(first Condition, rest ...Condition) UpdateBuilder {
 	p.statement.rows = rowsWhere(first, rest)
-	return p.statement
-}
-
-// WhereSlice is Where for a run-time list, which is copied. An empty list
-// selects no rows to update and fails rendering, as conditions that are TRUE
-// for every row do.
-func (p PendingUpdate) WhereSlice(conditions []Condition) UpdateBuilder {
-	p.statement.rows = rowSelection{kind: rowsMatching, conditions: cloneSlice(conditions)}
 	return p.statement
 }
 
@@ -91,15 +74,10 @@ func (p PendingUpdate) AllRows() UpdateBuilder {
 	return p.statement
 }
 
-// Returning appends expressions to the UPDATE RETURNING projection.
-func (b UpdateBuilder) Returning(expressions ...Expr) UpdateBuilder {
-	b.returning = extend(b.returning, expressions...)
-	return b
-}
-
-// ReturningCols appends named columns to the UPDATE RETURNING projection.
-func (b UpdateBuilder) ReturningCols(columns ...string) UpdateBuilder {
-	b.returning = extendWith(b.returning, columns, unqualifiedColumn)
+// Returning appends column names, each one unqualified column, or expressions
+// to the UPDATE RETURNING projection.
+func (b UpdateBuilder) Returning[T string | Expr](columns ...T) UpdateBuilder {
+	b.returning = appendColumns(b.returning, columns)
 	return b
 }
 

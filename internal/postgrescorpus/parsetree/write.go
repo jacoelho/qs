@@ -12,11 +12,11 @@ import (
 type insertTarget interface {
 	DefaultValues() qs.InsertDefaults
 	From(source qs.Rowset) qs.InsertSelect
-	ValuesSlice(values []qs.WriteValue) qs.InsertRows
+	Rows(rows ...[]qs.WriteValue) qs.InsertRows
 }
 
 func (b *builder) insert(n node) qs.Statement {
-	table := qs.InsertIntoTable(b.table(n.record("relation")))
+	table := qs.InsertInto(b.table(n.record("relation")))
 	if columns := n.nodes("cols"); len(columns) != 0 {
 		return insertInto(b, n, b.insertColumns(table, columns))
 	}
@@ -32,7 +32,7 @@ func insertInto[T insertTarget](b *builder, n node, target T) qs.Statement {
 			b.gapf("DEFAULT VALUES cannot specify OVERRIDING")
 		}
 		insert := target.DefaultValues()
-		return finishInsert(b, n, insert, qs.InsertDefaults.OnConflict[qs.ConflictNothing], qs.InsertDefaults.OnConflict[qs.ConflictUpdate])
+		return finishInsert(b, n, insert, qs.InsertDefaults.OnConflict[qs.ConflictNothing], qs.InsertDefaults.OnConflict[qs.ConflictUpdate], qs.InsertDefaults.Returning[qs.Expr])
 	case source.tag != tagSelect:
 		b.gapf("INSERT source is not SelectStmt")
 		return placeholder
@@ -42,9 +42,9 @@ func insertInto[T insertTarget](b *builder, n node, target T) qs.Statement {
 			b.gapf("INSERT has empty VALUES")
 			return placeholder
 		}
-		insert := target.ValuesSlice(b.writeValues(rows[0].members()))
+		insert := target.Rows(b.writeValues(rows[0].members()))
 		for _, row := range rows[1:] {
-			insert = insert.ValuesSlice(b.writeValues(row.members()))
+			insert = insert.Rows(b.writeValues(row.members()))
 		}
 		switch override {
 		case overridingSystemValue:
@@ -52,7 +52,7 @@ func insertInto[T insertTarget](b *builder, n node, target T) qs.Statement {
 		case overridingUserValue:
 			insert = insert.OverridingUserValue()
 		}
-		return finishInsert(b, n, insert, qs.InsertRows.OnConflict[qs.ConflictNothing], qs.InsertRows.OnConflict[qs.ConflictUpdate])
+		return finishInsert(b, n, insert, qs.InsertRows.OnConflict[qs.ConflictNothing], qs.InsertRows.OnConflict[qs.ConflictUpdate], qs.InsertRows.Returning[qs.Expr])
 	default:
 		insert := target.From(b.selectStmt(source))
 		switch override {
@@ -61,7 +61,7 @@ func insertInto[T insertTarget](b *builder, n node, target T) qs.Statement {
 		case overridingUserValue:
 			insert = insert.OverridingUserValue()
 		}
-		return finishInsert(b, n, insert, qs.InsertSelect.OnConflict[qs.ConflictNothing], qs.InsertSelect.OnConflict[qs.ConflictUpdate])
+		return finishInsert(b, n, insert, qs.InsertSelect.OnConflict[qs.ConflictNothing], qs.InsertSelect.OnConflict[qs.ConflictUpdate], qs.InsertSelect.Returning[qs.Expr])
 	}
 }
 
@@ -84,31 +84,33 @@ func (b *builder) insertColumns(table qs.InsertTarget, columns []node) qs.Insert
 		for index, column := range columns {
 			names[index] = column.text("name")
 		}
-		return table.ColumnsSlice(names)
+		return table.Columns(names...)
 	}
-	// Targets keeps composite fields and array subscripts.
+	// Target expressions keep composite fields and array subscripts.
 	targets := make([]qs.Expr, len(columns))
 	for index, column := range columns {
 		targets[index] = b.writeTarget(column)
 	}
-	return variadic(b, "INSERT targets", table.Targets, targets)
+	return table.Columns(targets...)
 }
 
 // insertTail is the method set shared by every completed INSERT form.
 type insertTail[T any] interface {
 	qs.Statement
 	commonTables[T]
-	returning[T]
+	returningRows[T]
 }
 
 // finishInsert applies the clauses common to all INSERT sources. OnConflict
-// is a generic method, so its two instantiations arrive as functions.
+// and Returning are generic methods, which no interface can list, so their
+// instantiations arrive as functions.
 func finishInsert[T insertTail[T]](
 	b *builder,
 	n node,
 	insert T,
 	onNothing func(T, qs.ConflictNothing) T,
 	onUpdate func(T, qs.ConflictUpdate) T,
+	returning func(T, ...qs.Expr) T,
 ) qs.Statement {
 	if clause := n.record("onConflictClause"); clause.present() {
 		nothing, update, isUpdate := b.conflict(clause)
@@ -118,14 +120,14 @@ func finishInsert[T insertTail[T]](
 			insert = onNothing(insert, nothing)
 		}
 	}
-	insert = returnRows(b, insert, n)
+	insert = returnRows(b, insert, returning, n)
 	return withQueries(b, insert, n)
 }
 
-// conflictTarget is the action method set of targets that allow DO UPDATE.
+// conflictTarget is the non-generic part of the action method set of targets
+// that allow DO UPDATE; conflictAction takes DoUpdate as a function.
 type conflictTarget interface {
 	DoNothing() qs.ConflictNothing
-	DoUpdateSlice(assignments []qs.Assignment) qs.ConflictUpdate
 }
 
 func (b *builder) conflict(n node) (qs.ConflictNothing, qs.ConflictUpdate, bool) {
@@ -137,14 +139,14 @@ func (b *builder) conflict(n node) (qs.ConflictNothing, qs.ConflictUpdate, bool)
 		}
 		return qs.AnyConflict().DoNothing(), qs.ConflictUpdate{}, false
 	case infer.text("conname") != "":
-		return conflictAction(b, n, qs.ConflictConstraint(infer.text("conname")))
+		return conflictAction(b, n, qs.ConflictConstraint(infer.text("conname")), qs.ConflictConstraintTarget.DoUpdate[[]qs.Assignment])
 	default:
 		return b.conflictInference(n, infer)
 	}
 }
 
 // conflictAction completes an inferred conflict target with its action.
-func conflictAction[T conflictTarget](b *builder, n node, target T) (qs.ConflictNothing, qs.ConflictUpdate, bool) {
+func conflictAction[T conflictTarget](b *builder, n node, target T, doUpdate func(T, []qs.Assignment, ...qs.Assignment) qs.ConflictUpdate) (qs.ConflictNothing, qs.ConflictUpdate, bool) {
 	if b.stopped() {
 		return qs.ConflictNothing{}, qs.ConflictUpdate{}, false
 	}
@@ -156,7 +158,7 @@ func conflictAction[T conflictTarget](b *builder, n node, target T) (qs.Conflict
 		b.gapf("ON CONFLICT DO UPDATE has no assignments")
 		return qs.ConflictNothing{}, qs.ConflictUpdate{}, false
 	}
-	update := target.DoUpdateSlice(assignments)
+	update := doUpdate(target, assignments)
 	if where := n.node("whereClause"); where.present() {
 		update = update.Where(b.condition(where))
 	}
@@ -184,11 +186,11 @@ func (b *builder) conflictInference(n, infer node) (qs.ConflictNothing, qs.Confl
 		for index, element := range elements {
 			names[index] = element.text("name")
 		}
-		target := qs.ConflictColumns(names[0], names[1:]...)
+		target := qs.ConflictColumns(names)
 		if where.present() {
 			target = target.TargetWhere(b.condition(where))
 		}
-		return conflictAction(b, n, target)
+		return conflictAction(b, n, target, qs.ConflictColumnsTarget.DoUpdate[[]qs.Assignment])
 	}
 	index := make([]qs.IndexElement, len(elements))
 	for position, element := range elements {
@@ -210,20 +212,20 @@ func (b *builder) conflictInference(n, infer node) (qs.ConflictNothing, qs.Confl
 		}
 		index[position] = item
 	}
-	target := qs.ConflictIndex(index[0], index[1:]...)
+	target := qs.ConflictIndex(index)
 	if where.present() {
 		target = target.TargetWhere(b.condition(where))
 	}
-	return conflictAction(b, n, target)
+	return conflictAction(b, n, target, qs.ConflictIndexTarget.DoUpdate[[]qs.Assignment])
 }
 
-// returning is the RETURNING method set of every data-modifying statement.
-type returning[T any] interface {
-	Returning(expressions ...qs.Expr) T
+// returningRows is the non-generic part of the RETURNING method set of every
+// data-modifying statement; returnRows takes Returning as a function.
+type returningRows[T any] interface {
 	ReturningRows(aliases qs.ReturningAliases) T
 }
 
-func returnRows[T returning[T]](b *builder, statement T, n node) T {
+func returnRows[T returningRows[T]](b *builder, statement T, returning func(T, ...qs.Expr) T, n node) T {
 	clause := n.record("returningClause")
 	if !clause.present() {
 		return statement
@@ -257,7 +259,7 @@ func returnRows[T returning[T]](b *builder, statement T, n node) T {
 		statement = statement.ReturningRows(aliases)
 	}
 	if targets := clause.nodes("exprs"); len(targets) != 0 {
-		statement = statement.Returning(b.projection(targets, "RETURNING")...)
+		statement = returning(statement, b.projection(targets, "RETURNING")...)
 	}
 	return statement
 }
@@ -297,23 +299,23 @@ func (b *builder) update(n node) qs.Statement {
 	if len(assignments) == 0 {
 		b.gapf("UPDATE has no assignments")
 	}
-	update := qs.UpdateTable(b.table(n.record("relation"))).Set(assignments...)
+	update := qs.Update(b.table(n.record("relation"))).Set(assignments)
 	if from := n.nodes("fromClause"); len(from) != 0 {
-		update = update.FromExpr(b.relations(from)...)
+		update = update.From(b.relations(from)...)
 	}
-	return withQueries(b, returnRows(b, filter(b, update, n), n), n)
+	return withQueries(b, returnRows(b, filter(b, update, n), qs.UpdateBuilder.Returning[qs.Expr], n), n)
 }
 
 func (b *builder) delete(n node) qs.Statement {
-	statement := qs.DeleteFromTable(b.table(n.record("relation")))
+	statement := qs.DeleteFrom(b.table(n.record("relation")))
 	if using := n.nodes("usingClause"); len(using) != 0 {
-		statement = statement.UsingExpr(b.relations(using)...)
+		statement = statement.Using(b.relations(using)...)
 	}
-	return withQueries(b, returnRows(b, filter(b, statement, n), n), n)
+	return withQueries(b, returnRows(b, filter(b, statement, n), qs.DeleteBuilder.Returning[qs.Expr], n), n)
 }
 
 func (b *builder) merge(n node) qs.Statement {
-	merge := qs.MergeIntoTable(b.table(n.record("relation"))).Using(b.relation(n.node("sourceRelation")))
+	merge := qs.MergeInto(b.table(n.record("relation"))).Using(b.relation(n.node("sourceRelation")))
 	condition := n.node("joinCondition")
 	if !condition.present() {
 		b.gapf("MERGE has no join condition")
@@ -329,7 +331,7 @@ func (b *builder) merge(n node) qs.Statement {
 	for index, clause := range clauses {
 		branches[index] = b.mergeBranch(clause)
 	}
-	merge = returnRows(b, merge.When(branches...), n)
+	merge = returnRows(b, merge.When(branches...), qs.MergeBuilder.Returning[qs.Expr], n)
 	if with := n.record("withClause"); with.present() {
 		if with.flag("recursive") {
 			b.gapf("MERGE has no WITH RECURSIVE")
@@ -352,7 +354,7 @@ func (b *builder) mergeBranch(n node) qs.MergeWhen {
 		}
 		switch action {
 		case "CMD_UPDATE":
-			return branch.ThenUpdate(b.assignments(n.nodes("targetList"))...)
+			return branch.ThenUpdate(b.assignments(n.nodes("targetList")))
 		case "CMD_DELETE":
 			return branch.ThenDelete()
 		case "CMD_NOTHING":
@@ -377,10 +379,10 @@ func (b *builder) mergeBranch(n node) qs.MergeWhen {
 	return qs.MergeWhen{}
 }
 
-// mergeInserter is the method set shared by a NOT MATCHED branch with and
-// without an OVERRIDING clause.
+// mergeInserter is the non-generic part of the method set shared by a NOT
+// MATCHED branch with and without an OVERRIDING clause; ThenInsert is a
+// generic method, so mergeInsert carries it as a function.
 type mergeInserter interface {
-	ThenInsert(assignments ...qs.Assignment) qs.MergeWhen
 	ThenInsertValues(columns []string, first qs.WriteValue, rest ...qs.WriteValue) qs.MergeWhen
 }
 
@@ -390,11 +392,16 @@ func (b *builder) mergeInsert(branch qs.MergeNotMatched, n node) qs.MergeWhen {
 	targets := n.nodes("targetList")
 	values := b.writeValues(n.nodes("values"))
 	var inserter mergeInserter = branch
+	thenInsert := func(assignments []qs.Assignment) qs.MergeWhen { return branch.ThenInsert(assignments) }
+	overridden := func(override qs.MergeInsertOverride) {
+		inserter = override
+		thenInsert = func(assignments []qs.Assignment) qs.MergeWhen { return override.ThenInsert(assignments) }
+	}
 	switch override := n.text("override"); override {
 	case overridingSystemValue:
-		inserter = branch.OverridingSystemValue()
+		overridden(branch.OverridingSystemValue())
 	case overridingUserValue:
-		inserter = branch.OverridingUserValue()
+		overridden(branch.OverridingUserValue())
 	case "OVERRIDING_NOT_SET":
 		if len(targets) == 0 && len(values) == 0 {
 			return branch.ThenInsertDefault()
@@ -423,7 +430,7 @@ func (b *builder) mergeInsert(branch qs.MergeNotMatched, n node) qs.MergeWhen {
 	for index, target := range targets {
 		assignments[index] = qs.Assign(b.writeTarget(target), values[index])
 	}
-	return inserter.ThenInsert(assignments...)
+	return thenInsert(assignments)
 }
 
 // assignments builds SET lists. A row assignment (a, b) = ... arrives as one
