@@ -73,24 +73,19 @@ type ConflictUpdate struct{ update conflictClause }
 // conflictAction closes the only two accepted ON CONFLICT action types. Its
 // union is kept private so callers cannot supply a different action wrapper.
 type conflictAction interface {
-	conflictInto(base *insertBase)
+	clause() conflictClause
 	ConflictNothing | ConflictUpdate
 }
 
-func (c ConflictNothing) conflictInto(base *insertBase) {
-	clause := c.nothing
-	base.conflict = &clause
-}
+func (c ConflictNothing) clause() conflictClause { return c.nothing }
 
-func (c ConflictUpdate) conflictInto(base *insertBase) {
-	clause := c.update
-	base.conflict = &clause
-}
+func (c ConflictUpdate) clause() conflictClause { return c.update }
 
 // setInsertConflict normalizes either completed action without retaining an
 // interface value in the builder.
 func setInsertConflict[C conflictAction](base *insertBase, action C) {
-	action.conflictInto(base)
+	clause := action.clause()
+	base.conflict = &clause
 }
 
 // AnyConflict starts an unrestricted ON CONFLICT target.
