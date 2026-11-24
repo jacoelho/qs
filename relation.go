@@ -315,8 +315,7 @@ func (r Relation) DefineColumns(columns ...RecordColumn) Relation {
 	if !ok {
 		return RelationSQL(invalidExpr("function", "column definitions require a table function"))
 	}
-	f.columns = cloneSlice(columns)
-	r.source = f
+	r.source = f.DefineColumns(columns...)
 	return r
 }
 

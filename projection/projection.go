@@ -68,6 +68,20 @@ func cellAt[C any, P interface {
 	return pooledCell[C, P](s)
 }
 
+// begin starts a row, which refills the pool from its first slot because cells are
+// created in declaration order.
+func (s *scratch) begin() []any {
+	s.next, s.need, s.arena = 0, 0, s.arena[:0]
+	return s.dests[:0]
+}
+
+func (s *scratch) end(dests []any) {
+	s.dests = dests
+	if s.need > cap(s.arena) {
+		s.arena = make([]cell, 0, s.need)
+	}
+}
+
 // replace puts c in the slot cellAt just returned, for a part whose previous cell must not be filled again.
 func (s *scratch) replace(c cell) { s.pool[s.next-1] = c }
 
@@ -642,8 +656,7 @@ func (p Projection[D]) ScanInto(d *D, scan func(dest ...any) error) error {
 func (p Projection[D]) read(d *D, scan func(dest ...any) error, reused *scratch) error {
 	var r reader
 	if reused != nil {
-		r.dests = reused.dests[:0]
-		reused.next, reused.need, reused.arena = 0, 0, reused.arena[:0]
+		r.dests = reused.begin()
 	}
 	if r.dests == nil {
 		r.dests = make([]any, 0, len(p.expressions))
@@ -655,10 +668,7 @@ func (p Projection[D]) read(d *D, scan func(dest ...any) error, reused *scratch)
 		r = q(d, r, reused)
 	}
 	if reused != nil {
-		reused.dests = r.dests
-		if reused.need > cap(reused.arena) {
-			reused.arena = make([]cell, 0, reused.need)
-		}
+		reused.end(r.dests)
 	}
 	if err := scan(r.dests...); err != nil {
 		return err
